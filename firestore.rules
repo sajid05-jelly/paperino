@@ -1,0 +1,144 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function isContributor() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "contributor";
+    }
+
+    function isOwner(resource) {
+      return isSignedIn() && resource.data.uploaderId == request.auth.uid;
+    }
+
+    function isNotBlocked() {
+      return isSignedIn() &&
+        (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status != "blocked");
+    }
+
+    // ── Users collection ────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Anyone signed in can read their own profile; admins can read all
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Users can update their own profile (avatar, display name); admins can update any
+      allow write: if (isSignedIn() && request.auth.uid == userId && isNotBlocked()) || isAdmin();
+    }
+
+    // ── Dynamic Subjects / Courses ──────────────────────────────────────────
+    match /dynamic_subjects/{docId} {
+      allow read: if true;
+      allow create: if isAdmin() || (isContributor() && isNotBlocked());
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Study Materials ─────────────────────────────────────────────────────
+    match /materials/{docId} {
+      allow read: if true;
+      allow create: if isAdmin() || (
+        isContributor() && 
+        isNotBlocked() && 
+        request.resource.data.status == "pending" && 
+        request.resource.data.uploaderId == request.auth.uid
+      );
+      allow update: if isAdmin() || (
+        isContributor() && 
+        isNotBlocked() && 
+        isOwner(resource) && 
+        resource.data.status == "pending" && 
+        request.resource.data.status == "pending"
+      );
+      allow delete: if isAdmin() || (
+        isContributor() && 
+        isNotBlocked() && 
+        isOwner(resource) && 
+        resource.data.status == "pending"
+      );
+    }
+
+    // ── Semesters ───────────────────────────────────────────────────────────
+    match /semesters/{semId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /semesters/{semId}/{rest=**} {
+      allow read: if true;
+      allow create: if isAdmin() || (isContributor() && isNotBlocked());
+      allow update, delete: if isAdmin() || (isContributor() && isOwner(resource) && isNotBlocked());
+    }
+
+    // ── Bookmarks ───────────────────────────────────────────────────────────
+    match /users/{userId}/bookmarks/{bookmarkId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && isNotBlocked() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ── Grades ──────────────────────────────────────────────────────────────
+    match /grades/{gradeId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && isNotBlocked() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ── Leaderboard / User Stats ─────────────────────────────────────────────
+    match /leaderboard/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId && isNotBlocked();
+    }
+
+    match /leaderboards/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isNotBlocked();
+    }
+
+    // ── Feedback ────────────────────────────────────────────────────────────
+    match /user_feedback/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isNotBlocked();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Settings (maintenance mode, AI status) ───────────────────────────────
+    match /settings/{settingId} {
+      allow read: if true;  // maintenance banner needs public read
+      allow write: if isAdmin();
+    }
+
+    // ── AI Usage tracking (per-user, stored in users subcollection) ──────────
+    match /users/{userId}/ai_usage/{docId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ── Team / Contributors list ─────────────────────────────────────────────
+    match /team/{memberId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Blocked IPs / Users (admin-only) ────────────────────────────────────
+    match /blocked_users/{uid} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+
+    // ── Deny all other paths by default ─────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

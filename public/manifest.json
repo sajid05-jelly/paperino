@@ -1,0 +1,17 @@
+{
+  "name": "Paperino - SRM Study Hub",
+  "short_name": "Paperino",
+  "description": "Semester-wise study materials, GPA calculator, PYQ predictor and more for SRM students.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05030a",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "categories": ["education"],
+  "icons": [
+    { "src": "/logo-simple.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/logo-final.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

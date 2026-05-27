@@ -1,0 +1,102 @@
+export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
+  "1": [
+    { id: "calc", name: "Calculus And Linear Algebra" },
+    { id: "chem", name: "Chemistry" },
+    { id: "poe", name: "Philosophy Of Engineering" },
+    { id: "icb", name: "Introduction To Computational Biology" },
+    { id: "pps", name: "Programming For Problem Solving" },
+    { id: "foe", name: "Fundamental Of Economics (FOE)" },
+    { id: "bs", name: "Biomedical Sensors" },
+    { id: "fl", name: "Foreign Languages" },
+    { id: "cb", "name": "Cell Biology" },
+    { id: "mb", "name": "Microbiology" },
+    { id: "pac", "name": "Physical And Analytical Chemistry" },
+    { id: "biochem", "name": "Biochemistry" },
+    { id: "bcmw", "name": "Basic Civil & Mechanical Workshop" },
+    { id: "bio", "name": "Biology" }
+  ],
+  "2": [
+    { id: "acca", name: "Advanced Calculus And Complex Analysis" },
+    { id: "eee", name: "Electrical And Electronics Engineering" },
+    { id: "spcm", name: "Semiconductor Physics And Computational Methods" },
+    { id: "pm", name: "Physics-Mechanics" },
+    { id: "oodp", name: "Object Oriented Design And Programming" },
+    { id: "ce", name: "Communicative English" },
+    { id: "ep", name: "Electromagnetic Physics" },
+    { id: "em", name: "Engineering Mechanics" },
+    { id: "espcb", name: "Electronic System And PCB Design" },
+    { id: "bmtbe", name: "Building Materials In The Built Environment" },
+    { id: "bac", name: "Basic Of Accounting And Costing" },
+    { id: "ps", name: "Probability And Statistics" }
+  ],
+  "3": [
+    { id: "dsa", name: "Data Structures And Algorithm" },
+    { id: "coa", name: "Computer Organization And Architecture" },
+    { id: "os", name: "Operating Systems" },
+    { id: "tbvp", name: "Transforms And Boundary Value Problems" },
+    { id: "app", name: "Advanced Programming Practice" },
+    { id: "dtm", name: "Design Thinking And Methodology" },
+    { id: "dld", name: "Digital Logic Design" },
+    { id: "ssd", name: "Solid State Devices" },
+    { id: "biochem3", name: "Biochemistry" },
+    { id: "eti", name: "Electromagnetic Theory And Interference" },
+    { id: "bce", name: "Basic Chemical Engineering" },
+    { id: "bp", name: "Bioprocess Principles" },
+    { id: "gc", name: "Genetics And Cytogenetics" },
+    { id: "microbio3", name: "Microbiology" },
+    { id: "se", name: "Social Engineering" },
+    { id: "nma", name: "Numerical Methods & Analysis" },
+    { id: "fds", name: "Foundation of Data Science (FDS)" }
+  ],
+  "4": [
+    { id: "daa", name: "Design And Analysis Of Algorithms" },
+    { id: "dbms4", name: "Database Management Systems" },
+    { id: "ai4", name: "Artificial Intelligence" },
+    { id: "pqt", name: "Probability And Queueing Theory" },
+    { id: "se4", name: "Social Engineering" },
+    { id: "bpe", name: "Bioprocess Engineering" },
+    { id: "ccs", name: "Cell Communication And Signaling" },
+    { id: "sp", name: "Software Process" },
+    { id: "cep", name: "Chemical Engineering Principles" },
+    { id: "mb4", name: "Molecular Biology" },
+    { id: "iot4", name: "Internet Of Things (IOT)" },
+    { id: "pas", name: "Probability & Applied Statistics" },
+    { id: "dip", name: "Digital Image Processing" },
+    { id: "sigp", name: "Signal Processing" },
+    { id: "cga", name: "CGA" },
+    { id: "pft", name: "Programming for Financial Technologies [Honours]" },
+    { id: "qc", name: "Quantum Computing [Honours]" },
+    { id: "bdtt", name: "Big Data Tools And Techniques" }
+  ],
+  "5": [
+    { id: "dm", name: "Discrete Mathematics" },
+    { id: "fla", name: "Formal Language And Automata" },
+    { id: "cn5", name: "Computer Networks" },
+    { id: "ml5", name: "Machine Learning" },
+    { id: "fswd", name: "Full Stack Web Development" },
+    { id: "wtwtw", name: "Waste To Wealth To Wheels" },
+    { id: "iaf", name: "Indian Art Form" },
+    { id: "cc5", name: "Community Connect" }
+  ],
+  "6": [
+    { id: "sepm", name: "Software Engineering And Project Management" },
+    { id: "cd6", name: "Compiler Design" },
+    { id: "ds6", name: "Data Science" },
+    { id: "nlp", name: "Natural Language Processing" },
+    { id: "cc6", name: "Cloud Computing" },
+    { id: "proj6", name: "Project" },
+    { id: "tqmre", name: "TQM And Reliability Engineering" },
+    { id: "itk", name: "Indian Traditional Knowledge" },
+    { id: "pb", name: "Plant Biotechnology" },
+    { id: "ab", name: "Animal Biotechnology" },
+    { id: "mt", name: "Marine Technology" }
+  ],
+  "7": [
+    { id: "bda", name: "Big Data Analytics" },
+    { id: "iot", name: "Internet of Things" }
+  ],
+  "8": [
+    { id: "proj", name: "Major Project" },
+    { id: "intern", name: "Internship" }
+  ]
+};

@@ -1,8 +1,75 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #05030a;
+  --foreground: #e2e8f0;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  
+  --primary-50: #f5f3ff;
+  --primary-100: #ede9fe;
+  --primary-200: #ddd6fe;
+  --primary-300: #c4b5fd;
+  --primary-400: #a78bfa;
+  --primary-500: #8b5cf6;
+  --primary-600: #7c3aed;
+  
+  --secondary-300: #f0abfc;
+  --secondary-400: #e879f9;
+  --secondary-500: #d946ef;
+  
+  --accent-300: #67e8f9;
+  --accent-400: #22d3ee;
+  --accent-500: #06b6d4;
+
+  --primary-rgb: 139, 92, 246;
+  --secondary-rgb: 217, 70, 239;
+  --accent-rgb: 6, 182, 212;
+}
+
+[data-theme="ocean-blue"] {
+  --background: #01040a;
+  --primary-50: #eff6ff; --primary-100: #dbeafe; --primary-200: #bfdbfe; 
+  --primary-300: #93c5fd; --primary-400: #60a5fa; --primary-500: #3b82f6; --primary-600: #2563eb;
+  --secondary-300: #67e8f9; --secondary-400: #22d3ee; --secondary-500: #06b6d4;
+  --accent-300: #5eead4; --accent-400: #2dd4bf; --accent-500: #14b8a6;
+  --primary-rgb: 59, 130, 246; --secondary-rgb: 6, 182, 212; --accent-rgb: 20, 184, 166;
+}
+
+[data-theme="crimson-red"] {
+  --background: #0a0101;
+  --primary-50: #fef2f2; --primary-100: #fee2e2; --primary-200: #fecaca; 
+  --primary-300: #fca5a5; --primary-400: #f87171; --primary-500: #ef4444; --primary-600: #dc2626;
+  --secondary-300: #fdba74; --secondary-400: #fb923c; --secondary-500: #f97316;
+  --accent-300: #fcd34d; --accent-400: #fbbf24; --accent-500: #f59e0b;
+  --primary-rgb: 239, 68, 68; --secondary-rgb: 249, 115, 22; --accent-rgb: 245, 158, 11;
+}
+
+[data-theme="emerald-green"] {
+  --background: #010a04;
+  --primary-50: #ecfdf5; --primary-100: #d1fae5; --primary-200: #a7f3d0; 
+  --primary-300: #6ee7b7; --primary-400: #34d399; --primary-500: #10b981; --primary-600: #059669;
+  --secondary-300: #bef264; --secondary-400: #a3e635; --secondary-500: #84cc16;
+  --accent-300: #5eead4; --accent-400: #2dd4bf; --accent-500: #14b8a6;
+  --primary-rgb: 16, 185, 129; --secondary-rgb: 132, 204, 22; --accent-rgb: 20, 184, 166;
+}
+
+[data-theme="sunset-orange"] {
+  --background: #0a0501;
+  --primary-50: #fff7ed; --primary-100: #ffedd5; --primary-200: #fed7aa; 
+  --primary-300: #fdba74; --primary-400: #fb923c; --primary-500: #f97316; --primary-600: #ea580c;
+  --secondary-300: #f9a8d4; --secondary-400: #f472b6; --secondary-500: #ec4899;
+  --accent-300: #fda4af; --accent-400: #fb7185; --accent-500: #f43f5e;
+  --primary-rgb: 249, 115, 22; --secondary-rgb: 236, 72, 153; --accent-rgb: 244, 63, 94;
+}
+
+[data-theme="midnight-silver"] {
+  --background: #050505;
+  --primary-50: #fafafa; --primary-100: #f4f4f5; --primary-200: #e4e4e7; 
+  --primary-300: #d4d4d8; --primary-400: #a1a1aa; --primary-500: #71717a; --primary-600: #52525b;
+  --secondary-300: #cbd5e1; --secondary-400: #94a3b8; --secondary-500: #64748b;
+  --accent-300: #ffffff; --accent-400: #e2e8f0; --accent-500: #cbd5e1;
+  --primary-rgb: 113, 113, 122; --secondary-rgb: 100, 116, 139; --accent-rgb: 255, 255, 255;
 }
 
 @theme inline {
@@ -10,17 +77,230 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  --color-violet-50: var(--primary-50);
+  --color-violet-100: var(--primary-100);
+  --color-violet-200: var(--primary-200);
+  --color-violet-300: var(--primary-300);
+  --color-violet-400: var(--primary-400);
+  --color-violet-500: var(--primary-500);
+  --color-violet-600: var(--primary-600);
+  
+  --color-fuchsia-300: var(--secondary-300);
+  --color-fuchsia-400: var(--secondary-400);
+  --color-fuchsia-500: var(--secondary-500);
+  
+  --color-cyan-300: var(--accent-300);
+  --color-cyan-400: var(--accent-400);
+  --color-cyan-500: var(--accent-500);
+  
+  --color-purple-300: var(--primary-300);
+  --color-purple-400: var(--primary-400);
+  --color-purple-500: var(--primary-500);
+  --color-purple-600: var(--primary-600);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 0.5s ease;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(var(--primary-rgb), 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(var(--accent-rgb), 0.08), transparent 25%);
+  background-attachment: fixed;
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Skeleton / Shimmer Loading ────────────────────────────── */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.75rem;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 92, 246, 0.08) 40%,
+    rgba(217, 70, 239, 0.06) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.skeleton-text {
+  height: 0.875rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-title {
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  margin-bottom: 0.75rem;
+  max-width: 60%;
+}
+
+.skeleton-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.skeleton-card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 1.5rem;
+  min-height: 140px;
+}
+
+/* ── Upload Progress Bar ────────────────────────────────────── */
+
+.upload-progress-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.upload-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--primary-500), var(--secondary-500));
+  box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.5);
+  transition: width 0.3s ease-out;
+  position: relative;
+}
+
+.upload-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 40px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+/* ── Lazy Image Fade-in ─────────────────────────────────────── */
+
+img[loading="lazy"] {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+/* ── Smooth Scroll ──────────────────────────────────────────── */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── Glass Card ─────────────────────────────────────────────── */
+
+.glass-card {
+  animation: scaleIn 0.4s ease-out both;
+}
+
+/* ── Print ──────────────────────────────────────────────────── */
+
+@media print {
+  .fixed, nav, footer { display: none !important; }
+  body { background: white; color: black; }
+}
+
+/* ── Mobile & Touch Optimizations ───────────────────────── */
+
+/* Smooth native scrolling everywhere */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Prevent page-level horizontal overflow from floating elements */
+body {
+  overflow-x: hidden;
+}
+
+/* Content safe zone: prevent left floating sidebar from overlapping text on small screens */
+@media (max-width: 639px) {
+  main,
+  .page-content {
+    padding-left: 48px;
+  }
+}
+
+/* Glass card hover lift — reduce intensity on touch devices */
+@media (hover: none) {
+  .glass-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--glass-border);
+  }
+}
+
+/* Floating assistant — tighter position on small screens */
+@media (max-width: 639px) {
+  .floating-assistant-fab {
+    bottom: 1.25rem;
+    right: 1rem;
+  }
+}
+
+/* Safe bottom spacing for pages with floating bottom buttons */
+@media (max-width: 767px) {
+  .mobile-safe-bottom {
+    padding-bottom: 120px;
+  }
 }
