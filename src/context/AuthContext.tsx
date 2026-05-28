@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
@@ -45,6 +45,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [paperinoAvatar, setPaperinoAvatarState] = useState<string | null>(null);
 
   useEffect(() => {
+    // Handle redirect result from mobile Google Sign In
+    getRedirectResult(auth).then(async (result) => {
+      if (result?.user) {
+        // Redirect sign-in succeeded — onAuthStateChanged will handle the rest
+        console.log("Redirect sign-in successful:", result.user.email);
+      }
+    }).catch((error) => {
+      console.error("Redirect result error:", error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
@@ -143,9 +153,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     try {
-      // Clear any cached session to force the account chooser popup
-      await signOut(auth);
-      await signInWithPopup(auth, googleProvider);
+      // Detect mobile browsers (iOS Safari, Android Chrome)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      );
+
+      if (isMobile) {
+        // Use redirect on mobile — popup is blocked by iOS Safari
+        await signInWithRedirect(auth, googleProvider);
+        // Page will redirect and come back — getRedirectResult handles it
+      } else {
+        // Use popup on desktop for better UX
+        await signOut(auth);
+        await signInWithPopup(auth, googleProvider);
+      }
     } catch (error) {
       console.error("Error logging in with Google:", error);
     }
