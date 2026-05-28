@@ -13,7 +13,7 @@ export default function Home() {
           <Zap size={16} />
           <span>Prepare for exams at lightspeed</span>
         </div>
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-6">
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-6 w-full text-center">
           The Universe of <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
             Study Materials
