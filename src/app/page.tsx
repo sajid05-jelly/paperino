@@ -5,7 +5,8 @@ import Testimonials from "@/components/Testimonials";
 
 export default function Home() {
   return (
-    <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 md:py-24">
+    <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24">
+      <div className="w-full max-w-7xl mx-auto">
       {/* Hero Section */}
       <section className="flex flex-col items-center text-center w-full max-w-4xl mb-24">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-6 animate-pulse">
@@ -180,6 +181,7 @@ export default function Home() {
 
       {/* Student Testimonials Section */}
       <Testimonials />
+      </div>
     </div>
   );
 }

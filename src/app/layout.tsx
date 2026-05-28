@@ -79,8 +79,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col bg-[var(--background)] text-gray-200 overflow-x-hidden w-full" suppressHydrationWarning>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`} suppressHydrationWarning style={{ overflowX: 'clip', maxWidth: '100%', width: '100%' }}>
+      <body className="min-h-full flex flex-col bg-[var(--background)] text-gray-200 overflow-x-hidden w-full max-w-full" suppressHydrationWarning style={{ overflowX: 'clip' }}>
 
         {/* GA4 — loads after hydration, never blocks render */}
         <GoogleAnalytics />
@@ -99,7 +99,7 @@ export default function RootLayout({
                 <MaintenanceBanner />
 
                 <Navbar />
-                <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12">
+                <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
                   {children}
                 </main>
                 <Footer />

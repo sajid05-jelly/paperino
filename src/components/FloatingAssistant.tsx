@@ -127,7 +127,7 @@ export default function FloatingAssistant() {
   return (
     <>
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-8 md:bottom-12 right-6 md:right-8 z-[9999] flex flex-col items-center gap-4">
+      <div className="fixed bottom-6 md:bottom-12 right-4 md:right-8 z-[9999] flex flex-col items-center gap-3">
         
         {/* Feedback Button */}
         <button
@@ -152,7 +152,7 @@ export default function FloatingAssistant() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-[100px] md:bottom-[120px] right-6 md:right-8 w-[350px] sm:w-[400px] max-w-[calc(100vw-48px)] h-[500px] max-h-[calc(100vh-140px)] bg-[#0a0714]/95 backdrop-blur-3xl rounded-3xl border border-violet-500/20 shadow-[0_0_50px_rgba(var(--primary-rgb),0.2)] flex flex-col overflow-hidden z-[9998] animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="fixed bottom-[88px] md:bottom-[120px] right-4 md:right-8 w-[min(350px,calc(100vw-32px))] sm:w-[400px] h-[500px] max-h-[calc(100vh-120px)] bg-[#0a0714]/95 backdrop-blur-3xl rounded-3xl border border-violet-500/20 shadow-[0_0_50px_rgba(var(--primary-rgb),0.2)] flex flex-col overflow-hidden z-[9998] animate-in slide-in-from-bottom-5 fade-in duration-300">
           
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/[0.02]">
