@@ -316,14 +316,7 @@ html, body {
 }
 
 /* ── Floating sidebar safe zone on mobile ─────────────────── */
-/* The left sidebar (WhatsApp/Instagram/Sound/Theme buttons)  */
-/* sits at left:0, so content needs breathing room           */
-@media (max-width: 639px) {
-  main,
-  .page-content {
-    padding-left: 44px; /* width of sidebar buttons on small screens */
-  }
-}
+/* Left sidebar is hidden on mobile screens, so no main shift is needed. */
 
 /* Glass card hover lift — disable on touch devices */
 @media (hover: none) {

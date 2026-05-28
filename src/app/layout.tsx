@@ -80,6 +80,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`} suppressHydrationWarning style={{ overflowX: 'clip', maxWidth: '100%', width: '100%' }}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            try {
+              var theme = localStorage.getItem('paperino-theme') || 'cosmic-violet';
+              if (theme && theme !== 'cosmic-violet') {
+                document.documentElement.setAttribute('data-theme', theme);
+              }
+            } catch (e) {}
+          })();
+        ` }} />
+      </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-gray-200 overflow-x-hidden w-full max-w-full" suppressHydrationWarning style={{ overflowX: 'clip' }}>
 
         {/* GA4 — loads after hydration, never blocks render */}

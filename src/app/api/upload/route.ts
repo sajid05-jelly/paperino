@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { Readable } from "stream";
+import { verifyServerAuth } from "@/lib/auth-verify";
 
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate and check permissions
+    const authHeader = req.headers.get("Authorization");
+    const verifiedUser = await verifyServerAuth(authHeader);
+    
+    if (!verifiedUser || (verifiedUser.role !== "contributor" && verifiedUser.role !== "admin")) {
+      return NextResponse.json({ error: "Unauthorized. Insufficient permissions." }, { status: 403 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const semester = formData.get("semester") as string;
@@ -79,6 +88,14 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    // Authenticate and check permissions
+    const authHeader = req.headers.get("Authorization");
+    const verifiedUser = await verifyServerAuth(authHeader);
+    
+    if (!verifiedUser || verifiedUser.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized. Admin privileges required." }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const fileId = searchParams.get("fileId");
 

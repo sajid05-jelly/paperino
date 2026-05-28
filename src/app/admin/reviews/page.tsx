@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { recalculateLeaderboards } from "@/lib/leaderboard";
 import { CheckCircle2, XCircle, Trash2, Ban, Loader2, ExternalLink, ShieldAlert, FileText } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/context/AuthContext";
 
 
 interface Material {
@@ -24,6 +24,7 @@ interface Material {
 }
 
 export default function AdminReviewsPage() {
+  const { user } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -52,9 +53,20 @@ export default function AdminReviewsPage() {
   const handleApprove = async (id: string) => {
     setActionLoading(id);
     try {
+      const mat = materials.find(m => m.id === id);
       await updateDoc(doc(db, "materials", id), { status: "approved" });
+      
+      // Increment uploader's stats directly in Firestore
+      if (mat?.uploaderId) {
+        await updateDoc(doc(db, "users", mat.uploaderId), {
+          uploads: increment(1),
+          points: increment(10),
+          seasonUploads: increment(1),
+          seasonPoints: increment(10)
+        });
+      }
+
       setMaterials(prev => prev.filter(m => m.id !== id));
-      await recalculateLeaderboards(db);
       showToast("Material approved successfully", "success");
     } catch (err: any) {
       console.error("Approve error:", err);
@@ -81,7 +93,13 @@ export default function AdminReviewsPage() {
     setActionLoading(mat.id);
     try {
       if (mat.fileId) {
-        const res = await fetch(`/api/upload?fileId=${mat.fileId}`, { method: "DELETE" });
+        const token = user ? await user.getIdToken() : "";
+        const res = await fetch(`/api/upload?fileId=${mat.fileId}`, { 
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
         if (!res.ok) {
           const resData = await res.json();
           throw new Error(resData.error || "Failed to delete file from Google Drive");
@@ -89,8 +107,6 @@ export default function AdminReviewsPage() {
       }
       await deleteDoc(doc(db, "materials", mat.id));
       setMaterials(prev => prev.filter(m => m.id !== mat.id));
-      // Only recalculate if it was an approved material previously (optional: always to be safe)
-      await recalculateLeaderboards(db);
       showToast("Material deleted successfully", "success");
     } catch (err: any) {
       console.error("Delete error:", err);
@@ -106,7 +122,6 @@ export default function AdminReviewsPage() {
     try {
       await updateDoc(doc(db, "users", uid), { status: "blocked", role: "student" });
       alert("User blocked successfully. They can no longer login.");
-      await recalculateLeaderboards(db);
     } catch (err) {
       console.error("Block user error:", err);
       alert("Failed to block user.");

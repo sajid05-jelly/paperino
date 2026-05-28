@@ -131,8 +131,13 @@ export default function QuickUploadModal({
       uploadData.append("semester", semesterId);
       uploadData.append("subject", subjectId);
 
+      const token = user ? await user.getIdToken() : "";
+
       const res = await fetch("/api/upload", {
         method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
         body: uploadData,
       });
 

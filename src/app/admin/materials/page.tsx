@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useSubjects } from "@/context/SubjectsContext";
-import { recalculateLeaderboards } from "@/lib/leaderboard";
 import { Search, Edit2, Trash2, ExternalLink, Copy, AlertTriangle, X, Loader2, CheckCircle2, FileText, Plus, BookOpen } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/context/AuthContext";
 
 
 interface Material {
@@ -20,9 +20,11 @@ interface Material {
   fileName: string;
   createdAt: number;
   status?: string;
+  uploaderId?: string;
 }
 
 export default function ManageMaterialsPage() {
+  const { user } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -67,8 +69,12 @@ export default function ManageMaterialsPage() {
     try {
       // 1. Delete physical file from Google Drive via backend API
       if (deletingMat.fileId) {
+        const token = user ? await user.getIdToken() : "";
         const res = await fetch(`/api/upload?fileId=${deletingMat.fileId}`, {
-          method: "DELETE"
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         });
         if (!res.ok) {
           const resData = await res.json();
@@ -79,12 +85,20 @@ export default function ManageMaterialsPage() {
       // 2. Delete from Firestore
       await deleteDoc(doc(db, "materials", deletingMat.id));
       
+      // Decrement uploader's stats in Firestore if it was an approved material
+      if (deletingMat.status === "approved" && deletingMat.uploaderId) {
+        await updateDoc(doc(db, "users", deletingMat.uploaderId), {
+          uploads: increment(-1),
+          points: increment(-10),
+          seasonUploads: increment(-1),
+          seasonPoints: increment(-10)
+        });
+      }
+
       // Update local state
       setMaterials(prev => prev.filter(m => m.id !== deletingMat.id));
       setDeletingMat(null);
       
-      // Update leaderboard pre-aggregated tables immediately
-      await recalculateLeaderboards(db);
       showToast("Material deleted successfully", "success");
     } catch (err: any) {
       console.error("Delete error:", err);

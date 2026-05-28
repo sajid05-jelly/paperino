@@ -35,11 +35,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Avoid hydration mismatch by rendering nothing until mounted
-  if (!mounted) {
-    return <div className="min-h-screen bg-black"></div>;
-  }
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
       {children}

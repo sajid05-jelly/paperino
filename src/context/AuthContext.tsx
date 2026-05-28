@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
-import { recalculateLeaderboards } from "@/lib/leaderboard";
 
 
 interface AuthContextType {
@@ -82,6 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const data = userSnap.data();
             setPaperinoAvatarState(data.paperinoAvatar || null);
             
+            // Initialize missing stats fields for legacy users
+            if (data.points === undefined || data.uploads === undefined || data.seasonPoints === undefined) {
+              await setDoc(userRef, {
+                points: data.points !== undefined ? data.points : 0,
+                uploads: data.uploads !== undefined ? data.uploads : 0,
+                seasonPoints: data.seasonPoints !== undefined ? data.seasonPoints : 0,
+                seasonUploads: data.seasonUploads !== undefined ? data.seasonUploads : 0
+              }, { merge: true });
+            }
+
             if (data.status === "blocked") {
               currentIsBlocked = true;
             }
@@ -102,6 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: currentUser.email,
               role: "student",
               status: "active",
+              points: 0,
+              uploads: 0,
+              seasonPoints: 0,
+              seasonUploads: 0,
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp()
             }, { merge: true });
@@ -143,9 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastLogin: serverTimestamp()
       }, { merge: true });
       setPaperinoAvatarState(avatarId);
-      
-      // Update leaderboard pre-aggregated tables immediately
-      await recalculateLeaderboards(db);
     } catch (error) {
       console.error("Error saving avatar:", error);
     }

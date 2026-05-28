@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Trophy, Medal, Star, Calendar, Loader2, Sparkles, Crown, Award, ChevronRight, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
@@ -35,32 +35,86 @@ export default function LeaderboardPage() {
   const fetchLeaderboardData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch pre-aggregated current season leaderboard
-      const seasonRef = doc(db, "leaderboards", "currentSeason");
-      const seasonSnap = await getDoc(seasonRef);
-      if (seasonSnap.exists()) {
-        const data = seasonSnap.data();
-        if (data.seasonStartDate) {
-          setSeasonStartDate(new Date(data.seasonStartDate));
+      // 1. Fetch season start date from settings
+      const settingsSnap = await getDoc(doc(db, "settings", "leaderboard"));
+      if (settingsSnap.exists() && settingsSnap.data().seasonStartDate) {
+        const dateVal = settingsSnap.data().seasonStartDate;
+        if (dateVal && typeof dateVal.toDate === "function") {
+          setSeasonStartDate(dateVal.toDate());
+        } else {
+          setSeasonStartDate(new Date(dateVal));
         }
-        const mapped = (data.contributors || []).map((c: any) => ({
-          ...c,
-          joinedDate: c.joinedDate ? new Date(c.joinedDate) : null
-        }));
-        setSeasonBoard(mapped);
       }
 
-      // 2. Fetch pre-aggregated hall of fame leaderboard
-      const hallRef = doc(db, "leaderboards", "hallOfFame");
-      const hallSnap = await getDoc(hallRef);
-      if (hallSnap.exists()) {
-        const data = hallSnap.data();
-        const mapped = (data.contributors || []).map((c: any) => ({
-          ...c,
-          joinedDate: c.joinedDate ? new Date(c.joinedDate) : null
-        }));
-        setAllTimeBoard(mapped);
-      }
+      const getRankTitle = (points: number) => {
+        if (points >= 100) return "Elite Contributor";
+        if (points >= 50) return "Top Contributor";
+        if (points >= 20) return "Active Helper";
+        if (points >= 1) return "Community Supporter";
+        return "Newcomer";
+      };
+
+      const mapDocToStats = (docSnap: any, useSeason: boolean = false): ContributorStats => {
+        const data = docSnap.data();
+        const uploads = useSeason ? (data.seasonUploads || 0) : (data.uploads || 0);
+        const points = useSeason ? (data.seasonPoints || 0) : (data.points || 0);
+        
+        let joinedDate: Date | null = null;
+        if (data.createdAt) {
+          if (typeof data.createdAt.toDate === "function") {
+            joinedDate = data.createdAt.toDate();
+          } else {
+            joinedDate = new Date(data.createdAt);
+          }
+        }
+
+        return {
+          uid: docSnap.id,
+          displayName: data.displayName || "Anonymous Contributor",
+          paperinoAvatar: data.paperinoAvatar || null,
+          joinedDate,
+          uploads,
+          points,
+          rankTitle: getRankTitle(points)
+        };
+      };
+
+      // 2. Fetch Season Contributors (ordered by seasonPoints desc, limit 100)
+      const seasonQuery = query(
+        collection(db, "users"),
+        orderBy("seasonPoints", "desc"),
+        limit(100)
+      );
+      const seasonSnap = await getDocs(seasonQuery);
+      const seasonList: ContributorStats[] = [];
+      seasonSnap.forEach(d => {
+        const data = d.data();
+        if (data.status === "blocked") return;
+        const stats = mapDocToStats(d, true);
+        if (stats.points > 0) {
+          seasonList.push(stats);
+        }
+      });
+      setSeasonBoard(seasonList);
+
+      // 3. Fetch All-Time Contributors (ordered by points desc, limit 100)
+      const allTimeQuery = query(
+        collection(db, "users"),
+        orderBy("points", "desc"),
+        limit(100)
+      );
+      const allTimeSnap = await getDocs(allTimeQuery);
+      const allTimeList: ContributorStats[] = [];
+      allTimeSnap.forEach(d => {
+        const data = d.data();
+        if (data.status === "blocked") return;
+        const stats = mapDocToStats(d, false);
+        if (stats.points > 0) {
+          allTimeList.push(stats);
+        }
+      });
+      setAllTimeBoard(allTimeList);
+
     } catch (err) {
       console.error("Error fetching leaderboard:", err);
     }

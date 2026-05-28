@@ -135,12 +135,12 @@ export default function Navbar() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
+            className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
           {/* Drawer Panel */}
-          <div className="fixed top-0 right-0 bottom-0 z-50 w-[78vw] max-w-[320px] lg:hidden flex flex-col bg-[#07050e]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-20px_0_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-right duration-300">
+          <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[78vw] max-w-[320px] lg:hidden flex flex-col bg-[#07050e]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-20px_0_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-right duration-300">
 
             {/* Drawer Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
@@ -177,6 +177,8 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Paperino Team</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
+              <a href="https://chat.whatsapp.com/Bfv1WPGO001BGcuFj8XnWX" target="_blank" rel="noopener noreferrer" className={getMobileLinkClass("", true) + " text-green-400 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/30"}>WhatsApp Community</a>
+              <a href="https://www.instagram.com/paperino.study?igsh=a3dkZTNtdXEwNDNu" target="_blank" rel="noopener noreferrer" className={getMobileLinkClass("", true) + " text-pink-400 border-pink-500/20 bg-pink-500/5 hover:bg-pink-500/10 hover:border-pink-500/30"}>Instagram Profile</a>
 
               {/* Admin / Contributor */}
               {isAdmin && (
