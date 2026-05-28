@@ -177,8 +177,6 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Paperino Team</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
-              <a href="https://chat.whatsapp.com/Bfv1WPGO001BGcuFj8XnWX" target="_blank" rel="noopener noreferrer" className={getMobileLinkClass("", true) + " text-green-400 border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/30"}>WhatsApp Community</a>
-              <a href="https://www.instagram.com/paperino.study?igsh=a3dkZTNtdXEwNDNu" target="_blank" rel="noopener noreferrer" className={getMobileLinkClass("", true) + " text-pink-400 border-pink-500/20 bg-pink-500/5 hover:bg-pink-500/10 hover:border-pink-500/30"}>Instagram Profile</a>
 
               {/* Admin / Contributor */}
               {isAdmin && (

@@ -132,6 +132,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Contributor Requests ────────────────────────────────────────────────
+    match /contributor_requests/{requestId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && isNotBlocked() && request.resource.data.uid == request.auth.uid && request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+
     // ── Blocked IPs / Users (admin-only) ────────────────────────────────────
     match /blocked_users/{uid} {
       allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);

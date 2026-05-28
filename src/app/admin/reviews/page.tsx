@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { CheckCircle2, XCircle, Trash2, Ban, Loader2, ExternalLink, ShieldAlert, FileText } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
+import { recalculateLeaderboards } from "@/lib/leaderboard";
 
 
 interface Material {
@@ -64,6 +65,8 @@ export default function AdminReviewsPage() {
           seasonUploads: increment(1),
           seasonPoints: increment(10)
         });
+        // Update pre-aggregated leaderboard documents
+        await recalculateLeaderboards(db);
       }
 
       setMaterials(prev => prev.filter(m => m.id !== id));

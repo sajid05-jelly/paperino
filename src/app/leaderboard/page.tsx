@@ -79,40 +79,50 @@ export default function LeaderboardPage() {
         };
       };
 
-      // 2. Fetch Season Contributors (ordered by seasonPoints desc, limit 100)
-      const seasonQuery = query(
-        collection(db, "users"),
-        orderBy("seasonPoints", "desc"),
-        limit(100)
-      );
-      const seasonSnap = await getDocs(seasonQuery);
+      // 2. Fetch Season Contributors from pre-aggregated document
+      const seasonSnap = await getDoc(doc(db, "leaderboards", "currentSeason"));
       const seasonList: ContributorStats[] = [];
-      seasonSnap.forEach(d => {
-        const data = d.data();
-        if (data.status === "blocked") return;
-        const stats = mapDocToStats(d, true);
-        if (stats.points > 0) {
-          seasonList.push(stats);
-        }
-      });
+      if (seasonSnap.exists() && seasonSnap.data().contributors) {
+        const list = seasonSnap.data().contributors;
+        list.forEach((c: any) => {
+          let joinedDate: Date | null = null;
+          if (c.joinedDate) {
+            joinedDate = new Date(c.joinedDate);
+          }
+          seasonList.push({
+            uid: c.uid,
+            displayName: c.displayName || "Anonymous Contributor",
+            paperinoAvatar: c.paperinoAvatar || null,
+            joinedDate,
+            uploads: c.uploads || 0,
+            points: c.points || 0,
+            rankTitle: c.rankTitle || getRankTitle(c.points || 0)
+          });
+        });
+      }
       setSeasonBoard(seasonList);
 
-      // 3. Fetch All-Time Contributors (ordered by points desc, limit 100)
-      const allTimeQuery = query(
-        collection(db, "users"),
-        orderBy("points", "desc"),
-        limit(100)
-      );
-      const allTimeSnap = await getDocs(allTimeQuery);
+      // 3. Fetch All-Time Contributors from pre-aggregated document
+      const allTimeSnap = await getDoc(doc(db, "leaderboards", "hallOfFame"));
       const allTimeList: ContributorStats[] = [];
-      allTimeSnap.forEach(d => {
-        const data = d.data();
-        if (data.status === "blocked") return;
-        const stats = mapDocToStats(d, false);
-        if (stats.points > 0) {
-          allTimeList.push(stats);
-        }
-      });
+      if (allTimeSnap.exists() && allTimeSnap.data().contributors) {
+        const list = allTimeSnap.data().contributors;
+        list.forEach((c: any) => {
+          let joinedDate: Date | null = null;
+          if (c.joinedDate) {
+            joinedDate = new Date(c.joinedDate);
+          }
+          allTimeList.push({
+            uid: c.uid,
+            displayName: c.displayName || "Anonymous Contributor",
+            paperinoAvatar: c.paperinoAvatar || null,
+            joinedDate,
+            uploads: c.uploads || 0,
+            points: c.points || 0,
+            rankTitle: c.rankTitle || getRankTitle(c.points || 0)
+          });
+        });
+      }
       setAllTimeBoard(allTimeList);
 
     } catch (err) {

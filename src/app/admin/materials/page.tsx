@@ -7,6 +7,7 @@ import { useSubjects } from "@/context/SubjectsContext";
 import { Search, Edit2, Trash2, ExternalLink, Copy, AlertTriangle, X, Loader2, CheckCircle2, FileText, Plus, BookOpen } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
+import { recalculateLeaderboards } from "@/lib/leaderboard";
 
 
 interface Material {
@@ -93,6 +94,8 @@ export default function ManageMaterialsPage() {
           seasonUploads: increment(-1),
           seasonPoints: increment(-10)
         });
+        // Update pre-aggregated leaderboard documents
+        await recalculateLeaderboards(db);
       }
 
       // Update local state
