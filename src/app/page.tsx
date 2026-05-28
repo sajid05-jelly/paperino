@@ -8,7 +8,7 @@ export default function Home() {
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24">
       <div className="w-full max-w-7xl mx-auto">
       {/* Hero Section */}
-      <section className="flex flex-col items-center text-center w-full max-w-4xl mb-24">
+      <section className="flex flex-col items-center text-center w-full max-w-4xl mx-auto mb-24">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-6 animate-pulse">
           <Zap size={16} />
           <span>Prepare for exams at lightspeed</span>
@@ -19,7 +19,7 @@ export default function Home() {
             Study Materials
           </span>
         </h1>
-        <p className="text-base md:text-xl text-gray-400 mb-10 max-w-2xl px-4">
+        <p className="text-base md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto px-4">
           Access semester-wise question papers, notes, and lab manuals in one seamless, space-themed platform.
         </p>
       </section>
