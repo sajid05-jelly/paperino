@@ -153,22 +153,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     try {
-      // Detect mobile browsers (iOS Safari, Android Chrome)
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(
-        typeof navigator !== 'undefined' ? navigator.userAgent : ''
-      );
-
-      if (isMobile) {
-        // Use redirect on mobile — popup is blocked by iOS Safari
-        await signInWithRedirect(auth, googleProvider);
-        // Page will redirect and come back — getRedirectResult handles it
+      // Use popup directly — iOS Safari allows popups when triggered immediately
+      // from a user tap. DO NOT call await signOut() first — it breaks the
+      // "user gesture" chain and causes Safari to block the popup.
+      // The googleProvider already has prompt: "select_account" for account picker.
+      await signInWithPopup(auth, googleProvider);
+    } catch (error: any) {
+      // If popup was blocked by the browser, fall back to redirect
+      if (
+        error?.code === 'auth/popup-blocked' ||
+        error?.code === 'auth/popup-closed-by-user' ||
+        error?.code === 'auth/cancelled-popup-request'
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectError) {
+          console.error("Redirect sign-in also failed:", redirectError);
+        }
       } else {
-        // Use popup on desktop for better UX
-        await signOut(auth);
-        await signInWithPopup(auth, googleProvider);
+        console.error("Error logging in with Google:", error);
       }
-    } catch (error) {
-      console.error("Error logging in with Google:", error);
     }
   };
 
