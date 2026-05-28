@@ -26,7 +26,7 @@ const InstagramIcon = ({ className }: { className?: string }) => (
 
 export default function DeveloperPage() {
   return (
-    <div className="bg-[#05030a] relative overflow-hidden pt-24 pb-8 px-6 sm:px-12 selection:bg-violet-500/30">
+    <div className="bg-[#05030a] relative overflow-hidden pt-14 md:pt-20 pb-8 px-6 sm:px-12 selection:bg-violet-500/30">
       
       {/* --- CINEMATIC VIOLET LIQUID BACKGROUND --- */}
       {/* Deep Violet Liquid Orbs */}
@@ -65,10 +65,10 @@ export default function DeveloperPage() {
             <div className="relative p-[1px] rounded-[2.5rem] bg-gradient-to-b from-white/[0.1] via-white/[0.02] to-transparent overflow-hidden shadow-[0_0_40px_rgba(var(--primary-rgb),0.05)] transition-all duration-1000 group-hover:shadow-[0_0_80px_rgba(var(--primary-rgb),0.25)] group-hover:border-violet-500/20">
               <div className="absolute inset-0 bg-[#07050d]/80 backdrop-blur-[50px] transition-all duration-1000 group-hover:bg-[#07050d]/60"></div>
               
-              <div className="relative p-10 md:p-14 flex flex-col items-center text-center">
+              <div className="relative p-6 md:p-10 flex flex-col items-center text-center">
                 
                 {/* Profile Image with Violet Liquid Border */}
-                <div className="relative w-36 h-36 md:w-40 md:h-40 mb-6 group/avatar flex-shrink-0 mx-auto">
+                <div className="relative w-28 h-28 md:w-32 md:h-32 mb-5 group/avatar flex-shrink-0 mx-auto">
                   {/* Subtle Violet Liquid Ring */}
                   <div className="absolute -inset-4 bg-gradient-to-tr from-violet-500 via-fuchsia-400 to-purple-600 rounded-full blur-lg opacity-40 group-hover/avatar:opacity-80 transition-opacity duration-700"></div>
                   {/* Frosted Glass Ring */}
@@ -86,7 +86,7 @@ export default function DeveloperPage() {
                 </div>
 
                 {/* Elegant Typography */}
-                <h1 className="text-3xl md:text-5xl font-light tracking-tight mb-2 leading-tight">
+                <h1 className="text-2xl md:text-4xl font-light tracking-tight mb-2 leading-tight">
                   <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-violet-100 to-violet-300/60">
                     S. Mohamed Sajid
                   </span>

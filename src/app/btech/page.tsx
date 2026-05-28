@@ -84,19 +84,19 @@ export default function BTechPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 w-full">
           {semesters.map((sem) => (
             <Link key={sem} href={`/btech/semesters/${sem}`}>
-              <div className="glass-card p-6 rounded-2xl group cursor-pointer hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)] transition-all h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
-                    <Calendar size={24} />
+              <div className="glass-card p-4 md:p-5 rounded-2xl group cursor-pointer hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)] transition-all h-full flex flex-col justify-between min-h-[120px] lg:min-h-[130px]">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/5 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
+                    <Calendar size={18} />
                   </div>
-                  <BookOpen size={20} className="text-gray-500 group-hover:text-white transition-colors" />
+                  <BookOpen size={16} className="text-gray-500 group-hover:text-white transition-colors" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Semester {sem}</h3>
-                  <p className="text-sm text-gray-400">View subjects &rarr;</p>
+                  <h3 className="text-lg md:text-xl font-bold text-white mb-1">Semester {sem}</h3>
+                  <p className="text-xs md:text-sm text-gray-400">View subjects &rarr;</p>
                 </div>
               </div>
             </Link>

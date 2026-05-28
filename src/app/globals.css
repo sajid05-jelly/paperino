@@ -282,20 +282,9 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ── CRITICAL: Universal overflow containment ─────────────── */
-/* Prevents ANY element from extending past viewport width    */
-
-/* Sections and all block-level layout containers */
-section,
-article,
-aside,
-header,
-footer,
-nav,
-main,
-div {
-  max-width: 100%;
-}
+/* ── Overflow containment for media only ──────────────────── */
+/* Block-level layout containers are NOT constrained here;    */
+/* Tailwind's max-w-* utilities handle desktop width caps.    */
 
 /* Images and media never overflow */
 img,

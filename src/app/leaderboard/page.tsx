@@ -149,9 +149,9 @@ export default function LeaderboardPage() {
   };
 
   const getPodiumHeight = (index: number) => {
-    if (index === 0) return "h-40 md:h-48";
-    if (index === 1) return "h-32 md:h-36";
-    return "h-24 md:h-28";
+    if (index === 0) return "h-28 md:h-36";
+    if (index === 1) return "h-20 md:h-28";
+    return "h-16 md:h-20";
   };
 
   const getAvatarBorder = (index: number) => {
@@ -257,7 +257,7 @@ export default function LeaderboardPage() {
                         <Medal className="absolute -top-8 left-1/2 -translate-x-1/2 text-violet-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)] animate-bounce" size={28} />
                       )}
                       <div className="absolute -inset-3 bg-yellow-400/30 rounded-full blur-xl group-hover:bg-yellow-400/50 transition-all"></div>
-                      <div className={`w-20 h-20 md:w-24 md:h-24 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(0)}`}>
+                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(0)}`}>
                         {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} size={20} className="w-full h-full scale-125 pt-4" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white">{top3[0].displayName.charAt(0)}</div>}
                       </div>
                       <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 text-sm font-black px-3 py-0.5 rounded-full z-20 border-2 border-white shadow-lg ${activeTab === 'season' ? 'bg-violet-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>#1</div>

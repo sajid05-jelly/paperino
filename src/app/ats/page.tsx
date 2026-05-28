@@ -189,7 +189,7 @@ export default function ATSAnalyzerPage() {
             <div className="mb-8 relative z-10">
               <label className="block text-sm font-medium text-violet-200 mb-3">Upload Resume (PDF or DOCX)</label>
               <div 
-                className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer backdrop-blur-sm ${
+                className={`border-2 border-dashed rounded-2xl p-6 md:p-8 text-center transition-all cursor-pointer backdrop-blur-sm ${
                   isDragging ? 'border-violet-400 bg-violet-500/10 shadow-[inset_0_0_30px_rgba(var(--primary-rgb),0.1)]' : 
                   file ? 'border-fuchsia-500/50 bg-fuchsia-500/5 shadow-[0_0_20px_rgba(var(--secondary-rgb),0.1)]' : 'border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5'
                 }`}

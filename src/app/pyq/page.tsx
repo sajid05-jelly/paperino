@@ -153,7 +153,7 @@ export default function PYQPredictorPage() {
                 <span className="text-xs text-gray-500">{files.length}/5 files selected</span>
               </label>
               <div 
-                className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer backdrop-blur-sm ${
+                className={`border-2 border-dashed rounded-2xl p-6 md:p-8 text-center transition-all cursor-pointer backdrop-blur-sm ${
                   isDragging ? 'border-fuchsia-400 bg-fuchsia-500/10 shadow-[inset_0_0_30px_rgba(var(--secondary-rgb),0.1)]' : 
                   'border-white/10 hover:border-fuchsia-500/30 hover:bg-fuchsia-500/5'
                 }`}
