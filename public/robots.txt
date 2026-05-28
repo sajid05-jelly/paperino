@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
-Sitemap: https://paperino.vercel.app/sitemap.xml
+Sitemap: https://paperino-eta.vercel.app/sitemap.xml

@@ -61,25 +61,25 @@ export const metadata: Metadata = {
     description:
       'Access semester-wise study materials, PYQ predictor, ATS analyzer, GPA calculator and more. Built for SRM students.',
     siteName: 'Paperino',
-    images: [{ url: '/logo-final.png', width: 512, height: 512, alt: 'Paperino Logo' }],
+    images: [{ url: '/og-image.png?v=2', width: 1200, height: 630, alt: 'Paperino Logo' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Paperino – SRM Study Hub',
     description: 'Smart academic tools for SRM students.',
-    images: ['/logo-final.png'],
+    images: ['/og-image.png?v=2'],
   },
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Paperino' },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
-      { url: '/logo-simple.png', type: 'image/png', sizes: '192x192' },
+      { url: '/favicon.ico?v=2', sizes: 'any' },
+      { url: '/icon.png?v=2', type: 'image/png', sizes: '32x32' },
+      { url: '/logo-simple.png?v=2', type: 'image/png', sizes: '192x192' },
     ],
-    shortcut: '/favicon.ico',
+    shortcut: '/favicon.ico?v=2',
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' },
     ],
   },
 };
