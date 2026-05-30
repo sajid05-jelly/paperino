@@ -419,22 +419,22 @@ html, body {
 
 /* ── Mobile Glow Text Menu Styles ────────────────────────── */
 .menu-team-mobile-glow {
-  background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 100%);
+  background: linear-gradient(135deg, #ec4899 0%, #e879f9 100%);
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
-  filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.4));
+  filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.45));
   font-weight: 600;
 }
 
 .menu-team-mobile-glow:hover {
-  background: linear-gradient(135deg, #c4b5fd 0%, #93c5fd 100%);
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.6));
+  background: linear-gradient(135deg, #f472b6 0%, #f43f5e 100%);
+  filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.6));
 }
 
 .menu-team-mobile-glow.active-mobile {
-  background: linear-gradient(135deg, #c4b5fd 0%, #93c5fd 100%);
-  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.65));
+  background: linear-gradient(135deg, #f472b6 0%, #f43f5e 100%);
+  filter: drop-shadow(0 0 8px rgba(236, 72, 153, 0.65));
 }
 
 .menu-dev-mobile-glow {
