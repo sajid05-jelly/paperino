@@ -56,10 +56,10 @@ export default function Navbar() {
     const baseClass = `block w-full px-3 py-2.5 rounded-xl transition-all duration-300 border text-sm ${isSpecial ? 'font-semibold' : 'font-medium'}`;
     
     if (href === '/team') {
-      return `${baseClass} text-center menu-team-glossy ${isActive ? 'active' : ''}`;
+      return `${baseClass} border-transparent hover:bg-white/5 menu-team-mobile-glow ${isActive ? 'active-mobile' : ''}`;
     }
     if (href === '/developer') {
-      return `${baseClass} text-center menu-dev-glossy ${isActive ? 'active' : ''}`;
+      return `${baseClass} border-transparent hover:bg-white/5 menu-dev-mobile-glow ${isActive ? 'active-mobile' : ''}`;
     }
 
     if (isActive) {
