@@ -5,8 +5,9 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
-import { FileText, Loader2, ExternalLink, Trash2, Bookmark, Folder, Link as LinkIcon } from "lucide-react";
+import { FileText, Loader2, Download, Trash2, Bookmark, Folder, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
+import { getDownloadHref } from "@/lib/driveUtils";
 
 export default function BookmarksPage() {
   const { user, loading: authLoading } = useAuth();
@@ -147,13 +148,12 @@ export default function BookmarksPage() {
 
               <div className="flex items-center gap-3 mt-8 pt-4 border-t border-white/10">
                 <a 
-                  href={mat.fileUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+                  href={getDownloadHref(mat)} 
+                  download
                   className="flex-1 flex items-center justify-center gap-2 bg-white text-black py-2.5 rounded-xl font-medium hover:bg-gray-200 transition-colors"
                 >
-                  <ExternalLink size={18} />
-                  Open PDF
+                  <Download size={18} />
+                  Download PDF
                 </a>
                 <button
                   onClick={() => removeBookmark(mat.id)}

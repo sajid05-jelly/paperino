@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CheckCircle2, XCircle, Trash2, Ban, Loader2, ExternalLink, ShieldAlert, FileText } from "lucide-react";
+import { CheckCircle2, XCircle, Trash2, Ban, Loader2, Download, ShieldAlert, FileText } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
+import { getDownloadHref } from "@/lib/driveUtils";
 
 
 interface Material {
@@ -15,7 +16,7 @@ interface Material {
   subjectId: string;
   title: string;
   category: string;
-  fileUrl: string;
+  fileUrl?: string;
   fileId?: string;
   fileName?: string;
   createdAt: number;
@@ -227,12 +228,11 @@ export default function AdminReviewsPage() {
 
                     <div className="flex gap-2">
                       <a 
-                        href={mat.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={getDownloadHref(mat)}
+                        download
                         className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors border border-cyan-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
                       >
-                        <ExternalLink size={14}/> View File
+                        <Download size={14}/> View File
                       </a>
                       
                       <div className="relative group flex-1 xl:flex-none">

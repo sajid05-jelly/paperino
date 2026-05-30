@@ -53,13 +53,12 @@ export default function AdminUploadPage() {
         throw new Error(result.error || "Failed to upload to Google Drive");
       }
 
-      // 2. Save metadata to Firestore using the Google Drive link
+      // 2. Save metadata to Firestore — store fileId only, NOT the Drive viewer URL
       await addDoc(collection(db, "materials"), {
         semesterId: formData.semester,
         subjectId: formData.subject,
         title: formData.title,
         category: formData.category,
-        fileUrl: result.webViewLink,
         fileId: result.fileId,
         fileName: file.name,
         status: "approved",

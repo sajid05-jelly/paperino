@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, doc, deleteDoc, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useSubjects } from "@/context/SubjectsContext";
-import { Search, Edit2, Trash2, ExternalLink, Copy, AlertTriangle, X, Loader2, CheckCircle2, FileText, Plus, BookOpen } from "lucide-react";
+import { Search, Edit2, Trash2, Download, Copy, AlertTriangle, X, Loader2, CheckCircle2, FileText, Plus, BookOpen } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
+import { getDownloadHref } from "@/lib/driveUtils";
 
 
 interface Material {
@@ -16,8 +17,8 @@ interface Material {
   subjectId: string;
   title: string;
   category: string;
-  fileUrl: string;
   fileId: string;
+  fileUrl?: string;
   fileName: string;
   createdAt: number;
   status?: string;
@@ -248,19 +249,18 @@ export default function ManageMaterialsPage() {
                 </span>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => copyToClipboard(mat.fileUrl, mat.id)}
+                    onClick={() => copyToClipboard(getDownloadHref(mat), mat.id)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors"
                   >
                     {copiedId === mat.id ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
                     {copiedId === mat.id ? "Copied" : "Copy"}
                   </button>
                   <a 
-                    href={mat.fileUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+                    href={getDownloadHref(mat)} 
+                    download
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[color:var(--primary-500)]/10 hover:bg-[color:var(--primary-500)]/20 border border-[color:var(--primary-500)]/20 text-xs font-medium text-[color:var(--primary-300)] transition-colors"
                   >
-                    View <ExternalLink size={14} />
+                    Download <Download size={14} />
                   </a>
                 </div>
               </div>

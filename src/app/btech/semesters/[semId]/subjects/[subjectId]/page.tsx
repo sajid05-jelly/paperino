@@ -8,6 +8,7 @@ import { ArrowLeft, FileText, Loader2, Download, History, BookOpen, HelpCircle, 
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import QuickUploadModal from "@/components/QuickUploadModal";
+import { getDownloadHref } from "@/lib/driveUtils";
 
 export default function SubjectPage({ params }: { params: Promise<{ semId: string, subjectId: string }> }) {
   const resolvedParams = use(params);
@@ -191,10 +192,9 @@ export default function SubjectPage({ params }: { params: Promise<{ semId: strin
                   <Bookmark size={14} fill={bookmarkedIds.has(mat.id) ? "currentColor" : "none"} />
                 </button>
                 <a 
-                  href={mat.fileUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  title="View/Download"
+                  href={getDownloadHref(mat)} 
+                  download
+                  title="Download"
                   className="w-8 h-8 rounded-full bg-white/5 hover:bg-cyan-500 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
                 >
                   <Download size={14} />

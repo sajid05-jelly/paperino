@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
-import { Trophy, Upload, FileText, Edit2, ExternalLink, Copy, CheckCircle2, Loader2, BookOpen, Award, Target } from "lucide-react";
+import { Trophy, Upload, FileText, Edit2, Download, Copy, CheckCircle2, Loader2, BookOpen, Award, Target } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
+import { getDownloadHref } from "@/lib/driveUtils";
 
 interface Material {
   id: string;
@@ -13,7 +14,8 @@ interface Material {
   subjectId: string;
   title: string;
   category: string;
-  fileUrl: string;
+  fileId?: string;
+  fileUrl?: string;
   createdAt: number;
   status?: string;
 }
@@ -175,12 +177,12 @@ export default function ContributorDashboardPage() {
                       <Edit2 size={14} /> Edit Locked
                     </button>
                   )}
-                  <button onClick={() => copyToClipboard(mat.fileUrl, mat.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors border border-white/5">
+                  <button onClick={() => copyToClipboard(getDownloadHref(mat), mat.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors border border-white/5">
                     {copiedId === mat.id ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
                     {copiedId === mat.id ? "Copied" : "Copy"}
                   </button>
-                  <a href={mat.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20">
-                    View <ExternalLink size={14} />
+                  <a href={getDownloadHref(mat)} download className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20">
+                    Download <Download size={14} />
                   </a>
                 </div>
               </div>

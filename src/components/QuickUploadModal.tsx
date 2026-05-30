@@ -152,7 +152,6 @@ export default function QuickUploadModal({
         subjectId,
         title,
         category,
-        fileUrl: result.webViewLink,
         fileId: result.fileId,
         fileName: file.name,
         status: isAdmin ? "approved" : "pending",

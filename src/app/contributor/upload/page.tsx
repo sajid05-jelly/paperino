@@ -59,7 +59,6 @@ export default function ContributorUploadPage() {
         subjectId: formData.subject,
         title: formData.title,
         category: formData.category,
-        fileUrl: result.webViewLink,
         fileId: result.fileId,
         fileName: file.name,
         uploaderId: user.uid,
