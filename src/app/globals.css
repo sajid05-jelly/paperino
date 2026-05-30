@@ -335,3 +335,84 @@ html, body {
 .overflow-anchor {
   overflow-anchor: none;
 }
+
+/* ── Special Menu Highlights ────────────────────────────── */
+
+.menu-team-glossy {
+  position: relative;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.12) 100%);
+  border-color: rgba(139, 92, 246, 0.3) !important;
+  color: #c4b5fd !important;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.menu-team-glossy:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border-color: rgba(59, 130, 246, 0.6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.menu-team-glossy.active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%) !important;
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+.menu-dev-glossy {
+  position: relative;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+  border-color: rgba(234, 179, 8, 0.25) !important;
+  color: #fef08a !important;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.menu-dev-glossy:hover {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%);
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.menu-dev-glossy.active {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(249, 115, 22, 0.25) 100%) !important;
+  border-color: rgba(249, 115, 22, 0.75) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+/* Shine effect */
+.menu-team-glossy::before, .menu-dev-glossy::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.18),
+    transparent
+  );
+  transform: skewX(-25deg);
+  transition: 0.75s;
+  pointer-events: none;
+}
+
+.menu-team-glossy:hover::before, .menu-dev-glossy:hover::before {
+  left: 150%;
+}
+
+@media (hover: none) {
+  .menu-team-glossy:hover, .menu-dev-glossy:hover {
+    transform: none;
+  }
+}

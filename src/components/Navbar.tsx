@@ -33,6 +33,13 @@ export default function Navbar() {
     const isActive = pathname === href || (href !== '/' && pathname?.startsWith(href + "/"));
     const baseClass = `px-2.5 py-1.5 lg:px-3 lg:py-1.5 xl:px-3.5 xl:py-2 rounded-full text-xs xl:text-sm font-medium transition-all duration-300 border flex-shrink-0 whitespace-nowrap`;
     
+    if (href === '/team') {
+      return `${baseClass} menu-team-glossy ${isActive ? 'active' : ''}`;
+    }
+    if (href === '/developer') {
+      return `${baseClass} menu-dev-glossy ${isActive ? 'active' : ''}`;
+    }
+
     if (isActive) {
       return `${baseClass} bg-violet-500/10 text-violet-200 border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)] ring-1 ring-violet-500/20 z-10 relative`;
     }
@@ -48,6 +55,13 @@ export default function Navbar() {
     const isActive = pathname === href || (href !== '/' && pathname?.startsWith(href + "/"));
     const baseClass = `block w-full px-3 py-2.5 rounded-xl transition-all duration-300 border text-sm ${isSpecial ? 'font-semibold' : 'font-medium'}`;
     
+    if (href === '/team') {
+      return `${baseClass} text-center menu-team-glossy ${isActive ? 'active' : ''}`;
+    }
+    if (href === '/developer') {
+      return `${baseClass} text-center menu-dev-glossy ${isActive ? 'active' : ''}`;
+    }
+
     if (isActive) {
       return `${baseClass} bg-violet-500/20 text-violet-300 border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]`;
     }
