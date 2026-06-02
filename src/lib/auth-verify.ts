@@ -20,28 +20,41 @@ export async function verifyServerAuth(authHeader: string | null): Promise<Verif
 
   const token = authHeader.split(" ")[1];
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "paperino-data";
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+  if (!apiKey) {
+    console.error("Firebase API Key missing in environment variables.");
+    return null;
+  }
 
   try {
-    // 1. Verify Google/Firebase ID Token via tokeninfo endpoint
-    const tokenInfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
-    if (!tokenInfoRes.ok) {
-      console.error("Token verification failed at Google OAuth API.");
+    // 1. Verify Firebase ID Token via Identity Toolkit endpoint
+    const lookupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ idToken: token }),
+    });
+
+    if (!lookupRes.ok) {
+      console.error("Firebase ID Token verification failed at Identity Toolkit API.");
       return null;
     }
 
-    const tokenData = await tokenInfoRes.json();
+    const lookupData = await lookupRes.json();
+    const userPayload = lookupData.users?.[0];
 
-    // Verify audience matches the Firebase Project ID
-    if (tokenData.aud !== projectId) {
-      console.error("Token audience mismatch. Expected:", projectId, "Got:", tokenData.aud);
+    if (!userPayload) {
+      console.error("User payload missing in lookup response.");
       return null;
     }
 
-    const uid = tokenData.sub;
-    const email = tokenData.email;
+    const uid = userPayload.localId;
+    const email = userPayload.email;
 
     if (!uid || !email) {
-      console.error("Token payload missing UID or Email.");
+      console.error("Firebase lookup response missing localId or email.");
       return null;
     }
 
