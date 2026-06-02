@@ -74,16 +74,17 @@ export async function verifyServerAuth(authHeader: string | null): Promise<Verif
       role = userDoc.fields?.role?.stringValue || "student";
     } else {
       console.warn(`Could not fetch Firestore user doc for ${uid}. Defaulting to 'student'. Status: ${userDocRes.status}`);
-      // Fallback: Check hardcoded admin list if Firestore fetch fails
-      const allowedAdmins = [
-        "mohamedsajid.sa@gmail.com",
-        "sudharajsekar2005@gmail.com",
-        "admin.paperinoirfan27@gmail.com",
-        "admin.paperinosam14@gmail.com"
-      ];
-      if (allowedAdmins.includes(email.toLowerCase())) {
-        role = "admin";
-      }
+    }
+
+    // Always enforce allowedAdmins hardcoded list for developers/super-admins
+    const allowedAdmins = [
+      "mohamedsajid.sa@gmail.com",
+      "sudharajsekar2005@gmail.com",
+      "admin.paperinoirfan27@gmail.com",
+      "admin.paperinosam14@gmail.com"
+    ];
+    if (allowedAdmins.includes(email.toLowerCase())) {
+      role = "admin";
     }
 
     return {
