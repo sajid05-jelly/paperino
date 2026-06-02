@@ -3,6 +3,51 @@ import { google } from "googleapis";
 import { Readable } from "stream";
 import { verifyServerAuth } from "@/lib/auth-verify";
 
+export async function GET(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    const verifiedUser = await verifyServerAuth(authHeader);
+    
+    if (!verifiedUser || (verifiedUser.role !== "contributor" && verifiedUser.role !== "admin")) {
+      return NextResponse.json({ error: "Unauthorized. Insufficient permissions." }, { status: 403 });
+    }
+
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+    if (!folderId || !clientId || !clientSecret || !refreshToken) {
+      return NextResponse.json({ error: "Google Drive OAuth credentials not configured" }, { status: 500 });
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      "https://developers.google.com/oauthplayground"
+    );
+
+    oauth2Client.setCredentials({
+      refresh_token: refreshToken
+    });
+
+    const tokenRes = await oauth2Client.getAccessToken();
+    const accessToken = tokenRes.token;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: "Failed to retrieve Google Drive access token" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      accessToken,
+      folderId,
+    });
+  } catch (error: any) {
+    console.error("Token generation error:", error);
+    return NextResponse.json({ error: error.message || "Failed to generate Google Drive token" }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Authenticate and check permissions

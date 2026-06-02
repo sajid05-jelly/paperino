@@ -7,6 +7,8 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
 
+import { uploadToDriveDirect } from "@/lib/driveUpload";
+
 export default function ContributorUploadPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -38,21 +40,8 @@ export default function ContributorUploadPage() {
     setMessage("");
     
     try {
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      uploadData.append("semester", formData.semester);
-      uploadData.append("subject", formData.subject);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to upload to Google Drive");
-      }
+      // 1. Upload file directly to Google Drive
+      const result = await uploadToDriveDirect(file, formData.semester, formData.subject);
 
       await addDoc(collection(db, "materials"), {
         semesterId: formData.semester,

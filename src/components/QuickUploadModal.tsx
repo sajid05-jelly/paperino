@@ -8,6 +8,9 @@ import { useSound } from "@/hooks/useSound";
 import { useAuth } from "@/context/AuthContext";
 
 
+import { uploadToDriveDirect } from "@/lib/driveUpload";
+
+
 interface QuickUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -125,27 +128,8 @@ export default function QuickUploadModal({
     setError("");
     
     try {
-      // 1. Upload file to Google Drive via our backend API
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      uploadData.append("semester", semesterId);
-      uploadData.append("subject", subjectId);
-
-      const token = user ? await user.getIdToken() : "";
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-        body: uploadData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to upload to Google Drive");
-      }
+      // 1. Upload file directly to Google Drive
+      const result = await uploadToDriveDirect(file, semesterId, subjectId);
 
       const newMaterial = {
         semesterId,

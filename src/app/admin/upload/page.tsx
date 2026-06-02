@@ -6,6 +6,8 @@ import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useSubjects } from "@/context/SubjectsContext";
 
+import { uploadToDriveDirect } from "@/lib/driveUpload";
+
 export default function AdminUploadPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -36,22 +38,8 @@ export default function AdminUploadPage() {
     setMessage("");
     
     try {
-      // 1. Upload file to Google Drive via our backend API
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      uploadData.append("semester", formData.semester);
-      uploadData.append("subject", formData.subject);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to upload to Google Drive");
-      }
+      // 1. Upload file directly to Google Drive
+      const result = await uploadToDriveDirect(file, formData.semester, formData.subject);
 
       // 2. Save metadata to Firestore — store fileId only, NOT the Drive viewer URL
       await addDoc(collection(db, "materials"), {
