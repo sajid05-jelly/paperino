@@ -5,7 +5,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   doc,
   updateDoc,
@@ -28,10 +27,11 @@ export function useNotifications() {
       return;
     }
 
+    // No orderBy here — avoids requiring a composite Firestore index.
+    // We sort client-side instead (newest first by createdAt).
     const q = query(
       collection(db, "notifications"),
-      where("userId", "==", user.uid),
-      orderBy("createdAt", "desc")
+      where("userId", "==", user.uid)
     );
 
     const unsub = onSnapshot(
@@ -41,6 +41,8 @@ export function useNotifications() {
         snap.forEach((d) =>
           notifs.push({ id: d.id, ...d.data() } as PaperinoNotification)
         );
+        // Sort newest first on the client — no index required
+        notifs.sort((a, b) => b.createdAt - a.createdAt);
         setNotifications(notifs);
         setLoading(false);
       },
