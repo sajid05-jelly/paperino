@@ -7,17 +7,18 @@ import UserAvatar from "./UserAvatar";
 import FeedbackModal from "./FeedbackModal";
 import { useSound } from "@/hooks/useSound";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
+import { getIdToken } from "firebase/auth";
 
 interface Message {
   role: "user" | "ai";
   content: string;
 }
 
-const DAILY_LIMIT = 10;
+const DAILY_LIMIT = 15;
 
 export default function FloatingAssistant() {
-  const { paperinoAvatar } = useAuth();
+  const { paperinoAvatar, user } = useAuth();
   const { playPop } = useSound();
   const [isOpen, setIsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -30,7 +31,7 @@ export default function FloatingAssistant() {
   const [systemOffline, setSystemOffline] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize and check usage limit & system status
+  // Initialize: just listen to AI system status (usage tracked server-side)
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "ai"), (docSnap) => {
       if (docSnap.exists()) {
@@ -38,26 +39,6 @@ export default function FloatingAssistant() {
         setSystemOffline(data.aiStatus === "offline");
       }
     });
-
-    const checkUsage = async () => {
-      const today = new Date().toISOString().split("T")[0];
-      const usageData = localStorage.getItem("paperino_ai_usage");
-      
-      if (usageData) {
-        const parsed = JSON.parse(usageData);
-        if (parsed.date === today) {
-          setMessagesLeft(Math.max(0, DAILY_LIMIT - parsed.count));
-        } else {
-          // Reset for new day
-          localStorage.setItem("paperino_ai_usage", JSON.stringify({ date: today, count: 0 }));
-          setMessagesLeft(DAILY_LIMIT);
-        }
-      } else {
-        localStorage.setItem("paperino_ai_usage", JSON.stringify({ date: today, count: 0 }));
-        setMessagesLeft(DAILY_LIMIT);
-      }
-    };
-    checkUsage();
     return () => unsub();
   }, []);
 
@@ -68,22 +49,7 @@ export default function FloatingAssistant() {
     return () => window.removeEventListener("open-ai-chat", handleOpenChat);
   }, []);
 
-  const incrementUsage = () => {
-    const today = new Date().toISOString().split("T")[0];
-    const usageData = localStorage.getItem("paperino_ai_usage");
-    let count = 0;
-    
-    if (usageData) {
-      const parsed = JSON.parse(usageData);
-      if (parsed.date === today) {
-        count = parsed.count;
-      }
-    }
-    
-    count += 1;
-    localStorage.setItem("paperino_ai_usage", JSON.stringify({ date: today, count }));
-    setMessagesLeft(Math.max(0, DAILY_LIMIT - count));
-  };
+  // Usage is now tracked server-side; no client-side incrementUsage needed.
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -102,20 +68,49 @@ export default function FloatingAssistant() {
     setLoading(true);
 
     try {
+      // Get Firebase ID token to authenticate with the server
+      const firebaseUser = auth.currentUser;
+      const idToken = firebaseUser ? await getIdToken(firebaseUser) : null;
+
+      if (!idToken) {
+        setMessages(prev => [...prev, { role: "ai", content: "Please log in to use Paperino AI." }]);
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch("/api/assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
         body: JSON.stringify({ message: userMsg }),
       });
 
       const data = await res.json();
-      
+
+      if (res.status === 401) {
+        setMessages(prev => [...prev, { role: "ai", content: "Please log in to use Paperino AI." }]);
+        return;
+      }
+
+      if (res.status === 429) {
+        if (data.limitReached) {
+          setMessagesLeft(0);
+          setMessages(prev => [...prev, { role: "ai", content: `Daily limit reached (${data.limit} messages/day). Come back tomorrow! 😴` }]);
+        } else {
+          setMessages(prev => [...prev, { role: "ai", content: "Too many requests. Please wait a moment." }]);
+        }
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Failed to get response");
       }
 
       setMessages(prev => [...prev, { role: "ai", content: data.text }]);
-      incrementUsage();
+      // Update remaining count from server-tracked limit
+      setMessagesLeft(prev => Math.max(0, prev - 1));
 
     } catch (err: any) {
       setMessages(prev => [...prev, { role: "ai", content: "Oops! " + err.message }]);

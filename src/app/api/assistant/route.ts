@@ -1,25 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { runApiGuard } from "@/lib/api-guard";
 
 export async function POST(req: NextRequest) {
+  /* ── Security: require auth + enforce server-side daily limit ── */
+  const guard = await runApiGuard(req);
+  if (guard.blocked) return guard.response;
+
   try {
-    const { message } = await req.json();
+    const body = await req.json();
+    const message = typeof body?.message === "string" ? body.message.trim() : "";
 
     if (!message) {
       return NextResponse.json({ error: "Message is required." }, { status: 400 });
     }
 
+    // Prevent absurdly long inputs (saves Gemini quota)
+    if (message.length > 1000) {
+      return NextResponse.json(
+        { error: "Message too long. Please keep it under 1000 characters." },
+        { status: 400 }
+      );
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API key is not configured." }, { status: 500 });
+      return NextResponse.json(
+        { error: "Gemini API key is not configured." },
+        { status: 500 }
+      );
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
+    const model = genAI.getGenerativeModel({
       model: "gemini-flash-latest",
-      generationConfig: {
-        temperature: 0.7,
-      }
+      generationConfig: { temperature: 0.7 },
     });
 
     const prompt = `
@@ -41,17 +56,18 @@ Paperino AI Response:`;
     let responseText = result.response.text();
 
     // Clean up any stray markdown formatting
-    responseText = responseText.replace(/\*\*/g, '').replace(/\*/g, '').replace(/`/g, '').trim();
+    responseText = responseText.replace(/\*\*/g, "").replace(/\*/g, "").replace(/`/g, "").trim();
 
-    // Fallback validation
     if (!responseText || responseText.length < 2) {
       responseText = "I couldn't generate a proper response. Please try asking your question differently.";
     }
 
     return NextResponse.json({ text: responseText });
-
   } catch (error: any) {
     console.error("AI Assistant error:", error);
-    return NextResponse.json({ error: error.message || "Failed to generate AI response. Please try again." }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Failed to generate AI response. Please try again." },
+      { status: 500 }
+    );
   }
 }

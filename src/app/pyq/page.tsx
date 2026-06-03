@@ -2,6 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Upload, FileText, Activity, AlertTriangle, Loader2, Sparkles, BrainCircuit, Target, Repeat, Flame, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { auth } from "@/lib/firebase";
+import { getIdToken } from "firebase/auth";
 
 export default function PYQPredictorPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -79,14 +82,30 @@ export default function PYQPredictorPage() {
     formData.append("subject", subject);
 
     try {
+      // Get Firebase ID token
+      const firebaseUser = auth.currentUser;
+      const idToken = firebaseUser ? await getIdToken(firebaseUser) : null;
+      if (!idToken) {
+        setError("Please log in to use the PYQ Predictor.");
+        setLoading(false);
+        return;
+      }
+
       const url = isOcrRetry ? "/api/pyq?ocr=true" : "/api/pyq";
       const response = await fetch(url, {
         method: "POST",
+        headers: { "Authorization": `Bearer ${idToken}` },
         body: formData,
       });
 
       const data = await response.json();
 
+      if (response.status === 401) {
+        throw new Error("Please log in to use the PYQ Predictor.");
+      }
+      if (response.status === 429) {
+        throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
+      }
       if (!response.ok) {
         if (data.errorType === "NEEDS_OCR" && !isOcrRetry) {
           setOcrActive(true);

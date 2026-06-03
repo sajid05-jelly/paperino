@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Upload, FileText, Activity, CheckCircle2, XCircle, AlertTriangle, ArrowRight, Loader2, Sparkles, AlertCircle, Info } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { getIdToken } from "firebase/auth";
 
 export default function ATSAnalyzerPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -105,13 +107,29 @@ export default function ATSAnalyzerPage() {
     formData.append("role", role);
 
     try {
+      // Get Firebase ID token
+      const firebaseUser = auth.currentUser;
+      const idToken = firebaseUser ? await getIdToken(firebaseUser) : null;
+      if (!idToken) {
+        setError("Please log in to use the ATS Analyzer.");
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch("/api/ats", {
         method: "POST",
+        headers: { "Authorization": `Bearer ${idToken}` },
         body: formData,
       });
 
       const data = await response.json();
 
+      if (response.status === 401) {
+        throw new Error("Please log in to use the ATS Analyzer.");
+      }
+      if (response.status === 429) {
+        throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
+      }
       if (!response.ok) {
         throw new Error(data.error || "Failed to analyze resume.");
       }
