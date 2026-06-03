@@ -15,6 +15,7 @@ import { ToastProvider } from "@/components/Toast";
 import BackToTop from "@/components/BackToTop";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
 import { Suspense } from "react";
+import RocketCursor from "@/components/RocketCursor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -132,6 +133,9 @@ export default function RootLayout({
                 <ThemeSelector />
                 <AvatarProvider />
                 <BackToTop />
+
+                {/* Custom rocket cursor — desktop only, self-guards with matchMedia */}
+                <RocketCursor />
 
               </SubjectsProvider>
             </AuthProvider>
