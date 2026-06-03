@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { collection, query, where, doc, updateDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
+import { notifyUser } from "@/lib/notifications";
 import { Users, UserPlus, ShieldAlert, CheckCircle2, XCircle, Loader2, Ban, ShieldCheck, Trophy } from "lucide-react";
 
 
@@ -72,6 +73,15 @@ export default function AdminTeamPage() {
       // 2. Update User Role
       await updateDoc(doc(db, "users", request.uid), { role: "contributor" });
       
+      // 3. Notify the applicant
+      await notifyUser(
+        db,
+        request.uid,
+        "Application Approved! 🎉",
+        "Your Paperino Team application has been approved. You can now contribute materials and access contributor features.",
+        "application_approved"
+      );
+
       // Update leaderboard pre-aggregated tables immediately
       await recalculateLeaderboards(db);
     } catch (err) {
@@ -85,6 +95,15 @@ export default function AdminTeamPage() {
     setActionLoading(request.id);
     try {
       await updateDoc(doc(db, "contributor_requests", request.id), { status: "rejected" });
+
+      // Notify the applicant
+      await notifyUser(
+        db,
+        request.uid,
+        "Application Status Update",
+        "Your Paperino Team application was not approved at this time.",
+        "application_rejected"
+      );
     } catch (err) {
       console.error("Reject error:", err);
     }

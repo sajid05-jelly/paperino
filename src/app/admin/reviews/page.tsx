@@ -11,6 +11,7 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
 import { getDownloadHref, getDrivePreviewUrl } from "@/lib/driveUtils";
+import { notifyUser } from "@/lib/notifications";
 
 
 interface Material {
@@ -173,6 +174,15 @@ export default function AdminReviewsPage() {
           seasonPoints: increment(10)
         });
         await recalculateLeaderboards(db);
+
+        // Notify the uploader
+        await notifyUser(
+          db,
+          mat.uploaderId,
+          "Material Approved! ✅",
+          `Your material '${mat.title || mat.fileName || "Untitled"}' has been approved and is now visible to students.`,
+          "material_approved"
+        );
       }
 
       setMaterials(prev => prev.filter(m => m.id !== id));
@@ -200,6 +210,18 @@ export default function AdminReviewsPage() {
         }
       }
       await deleteDoc(doc(db, "materials", mat.id));
+
+      // Notify the uploader that their material was not approved
+      if (mat.uploaderId) {
+        await notifyUser(
+          db,
+          mat.uploaderId,
+          "Material Not Approved",
+          `Your material '${mat.title || mat.fileName || "Untitled"}' was not approved and has been removed.`,
+          "material_rejected"
+        );
+      }
+
       setMaterials(prev => prev.filter(m => m.id !== mat.id));
       showToast("Material deleted successfully", "success");
     } catch (err: any) {

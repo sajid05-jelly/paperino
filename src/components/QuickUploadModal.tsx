@@ -6,9 +6,8 @@ import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useSound } from "@/hooks/useSound";
 import { useAuth } from "@/context/AuthContext";
-
-
 import { uploadToDriveDirect } from "@/lib/driveUpload";
+import { notifyAdmins } from "@/lib/notifications";
 
 
 interface QuickUploadModalProps {
@@ -147,6 +146,16 @@ export default function QuickUploadModal({
 
       // 2. Save metadata to Firestore using the Google Drive link
       const docRef = await addDoc(collection(db, "materials"), newMaterial);
+
+      // 3. Notify admins if the material is pending review (contributor upload)
+      if (!isAdmin) {
+        await notifyAdmins(
+          db,
+          "New Material Uploaded",
+          `New material uploaded by ${user?.displayName || user?.email || "a contributor"} and is waiting for review.`,
+          "material_uploaded"
+        );
+      }
 
       setSuccess(true);
       playSuccess();

@@ -6,8 +6,8 @@ import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
-
 import { uploadToDriveDirect } from "@/lib/driveUpload";
+import { notifyAdmins } from "@/lib/notifications";
 
 export default function ContributorUploadPage() {
   const { user } = useAuth();
@@ -56,6 +56,14 @@ export default function ContributorUploadPage() {
         status: "pending",
         createdAt: Date.now()
       });
+
+      // Notify admins
+      await notifyAdmins(
+        db,
+        "New Material Uploaded",
+        `New material uploaded by ${user.displayName || user.email || "a contributor"} and is waiting for review.`,
+        "material_uploaded"
+      );
 
       setMessage("Material uploaded successfully! Thank you for contributing.");
       setFormData(prev => ({ ...prev, title: "" }));

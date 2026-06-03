@@ -5,6 +5,7 @@ import { Users, ShieldCheck, Sparkles, UploadCloud, Rocket, ArrowRight, Loader2,
 import { useAuth } from "@/context/AuthContext";
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { notifyAdmins } from "@/lib/notifications";
 
 export default function TeamPage() {
   const { user, isContributor, isAdmin } = useAuth();
@@ -40,6 +41,14 @@ export default function TeamPage() {
         status: "pending",
         timestamp: serverTimestamp()
       });
+
+      // Notify all admins about the new application
+      await notifyAdmins(
+        db,
+        "New Team Application",
+        `New Paperino Team application submitted by ${user.displayName || user.email || "a student"}.`,
+        "application_submitted"
+      );
 
       setApplied(true);
     } catch (err: any) {

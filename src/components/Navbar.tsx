@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
 import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 import { useSound } from "@/hooks/useSound";
 
@@ -173,6 +174,9 @@ export default function Navbar() {
 
             {user ? (
               <div className="flex items-center gap-2 lg:gap-3">
+                {/* Notification Bell */}
+                <NotificationBell />
+
                 <button 
                   onClick={() => setIsChangingAvatar(true)} 
                   className="flex flex-shrink-0 items-center gap-2 group p-1 pr-3 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all cursor-pointer"

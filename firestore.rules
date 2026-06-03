@@ -145,6 +145,18 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Notifications ────────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      // Users can read and update (mark read) their own notifications
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      // Any signed-in non-blocked user can create notifications (needed for client-side notifyAdmins)
+      allow create: if isSignedIn() && isNotBlocked();
+      // Admins have full access
+      allow delete: if isAdmin();
+    }
+
     // ── Deny all other paths by default ─────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
