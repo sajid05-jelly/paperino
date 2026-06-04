@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Paperino uses Google Drive for all file storage, NOT Firebase Storage.
+    // This rules file explicitly denies all access to prevent accidental
+    // Firebase Storage use or unauthorized access to the storage bucket.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

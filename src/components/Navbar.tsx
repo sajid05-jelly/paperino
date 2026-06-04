@@ -26,23 +26,32 @@ export default function Navbar() {
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const { soundEnabled, toggleSound } = useSound();
   const pathname = usePathname();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const getLinkClass = (href: string, isSpecial = false) => {
     const isActive = pathname === href || (href !== '/' && pathname?.startsWith(href + "/"));
     const baseClass = `px-2.5 py-1.5 lg:px-3 lg:py-1.5 xl:px-3.5 xl:py-2 rounded-full text-xs xl:text-sm font-medium transition-all duration-300 border flex-shrink-0 whitespace-nowrap`;
     
     if (href === '/team') {
-      return `${baseClass} menu-team-glossy ${isActive ? 'active' : ''}`;
+      return `${baseClass} menu-team-glossy ${isActive ? 'active shadow-[0_0_20px_rgba(139,92,246,0.4)]' : ''}`;
     }
     if (href === '/developer') {
-      return `${baseClass} menu-dev-glossy ${isActive ? 'active' : ''}`;
+      return `${baseClass} menu-dev-glossy ${isActive ? 'active shadow-[0_0_20px_rgba(249,115,22,0.4)]' : ''}`;
     }
 
     if (isActive) {
-      return `${baseClass} bg-violet-500/10 text-violet-200 border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)] ring-1 ring-violet-500/20 z-10 relative`;
+      return `${baseClass} bg-violet-500/20 text-white text-glow border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.4),inset_0_0_10px_rgba(139,92,246,0.2)] ring-1 ring-violet-500/30 z-10 relative`;
     }
     
     if (isSpecial) {
@@ -85,13 +94,13 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/40 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1600px] w-full items-center justify-between px-3 sm:px-4 lg:px-6 py-2.5 lg:py-3 xl:py-4 gap-2 lg:gap-4">
+      <nav className={`sticky top-0 z-50 w-full transition-all duration-300 border-b ${isScrolled ? 'bg-[#05030a]/80 backdrop-blur-xl border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]' : 'bg-transparent border-transparent'}`}>
+        <div className={`mx-auto flex max-w-[1600px] w-full items-center justify-between px-3 sm:px-4 lg:px-6 transition-all duration-300 gap-2 lg:gap-4 ${isScrolled ? 'py-2 lg:py-2.5 xl:py-3' : 'py-3 lg:py-4 xl:py-5'}`}>
           <Link href="/" className="flex items-center gap-1.5 group flex-shrink-0">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 relative overflow-hidden rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(167,139,250,0.5)] group-hover:shadow-[0_0_25px_rgba(167,139,250,0.8)] transition-shadow bg-black border border-white/5">
-              <Logo className="w-full h-full object-cover scale-[1.3] group-hover:scale-[1.35] transition-transform" />
+            <div className="h-9 w-9 sm:h-10 sm:w-10 relative overflow-hidden rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(167,139,250,0.5)] group-hover:shadow-[0_0_30px_rgba(167,139,250,0.8)] transition-all duration-500 bg-black border border-white/5">
+              <Logo className="w-full h-full object-cover scale-[1.3] group-hover:scale-[1.4] transition-transform duration-500" />
             </div>
-            <span className="text-lg sm:text-xl font-bold tracking-tight text-white hidden sm:block">Paperino</span>
+            <span className="text-lg sm:text-xl font-bold tracking-tight text-white hidden sm:block group-hover:text-glow transition-all duration-300">Paperino</span>
           </Link>
           
           <div 

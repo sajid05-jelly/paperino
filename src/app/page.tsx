@@ -2,26 +2,42 @@ import Link from "next/link";
 import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Bookmark, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot } from "lucide-react";
 import AiChatCard from "@/components/AiChatCard";
 import Testimonials from "@/components/Testimonials";
+import AmbientOrbs from "@/components/AmbientOrbs";
 
 export default function Home() {
   return (
-    <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24">
-      <div className="w-full max-w-7xl mx-auto">
+    <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">
+      <AmbientOrbs />
+      <div className="w-full max-w-7xl mx-auto relative z-10">
       {/* Hero Section */}
-      <section className="flex flex-col items-center text-center w-full max-w-4xl mx-auto mb-24">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-6 animate-pulse">
-          <Zap size={16} />
-          <span>Prepare for exams at lightspeed</span>
+      <section className="flex flex-col items-center text-center w-full max-w-4xl mx-auto mb-20">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-8 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-shadow animate-float">
+          <Zap size={16} className="text-purple-400" />
+          <span className="tracking-wide">Prepare for exams at lightspeed</span>
         </div>
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-6 w-full text-center">
+        <h1 className="text-5xl md:text-7xl lg:text-[5rem] font-bold tracking-tight text-white mb-6 w-full text-center leading-tight">
           The Universe of <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-blue-400 text-glow animate-pulse">
             Study Materials
           </span>
         </h1>
-        <p className="text-base md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto px-4">
+        <p className="text-lg md:text-2xl text-gray-400/90 mb-12 max-w-2xl mx-auto px-4 font-light leading-relaxed">
           Access semester-wise question papers, notes, and lab manuals in one seamless, space-themed platform.
         </p>
+
+        {/* Hero Stats Bar */}
+        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 w-full max-w-3xl mx-auto">
+          {[
+            { label: "Semesters", value: "8+", color: "text-purple-400" },
+            { label: "Study Materials", value: "500+", color: "text-fuchsia-400" },
+            { label: "AI Tools", value: "3", color: "text-blue-400" }
+          ].map((stat, i) => (
+            <div key={i} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 transition-colors flex-1 min-w-[120px]">
+              <span className={`text-3xl font-black ${stat.color}`}>{stat.value}</span>
+              <span className="text-xs text-gray-400 uppercase tracking-widest mt-1">{stat.label}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Courses Section */}
@@ -35,16 +51,16 @@ export default function Home() {
 
         <div className="flex justify-center w-full">
           <Link href="/btech" className="w-full md:w-2/3">
-            <div className="glass-card p-6 md:p-8 h-full group cursor-pointer relative overflow-hidden transition-all hover:border-purple-500/50 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
-              <div className="flex items-center justify-between mb-6 relative z-10">
-                <div className="px-4 h-12 md:px-6 md:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-sm md:text-base tracking-widest group-hover:scale-110 transition-transform shadow-lg">
+            <div className="premium-panel p-8 md:p-10 h-full group cursor-pointer relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:border-purple-500/50 hover:shadow-[0_20px_50px_-10px_rgba(168,85,247,0.3)]">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
+              <div className="flex items-center justify-between mb-8 relative z-10">
+                <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-lg">
                   B.TECH
                 </div>
-                <BookOpen size={24} className="text-gray-500 group-hover:text-cyan-400 transition-colors md:w-7 md:h-7" />
+                <BookOpen size={32} className="text-gray-500 group-hover:text-cyan-400 transition-colors" />
               </div>
-              <h3 className="text-2xl md:text-3xl font-semibold text-white mb-3 relative z-10">Bachelor of Technology</h3>
-              <p className="text-gray-400 relative z-10 text-base md:text-lg">Access all 8 semesters of carefully curated question papers, notes, and lab manuals.</p>
+              <h3 className="text-3xl md:text-4xl font-bold text-white mb-4 relative z-10 tracking-tight">Bachelor of Technology</h3>
+              <p className="text-gray-400 relative z-10 text-lg md:text-xl font-light leading-relaxed">Access all 8 semesters of carefully curated question papers, notes, and lab manuals.</p>
             </div>
           </Link>
         </div>
@@ -66,16 +82,16 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full perspective-[1000px]">
           {/* PYQ Predictor Card */}
           <Link href="/pyq" className="w-full flex">
-            <div className="glass-panel p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:border-fuchsia-500/40 hover:shadow-[0_20px_50px_rgba(var(--secondary-rgb),0.15)] rounded-[2.5rem] bg-[#07050d] border border-white/5">
+            <div className="premium-panel p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-transform duration-500 hover:-translate-y-2 hover:rotate-x-2 hover:rotate-y-2 hover:border-fuchsia-500/40 hover:shadow-[0_20px_50px_rgba(var(--secondary-rgb),0.15)] rounded-[2.5rem] bg-[#07050d]">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-fuchsia-500/20 to-rose-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 mb-8 group-hover:scale-110 group-hover:bg-fuchsia-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--secondary-rgb),0.1)]">
                   <BrainCircuit size={28} />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">PYQ Predictor</h3>
+                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-fuchsia-300 transition-colors">PYQ Predictor</h3>
                 <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Upload multiple Previous Year Question papers and let our AI cross-reference them to predict the most important concepts for your next exam.</p>
                 <div className="mt-8 flex items-center gap-2 text-fuchsia-400 font-medium text-sm group-hover:text-fuchsia-300 transition-colors uppercase tracking-wider">
                   Try Predictor <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" />
@@ -86,13 +102,13 @@ export default function Home() {
 
           {/* ATS Analyzer Card */}
           <Link href="/ats" className="w-full flex">
-            <div className="glass-panel p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:border-cyan-500/40 hover:shadow-[0_20px_50px_rgba(var(--accent-rgb),0.15)] rounded-[2.5rem] bg-[#07050d] border border-white/5">
+            <div className="premium-panel p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-transform duration-500 hover:-translate-y-2 hover:rotate-x-2 hover:rotate-y-2 hover:border-cyan-500/40 hover:shadow-[0_20px_50px_rgba(var(--accent-rgb),0.15)] rounded-[2.5rem] bg-[#07050d]">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-cyan-500/20 to-blue-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-8 group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]">
                   <FileSearch size={28} />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">ATS Analyzer</h3>
+                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-cyan-300 transition-colors">ATS Analyzer</h3>
                 <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Ensure your resume beats the bots. Get a granular AI breakdown of your formatting, missing skills, and perfect keyword optimization.</p>
                 <div className="mt-8 flex items-center gap-2 text-cyan-400 font-medium text-sm group-hover:text-cyan-300 transition-colors uppercase tracking-wider">
                   Analyze Resume <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" />

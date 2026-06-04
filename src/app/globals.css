@@ -119,14 +119,31 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   transition: background-color 0.5s ease;
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(var(--primary-rgb), 0.08), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(var(--accent-rgb), 0.08), transparent 25%);
-  /* Removed background-attachment: fixed — causes overflow on mobile */
   overflow-x: hidden;
   max-width: 100%;
   width: 100%;
   position: relative;
+  /* Premium grain texture overlay via CSS radial gradients as fallback */
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(var(--primary-rgb), 0.05), transparent 30%),
+    radial-gradient(circle at 85% 30%, rgba(var(--accent-rgb), 0.05), transparent 30%),
+    radial-gradient(circle at 50% 80%, rgba(var(--secondary-rgb), 0.03), transparent 40%);
+}
+
+/* ── Custom Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--primary-rgb), 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--primary-rgb), 0.6);
 }
 
 .glass-panel {
@@ -138,18 +155,43 @@ body {
 }
 
 .glass-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
+  border-top: 1px solid rgba(255, 255, 255, 0.08); /* Inner top highlight */
   border-radius: 1rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease, border-color 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom right, rgba(255,255,255,0.1), transparent 50%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .glass-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.3);
-  border-color: rgba(139, 92, 246, 0.5);
+  transform: translateY(-8px);
+  box-shadow: 0 15px 35px -10px rgba(var(--primary-rgb), 0.4), 0 0 20px rgba(var(--primary-rgb), 0.1);
+  border-color: rgba(var(--primary-rgb), 0.4);
+}
+
+.premium-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 1.5rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 20px 40px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Animations ────────────────────────────────────────────── */
@@ -167,6 +209,47 @@ body {
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.95); }
   to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-blob {
+  animation: blob 15s infinite alternate ease-in-out;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(var(--primary-rgb), 0.5);
+}
+
+.text-glow-fuchsia {
+  text-shadow: 0 0 20px rgba(var(--secondary-rgb), 0.5);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.5);
 }
 
 /* ── Skeleton / Shimmer Loading ────────────────────────────── */

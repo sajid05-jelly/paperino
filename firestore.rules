@@ -147,13 +147,22 @@ service cloud.firestore {
 
     // ── Notifications ────────────────────────────────────────────────────────
     match /notifications/{notifId} {
-      // Users can read and update (mark read) their own notifications
+      // Users can read their own notifications only
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Users can only mark their own notifications as read (only 'read' field)
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      // Any signed-in non-blocked user can create notifications (needed for client-side notifyAdmins)
-      allow create: if isSignedIn() && isNotBlocked();
-      // Admins have full access
+      // Any signed-in non-blocked user can create notifications.
+      // This supports the client-side notifyAdmins() flow where a contributor
+      // writes a notification targeted at admin UIDs.
+      // Field validation ensures the required schema is present.
+      allow create: if isSignedIn() && isNotBlocked()
+                    && request.resource.data.keys().hasAll(['userId', 'title', 'message', 'type', 'read', 'createdAt'])
+                    && request.resource.data.read == false
+                    && request.resource.data.userId is string
+                    && request.resource.data.title is string
+                    && request.resource.data.message is string;
+      // Admins can delete notifications
       allow delete: if isAdmin();
     }
 
