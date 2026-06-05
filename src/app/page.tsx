@@ -25,16 +25,15 @@ export default function Home() {
           Access semester-wise question papers, notes, and lab manuals in one seamless, space-themed platform.
         </p>
 
-        {/* Hero Stats Bar */}
         <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 w-full max-w-3xl mx-auto">
           {[
             { label: "Semesters", value: "8+", color: "text-purple-400" },
             { label: "Study Materials", value: "500+", color: "text-fuchsia-400" },
-            { label: "AI Tools", value: "3", color: "text-blue-400" }
+            { label: "AI Tools", value: "3", color: "text-cyan-400" }
           ].map((stat, i) => (
-            <div key={i} className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 transition-colors flex-1 min-w-[120px]">
-              <span className={`text-3xl font-black ${stat.color}`}>{stat.value}</span>
-              <span className="text-xs text-gray-400 uppercase tracking-widest mt-1">{stat.label}</span>
+            <div key={i} className="flex flex-col items-center justify-center p-5 md:p-6 rounded-[1.5rem] liquid-glass hover:-translate-y-1 transition-transform duration-300 flex-1 min-w-[120px]">
+              <span className={`text-4xl font-black ${stat.color} drop-shadow-[0_0_15px_rgba(currentcolor,0.4)] mb-1`}>{stat.value}</span>
+              <span className="text-xs text-gray-300 uppercase tracking-[0.2em] font-medium">{stat.label}</span>
             </div>
           ))}
         </div>
