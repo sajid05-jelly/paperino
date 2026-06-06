@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Plus, Trash2, RotateCcw, Activity, Award, ChevronRight } from "lucide-react";
+import { Calculator, Plus, Trash2, RotateCcw, Activity, Award, ChevronRight, Percent, ArrowRight } from "lucide-react";
 
 // SRM Grade Points Mapping
 const GRADE_POINTS: Record<string, number> = {
@@ -38,7 +38,7 @@ type Semester = {
 };
 
 export default function GPACalculatorPage() {
-  const [activeTab, setActiveTab] = useState<"gpa" | "cgpa">("gpa");
+  const [activeTab, setActiveTab] = useState<"gpa" | "cgpa" | "semester">("gpa");
   
   // GPA State
   const [subjects, setSubjects] = useState<Subject[]>([
@@ -112,6 +112,30 @@ export default function GPACalculatorPage() {
 
   const cgpa = calculateCGPA();
 
+  // --- Semester Calc Logic ---
+  const [internal, setInternal] = useState<string>("");
+  const [semesterMark, setSemesterMark] = useState<string>("");
+
+  const internalNum = parseFloat(internal) || 0;
+  const semesterNum = parseFloat(semesterMark) || 0;
+
+  const convertedSemester = (semesterNum / 75) * 40;
+  const finalTotal = internalNum + convertedSemester;
+
+  const getSemesterGrade = (total: number) => {
+    const t = Math.round(total);
+    if (t >= 91) return { grade: "O", color: "text-emerald-400", bg: "bg-emerald-500/20" };
+    if (t >= 81) return { grade: "A+", color: "text-emerald-400", bg: "bg-emerald-500/20" };
+    if (t >= 71) return { grade: "A", color: "text-blue-400", bg: "bg-blue-500/20" };
+    if (t >= 61) return { grade: "B+", color: "text-blue-400", bg: "bg-blue-500/20" };
+    if (t >= 56) return { grade: "B", color: "text-purple-400", bg: "bg-purple-500/20" };
+    if (t >= 50) return { grade: "C", color: "text-purple-400", bg: "bg-purple-500/20" };
+    return { grade: "F", color: "text-red-400", bg: "bg-red-500/20" };
+  };
+
+  const semGradeInfo = getSemesterGrade(finalTotal);
+  const isSemValid = internal !== "" && semesterMark !== "" && internalNum <= 60 && semesterNum <= 75 && internalNum >= 0 && semesterNum >= 0;
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-12 md:py-16">
       <div className="text-center mb-12">
@@ -125,19 +149,25 @@ export default function GPACalculatorPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex justify-center mb-8">
-        <div className="bg-white/5 p-1 rounded-xl inline-flex">
+      <div className="flex justify-center mb-8 w-full overflow-x-auto pb-4 md:pb-0 hide-scrollbar">
+        <div className="bg-white/5 p-1 rounded-xl inline-flex flex-nowrap whitespace-nowrap min-w-max md:min-w-0">
           <button 
             onClick={() => setActiveTab("gpa")}
-            className={`px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "gpa" ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+            className={`px-6 md:px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "gpa" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
           >
             GPA Calculator
           </button>
           <button 
             onClick={() => setActiveTab("cgpa")}
-            className={`px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "cgpa" ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+            className={`px-6 md:px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "cgpa" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
           >
             CGPA Calculator
+          </button>
+          <button 
+            onClick={() => setActiveTab("semester")}
+            className={`px-6 md:px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "semester" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+          >
+            Semester Calculator
           </button>
         </div>
       </div>
@@ -364,6 +394,99 @@ export default function GPACalculatorPage() {
                     </p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {activeTab === "semester" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-5 duration-500">
+          {/* Input Section */}
+          <div className="glass-panel p-8 rounded-2xl border-t border-white/10">
+            <h2 className="text-2xl font-semibold text-white mb-6">Enter Marks</h2>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Internal Mark (Out of 60)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="60"
+                    value={internal}
+                    onChange={(e) => setInternal(e.target.value)}
+                    placeholder="e.g. 45"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors text-lg"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">/ 60</span>
+                </div>
+                {internalNum > 60 && <p className="text-red-400 text-sm mt-2">Cannot exceed 60</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Semester Exam Mark (Out of 75)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="75"
+                    value={semesterMark}
+                    onChange={(e) => setSemesterMark(e.target.value)}
+                    placeholder="e.g. 65"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors text-lg"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">/ 75</span>
+                </div>
+                {semesterNum > 75 && <p className="text-red-400 text-sm mt-2">Cannot exceed 75</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Results Section */}
+          <div className={`glass-panel p-8 rounded-2xl border-t border-white/10 flex flex-col justify-center relative overflow-hidden transition-opacity duration-500 ${isSemValid ? 'opacity-100' : 'opacity-40'}`}>
+            {!isSemValid && (
+              <div className="absolute inset-0 z-10 bg-black/40 backdrop-blur-[2px] flex items-center justify-center rounded-2xl">
+                <p className="text-gray-300 font-medium bg-black/60 px-6 py-3 rounded-full">Enter marks to see result</p>
+              </div>
+            )}
+
+            <h2 className="text-2xl font-semibold text-white mb-8">Calculation Result</h2>
+            
+            <div className="space-y-6">
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                <div className="flex items-center gap-3">
+                  <Percent size={20} className="text-purple-400" />
+                  <span className="text-gray-300">Converted Semester</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-white">{convertedSemester.toFixed(2)}</span>
+                  <span className="text-sm text-gray-500 ml-1">/ 40</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center">
+                <ArrowRight className="text-gray-600 rotate-90 md:rotate-0" />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                <div className="flex items-center gap-3">
+                  <Calculator size={20} className="text-purple-400" />
+                  <span className="text-gray-300">Final Total Mark</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-3xl font-bold text-white">{finalTotal.toFixed(2)}</span>
+                  <span className="text-sm text-gray-500 ml-1">/ 100</span>
+                </div>
+              </div>
+
+              <div className={`mt-6 p-6 rounded-xl border border-white/10 text-center flex flex-col items-center gap-2 ${semGradeInfo.bg}`}>
+                <Award size={32} className={semGradeInfo.color} />
+                <span className="text-gray-300 font-medium">Final Grade</span>
+                <span className={`text-5xl font-black ${semGradeInfo.color} drop-shadow-lg`}>{semGradeInfo.grade}</span>
               </div>
             </div>
           </div>
