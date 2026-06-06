@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import FloatingAssistant from "@/components/FloatingAssistant";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import ThemeSelector from "@/components/ThemeSelector";
@@ -128,7 +127,6 @@ export default function RootLayout({
                 <Footer />
 
                 {/* Floating global elements */}
-                <FloatingAssistant />
                 <ThemeSelector />
                 <AvatarProvider />
                 <BackToTop />
