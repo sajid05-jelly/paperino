@@ -5,6 +5,7 @@ import { Upload, FileText, Activity, AlertTriangle, Loader2, Sparkles, BrainCirc
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 import { getIdToken } from "firebase/auth";
+import AICreditsDisplay from "@/components/AICreditsDisplay";
 
 export default function PYQPredictorPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -147,12 +148,13 @@ export default function PYQPredictorPage() {
               <BrainCircuit size={40} className="text-fuchsia-400" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">PYQ AI Predictor</h1>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-4">
               Upload up to 5 Previous Year Question (PYQ) papers. Gemini AI will cross-reference them to predict the most important units, repeated questions, and expected concepts for your upcoming exam.
             </p>
+            <AICreditsDisplay tool="pyq" />
           </div>
 
-          <div className="glass-panel p-8 rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(var(--secondary-rgb),0.05)] relative overflow-hidden">
+          <div className="vision-glass p-8 rounded-3xl neon-border relative overflow-hidden">
             <div className="absolute top-0 left-0 w-64 h-64 bg-fuchsia-500/10 blur-[100px] rounded-full pointer-events-none"></div>
             
             <div className="mb-8 relative z-10">
@@ -228,7 +230,7 @@ export default function PYQPredictorPage() {
             <button 
               onClick={() => analyzePYQs()}
               disabled={files.length === 0 || !subject || loading}
-              className="w-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(var(--secondary-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--secondary-rgb),0.5)] relative z-10 overflow-hidden group"
+              className="w-full liquid-btn disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(var(--secondary-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--secondary-rgb),0.5)] relative z-10 overflow-hidden group"
             >
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
               {loading ? (

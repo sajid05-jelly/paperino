@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { runApiGuard } from "@/lib/api-guard";
+import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager";
 
 export const maxDuration = 60; // 60 seconds as multi-PDF parsing might take time
 
@@ -8,6 +9,17 @@ export async function POST(req: NextRequest) {
   /* ── Security: require auth + enforce server-side daily limit ── */
   const guard = await runApiGuard(req);
   if (guard.blocked) return guard.response;
+
+  /* ── Check Daily AI Credits ── */
+  const authHeader = req.headers.get("authorization");
+  const creditCheck = await checkAndGetCredits(authHeader, 'pyq');
+  
+  if (!creditCheck.allowed) {
+    return NextResponse.json(
+      { error: creditCheck.error || "Credit limit reached or unauthorized." },
+      { status: 429 }
+    );
+  }
 
   try {
     if (typeof global !== "undefined") {
@@ -178,6 +190,11 @@ ${
         { error: "The AI generated an improperly formatted response. Please click predict again." },
         { status: 500 }
       );
+    }
+
+    // Successfully generated response, increment credit usage
+    if (creditCheck.uid && creditCheck.limit !== Infinity) {
+      await incrementCreditUsage(creditCheck.uid, 'pyq');
     }
 
     return NextResponse.json(parsedData);

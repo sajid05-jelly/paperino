@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Upload, FileText, Activity, CheckCircle2, XCircle, AlertTriangle, ArrowRight, Loader2, Sparkles, AlertCircle, Info } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { getIdToken } from "firebase/auth";
+import AICreditsDisplay from "@/components/AICreditsDisplay";
 
 export default function ATSAnalyzerPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -183,12 +184,13 @@ export default function ATSAnalyzerPage() {
               <Sparkles size={40} className="text-violet-400" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">AI Resume Reviewer</h1>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-4">
               Upload your resume and select a target role. Gemini AI will deeply analyze your structure, keywords, and impact, providing highly specific suggestions to boost your ATS compatibility.
             </p>
+            <AICreditsDisplay tool="ats" />
           </div>
 
-          <div className="glass-panel p-8 rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(var(--primary-rgb),0.05)] relative overflow-hidden">
+          <div className="vision-glass p-8 rounded-3xl neon-border relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 blur-[100px] rounded-full"></div>
             
             <div className="mb-8 relative z-10">
@@ -248,7 +250,7 @@ export default function ATSAnalyzerPage() {
             <button 
               onClick={analyzeResume}
               disabled={!file || loading}
-              className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--primary-rgb),0.5)] relative z-10 overflow-hidden group"
+              className="w-full liquid-btn disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--primary-rgb),0.5)] relative z-10 overflow-hidden group"
             >
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
               {loading ? (
