@@ -61,7 +61,7 @@ export default function BTechPage() {
             Search Results for "{searchQuery}"
           </h2>
           {searchResults.length === 0 ? (
-            <div className="premium-panel p-12 text-center rounded-2xl w-full">
+            <div className="vision-glass p-12 text-center rounded-2xl w-full neon-border">
               <Search className="mx-auto text-gray-600 mb-4" size={48} />
               <h3 className="text-xl font-medium text-white mb-2">No subjects found</h3>
               <p className="text-gray-400">Try adjusting your search terms.</p>
@@ -70,7 +70,7 @@ export default function BTechPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
               {searchResults.map((sub, i) => (
                 <Link key={`${sub.semId}-${sub.id}`} href={`/btech/semesters/${sub.semId}/subjects/${sub.id}`}>
-                  <div className="premium-panel p-6 h-full group cursor-pointer relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/50 hover:shadow-[0_10px_30px_rgba(168,85,247,0.2)] animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
+                  <div className="vision-glass neon-border p-6 h-full group cursor-pointer relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(168,85,247,0.2)] animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all shadow-inner">
                         <BookOpen size={24} />
@@ -89,7 +89,7 @@ export default function BTechPage() {
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 w-full relative z-10">
           {semesters.map((sem, i) => (
             <Link key={sem} href={`/btech/semesters/${sem}`}>
-              <div className="premium-panel p-5 md:p-6 rounded-[1.5rem] group cursor-pointer hover:border-purple-500/50 hover:shadow-[0_15px_30px_-10px_rgba(168,85,247,0.3)] transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between min-h-[140px] animate-in fade-in slide-in-from-bottom-8" style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}>
+              <div className="vision-glass neon-border p-5 md:p-6 rounded-[1.5rem] group cursor-pointer hover:shadow-[0_15px_30px_-10px_rgba(168,85,247,0.3)] transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between min-h-[140px] animate-in fade-in slide-in-from-bottom-8" style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="flex items-center justify-between mb-4 relative z-10">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">

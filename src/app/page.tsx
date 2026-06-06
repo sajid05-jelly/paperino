@@ -50,10 +50,10 @@ export default function Home() {
 
         <div className="flex justify-center w-full">
           <Link href="/btech" className="w-full md:w-2/3">
-            <div className="premium-panel p-8 md:p-10 h-full group cursor-pointer relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:border-purple-500/50 hover:shadow-[0_20px_50px_-10px_rgba(168,85,247,0.3)]">
+            <div className="vision-glass neon-border p-8 md:p-10 h-full group cursor-pointer relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_50px_-10px_rgba(168,85,247,0.3)]">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
               <div className="flex items-center justify-between mb-8 relative z-10">
-                <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-lg">
+                <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-lg liquid-btn">
                   B.TECH
                 </div>
                 <BookOpen size={32} className="text-gray-500 group-hover:text-cyan-400 transition-colors" />
@@ -84,7 +84,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full perspective-[1000px]">
           {/* PYQ Predictor Card */}
           <Link href="/pyq" className="w-full flex">
-            <div className="premium-panel p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-transform duration-500 hover:-translate-y-2 hover:rotate-x-2 hover:rotate-y-2 hover:border-fuchsia-500/40 hover:shadow-[0_20px_50px_rgba(var(--secondary-rgb),0.15)] rounded-[2.5rem] bg-[#07050d]">
+            <div className="vision-glass neon-border p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-transform duration-500 hover:-translate-y-2 hover:rotate-x-2 hover:rotate-y-2 hover:shadow-[0_20px_50px_rgba(var(--secondary-rgb),0.15)] rounded-[2.5rem]">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-fuchsia-500/20 to-rose-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 mb-8 group-hover:scale-110 group-hover:bg-fuchsia-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--secondary-rgb),0.1)]">
@@ -101,7 +101,7 @@ export default function Home() {
 
           {/* ATS Analyzer Card */}
           <Link href="/ats" className="w-full flex">
-            <div className="premium-panel p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-transform duration-500 hover:-translate-y-2 hover:rotate-x-2 hover:rotate-y-2 hover:border-cyan-500/40 hover:shadow-[0_20px_50px_rgba(var(--accent-rgb),0.15)] rounded-[2.5rem] bg-[#07050d]">
+            <div className="vision-glass neon-border p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden transition-transform duration-500 hover:-translate-y-2 hover:rotate-x-2 hover:rotate-y-2 hover:shadow-[0_20px_50px_rgba(var(--accent-rgb),0.15)] rounded-[2.5rem]">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-cyan-500/20 to-blue-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-8 group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]">

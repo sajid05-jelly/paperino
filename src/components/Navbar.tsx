@@ -51,7 +51,7 @@ export default function Navbar() {
     }
 
     if (isActive) {
-      return `${baseClass} bg-violet-500/20 text-white text-glow border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.4),inset_0_0_10px_rgba(139,92,246,0.2)] ring-1 ring-violet-500/30 z-10 relative`;
+      return `${baseClass} liquid-btn text-white text-glow z-10 relative`;
     }
     
     if (isSpecial) {
@@ -94,7 +94,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`sticky top-0 z-50 w-full transition-all duration-300 border-b ${isScrolled ? 'bg-[#05030a]/80 backdrop-blur-xl border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]' : 'bg-transparent border-transparent'}`}>
+      <nav className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled ? 'bg-black/20 backdrop-blur-[40px] saturate-150 border-b border-white/10 shadow-[0_10px_30px_rgba(var(--primary-rgb),0.1)]' : 'bg-transparent border-b border-transparent'}`}>
         <div className={`mx-auto flex max-w-[1600px] w-full items-center justify-between px-3 sm:px-4 lg:px-6 transition-all duration-300 gap-2 lg:gap-4 ${isScrolled ? 'py-2 lg:py-2.5 xl:py-3' : 'py-3 lg:py-4 xl:py-5'}`}>
           <Link href="/" className="flex items-center gap-1.5 group flex-shrink-0">
             <div className="h-9 w-9 sm:h-10 sm:w-10 relative overflow-hidden rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(167,139,250,0.5)] group-hover:shadow-[0_0_30px_rgba(167,139,250,0.8)] transition-all duration-500 bg-black border border-white/5">

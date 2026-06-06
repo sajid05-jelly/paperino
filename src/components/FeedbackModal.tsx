@@ -129,7 +129,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={!loading ? onClose : undefined}></div>
       
-      <div className="relative w-full max-w-lg bg-[#07050d] border border-violet-500/20 rounded-[2rem] shadow-[0_0_50px_rgba(139,92,246,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="relative w-full max-w-lg modal-glass neon-border rounded-[2rem] overflow-hidden animate-in fade-in zoom-in-95 duration-300">
         {/* Glow effect */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-violet-500/20 rounded-full blur-[60px] pointer-events-none"></div>
 
@@ -208,7 +208,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               <button 
                 type="submit" 
                 disabled={loading || !subject.trim() || !message.trim()} 
-                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold py-3 px-4 rounded-xl transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
+                className="w-full liquid-btn text-white font-bold py-3 px-4 rounded-xl transition-all disabled:opacity-50 flex justify-center items-center gap-2"
               >
                 {loading ? (
                   <>
