@@ -65,7 +65,7 @@ export default function Home() {
       </section>
 
       {/* Smart Tools Section */}
-      <section className="w-full max-w-7xl mx-auto mb-32 mt-20 px-4 md:px-0">
+      <section className="w-full max-w-5xl mx-auto mb-32 mt-20 px-4 md:px-0">
         <div className="flex flex-col items-center justify-center text-center mb-12 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]">
             <Sparkles size={14} className="text-violet-400" />
@@ -80,7 +80,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full perspective-[1000px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full perspective-[1000px] place-items-center">
           {/* PYQ Predictor Card */}
           <Link href="/pyq" className="w-full flex">
             <div className="vision-glass neon-border p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
