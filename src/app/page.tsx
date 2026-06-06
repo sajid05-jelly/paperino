@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Bookmark, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot } from "lucide-react";
-import AiChatCard from "@/components/AiChatCard";
 import Testimonials from "@/components/Testimonials";
 import AmbientOrbs from "@/components/AmbientOrbs";
 
@@ -115,11 +114,6 @@ export default function Home() {
               </div>
             </div>
           </Link>
-
-          {/* AI Chat Card */}
-          <div className="w-full flex">
-            <AiChatCard />
-          </div>
         </div>
       </section>
 
