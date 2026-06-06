@@ -83,8 +83,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full perspective-[1000px] place-items-center">
           {/* PYQ Predictor Card */}
           <Link href="/pyq" className="w-full flex">
-            <div className="vision-glass p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500/20 to-fuchsia-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+            <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/90 backdrop-blur-xl border border-[rgba(124,58,237,0.35)] shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)]">
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
                   <BrainCircuit size={28} />
@@ -100,8 +99,7 @@ export default function Home() {
 
           {/* ATS Analyzer Card */}
           <Link href="/ats" className="w-full flex">
-            <div className="vision-glass p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500/20 to-purple-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+            <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/90 backdrop-blur-xl border border-[rgba(124,58,237,0.35)] shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)]">
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
                   <FileSearch size={28} />
