@@ -40,7 +40,7 @@ export default function SemesterPage({ params }: { params: Promise<{ semId: stri
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {semesterSubjects.map(sub => (
             <Link key={sub.id} href={`/btech/semesters/${semId}/subjects/${sub.id}`}>
-              <div className="vision-glass neon-border p-6 h-full group cursor-pointer relative overflow-hidden vision-hover">
+              <div className="vision-glass p-6 h-full group cursor-pointer relative overflow-hidden vision-hover">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-colors">
                     <Book size={24} />

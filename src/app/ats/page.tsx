@@ -190,7 +190,7 @@ export default function ATSAnalyzerPage() {
             <AICreditsDisplay tool="ats" />
           </div>
 
-          <div className="vision-glass p-8 rounded-3xl neon-border relative overflow-hidden">
+          <div className="vision-glass p-8 rounded-3xl  relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 blur-[100px] rounded-full"></div>
             
             <div className="mb-8 relative z-10">

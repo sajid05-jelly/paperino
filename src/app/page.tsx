@@ -49,7 +49,7 @@ export default function Home() {
 
         <div className="flex justify-center w-full">
           <Link href="/btech" className="w-full md:w-2/3">
-            <div className="vision-glass neon-border p-8 md:p-10 h-full group cursor-pointer relative overflow-hidden vision-hover">
+            <div className="vision-glass p-8 md:p-10 h-full group cursor-pointer relative overflow-hidden vision-hover">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
               <div className="flex items-center justify-between mb-8 relative z-10">
                 <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-lg liquid-btn">
@@ -83,7 +83,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full perspective-[1000px] place-items-center">
           {/* PYQ Predictor Card */}
           <Link href="/pyq" className="w-full flex">
-            <div className="vision-glass neon-border p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
+            <div className="vision-glass p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-fuchsia-500/20 to-rose-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 mb-8 group-hover:scale-110 group-hover:bg-fuchsia-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--secondary-rgb),0.1)]">
@@ -100,7 +100,7 @@ export default function Home() {
 
           {/* ATS Analyzer Card */}
           <Link href="/ats" className="w-full flex">
-            <div className="vision-glass neon-border p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
+            <div className="vision-glass p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-cyan-500/20 to-blue-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-8 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:text-purple-400 transition-all duration-500 shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]">

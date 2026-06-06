@@ -218,7 +218,7 @@ export default function LeaderboardPage() {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-purple-500" size={48} /></div>
         ) : currentBoard.length === 0 ? (
-          <div className="text-center py-20 vision-glass neon-border rounded-3xl">
+          <div className="text-center py-20 vision-glass  rounded-3xl">
             <p className="text-gray-400">No approved contributions yet in this category.</p>
           </div>
         ) : (
@@ -300,7 +300,7 @@ export default function LeaderboardPage() {
 
             {/* Rest of Leaderboard (Only for Season) */}
             {activeTab === "season" && runnersUp.length > 0 && (
-              <div className="vision-glass p-2 md:p-6 rounded-[2rem] neon-border">
+              <div className="vision-glass p-2 md:p-6 rounded-[2rem] ">
                 <div className="space-y-3">
                   {runnersUp.map((user, index) => (
                     <div 
@@ -343,7 +343,7 @@ export default function LeaderboardPage() {
 
         {/* Certificate Announcement Section */}
         <div className="mt-24 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="relative w-full rounded-[2.5rem] p-[1px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/10 to-transparent group neon-border">
+          <div className="relative w-full rounded-[2.5rem] p-[1px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/10 to-transparent group ">
             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
             <div className="relative vision-glass rounded-[2.5rem] p-8 md:p-12 overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.8)]">
               {/* Decorative background elements */}
@@ -408,7 +408,7 @@ export default function LeaderboardPage() {
       {selectedUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#05030a]/60 backdrop-blur-3xl" onClick={() => setSelectedUser(null)}></div>
-          <div className="relative w-full max-w-sm modal-glass neon-border rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="relative w-full max-w-sm modal-glass  rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header BG */}
             <div className="h-32 bg-gradient-to-br from-amber-500/20 via-orange-500/20 to-purple-500/20 relative">
               <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay"></div>

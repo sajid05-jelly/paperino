@@ -154,7 +154,7 @@ export default function PYQPredictorPage() {
             <AICreditsDisplay tool="pyq" />
           </div>
 
-          <div className="vision-glass p-8 rounded-3xl neon-border relative overflow-hidden">
+          <div className="vision-glass p-8 rounded-3xl  relative overflow-hidden">
             <div className="absolute top-0 left-0 w-64 h-64 bg-fuchsia-500/10 blur-[100px] rounded-full pointer-events-none"></div>
             
             <div className="mb-8 relative z-10">

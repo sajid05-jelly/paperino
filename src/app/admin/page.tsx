@@ -100,7 +100,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Stat Card 1 */}
-            <div className="vision-glass neon-border p-6 rounded-3xl relative overflow-hidden group vision-hover">
+            <div className="vision-glass p-6 rounded-3xl relative overflow-hidden group vision-hover">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]">
                   <Users size={24} />
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stat Card 2 */}
-            <div className="vision-glass neon-border p-6 rounded-3xl relative overflow-hidden group vision-hover">
+            <div className="vision-glass p-6 rounded-3xl relative overflow-hidden group vision-hover">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]">
                   <Activity size={24} />
@@ -124,7 +124,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stat Card 3 */}
-            <div className="vision-glass neon-border p-6 rounded-3xl relative overflow-hidden group vision-hover">
+            <div className="vision-glass p-6 rounded-3xl relative overflow-hidden group vision-hover">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 rounded-xl bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(var(--secondary-rgb),0.2)]">
                   <BrainCircuit size={24} />
@@ -136,7 +136,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stat Card 4 */}
-            <div className="vision-glass neon-border p-6 rounded-3xl relative overflow-hidden group vision-hover">
+            <div className="vision-glass p-6 rounded-3xl relative overflow-hidden group vision-hover">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.2)]">
                   <FileSearch size={24} />
