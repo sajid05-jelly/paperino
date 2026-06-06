@@ -84,27 +84,7 @@ export default function AIControlPanel() {
         {/* Left Column: Core Controls */}
         <div className="lg:col-span-1 space-y-6">
           
-          {/* Main Power Switch */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-              <Power className="text-rose-400" size={18} /> Master Switch
-            </h3>
-            <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5">
-              <div>
-                <p className="text-white font-medium">AI Assistant</p>
-                <p className="text-xs text-gray-500">Enable or disable globally.</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={aiStatus === 'online'} onChange={(e) => setAiStatus(e.target.checked ? 'online' : 'offline')} />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)]"></div>
-              </label>
-            </div>
-            {aiStatus === 'offline' && (
-              <p className="text-xs text-red-400 mt-3 flex items-center gap-1">
-                <AlertTriangle size={12} /> Students will see an offline message.
-              </p>
-            )}
-          </div>
+
 
           {/* Usage Limits Configuration */}
           <div className="glass-panel p-6 rounded-3xl border border-white/5">
@@ -195,35 +175,7 @@ export default function AIControlPanel() {
             </div>
           </div>
 
-          {/* Conversation Logs */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 h-[440px] flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <ListFilter className="text-fuchsia-400" size={18} /> Recent Prompts
-              </h3>
-              <span className="text-xs bg-white/10 px-3 py-1 rounded-full text-gray-400">Live View</span>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {recentLogs.map((log) => (
-                <div key={log.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium text-fuchsia-300 bg-fuchsia-500/10 px-2 py-0.5 rounded">{log.user}</span>
-                    <span className="text-[10px] text-gray-500">{log.time}</span>
-                  </div>
-                  <p className="text-sm text-gray-300 mb-3">"{log.prompt}"</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">{log.tokens} Tokens used</span>
-                    {log.status === 'success' ? (
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={10}/> Answered</span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest flex items-center gap-1"><ShieldAlert size={10}/> Blocked</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+
 
         </div>
       </div>

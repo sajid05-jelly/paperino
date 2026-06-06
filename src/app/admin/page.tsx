@@ -123,17 +123,7 @@ export default function AdminDashboard() {
               <p className="text-3xl font-bold text-white">{stats.dailyActive.toLocaleString()}</p>
             </div>
 
-            {/* Stat Card 3 */}
-            <div className="vision-glass p-6 rounded-3xl relative overflow-hidden group vision-hover">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 rounded-xl bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(var(--secondary-rgb),0.2)]">
-                  <BrainCircuit size={24} />
-                </div>
-                <span className="text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-1 rounded-full">Popular</span>
-              </div>
-              <h3 className="text-gray-400 text-sm font-medium mb-1">AI Chatbot Queries</h3>
-              <p className="text-3xl font-bold text-white">{stats.aiUsage.toLocaleString()}</p>
-            </div>
+
 
             {/* Stat Card 4 */}
             <div className="vision-glass p-6 rounded-3xl relative overflow-hidden group vision-hover">
