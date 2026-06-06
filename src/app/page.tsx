@@ -16,7 +16,7 @@ export default function Home() {
         </div>
         <h1 className="text-5xl md:text-7xl lg:text-[5rem] font-bold tracking-tight text-white mb-6 w-full text-center leading-tight">
           The Universe of <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-blue-400 text-glow animate-pulse">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-violet-400 text-glow animate-pulse">
             Study Materials
           </span>
         </h1>
@@ -50,7 +50,7 @@ export default function Home() {
         <div className="flex justify-center w-full">
           <Link href="/btech" className="w-full md:w-2/3">
             <div className="vision-glass p-8 md:p-10 h-full group cursor-pointer relative overflow-hidden vision-hover">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500 to-fuchsia-400 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
               <div className="flex items-center justify-between mb-8 relative z-10">
                 <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-lg liquid-btn">
                   B.TECH
@@ -84,14 +84,14 @@ export default function Home() {
           {/* PYQ Predictor Card */}
           <Link href="/pyq" className="w-full flex">
             <div className="vision-glass p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-fuchsia-500/20 to-rose-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500/20 to-fuchsia-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 mb-8 group-hover:scale-110 group-hover:bg-fuchsia-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--secondary-rgb),0.1)]">
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
                   <BrainCircuit size={28} />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-fuchsia-300 transition-colors">PYQ Predictor</h3>
+                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">PYQ Predictor</h3>
                 <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Upload multiple Previous Year Question papers and let our AI cross-reference them to predict the most important concepts for your next exam.</p>
-                <div className="mt-8 flex items-center gap-2 text-fuchsia-400 font-medium text-sm group-hover:text-fuchsia-300 transition-colors uppercase tracking-wider">
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-sm group-hover:text-violet-300 transition-colors uppercase tracking-wider">
                   Try Predictor <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" />
                 </div>
               </div>
@@ -101,14 +101,14 @@ export default function Home() {
           {/* ATS Analyzer Card */}
           <Link href="/ats" className="w-full flex">
             <div className="vision-glass p-8 md:p-10 h-full w-full group cursor-pointer relative overflow-hidden rounded-[2.5rem] vision-hover">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-cyan-500/20 to-blue-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500/20 to-purple-400/20 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div className="flex flex-col h-full relative z-10">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-8 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:text-purple-400 transition-all duration-500 shadow-[0_0_15px_rgba(var(--accent-rgb),0.1)]">
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
                   <FileSearch size={28} />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-purple-300 transition-colors">ATS Analyzer</h3>
+                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">ATS Analyzer</h3>
                 <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Ensure your resume beats the bots. Get a granular AI breakdown of your formatting, missing skills, and perfect keyword optimization.</p>
-                <div className="mt-8 flex items-center gap-2 text-cyan-400 font-medium text-sm group-hover:text-purple-300 transition-colors uppercase tracking-wider">
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-sm group-hover:text-violet-300 transition-colors uppercase tracking-wider">
                   Analyze Resume <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" />
                 </div>
               </div>
@@ -154,7 +154,7 @@ export default function Home() {
                 { icon: <BookOpen className="w-5 h-5 text-violet-400" />, title: "Semester-wise Materials" },
                 { icon: <FileText className="w-5 h-5 text-fuchsia-400" />, title: "Previous Year Papers" },
                 { icon: <Calculator className="w-5 h-5 text-purple-400" />, title: "GPA & CGPA Calculator" },
-                { icon: <FileSearch className="w-5 h-5 text-blue-400" />, title: "ATS Resume Analyzer" },
+                { icon: <FileSearch className="w-5 h-5 text-violet-400" />, title: "ATS Resume Analyzer" },
                 { icon: <Bookmark className="w-5 h-5 text-cyan-400" />, title: "Smart Bookmarks" },
                 { icon: <GraduationCap className="w-5 h-5 text-violet-400" />, title: "Important Study Resources" },
               ].map((feature, i) => (

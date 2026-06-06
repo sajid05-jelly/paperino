@@ -34,7 +34,7 @@ export default function BTechPage() {
 
         {/* Search Bar */}
         <div className="relative w-full max-w-2xl mx-auto group">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-60 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-full blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-60 transition-opacity duration-500"></div>
           <div className="relative flex items-center bg-[#07050d]/80 border border-white/10 group-focus-within:border-purple-500/50 rounded-full p-2 backdrop-blur-xl shadow-lg transition-colors">
             <div className="pl-4 pr-2 text-gray-400 group-focus-within:text-purple-400 transition-colors">
               <Search size={20} />
