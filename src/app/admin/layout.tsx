@@ -35,10 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Activity size={20} className="text-violet-400" />
               Analytics Dashboard
             </Link>
-            <Link href="/admin/ai" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-              <Bot size={20} className="text-fuchsia-400" />
-              AI Controls
-            </Link>
+
             <div className="h-px w-full bg-white/10 my-2"></div>
             <Link href="/admin/upload" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <Upload size={20} />
