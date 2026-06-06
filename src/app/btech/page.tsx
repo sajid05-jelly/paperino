@@ -70,7 +70,7 @@ export default function BTechPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
               {searchResults.map((sub, i) => (
                 <Link key={`${sub.semId}-${sub.id}`} href={`/btech/semesters/${sub.semId}/subjects/${sub.id}`}>
-                  <div className="vision-glass neon-border p-6 h-full group cursor-pointer relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(168,85,247,0.2)] animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
+                  <div className="vision-glass neon-border p-6 h-full group cursor-pointer relative overflow-hidden vision-hover animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all shadow-inner">
                         <BookOpen size={24} />
@@ -89,17 +89,17 @@ export default function BTechPage() {
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 w-full relative z-10">
           {semesters.map((sem, i) => (
             <Link key={sem} href={`/btech/semesters/${sem}`}>
-              <div className="vision-glass neon-border p-5 md:p-6 rounded-[1.5rem] group cursor-pointer hover:shadow-[0_15px_30px_-10px_rgba(168,85,247,0.3)] transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between min-h-[140px] animate-in fade-in slide-in-from-bottom-8" style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}>
+              <div className="vision-glass neon-border p-5 md:p-6 rounded-[1.5rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[140px] animate-in fade-in slide-in-from-bottom-8" style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="flex items-center justify-between mb-4 relative z-10">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
                     <Calendar size={20} />
                   </div>
-                  <BookOpen size={18} className="text-gray-500 group-hover:text-cyan-400 transition-colors" />
+                  <BookOpen size={18} className="text-gray-500 group-hover:text-purple-400 transition-colors" />
                 </div>
                 <div className="relative z-10">
                   <h3 className="text-xl md:text-2xl font-bold text-white mb-1 tracking-tight group-hover:text-purple-300 transition-colors">Semester {sem}</h3>
-                  <p className="text-xs md:text-sm text-gray-400 font-medium tracking-wide flex items-center gap-1 group-hover:text-cyan-400 transition-colors">View subjects <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" /></p>
+                  <p className="text-xs md:text-sm text-gray-400 font-medium tracking-wide flex items-center gap-1 group-hover:text-purple-400 transition-colors">View subjects <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" /></p>
                 </div>
               </div>
             </Link>
