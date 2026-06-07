@@ -10,8 +10,11 @@
  * Returns the Paperino backend proxy download URL for a given Drive file ID.
  * The proxy streams the file through our own server so users never touch Drive.
  */
-export function getProxyDownloadUrl(fileId: string): string {
-  return `/api/download?fileId=${encodeURIComponent(fileId)}`;
+export function getProxyDownloadUrl(fileId: string, matId?: string, matName?: string): string {
+  let url = `/api/download?fileId=${encodeURIComponent(fileId)}`;
+  if (matId) url += `&matId=${encodeURIComponent(matId)}`;
+  if (matName) url += `&matName=${encodeURIComponent(matName)}`;
+  return url;
 }
 
 /**
@@ -20,10 +23,13 @@ export function getProxyDownloadUrl(fileId: string): string {
  * Falls back to fileUrl only if fileId is missing.
  */
 export function getDownloadHref(mat: {
+  id?: string;
+  title?: string;
+  fileName?: string;
   fileId?: string | null;
   fileUrl?: string | null;
 }): string {
-  if (mat.fileId) return getProxyDownloadUrl(mat.fileId);
+  if (mat.fileId) return getProxyDownloadUrl(mat.fileId, mat.id, mat.title || mat.fileName);
   if (mat.fileUrl) return mat.fileUrl; // legacy fallback
   return "#";
 }

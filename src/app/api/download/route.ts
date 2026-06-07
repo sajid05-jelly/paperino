@@ -16,6 +16,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebase-admin";
+import * as admin from 'firebase-admin';
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,23 @@ export async function GET(req: NextRequest) {
       { error: "Invalid or missing fileId" },
       { status: 400 }
     );
+  }
+
+  const matId = req.nextUrl.searchParams.get("matId");
+  const matName = req.nextUrl.searchParams.get("matName");
+
+  // Increment download counter asynchronously
+  if (matId && adminDb) {
+    try {
+      const materialRef = adminDb.collection("platform_stats").doc("materials").collection("downloads").doc(matId);
+      materialRef.set({
+        name: matName || matId,
+        downloads: admin.firestore.FieldValue.increment(1),
+        lastDownloaded: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(err => console.error("Tracking background error:", err));
+    } catch (err) {
+      console.error("Failed to track download:", err);
+    }
   }
 
   // Build the direct download URL.

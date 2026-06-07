@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download } from "lucide-react";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function AdminDashboard() {
@@ -31,23 +31,35 @@ export default function AdminDashboard() {
         const matsColl = collection(db, "materials");
         const usersColl = collection(db, "users");
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         // Execute count aggregations on the server (1 read per query)
         const [
           totalMatsSnap,
           totalUsersSnap,
+          dailyUsersSnap,
           pyqsSnap,
           notesSnap,
-          questionsSnap
+          questionsSnap,
+          globalStatsSnap,
+          topSubjectSnap,
+          topDownloadSnap
         ] = await Promise.all([
           getCountFromServer(matsColl),
           getCountFromServer(usersColl),
+          getCountFromServer(query(usersColl, where("lastLogin", ">=", today))),
           getCountFromServer(query(matsColl, where("category", "==", "pyq"))),
           getCountFromServer(query(matsColl, where("category", "==", "notes"))),
-          getCountFromServer(query(matsColl, where("category", "==", "questions")))
+          getCountFromServer(query(matsColl, where("category", "==", "questions"))),
+          getDoc(doc(db, "platform_stats", "global")),
+          getDocs(query(collection(db, "platform_stats", "subjects", "visits"), orderBy("visits", "desc"), limit(1))),
+          getDocs(query(collection(db, "platform_stats", "materials", "downloads"), orderBy("downloads", "desc"), limit(1)))
         ]);
 
         const totalMaterials = totalMatsSnap.data().count;
         const totalUsers = totalUsersSnap.data().count;
+        const dailyActive = dailyUsersSnap.data().count;
 
         const pyqs = pyqsSnap.data().count;
         const notes = notesSnap.data().count;
@@ -57,12 +69,30 @@ export default function AdminDashboard() {
         const syllabus = 0;
         const other = Math.max(0, totalMaterials - (pyqs + notes + questions));
 
+        const globalData = globalStatsSnap.exists() ? globalStatsSnap.data() : { atsUsage: 0, aiUsage: 0 };
+        const atsUsage = globalData?.atsUsage || 0;
+        const aiUsage = globalData?.aiUsage || 0;
+
+        let mostVisited = "No Data Available";
+        if (!topSubjectSnap.empty) {
+          mostVisited = topSubjectSnap.docs[0].data().name || topSubjectSnap.docs[0].id;
+        }
+
+        let highestDownloadedFile = "No Data Available";
+        if (!topDownloadSnap.empty) {
+          highestDownloadedFile = topDownloadSnap.docs[0].data().name || topDownloadSnap.docs[0].id;
+        }
+
         setStats(prev => ({
           ...prev,
           totalMaterials,
           totalUsers,
-          mostVisited: "No Data Available",
-          topDepartment: "No Data Available",
+          dailyActive,
+          atsUsage,
+          aiUsage,
+          mostVisited,
+          topDepartment: "Pending Update",
+          highestDownloadedFile
         }));
         setMaterialCounts({ pyqs, notes, manuals, syllabus, questions, other });
       } catch (error) {
@@ -214,8 +244,11 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <h4 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Highest Downloaded File</h4>
-                    {/* Add highestDownloaded to stats state logic, for now default to No Data */}
-                    <p className="text-gray-500 text-sm italic">No Data Available</p>
+                    {stats.highestDownloadedFile === "No Data Available" ? (
+                      <p className="text-gray-500 text-sm italic">No Data Available</p>
+                    ) : (
+                      <p className="text-white font-bold">{stats.highestDownloadedFile}</p>
+                    )}
                   </div>
                 </div>
               </div>

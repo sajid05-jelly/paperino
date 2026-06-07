@@ -82,13 +82,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setPaperinoAvatarState(data.paperinoAvatar || null);
             
             // Initialize missing stats fields for legacy users
+            let needsUpdate = false;
+            const updates: any = {};
+
             if (data.points === undefined || data.uploads === undefined || data.seasonPoints === undefined) {
-              await setDoc(userRef, {
-                points: data.points !== undefined ? data.points : 0,
-                uploads: data.uploads !== undefined ? data.uploads : 0,
-                seasonPoints: data.seasonPoints !== undefined ? data.seasonPoints : 0,
-                seasonUploads: data.seasonUploads !== undefined ? data.seasonUploads : 0
-              }, { merge: true });
+              needsUpdate = true;
+              updates.points = data.points !== undefined ? data.points : 0;
+              updates.uploads = data.uploads !== undefined ? data.uploads : 0;
+              updates.seasonPoints = data.seasonPoints !== undefined ? data.seasonPoints : 0;
+              updates.seasonUploads = data.seasonUploads !== undefined ? data.seasonUploads : 0;
+            }
+
+            // Daily Active Users Tracking (update lastLogin max once per day)
+            const now = new Date();
+            const lastLoginDate = data.lastLogin?.toDate ? data.lastLogin.toDate() : new Date(0);
+            if (
+              lastLoginDate.getDate() !== now.getDate() ||
+              lastLoginDate.getMonth() !== now.getMonth() ||
+              lastLoginDate.getFullYear() !== now.getFullYear()
+            ) {
+              needsUpdate = true;
+              updates.lastLogin = serverTimestamp();
+            }
+
+            if (needsUpdate) {
+              await setDoc(userRef, updates, { merge: true });
             }
 
             if (data.status === "blocked") {

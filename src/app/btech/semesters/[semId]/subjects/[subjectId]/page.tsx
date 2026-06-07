@@ -79,6 +79,17 @@ export default function SubjectPage({ params }: { params: Promise<{ semId: strin
     fetchMaterialsAndBookmarks();
   }, [semId, subjectId, user, isAdmin]);
 
+  // Analytics tracking for Most Visited Subject
+  useEffect(() => {
+    if (subjectId) {
+      fetch("/api/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "visit_subject", id: subjectId, name: subjectName })
+      }).catch(err => console.error("Analytics tracking failed:", err));
+    }
+  }, [subjectId, subjectName]);
+
   const toggleBookmark = async (mat: any) => {
     if (!user) {
       alert("Please log in to bookmark materials.");

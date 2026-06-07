@@ -3,6 +3,8 @@ import mammoth from "mammoth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { runApiGuard } from "@/lib/api-guard";
 import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager";
+import { adminDb } from "@/lib/firebase-admin";
+import * as admin from 'firebase-admin';
 
 export const maxDuration = 30;
 
@@ -203,6 +205,17 @@ ${text}
     // Successfully generated response, increment credit usage
     if (creditCheck.uid && creditCheck.limit !== Infinity) {
       await incrementCreditUsage(creditCheck.uid, 'ats');
+    }
+
+    // Increment Global Stats using Admin SDK
+    if (adminDb) {
+      try {
+        await adminDb.collection("platform_stats").doc("global").set({
+          atsUsage: admin.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      } catch (e) {
+        console.error("Failed to increment global ATS stats", e);
+      }
     }
 
     return NextResponse.json(parsedData);
