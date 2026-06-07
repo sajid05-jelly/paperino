@@ -14,6 +14,7 @@ export default function AdminDashboard() {
     aiUsage: 0,
     mostVisited: "N/A",
     topDepartment: "N/A",
+    highestDownloadedFile: "N/A",
   });
   const [materialCounts, setMaterialCounts] = useState({
     pyqs: 0,
