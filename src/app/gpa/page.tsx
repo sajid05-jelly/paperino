@@ -149,23 +149,23 @@ export default function GPACalculatorPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex justify-center mb-8 w-full overflow-x-auto pb-4 md:pb-0 hide-scrollbar">
-        <div className="bg-white/5 p-1 rounded-xl inline-flex flex-nowrap whitespace-nowrap min-w-max md:min-w-0">
+      <div className="flex justify-center mb-8 w-full">
+        <div className="bg-white/5 p-1 rounded-xl flex flex-col sm:flex-row w-full sm:w-auto gap-1">
           <button 
             onClick={() => setActiveTab("gpa")}
-            className={`px-6 md:px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "gpa" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+            className={`px-4 md:px-8 py-3 rounded-lg font-medium transition-all w-full sm:w-auto text-sm md:text-base ${activeTab === "gpa" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
           >
             GPA Calculator
           </button>
           <button 
             onClick={() => setActiveTab("cgpa")}
-            className={`px-6 md:px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "cgpa" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+            className={`px-4 md:px-8 py-3 rounded-lg font-medium transition-all w-full sm:w-auto text-sm md:text-base ${activeTab === "cgpa" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
           >
             CGPA Calculator
           </button>
           <button 
             onClick={() => setActiveTab("semester")}
-            className={`px-6 md:px-8 py-3 rounded-lg font-medium transition-all ${activeTab === "semester" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+            className={`px-4 md:px-8 py-3 rounded-lg font-medium transition-all w-full sm:w-auto text-sm md:text-base ${activeTab === "semester" ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
           >
             Semester Calculator
           </button>
@@ -197,7 +197,7 @@ export default function GPACalculatorPage() {
 
               {subjects.map((sub, index) => (
                 <div key={sub.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-black/40 p-4 rounded-xl border border-white/5 items-center hover:border-white/10 transition-colors">
-                  <div className="col-span-5 relative">
+                  <div className="md:col-span-5 relative">
                     <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-6 bg-purple-500 rounded-r-md hidden md:block"></span>
                     <input 
                       type="text" 
@@ -207,7 +207,7 @@ export default function GPACalculatorPage() {
                       placeholder={`Subject ${index + 1}`}
                     />
                   </div>
-                  <div className="col-span-3">
+                  <div className="md:col-span-3">
                     <label className="text-xs text-gray-500 md:hidden block mb-1">Credits</label>
                     <input 
                       type="number" 
@@ -217,7 +217,7 @@ export default function GPACalculatorPage() {
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-cyan-400"
                     />
                   </div>
-                  <div className="col-span-3">
+                  <div className="md:col-span-3">
                     <label className="text-xs text-gray-500 md:hidden block mb-1">Grade</label>
                     <select 
                       value={sub.grade}
@@ -229,7 +229,7 @@ export default function GPACalculatorPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="col-span-1 flex justify-center mt-2 md:mt-0">
+                  <div className="md:col-span-1 flex justify-center mt-2 md:mt-0">
                     <button 
                       onClick={() => removeSubject(sub.id)}
                       disabled={subjects.length === 1}
