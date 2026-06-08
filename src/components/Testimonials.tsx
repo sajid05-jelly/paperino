@@ -3,28 +3,28 @@
 import { Star, Sparkles } from "lucide-react";
 
 const REVIEWS = [
-  { name: "Sanjay", role: "3rd Year, CSE", text: "Paperino made finding PYQs and notes super easy before exams." },
-  { name: "Mahalakshmi", role: "2nd Year, IT", text: "The UI feels premium and very student-friendly. Loved the experience." },
-  { name: "Priya Dharshini", role: "4th Year, ECE", text: "ATS Analyzer and GPA tools are honestly very useful." },
-  { name: "Sushmitha", role: "1st Year, CSE", text: "Best academic platform created for SRM students." },
-  { name: "Daniel", role: "3rd Year, AIML", text: "The dark futuristic design feels amazing while studying." },
-  { name: "Sajitha", role: "2nd Year, CSE", text: "Paperino saves so much time searching for materials." },
-  { name: "Lenin", role: "4th Year, IT", text: "Very clean platform with useful semester resources." },
-  { name: "Francis", role: "3rd Year, Mech", text: "Leaderboard and contributor system is a great motivation." },
-  { name: "Kanishka", role: "2nd Year, ECE", text: "One of the most creative student platforms I’ve used." },
-  { name: "Aravind", role: "4th Year, CSE", text: "PYQ Analyzer predictions were surprisingly helpful." },
-  { name: "Keerthana", role: "1st Year, IT", text: "Everything is organized semester-wise perfectly." },
-  { name: "Naveen", role: "3rd Year, CINT", text: "The contributor certificates idea is brilliant." },
-  { name: "Harini", role: "2nd Year, BME", text: "Feels like a professional student ecosystem." },
-  { name: "Vignesh", role: "4th Year, CSE", text: "The animations and UI quality are next level." },
-  { name: "Deepika", role: "3rd Year, IT", text: "Paperino genuinely helps students prepare smarter." }
+  { name: "Sanjay", text: "Paperino made finding PYQs and notes super easy before exams." },
+  { name: "Mahalakshmi", text: "The UI feels premium and very student-friendly. Loved the experience." },
+  { name: "Priya Dharshini", text: "ATS Analyzer and GPA tools are honestly very useful." },
+  { name: "Sushmitha", text: "Best academic platform created for SRM students." },
+  { name: "Daniel", text: "The dark futuristic design feels amazing while studying." },
+  { name: "Sajitha", text: "Paperino saves so much time searching for materials." },
+  { name: "Lenin", text: "Very clean platform with useful semester resources." },
+  { name: "Francis", text: "Leaderboard and contributor system is a great motivation." },
+  { name: "Kanishka", text: "One of the most creative student platforms I’ve used." },
+  { name: "Aravind", text: "PYQ Analyzer predictions were surprisingly helpful." },
+  { name: "Keerthana", text: "Everything is organized semester-wise perfectly." },
+  { name: "Naveen", text: "The contributor certificates idea is brilliant." },
+  { name: "Harini", text: "Feels like a professional student ecosystem." },
+  { name: "Vignesh", text: "The animations and UI quality are next level." },
+  { name: "Deepika", text: "Paperino genuinely helps students prepare smarter." }
 ];
 
 export default function Testimonials() {
   const row1 = REVIEWS.slice(0, 8);
   const row2 = REVIEWS.slice(8, 15);
 
-  const TestimonialCard = ({ review }: { review: { name: string, role: string, text: string } }) => (
+  const TestimonialCard = ({ review }: { review: { name: string, text: string } }) => (
     <div className="w-[300px] md:w-[420px] shrink-0 p-6 md:p-8 rounded-[2rem] bg-[#0a0714]/80 backdrop-blur-xl border border-white/5 transition-all duration-500 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:z-20 hover:border-violet-500/40 hover:shadow-[0_0_50px_rgba(139,92,246,0.15)] hover:bg-[#120b29]/90 group relative overflow-hidden flex flex-col justify-between h-full">
       <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 rounded-full blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
       
@@ -46,9 +46,8 @@ export default function Testimonials() {
         <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center text-white font-bold text-sm md:text-base shadow-[0_0_15px_rgba(139,92,246,0.3)] shrink-0">
           {review.name[0]}
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col justify-center">
           <span className="font-bold text-white tracking-wide text-sm md:text-base">{review.name}</span>
-          <span className="text-xs md:text-sm text-gray-500 font-medium">{review.role}</span>
         </div>
       </div>
     </div>
