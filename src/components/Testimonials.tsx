@@ -32,7 +32,7 @@ export default function Testimonials() {
         <div className="flex items-center mb-6">
           <div className="flex gap-1 text-fuchsia-400 shadow-[0_0_15px_rgba(232,121,249,0.15)] rounded-full px-2.5 py-1 bg-fuchsia-500/5 border border-fuchsia-500/10">
             {[1, 2, 3, 4, 5].map((star) => (
-              <Star key={star} size={14} fill="currentColor" />
+              <Star key={star} size={14} fill="currentColor" aria-hidden="true" />
             ))}
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function Testimonials() {
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-16 px-6 relative z-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-6 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
-          <Sparkles size={14} className="text-violet-400" />
+          <Sparkles size={14} className="text-violet-400" aria-hidden="true" />
           <span>Loved by Students</span>
         </div>
         <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-tight">
@@ -84,9 +84,13 @@ export default function Testimonials() {
         }
         .animate-marquee-left {
           animation: scroll-left 50s linear infinite;
+          will-change: transform;
+          transform: translateZ(0);
         }
         .animate-marquee-right {
           animation: scroll-right 60s linear infinite;
+          will-change: transform;
+          transform: translateZ(0);
         }
         .animate-marquee-left:hover, .animate-marquee-right:hover {
           animation-play-state: paused;

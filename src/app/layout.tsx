@@ -3,18 +3,20 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import FloatingFeedback from "@/components/FloatingFeedback";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
-import ThemeSelector from "@/components/ThemeSelector";
-import AvatarProvider from "@/components/AvatarProvider";
 import { SubjectsProvider } from "@/context/SubjectsContext";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import RouteTracker from "@/components/RouteTracker";
 import { ToastProvider } from "@/components/Toast";
-import BackToTop from "@/components/BackToTop";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
+
+const FloatingFeedback = dynamic(() => import("@/components/FloatingFeedback"));
+const ThemeSelector = dynamic(() => import("@/components/ThemeSelector"));
+const AvatarProvider = dynamic(() => import("@/components/AvatarProvider"));
+const BackToTop = dynamic(() => import("@/components/BackToTop"));
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -15,11 +15,11 @@ export default function Footer() {
         {/* Left Side: Brand & Motto */}
         <div className="flex flex-col items-center md:items-start gap-4">
           <div className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-violet-400" /> Paperino
+            <Sparkles className="w-5 h-5 text-violet-400" aria-hidden="true" /> Paperino
           </div>
           
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/5 border border-violet-500/10 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
-            <Heart className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
+            <Heart className="w-3.5 h-3.5 text-violet-400 animate-pulse" aria-hidden="true" />
             <span className="text-xs font-light text-violet-200 tracking-wider">
               Built for SRM students with passion and innovation.
             </span>
@@ -41,6 +41,7 @@ export default function Footer() {
                 key={i} 
                 href={link.href as string}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="relative group py-1 text-gray-400 hover:text-white transition-colors duration-300"
               >
                 <span className="pointer-events-none">{link.label}</span>

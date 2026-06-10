@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Bookmark, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot } from "lucide-react";
-import Testimonials from "@/components/Testimonials";
-import AmbientOrbs from "@/components/AmbientOrbs";
+import dynamic from "next/dynamic";
+
+const Testimonials = dynamic(() => import("@/components/Testimonials"));
+const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"));
 
 export default function Home() {
   return (
@@ -11,7 +13,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="flex flex-col items-center text-center w-full max-w-4xl mx-auto mb-20">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-8 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-shadow animate-float">
-          <Zap size={16} className="text-purple-400" />
+          <Zap size={16} className="text-purple-400" aria-hidden="true" />
           <span className="tracking-wide">Prepare for exams at lightspeed</span>
         </div>
         <h1 className="text-5xl md:text-7xl lg:text-[5rem] font-bold tracking-tight text-white mb-6 w-full text-center leading-tight">
@@ -42,7 +44,7 @@ export default function Home() {
       <section className="w-full max-w-3xl mx-auto mb-24">
         <div className="flex items-center justify-center mb-8">
           <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-            <Layers className="text-purple-400" />
+            <Layers className="text-purple-400" aria-hidden="true" />
             Explore Courses
           </h2>
         </div>
@@ -55,7 +57,7 @@ export default function Home() {
                 <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-lg liquid-btn">
                   B.TECH
                 </div>
-                <BookOpen size={32} className="text-gray-500 group-hover:text-purple-400 transition-colors" />
+                <BookOpen size={32} className="text-gray-500 group-hover:text-purple-400 transition-colors" aria-hidden="true" />
               </div>
               <h3 className="text-3xl md:text-4xl font-bold text-white mb-4 relative z-10 tracking-tight">Bachelor of Technology</h3>
               <p className="text-gray-400 relative z-10 text-lg md:text-xl font-light leading-relaxed">Access all 8 semesters of carefully curated question papers, notes, and lab manuals.</p>
@@ -68,7 +70,7 @@ export default function Home() {
       <section className="w-full max-w-5xl mx-auto mb-32 mt-20 px-4 md:px-0">
         <div className="flex flex-col items-center justify-center text-center mb-12 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]">
-            <Sparkles size={14} className="text-violet-400" />
+            <Sparkles size={14} className="text-violet-400" aria-hidden="true" />
             <span>AI Features</span>
           </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-tight">
@@ -86,12 +88,12 @@ export default function Home() {
             <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/90 backdrop-blur-xl border border-[rgba(124,58,237,0.35)] shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)]">
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
-                  <BrainCircuit size={28} />
+                  <BrainCircuit size={28} aria-hidden="true" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">PYQ Predictor</h3>
                 <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Upload multiple Previous Year Question papers and let our AI cross-reference them to predict the most important concepts for your next exam.</p>
                 <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-sm group-hover:text-violet-300 transition-colors uppercase tracking-wider">
-                  Try Predictor <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" />
+                  Try Predictor <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -102,12 +104,12 @@ export default function Home() {
             <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/90 backdrop-blur-xl border border-[rgba(124,58,237,0.35)] shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)]">
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
-                  <FileSearch size={28} />
+                  <FileSearch size={28} aria-hidden="true" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">ATS Analyzer</h3>
                 <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Ensure your resume beats the bots. Get a granular AI breakdown of your formatting, missing skills, and perfect keyword optimization.</p>
                 <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-sm group-hover:text-violet-300 transition-colors uppercase tracking-wider">
-                  Analyze Resume <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" />
+                  Analyze Resume <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -128,7 +130,7 @@ export default function Home() {
           <div className="relative p-6 md:p-10 lg:p-16 flex flex-col items-center text-center z-10">
             {/* Tag */}
             <div className="inline-flex items-center justify-center gap-2 px-4 py-1 md:px-5 md:py-1.5 rounded-full bg-violet-500/[0.05] border border-violet-500/[0.15] backdrop-blur-3xl mb-6 md:mb-8 shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]">
-              <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-violet-400" />
+              <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-violet-400" aria-hidden="true" />
               <span className="text-[10px] md:text-xs font-light text-violet-100 uppercase tracking-[0.2em] pt-0.5">
                 About The Platform
               </span>
@@ -149,12 +151,12 @@ export default function Home() {
             {/* Features Grid */}
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {[
-                { icon: <BookOpen className="w-5 h-5 text-violet-400" />, title: "Semester-wise Materials" },
-                { icon: <FileText className="w-5 h-5 text-fuchsia-400" />, title: "Previous Year Papers" },
-                { icon: <Calculator className="w-5 h-5 text-purple-400" />, title: "GPA & CGPA Calculator" },
-                { icon: <FileSearch className="w-5 h-5 text-violet-400" />, title: "ATS Resume Analyzer" },
-                { icon: <Bookmark className="w-5 h-5 text-cyan-400" />, title: "Smart Bookmarks" },
-                { icon: <GraduationCap className="w-5 h-5 text-violet-400" />, title: "Important Study Resources" },
+                { icon: <BookOpen className="w-5 h-5 text-violet-400" aria-hidden="true" />, title: "Semester-wise Materials" },
+                { icon: <FileText className="w-5 h-5 text-fuchsia-400" aria-hidden="true" />, title: "Previous Year Papers" },
+                { icon: <Calculator className="w-5 h-5 text-purple-400" aria-hidden="true" />, title: "GPA & CGPA Calculator" },
+                { icon: <FileSearch className="w-5 h-5 text-violet-400" aria-hidden="true" />, title: "ATS Resume Analyzer" },
+                { icon: <Bookmark className="w-5 h-5 text-cyan-400" aria-hidden="true" />, title: "Smart Bookmarks" },
+                { icon: <GraduationCap className="w-5 h-5 text-violet-400" aria-hidden="true" />, title: "Important Study Resources" },
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors duration-300">
                   <div className="w-10 h-10 rounded-xl bg-black/40 flex items-center justify-center border border-white/10 shadow-[inset_0_0_15px_rgba(var(--primary-rgb),0.1)] flex-shrink-0">
@@ -175,7 +177,7 @@ export default function Home() {
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-gray-400 bg-white/[0.02] py-3 px-6 rounded-full border border-white/[0.05]">
-                <Heart className="w-4 h-4 text-violet-500 animate-pulse flex-shrink-0" />
+                <Heart className="w-4 h-4 text-violet-500 animate-pulse flex-shrink-0" aria-hidden="true" />
                 <p>
                   Thank you for visiting Paperino. Wishing you success in your academic journey. All the best for your future!
                 </p>
