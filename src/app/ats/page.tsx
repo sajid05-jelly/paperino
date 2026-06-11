@@ -41,7 +41,10 @@ export default function ATSAnalyzerPage() {
 
   const loadingSteps = [
     "Uploading & Extracting Text...",
-    "Running Parallel AI Analysis...",
+    "Calculating ATS Score...",
+    "Matching Keywords...",
+    "Analyzing Skills...",
+    "Generating Suggestions...",
     "Finalizing Results...",
   ];
 
@@ -144,9 +147,7 @@ export default function ATSAnalyzerPage() {
         setLoadingStep(1); // Move to analyze step
       }
 
-      // STEP 2: ANALYZE WITH PARALLEL AI REQUESTS
-      setLoadingStep(1); // Running Parallel AI Analysis...
-
+      // STEP 2: ANALYZE WITH SEQUENTIAL AI REQUESTS (To avoid Gemini concurrency limits)
       const fetchAction = async (action: string) => {
         const res = await fetch("/api/ats", {
           method: "POST",
@@ -170,14 +171,30 @@ export default function ATSAnalyzerPage() {
         return parsed;
       };
 
-      const [scoreRes, keywordsRes, skillsRes, suggestionsRes] = await Promise.allSettled([
-        fetchAction("score"),
-        fetchAction("keywords"),
-        fetchAction("skills"),
-        fetchAction("suggestions")
-      ]);
+      const results: Record<string, any> = {};
 
-      setLoadingStep(2); // Finalizing results
+      setLoadingStep(1); // Calculating ATS Score
+      try { results.score = { status: "fulfilled", value: await fetchAction("score") }; }
+      catch (e: any) { results.score = { status: "rejected", reason: e }; }
+
+      setLoadingStep(2); // Matching Keywords
+      try { results.keywords = { status: "fulfilled", value: await fetchAction("keywords") }; }
+      catch (e: any) { results.keywords = { status: "rejected", reason: e }; }
+
+      setLoadingStep(3); // Analyzing Skills
+      try { results.skills = { status: "fulfilled", value: await fetchAction("skills") }; }
+      catch (e: any) { results.skills = { status: "rejected", reason: e }; }
+
+      setLoadingStep(4); // Generating Suggestions
+      try { results.suggestions = { status: "fulfilled", value: await fetchAction("suggestions") }; }
+      catch (e: any) { results.suggestions = { status: "rejected", reason: e }; }
+
+      const scoreRes = results.score;
+      const keywordsRes = results.keywords;
+      const skillsRes = results.skills;
+      const suggestionsRes = results.suggestions;
+
+      setLoadingStep(5); // Finalizing results
 
       // If all failed, throw an error
       if (scoreRes.status === "rejected" && keywordsRes.status === "rejected" && skillsRes.status === "rejected" && suggestionsRes.status === "rejected") {
