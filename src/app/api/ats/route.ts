@@ -173,6 +173,7 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
     generationConfig: { responseMimeType: "application/json" },
   });
 
+  console.time(`ATS_Action_${action}`);
   let prompt = "";
   
   if (action === "score") {
@@ -188,11 +189,12 @@ Resume: ${optimizedText}`;
 { "missingSkills": [ "string" ], "isFakeOrCorrupted": boolean, "fakeReason": "string" }
 Resume: ${optimizedText}`;
   } else if (action === "suggestions") {
-    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify granular issues (weak summary, missing keyword, weak project).
-For EVERY issue, extract the EXACT "currentText" from the resume, and provide a "suggestedText" showing a greatly improved version. Return STRICTLY JSON:
+    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify a MAXIMUM of 3 most critical granular issues (weak summary, missing keyword, weak project).
+For EVERY issue found, extract the EXACT "currentText" from the resume, and provide a "suggestedText" showing a greatly improved version. Return STRICTLY JSON:
 { "issues": [{ "type": "weak_summary" | "missing_keyword" | "weak_project" | "missing_section" | "formatting" | "ats_compatibility", "severity": "critical" | "warning" | "good", "section": "string", "message": "string", "currentText": "string", "suggestedText": "string" }] }
 Resume: ${optimizedText}`;
   } else {
+    console.timeEnd(`ATS_Action_${action}`);
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
 
@@ -210,6 +212,7 @@ Resume: ${optimizedText}`;
     } catch (err: any) {
       console.error(`[ATS] AI Attempt ${attempts} failed for ${action}:`, err.message);
       if (attempts >= 2) {
+        console.timeEnd(`ATS_Action_${action}`);
         return NextResponse.json({ error: `AI timed out processing ${action}.` }, { status: 504 });
       }
     }
@@ -226,6 +229,7 @@ Resume: ${optimizedText}`;
     parsedData = JSON.parse(responseText);
   } catch (parseError) {
     console.error(`[ATS] Invalid JSON for ${action}:`, responseText);
+    console.timeEnd(`ATS_Action_${action}`);
     return NextResponse.json({ error: `Failed to parse AI output for ${action}.` }, { status: 500 });
   }
 
@@ -241,6 +245,7 @@ Resume: ${optimizedText}`;
     }
   }
 
+  console.timeEnd(`ATS_Action_${action}`);
   console.log(`[ATS] AI Analysis Complete for ${action}.`);
   return NextResponse.json(parsedData);
 }

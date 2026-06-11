@@ -185,6 +185,28 @@ export default function ATSAnalyzerPage() {
       }
 
       // Combine partial results
+      let aggregatedIssues = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.issues || [] : [{
+        type: "ats_compatibility", severity: "warning", section: "General",
+        message: "Suggestions timed out. Vercel aborted the heavy suggestion generation. Other metrics are successfully loaded.",
+        currentText: "", suggestedText: ""
+      }];
+
+      if (scoreRes.status === "rejected") {
+        aggregatedIssues.push({
+          type: "ats_compatibility", severity: "critical", section: "Score Calculation",
+          message: "Failed to calculate ATS score. " + (scoreRes.reason?.message || ""),
+          currentText: "", suggestedText: ""
+        });
+      }
+
+      if (keywordsRes.status === "rejected") {
+        aggregatedIssues.push({
+          type: "missing_keyword", severity: "critical", section: "Keywords",
+          message: "Keyword analysis timed out or failed. " + (keywordsRes.reason?.message || ""),
+          currentText: "", suggestedText: ""
+        });
+      }
+
       const data = {
         overallScore: scoreRes.status === "fulfilled" ? scoreRes.value.overallScore || 0 : 0,
         sectionScores: scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0 },
@@ -192,11 +214,7 @@ export default function ATSAnalyzerPage() {
         missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || [] : ["Failed to analyze skills due to timeout"],
         isFakeOrCorrupted: skillsRes.status === "fulfilled" ? skillsRes.value.isFakeOrCorrupted || false : false,
         fakeReason: skillsRes.status === "fulfilled" ? skillsRes.value.fakeReason || "" : "",
-        issues: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.issues || [] : [{
-          type: "ats_compatibility", severity: "warning", section: "General",
-          message: "Suggestions timed out. Vercel aborted the heavy suggestion generation. Other metrics are successfully loaded.",
-          currentText: "", suggestedText: ""
-        }],
+        issues: aggregatedIssues,
         rawText: textToAnalyze
       };
 
