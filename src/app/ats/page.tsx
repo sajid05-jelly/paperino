@@ -41,7 +41,7 @@ export default function ATSAnalyzerPage() {
 
   const loadingSteps = [
     "Uploading & Extracting Text...",
-    "Running ATS AI Analysis...",
+    "Running Parallel AI Analysis...",
     "Finalizing Results...",
   ];
 
@@ -144,32 +144,61 @@ export default function ATSAnalyzerPage() {
         setLoadingStep(1); // Move to analyze step
       }
 
-      // STEP 2: ANALYZE WITH AI
-      const analyzeRes = await fetch("/api/ats", {
-        method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${idToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text: textToAnalyze, role }),
-      });
+      // STEP 2: ANALYZE WITH PARALLEL AI REQUESTS
+      setLoadingStep(1); // Running Parallel AI Analysis...
+
+      const fetchAction = async (action: string) => {
+        const res = await fetch("/api/ats", {
+          method: "POST",
+          headers: { 
+            "Authorization": `Bearer ${idToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text: textToAnalyze, role, action }),
+        });
+        const rawText = await res.text();
+        let parsed;
+        try {
+          parsed = JSON.parse(rawText);
+        } catch(e) {
+          throw new Error(`Timeout for ${action}`);
+        }
+        if (!res.ok) {
+          if (res.status === 429) throw new Error(parsed.error || "Rate limit reached");
+          throw new Error(parsed.error || `Failed ${action}`);
+        }
+        return parsed;
+      };
+
+      const [scoreRes, keywordsRes, skillsRes, suggestionsRes] = await Promise.allSettled([
+        fetchAction("score"),
+        fetchAction("keywords"),
+        fetchAction("skills"),
+        fetchAction("suggestions")
+      ]);
 
       setLoadingStep(2); // Finalizing results
 
-      const rawAnalyzeText = await analyzeRes.text();
-      let data;
-      try {
-        data = JSON.parse(rawAnalyzeText);
-      } catch (e) {
-        throw new Error(`Server Error (${analyzeRes.status}): AI Analysis timed out. Please try again. Original error: ${rawAnalyzeText.substring(0, 60)}...`);
+      // If all failed, throw an error
+      if (scoreRes.status === "rejected" && keywordsRes.status === "rejected" && skillsRes.status === "rejected" && suggestionsRes.status === "rejected") {
+         throw new Error(scoreRes.reason?.message || "AI Analysis completely failed due to timeout.");
       }
-      
-      if (analyzeRes.status === 429) {
-        throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
-      }
-      if (!analyzeRes.ok) {
-        throw new Error(data.error || "Failed to analyze resume.");
-      }
+
+      // Combine partial results
+      const data = {
+        overallScore: scoreRes.status === "fulfilled" ? scoreRes.value.overallScore || 0 : 0,
+        sectionScores: scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0 },
+        keywordMatchPercentage: keywordsRes.status === "fulfilled" ? keywordsRes.value.keywordMatchPercentage || 0 : 0,
+        missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || [] : ["Failed to analyze skills due to timeout"],
+        isFakeOrCorrupted: skillsRes.status === "fulfilled" ? skillsRes.value.isFakeOrCorrupted || false : false,
+        fakeReason: skillsRes.status === "fulfilled" ? skillsRes.value.fakeReason || "" : "",
+        issues: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.issues || [] : [{
+          type: "ats_compatibility", severity: "warning", section: "General",
+          message: "Suggestions timed out. Vercel aborted the heavy suggestion generation. Other metrics are successfully loaded.",
+          currentText: "", suggestedText: ""
+        }],
+        rawText: textToAnalyze
+      };
 
       setResult(data);
     } catch (err: any) {

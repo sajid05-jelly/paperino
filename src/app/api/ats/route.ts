@@ -155,18 +155,16 @@ async function handleExtraction(req: NextRequest) {
 // 2. ANALYSIS HANDLER
 // ============================================================================
 async function handleAnalysis(req: NextRequest, creditCheck: any) {
-  console.log("[ATS] Starting AI Analysis...");
   const body = await req.json();
   const rawText = body.text;
   const role = body.role;
+  const action = body.action; // 'score' | 'keywords' | 'skills' | 'suggestions'
 
-  if (!rawText || !role) {
-    return NextResponse.json({ error: "Text and role are required for analysis." }, { status: 400 });
+  if (!rawText || !role || !action) {
+    return NextResponse.json({ error: "Text, role, and action are required." }, { status: 400 });
   }
 
   const sanitizedRole = role.slice(0, 120).replace(/[<>"']/g, "");
-  
-  // Optimize: Limit resume text to ~10,000 characters to ensure fast processing and prevent token issues
   const optimizedText = rawText.slice(0, 10000);
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -175,62 +173,44 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
     generationConfig: { responseMimeType: "application/json" },
   });
 
-  const prompt = `
-You are a strict, enterprise-grade ATS (Applicant Tracking System) Analyzer and AI Resume Coach.
-Your task is to analyze the following resume text against the target job role: "${sanitizedRole}".
-
-Rules:
-1. Be highly critical and objective about the content, but lenient about PDF extraction artifacts.
-2. Provide a rigorous overall score (0-100) and specific section scores (0-100) for Skills, Projects, Experience, Education, and Contact.
-3. Calculate a keyword match percentage against standard requirements for the role.
-4. Identify granular issues: weak summaries, weak project descriptions, missing keywords, formatting errors, or ATS compatibility issues.
-5. For EVERY issue found (except missing sections), extract the EXACT "currentText" from the resume, and provide a "suggestedText" showing a greatly improved version.
-6. Detect if the resume is fake, corrupted, or an image-based PDF lacking text.
-7. CRITICAL: The text provided was extracted by a basic PDF parser. It may contain unnatural whitespaces, kerning issues, or weird spacing between characters. Do NOT flag the resume as corrupted or fake simply because of these whitespace/extraction artifacts.
-
-Return the result STRICTLY as a JSON object matching this schema. Do not use markdown wrappers.
-
-{
-  "overallScore": number,
-  "keywordMatchPercentage": number,
-  "sectionScores": { "skills": number, "projects": number, "experience": number, "education": number, "contact": number },
-  "issues": [
-    {
-      "type": "weak_summary" | "missing_keyword" | "weak_project" | "missing_section" | "formatting" | "ats_compatibility",
-      "severity": "critical" | "warning" | "good",
-      "section": string,
-      "message": string,
-      "currentText": string,
-      "suggestedText": string
-    }
-  ],
-  "missingSkills": [ "string" ],
-  "isFakeOrCorrupted": boolean,
-  "fakeReason": string
-}
-
-Resume Text:
-${optimizedText}
-`;
+  let prompt = "";
+  
+  if (action === "score") {
+    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Evaluate the resume and return STRICTLY JSON:
+{ "overallScore": number, "sectionScores": { "skills": number, "projects": number, "experience": number, "education": number, "contact": number } }
+Resume: ${optimizedText}`;
+  } else if (action === "keywords") {
+    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Calculate keyword match percentage. Return STRICTLY JSON:
+{ "keywordMatchPercentage": number }
+Resume: ${optimizedText}`;
+  } else if (action === "skills") {
+    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify missing critical skills and check for fake/corrupted PDF extraction. Return STRICTLY JSON:
+{ "missingSkills": [ "string" ], "isFakeOrCorrupted": boolean, "fakeReason": "string" }
+Resume: ${optimizedText}`;
+  } else if (action === "suggestions") {
+    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify granular issues (weak summary, missing keyword, weak project).
+For EVERY issue, extract the EXACT "currentText" from the resume, and provide a "suggestedText" showing a greatly improved version. Return STRICTLY JSON:
+{ "issues": [{ "type": "weak_summary" | "missing_keyword" | "weak_project" | "missing_section" | "formatting" | "ats_compatibility", "severity": "critical" | "warning" | "good", "section": "string", "message": "string", "currentText": "string", "suggestedText": "string" }] }
+Resume: ${optimizedText}`;
+  } else {
+    return NextResponse.json({ error: "Invalid action." }, { status: 400 });
+  }
 
   let responseText = "";
   let attempts = 0;
   let success = false;
 
-  // Retry mechanism
   while (attempts < 2 && !success) {
     try {
       attempts++;
-      console.log(`[ATS] AI Attempt ${attempts}...`);
+      console.log(`[ATS] AI Attempt ${attempts} for ${action}...`);
       const result = await model.generateContent(prompt);
       responseText = result.response.text().trim();
       success = true;
     } catch (err: any) {
-      console.error(`[ATS] AI Attempt ${attempts} failed:`, err.message);
+      console.error(`[ATS] AI Attempt ${attempts} failed for ${action}:`, err.message);
       if (attempts >= 2) {
-        // Ultimate fallback
-        console.warn("[ATS] Returning partial fallback result due to AI timeouts.");
-        return NextResponse.json(createFallbackResult(optimizedText));
+        return NextResponse.json({ error: `AI timed out processing ${action}.` }, { status: 504 });
       }
     }
   }
@@ -245,31 +225,23 @@ ${optimizedText}
   try {
     parsedData = JSON.parse(responseText);
   } catch (parseError) {
-    console.error("[ATS] Gemini returned invalid JSON on success attempt:", responseText);
-    console.warn("[ATS] Returning partial fallback result due to JSON parse error.");
-    return NextResponse.json(createFallbackResult(optimizedText));
+    console.error(`[ATS] Invalid JSON for ${action}:`, responseText);
+    return NextResponse.json({ error: `Failed to parse AI output for ${action}.` }, { status: 500 });
   }
 
-  // Attach raw text so the frontend can use it for the preview and highlighting
-  parsedData.rawText = rawText;
-
-  // Successfully generated response, increment credit usage
-  if (creditCheck.uid && creditCheck.limit !== Infinity) {
+  // Increment credit usage only on the final step (suggestions) to avoid 4x deduction
+  if (action === "suggestions" && creditCheck.uid && creditCheck.limit !== Infinity) {
     await incrementCreditUsage(creditCheck.uid, 'ats');
-  }
-
-  // Increment Global Stats using Admin SDK
-  if (adminDb) {
-    try {
-      await adminDb.collection("platform_stats").doc("global").set({
-        atsUsage: admin.firestore.FieldValue.increment(1)
-      }, { merge: true });
-    } catch (e) {
-      console.error("Failed to increment global ATS stats", e);
+    if (adminDb) {
+      try {
+        await adminDb.collection("platform_stats").doc("global").set({
+          atsUsage: admin.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      } catch (e) {}
     }
   }
 
-  console.log("[ATS] AI Analysis Complete.");
+  console.log(`[ATS] AI Analysis Complete for ${action}.`);
   return NextResponse.json(parsedData);
 }
 
