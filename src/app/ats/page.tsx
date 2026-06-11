@@ -127,7 +127,14 @@ export default function ATSAnalyzerPage() {
           body: formData,
         });
 
-        const extractData = await extractRes.json();
+        const rawExtractText = await extractRes.text();
+        let extractData;
+        try {
+          extractData = JSON.parse(rawExtractText);
+        } catch (e) {
+          throw new Error(`Server Error (${extractRes.status}): Vercel function timed out or crashed. Please try a simpler PDF. Original error: ${rawExtractText.substring(0, 60)}...`);
+        }
+
         if (!extractRes.ok) {
           throw new Error(extractData.error || "Failed to extract text from resume.");
         }
@@ -149,7 +156,13 @@ export default function ATSAnalyzerPage() {
 
       setLoadingStep(2); // Finalizing results
 
-      const data = await analyzeRes.json();
+      const rawAnalyzeText = await analyzeRes.text();
+      let data;
+      try {
+        data = JSON.parse(rawAnalyzeText);
+      } catch (e) {
+        throw new Error(`Server Error (${analyzeRes.status}): AI Analysis timed out. Please try again. Original error: ${rawAnalyzeText.substring(0, 60)}...`);
+      }
       
       if (analyzeRes.status === 429) {
         throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
