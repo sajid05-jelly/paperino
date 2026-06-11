@@ -195,9 +195,24 @@ ${text}
 `;
 
     const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
+    let responseText = result.response.text().trim();
 
-    const parsedData = JSON.parse(responseText);
+    if (responseText.startsWith("```json")) {
+      responseText = responseText.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
+    } else if (responseText.startsWith("```")) {
+      responseText = responseText.replace(/^```\n?/, "").replace(/\n?```$/, "").trim();
+    }
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Gemini returned invalid JSON:", responseText);
+      return NextResponse.json(
+        { error: "AI failed to generate a valid analysis format. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Attach raw text so the frontend can use it for the preview and highlighting
     parsedData.rawText = text;

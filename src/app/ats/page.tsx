@@ -123,16 +123,27 @@ export default function ATSAnalyzerPage() {
         body: formData,
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type");
+      let data;
+      
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        if (response.status === 504) {
+          throw new Error("The analysis timed out. Your resume might be too large or complex. Try a simpler PDF.");
+        }
+        throw new Error("Server encountered an error. This usually happens if the file is too complex. Please try again.");
+      }
 
       if (response.status === 401) {
         throw new Error("Please log in to use the ATS Analyzer.");
       }
       if (response.status === 429) {
-        throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
+        throw new Error(data?.error || "Daily AI limit reached. Come back tomorrow!");
       }
       if (!response.ok) {
-        throw new Error(data.error || "Failed to analyze resume.");
+        throw new Error(data?.error || "Failed to analyze resume.");
       }
 
       setResult(data);
