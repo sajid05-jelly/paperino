@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download } from "lucide-react";
+import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle } from "lucide-react";
 import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -25,28 +25,21 @@ export default function AdminDashboard() {
     other: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        console.log("[Analytics] Starting data fetch...");
+        setError(null);
         const matsColl = collection(db, "materials");
         const usersColl = collection(db, "users");
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Execute count aggregations on the server (1 read per query)
-        const [
-          totalMatsSnap,
-          totalUsersSnap,
-          dailyUsersSnap,
-          pyqsSnap,
-          notesSnap,
-          questionsSnap,
-          globalStatsSnap,
-          topSubjectSnap,
-          topDownloadSnap
-        ] = await Promise.all([
+        // Fetch using allSettled to prevent one failing collection from bringing down the entire dashboard
+        const results = await Promise.allSettled([
           getCountFromServer(matsColl),
           getCountFromServer(usersColl),
           getCountFromServer(query(usersColl, where("lastLogin", ">=", today))),
@@ -57,6 +50,28 @@ export default function AdminDashboard() {
           getDocs(query(collection(db, "platform_stats", "subjects", "visits"), orderBy("visits", "desc"), limit(1))),
           getDocs(query(collection(db, "platform_stats", "materials", "downloads"), orderBy("downloads", "desc"), limit(1)))
         ]);
+
+        // Helper to extract data or log error
+        const getResult = (res: any, name: string, defaultValue: any) => {
+          if (res.status === "fulfilled") {
+            console.log(`[Analytics] Successfully fetched ${name}`);
+            return res.value;
+          } else {
+            console.error(`[Analytics] Error fetching ${name}:`, res.reason);
+            setError(prev => prev ? `${prev} | ${name} failed` : `Failed to load: ${name}`);
+            return defaultValue;
+          }
+        };
+
+        const totalMatsSnap = getResult(results[0], "Total Materials", { data: () => ({ count: 0 }) });
+        const totalUsersSnap = getResult(results[1], "Total Users", { data: () => ({ count: 0 }) });
+        const dailyUsersSnap = getResult(results[2], "Daily Users", { data: () => ({ count: 0 }) });
+        const pyqsSnap = getResult(results[3], "PYQs", { data: () => ({ count: 0 }) });
+        const notesSnap = getResult(results[4], "Notes", { data: () => ({ count: 0 }) });
+        const questionsSnap = getResult(results[5], "Questions", { data: () => ({ count: 0 }) });
+        const globalStatsSnap = getResult(results[6], "Global Stats", { exists: () => false, data: () => ({ atsUsage: 0, aiUsage: 0 }) });
+        const topSubjectSnap = getResult(results[7], "Top Subject", { empty: true, docs: [] });
+        const topDownloadSnap = getResult(results[8], "Top Download", { empty: true, docs: [] });
 
         const totalMaterials = totalMatsSnap.data().count;
         const totalUsers = totalUsersSnap.data().count;
@@ -74,30 +89,32 @@ export default function AdminDashboard() {
         const atsUsage = globalData?.atsUsage || 0;
         const aiUsage = globalData?.aiUsage || 0;
 
-        let mostVisited = "No Data Available";
-        if (!topSubjectSnap.empty) {
+        let mostVisited = "N/A";
+        if (!topSubjectSnap.empty && topSubjectSnap.docs.length > 0) {
           mostVisited = topSubjectSnap.docs[0].data().name || topSubjectSnap.docs[0].id;
         }
 
-        let highestDownloadedFile = "No Data Available";
-        if (!topDownloadSnap.empty) {
+        let highestDownloadedFile = "N/A";
+        if (!topDownloadSnap.empty && topDownloadSnap.docs.length > 0) {
           highestDownloadedFile = topDownloadSnap.docs[0].data().name || topDownloadSnap.docs[0].id;
         }
 
-        setStats(prev => ({
-          ...prev,
+        setStats({
           totalMaterials,
           totalUsers,
           dailyActive,
           atsUsage,
           aiUsage,
           mostVisited,
-          topDepartment: "Pending Update",
+          topDepartment: "Pending Update", // Static for now based on original code
           highestDownloadedFile
-        }));
+        });
         setMaterialCounts({ pyqs, notes, manuals, syllabus, questions, other });
+        
+        console.log("[Analytics] Fetch complete.", { totalUsers, dailyActive, totalMaterials, atsUsage, mostVisited });
       } catch (error) {
-        console.error("Error fetching admin stats:", error);
+        console.error("[Analytics] Fatal error fetching admin stats:", error);
+        setError("A fatal error occurred while fetching analytics.");
       } finally {
         setLoading(false);
       }
@@ -127,6 +144,16 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <>
+          {error && (
+            <div className="glass-panel p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-center gap-3 text-red-400 mb-6 animate-in slide-in-from-top-2">
+              <AlertCircle size={20} className="shrink-0" />
+              <div>
+                <span className="font-bold block">Partial Data Load</span>
+                <span className="text-sm text-red-300">{error}. Some metrics may show as 0 or N/A. Check console for details.</span>
+              </div>
+            </div>
+          )}
+
           {/* Top Key Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             
@@ -153,8 +180,6 @@ export default function AdminDashboard() {
               <h3 className="text-gray-400 text-sm font-medium mb-1">Daily Active Users</h3>
               <p className="text-3xl font-bold text-white">{stats.dailyActive.toLocaleString()}</p>
             </div>
-
-
 
             {/* Stat Card 4 */}
             <div className="vision-glass p-6 rounded-3xl relative overflow-hidden group vision-hover">
@@ -217,8 +242,8 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <h4 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Most Visited Subject</h4>
-                    {stats.mostVisited === "No Data Available" ? (
-                      <p className="text-gray-500 text-sm italic">No Data Available</p>
+                    {stats.mostVisited === "N/A" ? (
+                      <p className="text-gray-500 text-sm italic">N/A</p>
                     ) : (
                       <p className="text-white font-bold">{stats.mostVisited}</p>
                     )}
@@ -231,8 +256,8 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <h4 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Top Department</h4>
-                    {stats.topDepartment === "No Data Available" ? (
-                      <p className="text-gray-500 text-sm italic">No Data Available</p>
+                    {stats.topDepartment === "N/A" ? (
+                      <p className="text-gray-500 text-sm italic">N/A</p>
                     ) : (
                       <p className="text-white font-bold">{stats.topDepartment}</p>
                     )}
@@ -245,8 +270,8 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <h4 className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Highest Downloaded File</h4>
-                    {stats.highestDownloadedFile === "No Data Available" ? (
-                      <p className="text-gray-500 text-sm italic">No Data Available</p>
+                    {stats.highestDownloadedFile === "N/A" ? (
+                      <p className="text-gray-500 text-sm italic">N/A</p>
                     ) : (
                       <p className="text-white font-bold">{stats.highestDownloadedFile}</p>
                     )}

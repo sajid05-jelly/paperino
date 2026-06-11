@@ -121,6 +121,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Platform Stats ────────────────────────────────────────────────────────
+    match /platform_stats/{document=**} {
+      allow read: if isAdmin();
+    }
+
     // ── AI Usage tracking (per-user, stored in users subcollection) ──────────
     match /users/{userId}/ai_usage/{docId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;

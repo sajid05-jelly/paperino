@@ -16,8 +16,12 @@ export default function ATSAnalyzerPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [activeIssue, setActiveIssue] = useState<number | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  
+  // Cache for extracted text to prevent re-uploading the same PDF
+  const extractedTextCache = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (file) {
@@ -35,22 +39,10 @@ export default function ATSAnalyzerPage() {
     }
   }, [result]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      setLoadingStep(0);
-      interval = setInterval(() => {
-        setLoadingStep(prev => (prev < 3 ? prev + 1 : prev));
-      }, 1500);
-    }
-    return () => clearInterval(interval);
-  }, [loading]);
-
   const loadingSteps = [
-    "Uploading Document...",
-    "Extracting Resume Content...",
-    "Running ATS Analysis...",
-    "Generating Feedback...",
+    "Uploading & Extracting Text...",
+    "Running ATS AI Analysis...",
+    "Finalizing Results...",
   ];
 
   const roles = [
@@ -89,6 +81,12 @@ export default function ATSAnalyzerPage() {
       setError("Please upload a PDF or DOCX file.");
       return;
     }
+
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      setError("File exceeds the 5 MB limit. Please compress your resume.");
+      return;
+    }
+
     setFile(selectedFile);
     setResult(null);
     setActiveIssue(null);
@@ -101,54 +99,68 @@ export default function ATSAnalyzerPage() {
     }
 
     setLoading(true);
+    setLoadingStep(0);
     setError("");
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("role", role);
 
     try {
       // Get Firebase ID token
       const firebaseUser = auth.currentUser;
       const idToken = firebaseUser ? await getIdToken(firebaseUser) : null;
       if (!idToken) {
-        setError("Please log in to use the ATS Analyzer.");
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch("/api/ats", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${idToken}` },
-        body: formData,
-      });
-
-      const contentType = response.headers.get("content-type");
-      let data;
-      
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        if (response.status === 504) {
-          throw new Error("The analysis timed out. Your resume might be too large or complex. Try a simpler PDF.");
-        }
-        throw new Error("Server encountered an error. This usually happens if the file is too complex. Please try again.");
-      }
-
-      if (response.status === 401) {
         throw new Error("Please log in to use the ATS Analyzer.");
       }
-      if (response.status === 429) {
-        throw new Error(data?.error || "Daily AI limit reached. Come back tomorrow!");
+
+      let textToAnalyze = "";
+      const cacheKey = `${file.name}-${file.size}-${file.lastModified}`;
+
+      // STEP 1: EXTRACT (or use cache)
+      if (extractedTextCache.current.has(cacheKey)) {
+        textToAnalyze = extractedTextCache.current.get(cacheKey)!;
+        setLoadingStep(1); // Jump straight to analyzing
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const extractRes = await fetch("/api/ats", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${idToken}` }, // No content-type, let browser set boundary
+          body: formData,
+        });
+
+        const extractData = await extractRes.json();
+        if (!extractRes.ok) {
+          throw new Error(extractData.error || "Failed to extract text from resume.");
+        }
+        
+        textToAnalyze = extractData.text;
+        extractedTextCache.current.set(cacheKey, textToAnalyze);
+        setLoadingStep(1); // Move to analyze step
       }
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to analyze resume.");
+
+      // STEP 2: ANALYZE WITH AI
+      const analyzeRes = await fetch("/api/ats", {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${idToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text: textToAnalyze, role }),
+      });
+
+      setLoadingStep(2); // Finalizing results
+
+      const data = await analyzeRes.json();
+      
+      if (analyzeRes.status === 429) {
+        throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
+      }
+      if (!analyzeRes.ok) {
+        throw new Error(data.error || "Failed to analyze resume.");
       }
 
       setResult(data);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -177,8 +189,6 @@ export default function ATSAnalyzerPage() {
     if (severity === "warning") return <AlertTriangle size={20} className="text-orange-400" />;
     return <CheckCircle2 size={20} className="text-emerald-400" />;
   };
-
-  // Removed broken extracted text rendering in favor of native iframe
 
   return (
     <div className="w-full min-h-screen bg-[#05030a] py-8 relative overflow-hidden selection:bg-violet-500/30">
@@ -251,7 +261,7 @@ export default function ATSAnalyzerPage() {
                       <Upload size={32} />
                     </div>
                     <p className="text-gray-300 font-medium mb-1">Drag & Drop your resume here</p>
-                    <p className="text-gray-500 text-sm">Supports PDF and DOCX</p>
+                    <p className="text-gray-500 text-sm">Supports PDF and DOCX (Max 5MB)</p>
                   </div>
                 )}
               </div>
@@ -267,7 +277,7 @@ export default function ATSAnalyzerPage() {
               {loading ? (
                 <>
                   <Loader2 className="animate-spin relative z-10" size={20} />
-                  <span className="relative z-10">{loadingSteps[loadingStep]}</span>
+                  <span className="relative z-10">{loadingSteps[loadingStep] || "Processing..."}</span>
                 </>
               ) : (
                 <>
