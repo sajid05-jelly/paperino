@@ -19,7 +19,7 @@ const PROJECT_ID =
   process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "paperino-data";
 
 /** Daily AI call limit per authenticated user */
-const DAILY_AI_LIMIT = 15;
+const DAILY_AI_LIMIT = 30;
 
 /** Hard rate-limit: max requests from a single IP per minute */
 const IP_RATE_LIMIT_PER_MINUTE = 20;
@@ -185,7 +185,7 @@ export async function runApiGuard(
   const date = todayKey();
   const usageCount = await getUsageCount(verifiedUser.uid, date, idToken);
 
-  if (usageCount >= DAILY_AI_LIMIT) {
+  if (verifiedUser.role !== "admin" && usageCount >= DAILY_AI_LIMIT) {
     console.warn(
       `[api-guard] Daily limit reached for uid=${verifiedUser.uid} (${usageCount}/${DAILY_AI_LIMIT})`
     );
