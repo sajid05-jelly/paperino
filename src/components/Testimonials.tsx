@@ -98,17 +98,17 @@ export default function Testimonials() {
       `}} />
 
       {/* Marquee Container */}
-      <div className="relative w-full overflow-hidden flex flex-col gap-6 md:gap-8 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-24 md:before:w-64 before:bg-gradient-to-r before:from-[#05030a] before:to-transparent before:z-20 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-24 md:after:w-64 after:bg-gradient-to-l after:from-[#05030a] after:to-transparent after:z-20">
+      <div className="relative w-full overflow-hidden flex flex-col gap-6 md:gap-8 z-10 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-6 md:before:w-24 lg:before:w-64 before:bg-gradient-to-r before:from-[#05030a] before:to-transparent before:z-20 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-6 md:after:w-24 lg:after:w-64 after:bg-gradient-to-l after:from-[#05030a] after:to-transparent after:z-20">
         
         {/* Top Row - Scrolls Right */}
-        <div className="flex w-max animate-marquee-right gap-6 md:gap-8 px-4 items-stretch">
+        <div className="flex w-max animate-marquee-right gap-6 md:gap-8 pr-6 md:pr-8 items-stretch">
           {[...row1, ...row1, ...row1, ...row1].map((review, i) => (
             <TestimonialCard key={`top-${i}`} review={review} />
           ))}
         </div>
 
         {/* Bottom Row - Scrolls Left */}
-        <div className="hidden md:flex w-max animate-marquee-left gap-6 md:gap-8 px-4 items-stretch">
+        <div className="hidden md:flex w-max animate-marquee-left gap-6 md:gap-8 pr-6 md:pr-8 items-stretch">
           {[...row2, ...row2, ...row2, ...row2].map((review, i) => (
             <TestimonialCard key={`bottom-${i}`} review={review} />
           ))}
