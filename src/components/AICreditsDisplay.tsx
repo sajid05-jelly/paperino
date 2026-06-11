@@ -22,23 +22,29 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
     if (isAdmin) return; // Admins are unlimited, no need to listen to db
 
     const creditsRef = doc(db, "user_credits", user.uid);
-    const unsubscribe = onSnapshot(creditsRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const date = new Date();
-        const istOffset = 5.5 * 60 * 60 * 1000;
-        const istDate = new Date(date.getTime() + istOffset);
-        const todayIST = istDate.toISOString().split("T")[0];
+    const unsubscribe = onSnapshot(
+      creditsRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const date = new Date();
+          const istOffset = 5.5 * 60 * 60 * 1000;
+          const istDate = new Date(date.getTime() + istOffset);
+          const todayIST = istDate.toISOString().split("T")[0];
 
-        if (data.lastResetDate === todayIST) {
-          setUsed(tool === "pyq" ? (data.pyqUsed || 0) : (data.atsUsed || 0));
+          if (data.lastResetDate === todayIST) {
+            setUsed(tool === "pyq" ? (data.pyqUsed || 0) : (data.atsUsed || 0));
+          } else {
+            setUsed(0);
+          }
         } else {
           setUsed(0);
         }
-      } else {
-        setUsed(0);
+      },
+      (error) => {
+        console.warn("[AICreditsDisplay] Firestore snapshot error:", error);
       }
-    });
+    );
 
     return () => unsubscribe();
   }, [user, isAdmin, tool]);

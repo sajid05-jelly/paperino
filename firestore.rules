@@ -126,6 +126,13 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // ── AI Credits (root collection) ─────────────────────────────────────────
+    match /user_credits/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      // Note: writes to user_credits are handled exclusively by the Admin SDK on the server
+      allow write: if false; 
+    }
+
     // ── Team / Contributors list ─────────────────────────────────────────────
     match /team/{memberId} {
       allow read: if true;
