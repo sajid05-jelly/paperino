@@ -16,6 +16,7 @@ export default function ATSAnalyzerPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [activeIssue, setActiveIssue] = useState<number | null>(null);
+  const [activeSection, setActiveSection] = useState<number | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -255,16 +256,16 @@ export default function ATSAnalyzerPage() {
     return "stroke-red-400";
   };
 
-  const getSeverityColor = (severity: string) => {
-    if (severity === "critical") return "bg-red-500/10 border-red-500/30 text-red-400";
-    if (severity === "warning") return "bg-orange-500/10 border-orange-500/30 text-orange-400";
-    return "bg-emerald-500/10 border-emerald-500/30 text-emerald-400";
+  const getSeverityColor = (priority: string) => {
+    if (priority === "Critical") return "bg-red-500/10 border-red-500/30 text-red-400";
+    if (priority === "Important") return "bg-orange-500/10 border-orange-500/30 text-orange-400";
+    return "bg-blue-500/10 border-blue-500/30 text-blue-400";
   };
 
-  const getSeverityIcon = (severity: string) => {
-    if (severity === "critical") return <XCircle size={20} className="text-red-400" />;
-    if (severity === "warning") return <AlertTriangle size={20} className="text-orange-400" />;
-    return <CheckCircle2 size={20} className="text-emerald-400" />;
+  const getSeverityIcon = (priority: string) => {
+    if (priority === "Critical") return <XCircle size={20} className="text-red-400" />;
+    if (priority === "Important") return <AlertTriangle size={20} className="text-orange-400" />;
+    return <Info size={20} className="text-blue-400" />;
   };
 
   return (
@@ -403,37 +404,35 @@ export default function ATSAnalyzerPage() {
           {/* Right Pane: AI Analysis Dashboard */}
           <div className="w-full md:w-1/2 flex flex-col space-y-6">
             
-            {/* Top Summary Card */}
-            <div className={`p-6 rounded-3xl border backdrop-blur-md shadow-lg ${
-              result.overallScore >= 80 ? 'bg-emerald-500/10 border-emerald-500/30' : 
-              result.overallScore >= 60 ? 'bg-orange-500/10 border-orange-500/30' : 
-              'bg-red-500/10 border-red-500/30'
-            }`}>
-              <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${
-                result.overallScore >= 80 ? 'text-emerald-400' : 
-                result.overallScore >= 60 ? 'text-orange-400' : 
-                'text-red-400'
+            {/* 1. Final Verdict & Executive Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={`p-6 rounded-3xl border backdrop-blur-md shadow-lg flex flex-col justify-center ${
+                result.overallScore >= 80 ? 'bg-emerald-500/10 border-emerald-500/30' : 
+                result.overallScore >= 60 ? 'bg-orange-500/10 border-orange-500/30' : 
+                'bg-red-500/10 border-red-500/30'
               }`}>
-                <Activity size={20} /> Final Verdict
-              </h3>
-              <p className="text-gray-300 leading-relaxed text-sm">
-                {result.overallScore >= 80 
-                  ? "Your resume is highly optimized and compatible with ATS systems. Minor tweaks to layout or specific keywords could make it perfect."
-                  : result.overallScore >= 60
-                  ? "Your resume is moderately ATS-friendly but needs improvement in formatting and keyword optimization to ensure it passes automated screens consistently."
-                  : "Your resume has critical formatting or keyword issues that will likely cause it to be rejected by most ATS systems. Major revisions are strongly recommended."
-                }
-              </p>
-            </div>
-            
-            {/* Header Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Overall Score */}
-              <div className="glass-panel p-6 rounded-3xl flex items-center justify-between col-span-1 md:col-span-2 border-l-4 border-l-violet-500 shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] relative overflow-hidden">
+                <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${
+                  result.overallScore >= 80 ? 'text-emerald-400' : 
+                  result.overallScore >= 60 ? 'text-orange-400' : 
+                  'text-red-400'
+                }`}>
+                  <Activity size={20} /> Final Verdict
+                </h3>
+                <p className="text-gray-300 leading-relaxed text-sm">
+                  {result.overallScore >= 80 
+                    ? "Your resume is highly optimized and compatible with ATS systems. Minor tweaks to layout or specific keywords could make it perfect."
+                    : result.overallScore >= 60
+                    ? "Your resume is moderately ATS-friendly but needs improvement in formatting and keyword optimization to ensure it passes automated screens consistently."
+                    : "Your resume has critical formatting or keyword issues that will likely cause it to be rejected by most ATS systems. Major revisions are strongly recommended."
+                  }
+                </p>
+              </div>
+
+              <div className="glass-panel p-6 rounded-3xl flex items-center justify-between border-l-4 border-l-violet-500 relative overflow-hidden">
                 <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-violet-500/20 blur-3xl rounded-full"></div>
                 <div>
-                  <h2 className="text-white text-2xl font-bold mb-1">ATS Match Score</h2>
-                  <p className="text-violet-300/70 text-sm">Target Role: <strong className="text-white">{role}</strong></p>
+                  <h2 className="text-white text-2xl font-bold mb-1">ATS Match</h2>
+                  <p className="text-violet-300/70 text-sm">Target: <strong className="text-white">{role}</strong></p>
                 </div>
                 <div className="relative w-24 h-24 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -451,114 +450,234 @@ export default function ATSAnalyzerPage() {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Keyword Match */}
-              <div className="glass-panel p-6 rounded-3xl flex flex-col justify-center relative overflow-hidden">
-                <div className="absolute -right-5 -top-5 w-24 h-24 bg-cyan-500/10 blur-2xl rounded-full"></div>
-                <h3 className="text-gray-400 text-sm font-medium mb-2 flex items-center gap-2">
-                  <Sparkles size={16} className="text-cyan-400" />
-                  Keyword Match
+            {/* 2. Recruiter Perspective & Benchmarks */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="glass-panel p-6 rounded-3xl">
+                <h3 className="text-violet-400 font-bold mb-4 flex items-center gap-2">
+                  <Activity size={18} /> Recruiter Perspective
                 </h3>
-                <div className="text-4xl font-black text-cyan-400 mb-2">{result.keywordMatchPercentage}%</div>
-                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-cyan-600 to-cyan-400 h-full rounded-full" style={{ width: `${result.keywordMatchPercentage}%` }}></div>
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Top Strengths</span>
+                    <ul className="space-y-1">
+                      {result.executiveSummary?.topStrengths?.map((str: string, i: number) => (
+                        <li key={i} className="text-sm text-emerald-300 flex items-start gap-2">
+                          <CheckCircle2 size={14} className="mt-0.5 shrink-0" /> {str}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Top Concerns</span>
+                    <ul className="space-y-1">
+                      {result.executiveSummary?.topWeaknesses?.map((wk: string, i: number) => (
+                        <li key={i} className="text-sm text-red-300 flex items-start gap-2">
+                          <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {wk}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="glass-panel p-5 rounded-3xl">
+                  <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-2">Hiring Readiness</h3>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-black text-white">{result.recruiterPerspective?.hiringReadiness || 0}%</span>
+                  </div>
+                  <div className="w-full bg-white/10 h-1.5 rounded-full mt-3 overflow-hidden">
+                    <div className="bg-gradient-to-r from-violet-600 to-violet-400 h-full rounded-full" style={{ width: `${result.recruiterPerspective?.hiringReadiness || 0}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="glass-panel p-5 rounded-3xl flex items-center justify-between">
+                  <div>
+                    <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-1">Pass Probability</h3>
+                    <div className="text-2xl font-black text-cyan-400">{result.atsPassProbability || 0}%</div>
+                  </div>
+                  <div className="text-right">
+                    <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-1">Industry Benchmark</h3>
+                    <div className="text-sm font-bold text-white bg-white/10 px-3 py-1.5 rounded-lg inline-block">
+                      {result.industryBenchmark || "N/A"}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Section Scores */}
-            <div className="glass-panel p-6 rounded-3xl grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {[
-                { label: "Skills", score: result.sectionScores?.skills || 0 },
-                { label: "Projects", score: result.sectionScores?.projects || 0 },
-                { label: "Experience", score: result.sectionScores?.experience || 0 },
-                { label: "Education", score: result.sectionScores?.education || 0 },
-                { label: "Contact Info", score: result.sectionScores?.contact || 0 },
-                { label: "Formatting", score: result.sectionScores?.formatting || 0 }
-              ].map((sec, i) => (
-                <div key={i} className="flex flex-col items-center p-3 bg-white/[0.02] rounded-2xl border border-white/5 text-center">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider mb-2">{sec.label}</span>
-                  <div className={`text-lg font-bold ${getScoreColor(sec.score)}`}>{sec.score}/100</div>
-                  <div className="w-full bg-white/10 h-1 rounded-full mt-2 overflow-hidden">
-                    <div className={`h-full rounded-full ${sec.score >= 80 ? 'bg-emerald-500' : sec.score >= 60 ? 'bg-orange-500' : 'bg-red-500'}`} style={{ width: `${sec.score}%` }}></div>
+            {/* 3. Transparent Score Breakdown */}
+            <div className="glass-panel p-6 rounded-3xl">
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <Activity size={18} className="text-emerald-400" /> Score Breakdown
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { id: 0, key: "skills", label: "Skills", score: result.sectionScores?.skills || 0 },
+                  { id: 1, key: "projects", label: "Projects", score: result.sectionScores?.projects || 0 },
+                  { id: 2, key: "experience", label: "Experience", score: result.sectionScores?.experience || 0 },
+                  { id: 3, key: "education", label: "Education", score: result.sectionScores?.education || 0 },
+                  { id: 4, key: "contact", label: "Contact Info", score: result.sectionScores?.contact || 0 },
+                  { id: 5, key: "formatting", label: "Formatting", score: result.sectionScores?.formatting || 0 }
+                ].map((sec) => (
+                  <div key={sec.id} className="relative">
+                    <div 
+                      onClick={() => setActiveSection(activeSection === sec.id ? null : sec.id)}
+                      className={`flex flex-col items-center p-3 rounded-2xl border text-center cursor-pointer transition-all ${
+                        activeSection === sec.id ? 'bg-white/10 border-white/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">{sec.label}</span>
+                      <div className={`text-base font-bold ${getScoreColor(sec.score)}`}>{sec.score}/100</div>
+                    </div>
                   </div>
+                ))}
+              </div>
+              
+              {/* Active Section Explanation */}
+              {activeSection !== null && (
+                <div className="mt-4 p-4 rounded-xl bg-black/20 border border-white/5 animate-in slide-in-from-top-2">
+                  <h4 className="text-sm font-bold text-white mb-2 uppercase tracking-wider">
+                    {[
+                      { id: 0, key: "skills" },
+                      { id: 1, key: "projects" },
+                      { id: 2, key: "experience" },
+                      { id: 3, key: "education" },
+                      { id: 4, key: "contact" },
+                      { id: 5, key: "formatting" }
+                    ].find(s => s.id === activeSection)?.key} Explanation
+                  </h4>
+                  <ul className="space-y-1">
+                    {result.explanations?.[
+                      [
+                        { id: 0, key: "skills" },
+                        { id: 1, key: "projects" },
+                        { id: 2, key: "experience" },
+                        { id: 3, key: "education" },
+                        { id: 4, key: "contact" },
+                        { id: 5, key: "formatting" }
+                      ].find(s => s.id === activeSection)?.key || "skills"
+                    ]?.map((expl: string, idx: number) => (
+                      <li key={idx} className={`text-xs ${expl.startsWith('+') ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {expl}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              ))}
+              )}
             </div>
 
-            {/* Missing Skills Warning */}
-            {result.missingSkills?.length > 0 && (
-              <div className="p-6 rounded-3xl bg-red-500/10 border border-red-500/20 backdrop-blur-md">
-                <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2">
+            {/* 4. Categorized Missing Skills */}
+            {result.missingSkills && Object.keys(result.missingSkills).some(k => result.missingSkills[k]?.length > 0) && (
+              <div className="glass-panel p-6 rounded-3xl">
+                <h3 className="text-red-400 font-bold mb-4 flex items-center gap-2">
                   <AlertCircle size={20} /> Missing Critical Skills
                 </h3>
-                <div className="flex flex-wrap gap-2">
-                  {result.missingSkills.map((skill: string, i: number) => (
-                    <span key={i} className="px-3 py-1 bg-red-500/20 text-red-200 rounded-lg text-sm border border-red-500/30">
-                      {skill}
-                    </span>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(result.missingSkills).map(([category, skills]: [string, any]) => {
+                    if (!skills || skills.length === 0) return null;
+                    return (
+                      <div key={category} className="p-3 bg-white/5 rounded-xl border border-white/10">
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 block">
+                          {category}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {skills.map((skill: string, i: number) => (
+                            <span key={i} className="px-2 py-0.5 bg-red-500/20 text-red-200 rounded text-xs border border-red-500/30">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Granular AI Issues List */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-white mb-4 pl-2 flex items-center gap-2">
-                <Activity className="text-violet-400" /> Granular Feedback
-              </h2>
-              
-              {result.issues?.length > 0 ? result.issues.map((issue: any, index: number) => {
-                const isExpanded = activeIssue === index;
-                
-                return (
-                  <div 
-                    key={index}
-                    onClick={() => setActiveIssue(isExpanded ? null : index)}
-                    className={`p-5 rounded-2xl border backdrop-blur-md transition-all cursor-pointer group hover:-translate-y-1 ${getSeverityColor(issue.severity)} ${isExpanded ? 'shadow-lg shadow-black/50' : ''}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1">{getSeverityIcon(issue.severity)}</div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-bold uppercase tracking-wider opacity-80 px-2 py-0.5 rounded bg-black/20">
-                              {issue.section}
-                            </span>
-                            <span className="text-xs uppercase tracking-wider opacity-60">
-                              {issue.type.replace('_', ' ')}
-                            </span>
-                          </div>
-                          <h4 className="font-semibold text-white group-hover:opacity-90">{issue.message}</h4>
-                        </div>
-                      </div>
-                    </div>
+            {/* 5. Top Action Items */}
+            {result.topActionItems?.length > 0 && (
+              <div className="p-6 rounded-3xl bg-blue-500/10 border border-blue-500/30 backdrop-blur-md">
+                <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2">
+                  <Activity size={20} /> Top Action Items
+                </h3>
+                <ul className="space-y-3">
+                  {result.topActionItems.map((item: string, i: number) => (
+                    <li key={i} className="flex items-start gap-3 text-sm text-blue-100">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs border border-blue-500/30">
+                        {i + 1}
+                      </span>
+                      <span className="mt-0.5">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-                    {/* Expandable Before/After Suggestions */}
-                    {isExpanded && issue.currentText && issue.suggestedText && (
-                      <div className="mt-6 pt-4 border-t border-current/20 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-4 duration-300">
-                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                          <span className="text-xs font-bold text-red-400 uppercase tracking-widest mb-2 block">Current Text</span>
-                          <p className="text-red-200/80 text-sm leading-relaxed italic">"{issue.currentText}"</p>
+            {/* 6. Granular AI Issues List (Collapsed) */}
+            <div className="space-y-4">
+              <details className="group glass-panel rounded-3xl border border-white/10 [&_summary::-webkit-details-marker]:hidden">
+                <summary className="p-6 cursor-pointer flex items-center justify-between text-xl font-bold text-white">
+                  <span className="flex items-center gap-2"><Activity className="text-violet-400" /> Granular Feedback (Advanced)</span>
+                  <span className="transition group-open:rotate-180">
+                    <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                  </span>
+                </summary>
+                
+                <div className="p-6 pt-0 space-y-4">
+                  {result.issues?.length > 0 ? result.issues.map((issue: any, index: number) => {
+                    const isExpanded = activeIssue === index;
+                    
+                    return (
+                      <div 
+                        key={index}
+                        onClick={() => setActiveIssue(isExpanded ? null : index)}
+                        className={`p-5 rounded-2xl border backdrop-blur-md transition-all cursor-pointer hover:-translate-y-1 ${getSeverityColor(issue.priority)} ${isExpanded ? 'shadow-lg shadow-black/50' : ''}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">{getSeverityIcon(issue.priority)}</div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80 px-2 py-0.5 rounded bg-black/20">
+                                  {issue.section}
+                                </span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-90 px-2 py-0.5 rounded border border-current/30">
+                                  {issue.priority}
+                                </span>
+                              </div>
+                              <h4 className="font-semibold text-white/90 text-sm leading-snug">{issue.message}</h4>
+                            </div>
+                          </div>
                         </div>
-                        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 relative overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
-                          <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                            <Sparkles size={12}/> AI Suggestion
-                          </span>
-                          <p className="text-emerald-100/90 text-sm leading-relaxed">"{issue.suggestedText}"</p>
-                        </div>
+
+                        {/* Expandable Before/After Suggestions */}
+                        {isExpanded && issue.currentText && issue.suggestedText && (
+                          <div className="mt-4 pt-4 border-t border-current/20 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-4 duration-300">
+                            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                              <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-2 block">Current Text</span>
+                              <p className="text-red-200/80 text-xs leading-relaxed italic">"{issue.currentText}"</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 relative overflow-hidden">
+                              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
+                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                <Sparkles size={10}/> AI Suggestion
+                              </span>
+                              <p className="text-emerald-100/90 text-xs leading-relaxed">"{issue.suggestedText}"</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                )
-              }) : (
-                <div className="glass-panel p-8 rounded-3xl text-center border border-emerald-500/30">
-                  <CheckCircle2 size={48} className="text-emerald-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-white mb-2">Flawless Resume!</h3>
-                  <p className="text-emerald-200/70">Our AI couldn't find any major issues. Your resume is perfectly optimized for ATS systems.</p>
+                    )
+                  }) : (
+                    <div className="p-4 text-center border border-emerald-500/30 rounded-2xl bg-emerald-500/10 text-emerald-200">
+                      No advanced issues found.
+                    </div>
+                  )}
                 </div>
-              )}
+              </details>
             </div>
 
           </div>

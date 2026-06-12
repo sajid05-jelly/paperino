@@ -186,13 +186,34 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
 { "keywordMatchPercentage": number }
 Resume: ${optimizedText}`;
   } else if (action === "skills") {
-    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify missing critical skills and check for fake/corrupted PDF extraction. Return STRICTLY JSON:
-{ "missingSkills": [ "string" ], "isFakeOrCorrupted": boolean, "fakeReason": "string" }
+    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify missing critical skills from the resume and group them by category. Check for fake/corrupted PDF extraction. Return STRICTLY JSON:
+{ 
+  "missingSkills": { 
+    "frontend": ["string"], 
+    "backend": ["string"], 
+    "database": ["string"], 
+    "cloud": ["string"], 
+    "devops": ["string"], 
+    "testing": ["string"] 
+  }, 
+  "isFakeOrCorrupted": boolean, 
+  "fakeReason": "string" 
+}
 Resume: ${optimizedText}`;
   } else if (action === "suggestions") {
-    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify a MAXIMUM of 3 most critical granular issues (weak summary, missing keyword, weak project).
-For EVERY issue found, extract the EXACT "currentText" from the resume, and provide a "suggestedText" showing a greatly improved version. Return STRICTLY JSON:
-{ "issues": [{ "type": "weak_summary" | "missing_keyword" | "weak_project" | "missing_section" | "formatting" | "ats_compatibility", "severity": "critical" | "warning" | "good", "section": "string", "message": "string", "currentText": "string", "suggestedText": "string" }] }
+    prompt = `You are an expert ATS Analyzer and Technical Recruiter for the role: "${sanitizedRole}". Evaluate the resume and return STRICTLY JSON:
+{
+  "executiveSummary": { "topStrengths": ["string"], "topWeaknesses": ["string"] },
+  "recruiterPerspective": { "strengths": ["string"], "concerns": ["string"], "hiringReadiness": number },
+  "atsPassProbability": number,
+  "industryBenchmark": "string",
+  "topActionItems": ["string"],
+  "issues": [{ "type": "weak_summary" | "missing_keyword" | "weak_project" | "missing_section" | "formatting" | "ats_compatibility", "priority": "Critical" | "Important" | "Optional", "section": "string", "message": "string", "currentText": "string", "suggestedText": "string" }]
+}
+IMPORTANT RULES:
+- Keep all feedback concise (maximum 2-3 lines per message).
+- Ensure "issues" focus on actionable text improvements.
+- "industryBenchmark" should be a short phrase like "Top 10% of applicants" or "Below Average".
 Resume: ${optimizedText}`;
   } else {
     console.timeEnd(`ATS_Action_${action}`);
@@ -257,36 +278,61 @@ Resume: ${optimizedText}`;
 function calculateDeterministicScore(text: string) {
   const lowerText = text.toLowerCase();
   
+  const explanations = {
+    contact: [] as string[],
+    education: [] as string[],
+    skills: [] as string[],
+    projects: [] as string[],
+    experience: [] as string[],
+    formatting: [] as string[]
+  };
+
   let contactScore = 0;
-  if (lowerText.includes("@") || lowerText.includes("mail")) contactScore += 40;
-  if (/\d{10}/.test(lowerText) || /\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(lowerText)) contactScore += 30;
-  if (lowerText.includes("linkedin.com") || lowerText.includes("linkedin")) contactScore += 15;
-  if (lowerText.includes("github.com") || lowerText.includes("github")) contactScore += 15;
+  if (lowerText.includes("@") || lowerText.includes("mail")) { contactScore += 40; explanations.contact.push("+40: Email address found"); }
+  else { explanations.contact.push("-40: Missing email address"); }
+  if (/\d{10}/.test(lowerText) || /\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(lowerText)) { contactScore += 30; explanations.contact.push("+30: Phone number found"); }
+  else { explanations.contact.push("-30: Missing phone number"); }
+  if (lowerText.includes("linkedin.com") || lowerText.includes("linkedin")) { contactScore += 15; explanations.contact.push("+15: LinkedIn profile found"); }
+  else { explanations.contact.push("-15: Missing LinkedIn profile"); }
+  if (lowerText.includes("github.com") || lowerText.includes("github")) { contactScore += 15; explanations.contact.push("+15: GitHub profile found"); }
+  else { explanations.contact.push("-15: Missing GitHub profile"); }
   
   let educationScore = 0;
-  if (lowerText.includes("education") || lowerText.includes("university") || lowerText.includes("college") || lowerText.includes("institute") || lowerText.includes("school")) educationScore += 40;
-  if (lowerText.includes("bachelor") || lowerText.includes("b.tech") || lowerText.includes("degree") || lowerText.includes("b.e") || lowerText.includes("bsc") || lowerText.includes("master")) educationScore += 30;
-  if (lowerText.includes("cgpa") || lowerText.includes("gpa") || lowerText.includes("%") || /\b20\d{2}\b/.test(lowerText)) educationScore += 30;
+  if (lowerText.includes("education") || lowerText.includes("university") || lowerText.includes("college") || lowerText.includes("institute") || lowerText.includes("school")) { educationScore += 40; explanations.education.push("+40: Education section identified"); }
+  else { explanations.education.push("-40: Missing clear Education section"); }
+  if (lowerText.includes("bachelor") || lowerText.includes("b.tech") || lowerText.includes("degree") || lowerText.includes("b.e") || lowerText.includes("bsc") || lowerText.includes("master")) { educationScore += 30; explanations.education.push("+30: Degree identifier found"); }
+  else { explanations.education.push("-30: Missing degree identifier"); }
+  if (lowerText.includes("cgpa") || lowerText.includes("gpa") || lowerText.includes("%") || /\b20\d{2}\b/.test(lowerText)) { educationScore += 30; explanations.education.push("+30: Graduation year/GPA found"); }
+  else { explanations.education.push("-30: Missing graduation year or GPA metrics"); }
   
   let skillsScore = 0;
-  if (lowerText.includes("skills") || lowerText.includes("technologies") || lowerText.includes("expertise") || lowerText.includes("languages")) skillsScore += 30;
+  if (lowerText.includes("skills") || lowerText.includes("technologies") || lowerText.includes("expertise") || lowerText.includes("languages")) { skillsScore += 30; explanations.skills.push("+30: Skills section identified"); }
+  else { explanations.skills.push("-30: Missing clear Skills section"); }
   const commonTech = ["javascript", "python", "java", "react", "node", "sql", "aws", "docker", "html", "css", "c++", "c#", "git", "linux", "api", "typescript", "kubernetes", "azure", "gcp", "spring", "django", "express", "mongodb", "postgresql", "mysql"];
   let techCount = commonTech.filter(tech => lowerText.includes(tech)).length;
   skillsScore += Math.min(70, techCount * 10);
+  if (techCount > 0) explanations.skills.push(`+${Math.min(70, techCount * 10)}: Found ${techCount} core technical skills`);
+  else explanations.skills.push("-70: No core technical skills detected");
   
   let projectsScore = 0;
-  if (lowerText.includes("project") || lowerText.includes("portfolio")) projectsScore += 30;
-  if (lowerText.includes("developed") || lowerText.includes("built") || lowerText.includes("created") || lowerText.includes("implemented") || lowerText.includes("architected") || lowerText.includes("designed")) projectsScore += 70;
+  if (lowerText.includes("project") || lowerText.includes("portfolio")) { projectsScore += 30; explanations.projects.push("+30: Projects section identified"); }
+  else { explanations.projects.push("-30: Missing clear Projects section"); }
+  if (lowerText.includes("developed") || lowerText.includes("built") || lowerText.includes("created") || lowerText.includes("implemented") || lowerText.includes("architected") || lowerText.includes("designed")) { projectsScore += 70; explanations.projects.push("+70: Strong action verbs found in projects"); }
+  else { explanations.projects.push("-70: Weak action verbs in projects"); }
   
   let experienceScore = 0;
-  if (lowerText.includes("experience") || lowerText.includes("internship") || lowerText.includes("work history") || lowerText.includes("employment")) experienceScore += 40;
-  if (lowerText.includes("intern") || lowerText.includes("developer") || lowerText.includes("engineer") || lowerText.includes("role") || lowerText.includes("freelance") || lowerText.includes("software")) experienceScore += 60;
+  if (lowerText.includes("experience") || lowerText.includes("internship") || lowerText.includes("work history") || lowerText.includes("employment")) { experienceScore += 40; explanations.experience.push("+40: Experience/Internship section identified"); }
+  else { explanations.experience.push("-40: Missing clear Experience section"); }
+  if (lowerText.includes("intern") || lowerText.includes("developer") || lowerText.includes("engineer") || lowerText.includes("role") || lowerText.includes("freelance") || lowerText.includes("software")) { experienceScore += 60; explanations.experience.push("+60: Professional roles detected"); }
+  else { explanations.experience.push("-60: Missing professional roles/titles"); }
 
   let formattingScore = 0;
-  if (text.length > 500 && text.length < 15000) formattingScore += 40;
+  if (text.length > 500 && text.length < 15000) { formattingScore += 40; explanations.formatting.push("+40: Optimal resume length"); }
+  else { explanations.formatting.push("-40: Resume length is too short or too long"); }
   const headers = ["education", "experience", "projects", "skills", "summary", "objective"];
   let headerCount = headers.filter(h => lowerText.includes(h)).length;
   formattingScore += Math.min(60, headerCount * 15);
+  explanations.formatting.push(`+${Math.min(60, headerCount * 15)}: Found ${headerCount} standard formatting headers`);
   
   contactScore = Math.min(100, contactScore);
   educationScore = Math.min(100, Math.max(0, educationScore));
@@ -313,6 +359,7 @@ function calculateDeterministicScore(text: string) {
       education: educationScore,
       contact: contactScore,
       formatting: formattingScore
-    }
+    },
+    explanations
   };
 }
