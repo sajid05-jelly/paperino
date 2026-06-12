@@ -227,11 +227,17 @@ export default function ATSAnalyzerPage() {
 
       const data = {
         overallScore: scoreRes.status === "fulfilled" ? scoreRes.value.overallScore || 0 : 0,
-        sectionScores: scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0 },
+        sectionScores: scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0, formatting: 0 },
+        explanations: scoreRes.status === "fulfilled" ? scoreRes.value.explanations || {} : {},
         keywordMatchPercentage: keywordsRes.status === "fulfilled" ? keywordsRes.value.keywordMatchPercentage || 0 : 0,
-        missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || [] : ["Failed to analyze skills due to timeout"],
+        missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || {} : {},
         isFakeOrCorrupted: skillsRes.status === "fulfilled" ? skillsRes.value.isFakeOrCorrupted || false : false,
         fakeReason: skillsRes.status === "fulfilled" ? skillsRes.value.fakeReason || "" : "",
+        executiveSummary: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.executiveSummary || {} : {},
+        recruiterPerspective: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.recruiterPerspective || {} : {},
+        atsPassProbability: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.atsPassProbability || 0 : 0,
+        industryBenchmark: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.industryBenchmark || "N/A" : "N/A",
+        topActionItems: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.topActionItems || [] : [],
         issues: aggregatedIssues,
         rawText: textToAnalyze
       };
