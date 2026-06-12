@@ -374,10 +374,10 @@ export default function ATSAnalyzerPage() {
         </div>
       ) : (
         /* Split-Pane Results View */
-        <div ref={resultsRef} className="w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row gap-8 animate-in fade-in slide-in-from-bottom-10 duration-700 relative z-10 pt-8 pb-12">
+        <div ref={resultsRef} className="w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-10 duration-700 relative z-10 pt-8 pb-12">
           
           {/* Left Pane: Resume Preview */}
-          <div className="w-full md:w-1/2 flex flex-col bg-[#07050d] border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)] h-fit sticky top-8">
+          <div className="w-full lg:w-[40%] flex flex-col bg-[#07050d] border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)] h-[calc(100vh-6rem)] sticky top-8">
             <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between backdrop-blur-md">
               <div className="flex items-center gap-2 text-violet-300">
                 <FileText size={18} />
@@ -388,11 +388,11 @@ export default function ATSAnalyzerPage() {
               </button>
             </div>
             
-            <div className="w-full h-[800px] bg-white/[0.02] relative">
+            <div className="w-full flex-grow bg-white/[0.02] relative">
               {file?.type === "application/pdf" && fileUrl ? (
                 <iframe 
                   src={`${fileUrl}#toolbar=0&navpanes=0&scrollbar=0`} 
-                  className="w-full h-full border-0 rounded-b-3xl"
+                  className="w-full h-full border-0"
                   title="Resume PDF Preview"
                 />
               ) : (
@@ -408,23 +408,23 @@ export default function ATSAnalyzerPage() {
           </div>
 
           {/* Right Pane: AI Analysis Dashboard */}
-          <div className="w-full md:w-1/2 flex flex-col space-y-6">
+          <div className="w-full lg:w-[60%] flex flex-col gap-5">
             
             {/* 1. Final Verdict & Executive Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className={`p-6 rounded-3xl border backdrop-blur-md shadow-lg flex flex-col justify-center ${
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className={`col-span-3 p-5 rounded-3xl border backdrop-blur-md shadow-lg flex flex-col justify-center ${
                 result.overallScore >= 80 ? 'bg-emerald-500/10 border-emerald-500/30' : 
                 result.overallScore >= 60 ? 'bg-orange-500/10 border-orange-500/30' : 
                 'bg-red-500/10 border-red-500/30'
               }`}>
-                <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${
+                <h3 className={`text-sm font-bold mb-1.5 flex items-center gap-2 uppercase tracking-wide ${
                   result.overallScore >= 80 ? 'text-emerald-400' : 
                   result.overallScore >= 60 ? 'text-orange-400' : 
                   'text-red-400'
                 }`}>
-                  <Activity size={20} /> Final Verdict
+                  <Activity size={16} /> Final Verdict
                 </h3>
-                <p className="text-gray-300 leading-relaxed text-sm">
+                <p className="text-gray-300 leading-snug text-sm">
                   {result.overallScore >= 80 
                     ? "Your resume is highly optimized and compatible with ATS systems. Minor tweaks to layout or specific keywords could make it perfect."
                     : result.overallScore >= 60
@@ -434,13 +434,13 @@ export default function ATSAnalyzerPage() {
                 </p>
               </div>
 
-              <div className="glass-panel p-6 rounded-3xl flex items-center justify-between border-l-4 border-l-violet-500 relative overflow-hidden">
+              <div className="col-span-2 glass-panel p-5 rounded-3xl flex items-center justify-between border-l-4 border-l-violet-500 relative overflow-hidden">
                 <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-violet-500/20 blur-3xl rounded-full"></div>
-                <div>
-                  <h2 className="text-white text-2xl font-bold mb-1">ATS Match</h2>
-                  <p className="text-violet-300/70 text-sm">Target: <strong className="text-white">{role}</strong></p>
+                <div className="z-10">
+                  <h2 className="text-white text-xl font-bold mb-1">ATS Match</h2>
+                  <p className="text-violet-300/70 text-xs">Target: <strong className="text-white break-words max-w-[100px] block truncate">{role}</strong></p>
                 </div>
-                <div className="relative w-24 h-24 flex items-center justify-center">
+                <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/10" />
                     <circle 
@@ -452,63 +452,61 @@ export default function ATSAnalyzerPage() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`text-2xl font-black ${getScoreColor(result.overallScore)}`}>{result.overallScore}</span>
+                    <span className={`text-xl font-black ${getScoreColor(result.overallScore)}`}>{result.overallScore}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* 2. Recruiter Perspective & Benchmarks */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="glass-panel p-6 rounded-3xl">
-                <h3 className="text-violet-400 font-bold mb-4 flex items-center gap-2">
-                  <Activity size={18} /> Recruiter Perspective
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Top Strengths</span>
-                    <ul className="space-y-1">
-                      {result.executiveSummary?.topStrengths?.map((str: string, i: number) => (
-                        <li key={i} className="text-sm text-emerald-300 flex items-start gap-2">
-                          <CheckCircle2 size={14} className="mt-0.5 shrink-0" /> {str}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Top Concerns</span>
-                    <ul className="space-y-1">
-                      {result.executiveSummary?.topWeaknesses?.map((wk: string, i: number) => (
-                        <li key={i} className="text-sm text-red-300 flex items-start gap-2">
-                          <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {wk}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+            {/* 2. Recruiter Perspective & Benchmarks */}
+            <div className="glass-panel p-5 rounded-3xl flex flex-col gap-4">
+              <h3 className="text-violet-400 font-bold flex items-center gap-2 text-sm uppercase tracking-wide">
+                <Activity size={16} /> Recruiter Perspective
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Strengths</span>
+                  <ul className="space-y-1.5">
+                    {result.executiveSummary?.topStrengths?.length ? result.executiveSummary.topStrengths.map((str: string, i: number) => (
+                      <li key={i} className="text-xs text-emerald-300 flex items-start gap-2 leading-tight">
+                        <CheckCircle2 size={12} className="mt-0.5 shrink-0" /> {str}
+                      </li>
+                    )) : <li className="text-xs text-gray-500 italic">No significant strengths identified.</li>}
+                  </ul>
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Concerns</span>
+                  <ul className="space-y-1.5">
+                    {result.executiveSummary?.topWeaknesses?.length ? result.executiveSummary.topWeaknesses.map((wk: string, i: number) => (
+                      <li key={i} className="text-xs text-red-300 flex items-start gap-2 leading-tight">
+                        <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {wk}
+                      </li>
+                    )) : <li className="text-xs text-gray-500 italic">No significant concerns identified.</li>}
+                  </ul>
                 </div>
               </div>
-              
-              <div className="space-y-4">
-                <div className="glass-panel p-5 rounded-3xl">
-                  <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-2">Hiring Readiness</h3>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-black text-white">{result.recruiterPerspective?.hiringReadiness || 0}%</span>
-                  </div>
-                  <div className="w-full bg-white/10 h-1.5 rounded-full mt-3 overflow-hidden">
-                    <div className="bg-gradient-to-r from-violet-600 to-violet-400 h-full rounded-full" style={{ width: `${result.recruiterPerspective?.hiringReadiness || 0}%` }}></div>
+
+              {/* Benchmarks Row */}
+              <div className="grid grid-cols-3 gap-3 border-t border-white/5 pt-4 mt-2">
+                <div>
+                  <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Hiring Readiness</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-black text-white">{result.recruiterPerspective?.hiringReadiness || 0}%</span>
+                    <div className="flex-grow bg-white/10 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-gradient-to-r from-violet-600 to-violet-400 h-full rounded-full" style={{ width: `${result.recruiterPerspective?.hiringReadiness || 0}%` }}></div>
+                    </div>
                   </div>
                 </div>
-
-                <div className="glass-panel p-5 rounded-3xl flex items-center justify-between">
-                  <div>
-                    <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-1">Pass Probability</h3>
-                    <div className="text-2xl font-black text-cyan-400">{result.atsPassProbability || 0}%</div>
-                  </div>
-                  <div className="text-right">
-                    <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-1">Industry Benchmark</h3>
-                    <div className="text-sm font-bold text-white bg-white/10 px-3 py-1.5 rounded-lg inline-block">
-                      {result.industryBenchmark || "N/A"}
-                    </div>
+                <div>
+                  <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Pass Probability</h3>
+                  <div className="text-lg font-black text-cyan-400">{result.atsPassProbability || 0}%</div>
+                </div>
+                <div>
+                  <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Industry Benchmark</h3>
+                  <div className="text-xs font-bold text-white bg-white/10 px-2 py-1 rounded inline-block">
+                    {result.industryBenchmark || "N/A"}
                   </div>
                 </div>
               </div>
@@ -577,9 +575,9 @@ export default function ATSAnalyzerPage() {
 
             {/* 4. Categorized Missing Skills */}
             {result.missingSkills && Object.keys(result.missingSkills).some(k => result.missingSkills[k]?.length > 0) && (
-              <div className="glass-panel p-6 rounded-3xl">
-                <h3 className="text-red-400 font-bold mb-4 flex items-center gap-2">
-                  <AlertCircle size={20} /> Missing Critical Skills
+              <div className="glass-panel p-5 rounded-3xl">
+                <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                  <AlertCircle size={16} /> Missing Critical Skills
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {Object.entries(result.missingSkills).map(([category, skills]: [string, any]) => {
@@ -605,20 +603,20 @@ export default function ATSAnalyzerPage() {
 
             {/* 5. Top Action Items */}
             {result.topActionItems?.length > 0 && (
-              <div className="p-6 rounded-3xl bg-blue-500/10 border border-blue-500/30 backdrop-blur-md">
-                <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2">
-                  <Activity size={20} /> Top Action Items
+              <div className="p-5 rounded-3xl bg-blue-500/10 border border-blue-500/30 backdrop-blur-md">
+                <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                  <Activity size={16} /> Top Action Items
                 </h3>
-                <ul className="space-y-3">
+                <div className="grid grid-cols-1 gap-2.5">
                   {result.topActionItems.map((item: string, i: number) => (
-                    <li key={i} className="flex items-start gap-3 text-sm text-blue-100">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs border border-blue-500/30">
+                    <div key={i} className="flex items-start gap-3 p-3 bg-blue-500/5 rounded-xl border border-blue-500/20">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs">
                         {i + 1}
                       </span>
-                      <span className="mt-0.5">{item}</span>
-                    </li>
+                      <span className="mt-0.5 text-xs text-blue-100 leading-relaxed">{item}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 
@@ -640,7 +638,7 @@ export default function ATSAnalyzerPage() {
                       <div 
                         key={index}
                         onClick={() => setActiveIssue(isExpanded ? null : index)}
-                        className={`p-5 rounded-2xl border backdrop-blur-md transition-all cursor-pointer hover:-translate-y-1 ${getSeverityColor(issue.priority)} ${isExpanded ? 'shadow-lg shadow-black/50' : ''}`}
+                        className={`p-4 rounded-xl border backdrop-blur-md transition-all cursor-pointer hover:-translate-y-0.5 ${getSeverityColor(issue.priority)} ${isExpanded ? 'shadow-md shadow-black/50' : ''}`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3">
