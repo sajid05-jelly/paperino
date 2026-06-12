@@ -205,7 +205,7 @@ export default function ATSAnalyzerPage() {
       // Combine partial results
       let aggregatedIssues = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.issues || [] : [{
         type: "ats_compatibility", severity: "warning", section: "General",
-        message: "Suggestions timed out. Vercel aborted the heavy suggestion generation. Other metrics are successfully loaded.",
+        message: suggestionsRes.reason?.message || "Suggestions timed out. Vercel aborted the heavy suggestion generation. Other metrics are successfully loaded.",
         currentText: "", suggestedText: ""
       }];
 

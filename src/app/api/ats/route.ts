@@ -271,9 +271,13 @@ Resume: ${optimizedText}`;
       success = true;
     } catch (err: any) {
       console.error(`[ATS] AI Attempt ${attempts} failed for ${action}:`, err.message);
-      if (attempts >= 2) {
+      if (attempts < 2) {
+        // Wait 1 second before retrying to prevent rapid rate limit hits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
         console.timeEnd(`ATS_Action_${action}`);
-        return NextResponse.json({ error: `AI timed out processing ${action}.` }, { status: 504 });
+        // Surface the actual error message to the frontend
+        return NextResponse.json({ error: `AI Error (${action}): ${err.message}` }, { status: 504 });
       }
     }
   }
