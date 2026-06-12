@@ -177,9 +177,10 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
   let prompt = "";
   
   if (action === "score") {
-    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Evaluate the resume and return STRICTLY JSON:
-{ "overallScore": number, "sectionScores": { "skills": number, "projects": number, "experience": number, "education": number, "contact": number } }
-Resume: ${optimizedText}`;
+    const scoreData = calculateDeterministicScore(rawText);
+    console.timeEnd(`ATS_Action_${action}`);
+    console.log(`[ATS] Deterministic Score Calculation Complete.`);
+    return NextResponse.json(scoreData);
   } else if (action === "keywords") {
     prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Calculate keyword match percentage. Return STRICTLY JSON:
 { "keywordMatchPercentage": number }
@@ -250,25 +251,68 @@ Resume: ${optimizedText}`;
   return NextResponse.json(parsedData);
 }
 
-// Fallback generator for partial results
-function createFallbackResult(rawText: string) {
+// ============================================================================
+// 3. DETERMINISTIC SCORING ENGINE
+// ============================================================================
+function calculateDeterministicScore(text: string) {
+  const lowerText = text.toLowerCase();
+  
+  let contactScore = 0;
+  if (lowerText.includes("@") || lowerText.includes("mail")) contactScore += 40;
+  if (/\d{10}/.test(lowerText) || /\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(lowerText)) contactScore += 30;
+  if (lowerText.includes("linkedin.com") || lowerText.includes("linkedin")) contactScore += 15;
+  if (lowerText.includes("github.com") || lowerText.includes("github")) contactScore += 15;
+  
+  let educationScore = 0;
+  if (lowerText.includes("education") || lowerText.includes("university") || lowerText.includes("college") || lowerText.includes("institute") || lowerText.includes("school")) educationScore += 40;
+  if (lowerText.includes("bachelor") || lowerText.includes("b.tech") || lowerText.includes("degree") || lowerText.includes("b.e") || lowerText.includes("bsc") || lowerText.includes("master")) educationScore += 30;
+  if (lowerText.includes("cgpa") || lowerText.includes("gpa") || lowerText.includes("%") || /\b20\d{2}\b/.test(lowerText)) educationScore += 30;
+  
+  let skillsScore = 0;
+  if (lowerText.includes("skills") || lowerText.includes("technologies") || lowerText.includes("expertise") || lowerText.includes("languages")) skillsScore += 30;
+  const commonTech = ["javascript", "python", "java", "react", "node", "sql", "aws", "docker", "html", "css", "c++", "c#", "git", "linux", "api", "typescript", "kubernetes", "azure", "gcp", "spring", "django", "express", "mongodb", "postgresql", "mysql"];
+  let techCount = commonTech.filter(tech => lowerText.includes(tech)).length;
+  skillsScore += Math.min(70, techCount * 10);
+  
+  let projectsScore = 0;
+  if (lowerText.includes("project") || lowerText.includes("portfolio")) projectsScore += 30;
+  if (lowerText.includes("developed") || lowerText.includes("built") || lowerText.includes("created") || lowerText.includes("implemented") || lowerText.includes("architected") || lowerText.includes("designed")) projectsScore += 70;
+  
+  let experienceScore = 0;
+  if (lowerText.includes("experience") || lowerText.includes("internship") || lowerText.includes("work history") || lowerText.includes("employment")) experienceScore += 40;
+  if (lowerText.includes("intern") || lowerText.includes("developer") || lowerText.includes("engineer") || lowerText.includes("role") || lowerText.includes("freelance") || lowerText.includes("software")) experienceScore += 60;
+
+  let formattingScore = 0;
+  if (text.length > 500 && text.length < 15000) formattingScore += 40;
+  const headers = ["education", "experience", "projects", "skills", "summary", "objective"];
+  let headerCount = headers.filter(h => lowerText.includes(h)).length;
+  formattingScore += Math.min(60, headerCount * 15);
+  
+  contactScore = Math.min(100, contactScore);
+  educationScore = Math.min(100, Math.max(0, educationScore));
+  skillsScore = Math.min(100, Math.max(0, skillsScore));
+  projectsScore = Math.min(100, Math.max(0, projectsScore));
+  experienceScore = Math.min(100, Math.max(0, experienceScore));
+  formattingScore = Math.min(100, Math.max(0, formattingScore));
+
+  const overallScore = Math.round(
+    (skillsScore * 0.25) + 
+    (projectsScore * 0.25) + 
+    (experienceScore * 0.20) + 
+    (educationScore * 0.10) + 
+    (contactScore * 0.10) + 
+    (formattingScore * 0.10)
+  );
+
   return {
-    overallScore: 65,
-    keywordMatchPercentage: 50,
-    sectionScores: { skills: 65, projects: 65, experience: 65, education: 65, contact: 65 },
-    issues: [
-      {
-        type: "ats_compatibility",
-        severity: "warning",
-        section: "General",
-        message: "Partial Analysis: The AI server timed out while performing a deep scan of your resume. This usually means the PDF was too complex or Google's servers were overloaded. We've provided a baseline score, but for full granular feedback, please try again with a simpler text-based PDF.",
-        currentText: "",
-        suggestedText: ""
-      }
-    ],
-    missingSkills: ["Could not fully analyze skills due to timeout"],
-    isFakeOrCorrupted: false,
-    fakeReason: "",
-    rawText: rawText
+    overallScore,
+    sectionScores: {
+      skills: skillsScore,
+      projects: projectsScore,
+      experience: experienceScore,
+      education: educationScore,
+      contact: contactScore,
+      formatting: formattingScore
+    }
   };
 }

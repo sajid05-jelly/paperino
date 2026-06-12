@@ -467,13 +467,14 @@ export default function ATSAnalyzerPage() {
             </div>
 
             {/* Section Scores */}
-            <div className="glass-panel p-6 rounded-3xl grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="glass-panel p-6 rounded-3xl grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {[
                 { label: "Skills", score: result.sectionScores?.skills || 0 },
                 { label: "Projects", score: result.sectionScores?.projects || 0 },
                 { label: "Experience", score: result.sectionScores?.experience || 0 },
                 { label: "Education", score: result.sectionScores?.education || 0 },
-                { label: "Contact Info", score: result.sectionScores?.contact || 0 }
+                { label: "Contact Info", score: result.sectionScores?.contact || 0 },
+                { label: "Formatting", score: result.sectionScores?.formatting || 0 }
               ].map((sec, i) => (
                 <div key={i} className="flex flex-col items-center p-3 bg-white/[0.02] rounded-2xl border border-white/5 text-center">
                   <span className="text-xs text-gray-400 uppercase tracking-wider mb-2">{sec.label}</span>
