@@ -276,8 +276,13 @@ Resume: ${optimizedText}`;
         await new Promise(resolve => setTimeout(resolve, 1000));
       } else {
         console.timeEnd(`ATS_Action_${action}`);
-        // Surface the actual error message to the frontend
-        return NextResponse.json({ error: `AI Error (${action}): ${err.message}` }, { status: 504 });
+        let userMessage = "Advanced AI analysis is temporarily unavailable.";
+        if (err.message?.includes("429") || err.message?.includes("Quota")) {
+          userMessage = "AI quota reached. Please try again later.";
+        } else if (err.message?.includes("503")) {
+          userMessage = "AI service is currently overloaded. Please try again later.";
+        }
+        return NextResponse.json({ error: userMessage }, { status: 504 });
       }
     }
   }

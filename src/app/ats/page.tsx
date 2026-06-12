@@ -202,25 +202,25 @@ export default function ATSAnalyzerPage() {
          throw new Error(scoreRes.reason?.message || "AI Analysis completely failed due to timeout.");
       }
 
-      // Combine partial results
+      // Combine partial results with safe, user-friendly fallback messages
       let aggregatedIssues = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.issues || [] : [{
         type: "ats_compatibility", severity: "warning", section: "General",
-        message: suggestionsRes.reason?.message || "Suggestions timed out. Vercel aborted the heavy suggestion generation. Other metrics are successfully loaded.",
+        message: "Advanced AI analysis (Recruiter Perspective & Suggestions) is temporarily unavailable due to high demand or quota limits. Please try again later.",
         currentText: "", suggestedText: ""
       }];
 
       if (scoreRes.status === "rejected") {
         aggregatedIssues.push({
           type: "ats_compatibility", severity: "critical", section: "Score Calculation",
-          message: "Failed to calculate ATS score. " + (scoreRes.reason?.message || ""),
+          message: "Failed to calculate ATS score. The service may be temporarily overloaded.",
           currentText: "", suggestedText: ""
         });
       }
 
       if (keywordsRes.status === "rejected") {
         aggregatedIssues.push({
-          type: "missing_keyword", severity: "critical", section: "Keywords",
-          message: "Keyword analysis timed out or failed. " + (keywordsRes.reason?.message || ""),
+          type: "missing_keyword", severity: "warning", section: "Keywords",
+          message: "Keyword analysis is temporarily unavailable. We couldn't check specific ATS keyword matches.",
           currentText: "", suggestedText: ""
         });
       }
@@ -465,51 +465,59 @@ export default function ATSAnalyzerPage() {
                 <Activity size={16} /> Recruiter Perspective
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Strengths</span>
-                  <ul className="space-y-1.5">
-                    {result.executiveSummary?.topStrengths?.length ? result.executiveSummary.topStrengths.map((str: string, i: number) => (
-                      <li key={i} className="text-xs text-emerald-300 flex items-start gap-2 leading-tight">
-                        <CheckCircle2 size={12} className="mt-0.5 shrink-0" /> {str}
-                      </li>
-                    )) : <li className="text-xs text-gray-500 italic">No significant strengths identified.</li>}
-                  </ul>
+              {!result.executiveSummary?.topStrengths?.length && (!result.recruiterPerspective?.hiringReadiness || result.recruiterPerspective.hiringReadiness === 0) ? (
+                <div className="p-4 border border-violet-500/20 bg-violet-500/5 rounded-xl text-center">
+                  <p className="text-violet-300/80 text-sm italic">Advanced AI insights (Recruiter Perspective, Hiring Readiness) are temporarily unavailable due to high server load or quota limits. Please try again later.</p>
                 </div>
-                <div>
-                  <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Concerns</span>
-                  <ul className="space-y-1.5">
-                    {result.executiveSummary?.topWeaknesses?.length ? result.executiveSummary.topWeaknesses.map((wk: string, i: number) => (
-                      <li key={i} className="text-xs text-red-300 flex items-start gap-2 leading-tight">
-                        <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {wk}
-                      </li>
-                    )) : <li className="text-xs text-gray-500 italic">No significant concerns identified.</li>}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Benchmarks Row */}
-              <div className="grid grid-cols-3 gap-3 border-t border-white/5 pt-4 mt-2">
-                <div>
-                  <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Hiring Readiness</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-black text-white">{result.recruiterPerspective?.hiringReadiness || 0}%</span>
-                    <div className="flex-grow bg-white/10 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-violet-600 to-violet-400 h-full rounded-full" style={{ width: `${result.recruiterPerspective?.hiringReadiness || 0}%` }}></div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Strengths</span>
+                      <ul className="space-y-1.5">
+                        {result.executiveSummary?.topStrengths?.length ? result.executiveSummary.topStrengths.map((str: string, i: number) => (
+                          <li key={i} className="text-xs text-emerald-300 flex items-start gap-2 leading-tight">
+                            <CheckCircle2 size={12} className="mt-0.5 shrink-0" /> {str}
+                          </li>
+                        )) : <li className="text-xs text-gray-500 italic">No significant strengths identified.</li>}
+                      </ul>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Concerns</span>
+                      <ul className="space-y-1.5">
+                        {result.executiveSummary?.topWeaknesses?.length ? result.executiveSummary.topWeaknesses.map((wk: string, i: number) => (
+                          <li key={i} className="text-xs text-red-300 flex items-start gap-2 leading-tight">
+                            <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {wk}
+                          </li>
+                        )) : <li className="text-xs text-gray-500 italic">No significant concerns identified.</li>}
+                      </ul>
                     </div>
                   </div>
-                </div>
-                <div>
-                  <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Pass Probability</h3>
-                  <div className="text-lg font-black text-cyan-400">{result.atsPassProbability || 0}%</div>
-                </div>
-                <div>
-                  <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Industry Benchmark</h3>
-                  <div className="text-xs font-bold text-white bg-white/10 px-2 py-1 rounded inline-block">
-                    {result.industryBenchmark || "N/A"}
+
+                  {/* Benchmarks Row */}
+                  <div className="grid grid-cols-3 gap-3 border-t border-white/5 pt-4 mt-2">
+                    <div>
+                      <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Hiring Readiness</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-black text-white">{result.recruiterPerspective?.hiringReadiness || 0}%</span>
+                        <div className="flex-grow bg-white/10 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-gradient-to-r from-violet-600 to-violet-400 h-full rounded-full" style={{ width: `${result.recruiterPerspective?.hiringReadiness || 0}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Pass Probability</h3>
+                      <div className="text-lg font-black text-cyan-400">{result.atsPassProbability || 0}%</div>
+                    </div>
+                    <div>
+                      <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Industry Benchmark</h3>
+                      <div className="text-xs font-bold text-white bg-white/10 px-2 py-1 rounded inline-block">
+                        {result.industryBenchmark || "N/A"}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
 
             {/* 3. Transparent Score Breakdown */}
