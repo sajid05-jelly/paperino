@@ -225,16 +225,35 @@ export default function ATSAnalyzerPage() {
         });
       }
 
+      const overallScore = scoreRes.status === "fulfilled" ? scoreRes.value.overallScore || 0 : 0;
+      const sectionScores = scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0, formatting: 0 };
+
+      // Deterministic Hiring Readiness Calculation
+      // - ATS Match Score: 40%
+      // - Experience/Internships: 25%
+      // - Projects Quality: 20%
+      // - Skills Coverage: 15%
+      const deterministicHiringReadiness = Math.round(
+        (overallScore * 0.40) +
+        ((sectionScores.experience || 0) * 0.25) +
+        ((sectionScores.projects || 0) * 0.20) +
+        ((sectionScores.skills || 0) * 0.15)
+      );
+
+      const recruiterPerspective = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.recruiterPerspective || {} : {};
+      // Override the AI's subjective readiness score with our deterministic mathematical calculation
+      recruiterPerspective.hiringReadiness = deterministicHiringReadiness;
+
       const data = {
-        overallScore: scoreRes.status === "fulfilled" ? scoreRes.value.overallScore || 0 : 0,
-        sectionScores: scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0, formatting: 0 },
+        overallScore,
+        sectionScores,
         explanations: scoreRes.status === "fulfilled" ? scoreRes.value.explanations || {} : {},
         keywordMatchPercentage: keywordsRes.status === "fulfilled" ? keywordsRes.value.keywordMatchPercentage || 0 : 0,
         missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || {} : {},
         isFakeOrCorrupted: skillsRes.status === "fulfilled" ? skillsRes.value.isFakeOrCorrupted || false : false,
         fakeReason: skillsRes.status === "fulfilled" ? skillsRes.value.fakeReason || "" : "",
         executiveSummary: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.executiveSummary || {} : {},
-        recruiterPerspective: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.recruiterPerspective || {} : {},
+        recruiterPerspective,
         atsPassProbability: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.atsPassProbability || 0 : 0,
         industryBenchmark: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.industryBenchmark || "N/A" : "N/A",
         topActionItems: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.topActionItems || [] : [],
