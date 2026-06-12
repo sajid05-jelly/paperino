@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mammoth from "mammoth";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { runApiGuard } from "@/lib/api-guard";
 import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager";
 import { adminDb } from "@/lib/firebase-admin";
@@ -168,10 +168,10 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
   const optimizedText = rawText.slice(0, 10000);
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    generationConfig: { responseMimeType: "application/json" },
-  });
+  
+  // Note: We'll define the generation config dynamically based on the action
+  let generationConfig: any = { responseMimeType: "application/json" };
+
 
   console.time(`ATS_Action_${action}`);
   let prompt = "";
@@ -201,15 +201,47 @@ Resume: ${optimizedText}`;
 }
 Resume: ${optimizedText}`;
   } else if (action === "suggestions") {
-    prompt = `You are an expert ATS Analyzer and Technical Recruiter for the role: "${sanitizedRole}". Evaluate the resume and return STRICTLY JSON:
-{
-  "executiveSummary": { "topStrengths": ["string"], "topWeaknesses": ["string"] },
-  "recruiterPerspective": { "strengths": ["string"], "concerns": ["string"], "hiringReadiness": number },
-  "atsPassProbability": number,
-  "industryBenchmark": "string",
-  "topActionItems": ["string"],
-  "issues": [{ "type": "weak_summary" | "missing_keyword" | "weak_project" | "missing_section" | "formatting" | "ats_compatibility", "priority": "Critical" | "Important" | "Optional", "section": "string", "message": "string", "currentText": "string", "suggestedText": "string" }]
-}
+    generationConfig.responseSchema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        executiveSummary: {
+          type: SchemaType.OBJECT,
+          properties: {
+            topStrengths: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            topWeaknesses: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+          }
+        },
+        recruiterPerspective: {
+          type: SchemaType.OBJECT,
+          properties: {
+            strengths: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            concerns: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            hiringReadiness: { type: SchemaType.NUMBER }
+          }
+        },
+        atsPassProbability: { type: SchemaType.NUMBER },
+        industryBenchmark: { type: SchemaType.STRING },
+        topActionItems: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+        issues: {
+          type: SchemaType.ARRAY,
+          items: {
+            type: SchemaType.OBJECT,
+            properties: {
+              type: { type: SchemaType.STRING },
+              priority: { type: SchemaType.STRING },
+              section: { type: SchemaType.STRING },
+              message: { type: SchemaType.STRING },
+              currentText: { type: SchemaType.STRING },
+              suggestedText: { type: SchemaType.STRING }
+            }
+          }
+        }
+      },
+      required: ["executiveSummary", "recruiterPerspective", "atsPassProbability", "industryBenchmark", "topActionItems", "issues"]
+    };
+
+    prompt = `You are an expert ATS Analyzer and Technical Recruiter for the role: "${sanitizedRole}". Evaluate the resume and return STRICTLY JSON. 
+You MUST include ALL 6 of these top-level keys exactly as written, without dropping any.
 IMPORTANT RULES:
 - Keep all feedback concise (maximum 2-3 lines per message).
 - Ensure "issues" focus on actionable text improvements.
@@ -223,6 +255,11 @@ Resume: ${optimizedText}`;
   let responseText = "";
   let attempts = 0;
   let success = false;
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    generationConfig,
+  });
 
   while (attempts < 2 && !success) {
     try {
