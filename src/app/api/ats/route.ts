@@ -6,7 +6,7 @@ import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager"
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from 'firebase-admin';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   /* ── Security: require auth + enforce server-side daily limit ── */
@@ -244,6 +244,7 @@ Resume: ${optimizedText}`;
 You MUST include ALL 6 of these top-level keys exactly as written, without dropping any.
 IMPORTANT RULES:
 - Keep all feedback concise (maximum 2-3 lines per message).
+- Limit the "issues" array to a MAXIMUM of 4 critical/important items to prioritize quality.
 - Ensure "issues" focus on actionable text improvements.
 - "industryBenchmark" should be a short phrase like "Top 10% of applicants" or "Below Average".
 Resume: ${optimizedText}`;
