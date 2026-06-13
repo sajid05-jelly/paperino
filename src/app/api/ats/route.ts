@@ -9,6 +9,24 @@ import * as admin from 'firebase-admin';
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  /* ── Security: ATS Maintenance Mode Check ── */
+  if (adminDb) {
+    try {
+      const configDoc = await adminDb.collection("platform_config").doc("features").get();
+      if (configDoc.exists) {
+        const config = configDoc.data();
+        if (config && config.atsEnabled === false) {
+          return NextResponse.json(
+            { error: config.maintenanceMessage || "ATS Analyzer is currently under maintenance." },
+            { status: 403 }
+          );
+        }
+      }
+    } catch (e) {
+      console.error("[ATS] Failed to check maintenance mode:", e);
+    }
+  }
+
   /* ── Security: require auth + enforce server-side daily limit ── */
   const guard = await runApiGuard(req);
   if (guard.blocked) return guard.response;

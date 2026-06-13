@@ -57,6 +57,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <ShieldAlert size={20} />
               Pending Reviews
             </Link>
+            <div className="h-px w-full bg-white/10 my-2"></div>
+            <Link href="/admin/ats" className="flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors font-medium border border-emerald-500/20">
+              <Bot size={20} />
+              ATS Management
+            </Link>
             <Link href="/admin/team" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <ShieldCheck size={20} className="text-emerald-400" />
               Manage Team

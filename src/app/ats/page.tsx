@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, Activity, CheckCircle2, XCircle, AlertTriangle, ArrowRight, Loader2, Sparkles, AlertCircle, Info } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { Upload, FileText, Activity, CheckCircle2, XCircle, AlertTriangle, ArrowRight, Loader2, Sparkles, AlertCircle, Info, Bot } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
 import { getIdToken } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import AICreditsDisplay from "@/components/AICreditsDisplay";
 
 export default function ATSAnalyzerPage() {
@@ -17,6 +18,11 @@ export default function ATSAnalyzerPage() {
   const [error, setError] = useState("");
   const [activeIssue, setActiveIssue] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<number | null>(null);
+
+  // ATS Config State
+  const [atsEnabled, setAtsEnabled] = useState<boolean | null>(null);
+  const [maintenanceTitle, setMaintenanceTitle] = useState("");
+  const [maintenanceMessage, setMaintenanceMessage] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -39,6 +45,27 @@ export default function ATSAnalyzerPage() {
       resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [result]);
+
+  // Fetch Global Config
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const configDoc = await getDoc(doc(db, "platform_config", "features"));
+        if (configDoc.exists()) {
+          const data = configDoc.data();
+          if (data.atsEnabled !== undefined) setAtsEnabled(data.atsEnabled);
+          if (data.maintenanceTitle) setMaintenanceTitle(data.maintenanceTitle);
+          if (data.maintenanceMessage) setMaintenanceMessage(data.maintenanceMessage);
+        } else {
+          setAtsEnabled(true);
+        }
+      } catch (err) {
+        console.error("Failed to load ATS config:", err);
+        setAtsEnabled(true); // Fallback to enabled if DB fails
+      }
+    };
+    fetchConfig();
+  }, []);
 
   const loadingSteps = [
     "Uploading & Extracting Text...",
@@ -298,6 +325,8 @@ export default function ATSAnalyzerPage() {
         sectionScores,
         explanations: scoreRes.status === "fulfilled" ? scoreRes.value.explanations || {} : {},
         keywordMatchPercentage: keywordsRes.status === "fulfilled" ? keywordsRes.value.keywordMatchPercentage || 0 : 0,
+        detectedKeywords: keywordsRes.status === "fulfilled" ? keywordsRes.value.detectedKeywords || [] : [],
+        missingKeywords: keywordsRes.status === "fulfilled" ? keywordsRes.value.missingKeywords || [] : [],
         missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || {} : {},
         isFakeOrCorrupted: skillsRes.status === "fulfilled" ? skillsRes.value.isFakeOrCorrupted || false : false,
         fakeReason: skillsRes.status === "fulfilled" ? skillsRes.value.fakeReason || "" : "",
@@ -307,16 +336,51 @@ export default function ATSAnalyzerPage() {
         industryBenchmark,
         topActionItems: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.topActionItems || [] : [],
         issues: aggregatedIssues,
-        rawText: textToAnalyze
+        rawExtractedText: textToAnalyze
       };
 
       setResult(data);
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+      console.error("Analysis failed:", err);
+      setError(err.message || "An unexpected error occurred during analysis.");
     } finally {
       setLoading(false);
+      setLoadingStep(0);
     }
   };
+
+  if (atsEnabled === null) {
+    return (
+      <div className="min-h-screen pt-24 bg-[#030108] text-white flex justify-center items-center">
+        <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-400 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (atsEnabled === false) {
+    return (
+      <div className="min-h-screen pt-24 pb-20 bg-[#030108] text-white selection:bg-fuchsia-500/30 overflow-hidden relative flex flex-col items-center justify-center">
+        {/* Background elements */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-fuchsia-600/20 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/20 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
+
+        <div className="glass-panel max-w-2xl w-full mx-auto p-12 rounded-3xl border border-amber-500/30 shadow-[0_0_60px_rgba(245,158,11,0.1)] text-center relative z-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
+          <div className="w-24 h-24 mx-auto bg-amber-500/10 rounded-full flex items-center justify-center mb-8 border border-amber-500/20 shadow-[inset_0_0_20px_rgba(245,158,11,0.2)]">
+             <Bot className="text-amber-400 w-12 h-12" />
+          </div>
+          <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 mb-6 tracking-tight">
+            {maintenanceTitle || "🚧 ATS Analyzer Building in Progress"}
+          </h2>
+          <p className="text-gray-300 text-lg leading-relaxed max-w-xl mx-auto mb-10">
+            {maintenanceMessage || "We are currently improving our ATS Engine to provide more accurate recruiter insights, keyword matching, and resume recommendations. Please check back later."}
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium">
+             <Activity size={16} className="animate-pulse" /> Maintenance Mode Active
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-400";
