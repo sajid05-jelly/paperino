@@ -240,7 +240,47 @@ export default function ATSAnalyzerPage() {
         ((sectionScores.skills || 0) * 0.15)
       );
 
-      const recruiterPerspective = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.recruiterPerspective || {} : {};
+      let executiveSummary = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.executiveSummary || {} : {};
+      let recruiterPerspective = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.recruiterPerspective || {} : {};
+      let atsPassProbability = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.atsPassProbability || 0 : 0;
+      let industryBenchmark = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.industryBenchmark || "N/A" : "N/A";
+
+      // If AI failed or returned empty strengths, generate deterministic fallbacks based on sections
+      if (!executiveSummary.topStrengths || executiveSummary.topStrengths.length < 2) {
+        executiveSummary.topStrengths = [];
+        if ((sectionScores.skills || 0) >= 80) executiveSummary.topStrengths.push("Demonstrates strong proficiency in technical skills requested in standard job descriptions.");
+        if ((sectionScores.projects || 0) >= 80) executiveSummary.topStrengths.push("Showcases practical experience through well-documented and relevant projects.");
+        if ((sectionScores.experience || 0) >= 80) executiveSummary.topStrengths.push("Solid work experience clearly aligned with industry expectations.");
+        if ((sectionScores.education || 0) >= 80) executiveSummary.topStrengths.push("Strong educational background relevant to the target role.");
+        
+        // Ensure at least 2 strengths
+        if (executiveSummary.topStrengths.length < 2) {
+          executiveSummary.topStrengths.push("Resume format is generally readable by ATS parsing systems.");
+          if (overallScore > 60) executiveSummary.topStrengths.push("Overall profile shows potential for targeted opportunities.");
+          else executiveSummary.topStrengths.push("Basic structure covers standard resume requirements.");
+        }
+
+        executiveSummary.topWeaknesses = [];
+        if ((sectionScores.skills || 0) < 80) executiveSummary.topWeaknesses.push("Missing several key technical skills typically expected for this role.");
+        if ((sectionScores.projects || 0) < 80) executiveSummary.topWeaknesses.push("Project section lacks depth or quantifiable achievements.");
+        if ((sectionScores.experience || 0) < 80) executiveSummary.topWeaknesses.push("Limited professional work experience directly related to the role.");
+        
+        // Ensure at least 1 concern
+        if (executiveSummary.topWeaknesses.length === 0) {
+           executiveSummary.topWeaknesses.push(overallScore >= 90 ? "Resume is highly optimized, but continuous upskilling in emerging tools is recommended." : "Consider adding more quantifiable metrics (%, $, time saved) to bullet points.");
+        }
+
+        // Deterministic Pass Probability
+        atsPassProbability = Math.min(99, Math.round(overallScore * 0.85 + (sectionScores.skills || 0) * 0.12));
+        if (overallScore >= 90 && atsPassProbability < 80) atsPassProbability = 85;
+
+        // Deterministic Industry Benchmark
+        if (overallScore >= 90) industryBenchmark = "Top 10% of Applicants";
+        else if (overallScore >= 80) industryBenchmark = "Top 25% of Applicants";
+        else if (overallScore >= 60) industryBenchmark = "Average for Entry-Level";
+        else industryBenchmark = "Below Average";
+      }
+
       // Override the AI's subjective readiness score with our deterministic mathematical calculation
       recruiterPerspective.hiringReadiness = deterministicHiringReadiness;
 
@@ -252,10 +292,10 @@ export default function ATSAnalyzerPage() {
         missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || {} : {},
         isFakeOrCorrupted: skillsRes.status === "fulfilled" ? skillsRes.value.isFakeOrCorrupted || false : false,
         fakeReason: skillsRes.status === "fulfilled" ? skillsRes.value.fakeReason || "" : "",
-        executiveSummary: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.executiveSummary || {} : {},
+        executiveSummary,
         recruiterPerspective,
-        atsPassProbability: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.atsPassProbability || 0 : 0,
-        industryBenchmark: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.industryBenchmark || "N/A" : "N/A",
+        atsPassProbability,
+        industryBenchmark,
         topActionItems: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.topActionItems || [] : [],
         issues: aggregatedIssues,
         rawText: textToAnalyze
