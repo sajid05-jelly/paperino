@@ -245,7 +245,17 @@ export default function ATSAnalyzerPage() {
       if (!executiveSummary.topStrengths || executiveSummary.topStrengths.length < 2) {
         // Extract tech keywords dynamically from the resume text to make insights less generic
         const techList = ["React", "Next.js", "Python", "Java", "Node.js", "PostgreSQL", "SQL", "AWS", "Docker", "Machine Learning", "Llama", "WebSockets", "Spring Boot", "MediaPipe", "TypeScript", "JavaScript", "C++", "C#", "MongoDB", "Angular"];
-        const detectedTech = techList.filter(t => new RegExp(`\\b${t.replace('.', '\\.')}\\b`, 'i').test(textToAnalyze));
+        const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const detectedTech = techList.filter(t => {
+          try {
+            const startBoundary = /^\w/.test(t) ? '\\b' : '';
+            const endBoundary = /\w$/.test(t) ? '\\b' : '';
+            return new RegExp(`${startBoundary}${escapeRegExp(t)}${endBoundary}`, 'i').test(textToAnalyze);
+          } catch (e) {
+            console.error("Regex parsing error for tech:", t, e);
+            return false;
+          }
+        });
         const techHighlight = detectedTech.length > 0 ? detectedTech.slice(0, 3).join(", ") : "modern development tools";
         
         executiveSummary.topStrengths = [];
