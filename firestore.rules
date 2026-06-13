@@ -144,6 +144,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Platform Configuration ──────────────────────────────────────────────
+    match /platform_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ── Contributor Requests ────────────────────────────────────────────────
     match /contributor_requests/{requestId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);

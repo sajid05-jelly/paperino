@@ -62,9 +62,9 @@ export default function ATSManagement() {
       setSuccess(true);
       setLastUpdated(new Date().toLocaleString());
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save failed:", err);
-      setError("Failed to save configuration.");
+      setError(err.message || "Failed to save configuration.");
     } finally {
       setSaving(false);
     }
