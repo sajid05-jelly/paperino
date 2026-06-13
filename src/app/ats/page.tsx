@@ -228,46 +228,45 @@ export default function ATSAnalyzerPage() {
       const overallScore = scoreRes.status === "fulfilled" ? scoreRes.value.overallScore || 0 : 0;
       const sectionScores = scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0, formatting: 0 };
 
-      // Deterministic Hiring Readiness Calculation
-      // - ATS Match Score: 40%
-      // - Experience/Internships: 25%
-      // - Projects Quality: 20%
-      // - Skills Coverage: 15%
-      const deterministicHiringReadiness = Math.round(
-        (overallScore * 0.40) +
-        ((sectionScores.experience || 0) * 0.25) +
-        ((sectionScores.projects || 0) * 0.20) +
-        ((sectionScores.skills || 0) * 0.15)
-      );
+      // Deterministic Hiring Readiness Calculation (Adjusted for Students)
+      const isStudent = /bachelor|undergrad|b\.tech|b\.e|pursuing|expected to graduate|2025|2026|2027|2028|intern/i.test(textToAnalyze);
+      const expFactor = isStudent ? 0.80 : 1.0;
+      const projFactor = Math.max(0.5, (sectionScores.projects || 0) / 100);
+      
+      // Hiring Readiness = ATS Score × Experience Factor × Project Quality Factor
+      const deterministicHiringReadiness = Math.round(overallScore * expFactor * projFactor);
 
       let executiveSummary = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.executiveSummary || {} : {};
       let recruiterPerspective = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.recruiterPerspective || {} : {};
       let atsPassProbability = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.atsPassProbability || 0 : 0;
       let industryBenchmark = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.industryBenchmark || "N/A" : "N/A";
 
-      // If AI failed or returned empty strengths, generate deterministic fallbacks based on sections
+      // If AI failed or returned empty strengths, generate deterministic fallbacks based on sections and raw text
       if (!executiveSummary.topStrengths || executiveSummary.topStrengths.length < 2) {
+        // Extract tech keywords dynamically from the resume text to make insights less generic
+        const techList = ["React", "Next.js", "Python", "Java", "Node.js", "PostgreSQL", "SQL", "AWS", "Docker", "Machine Learning", "Llama", "WebSockets", "Spring Boot", "MediaPipe", "TypeScript", "JavaScript", "C++", "C#", "MongoDB", "Angular"];
+        const detectedTech = techList.filter(t => new RegExp(`\\b${t.replace('.', '\\.')}\\b`, 'i').test(textToAnalyze));
+        const techHighlight = detectedTech.length > 0 ? detectedTech.slice(0, 3).join(", ") : "modern development tools";
+        
         executiveSummary.topStrengths = [];
-        if ((sectionScores.skills || 0) >= 80) executiveSummary.topStrengths.push("Demonstrates strong proficiency in technical skills requested in standard job descriptions.");
-        if ((sectionScores.projects || 0) >= 80) executiveSummary.topStrengths.push("Showcases practical experience through well-documented and relevant projects.");
-        if ((sectionScores.experience || 0) >= 80) executiveSummary.topStrengths.push("Solid work experience clearly aligned with industry expectations.");
-        if ((sectionScores.education || 0) >= 80) executiveSummary.topStrengths.push("Strong educational background relevant to the target role.");
+        if ((sectionScores.skills || 0) >= 80) executiveSummary.topStrengths.push(`Demonstrates strong technical proficiency, specifically utilizing ${techHighlight} effectively.`);
+        if ((sectionScores.projects || 0) >= 80) executiveSummary.topStrengths.push(`Showcases highly relevant practical experience through well-architected projects leveraging ${detectedTech.length > 0 ? detectedTech[0] : 'core frameworks'}.`);
+        if ((sectionScores.experience || 0) >= 80) executiveSummary.topStrengths.push("Solid professional workflow experience clearly aligned with standard software engineering practices.");
         
         // Ensure at least 2 strengths
         if (executiveSummary.topStrengths.length < 2) {
-          executiveSummary.topStrengths.push("Resume format is generally readable by ATS parsing systems.");
-          if (overallScore > 60) executiveSummary.topStrengths.push("Overall profile shows potential for targeted opportunities.");
-          else executiveSummary.topStrengths.push("Basic structure covers standard resume requirements.");
+          executiveSummary.topStrengths.push("Resume is well-structured and parsable by standard ATS pipelines.");
+          if (overallScore > 60) executiveSummary.topStrengths.push("Overall profile indicates strong potential for targeted engineering roles.");
         }
 
         executiveSummary.topWeaknesses = [];
-        if ((sectionScores.skills || 0) < 80) executiveSummary.topWeaknesses.push("Missing several key technical skills typically expected for this role.");
-        if ((sectionScores.projects || 0) < 80) executiveSummary.topWeaknesses.push("Project section lacks depth or quantifiable achievements.");
-        if ((sectionScores.experience || 0) < 80) executiveSummary.topWeaknesses.push("Limited professional work experience directly related to the role.");
+        if ((sectionScores.skills || 0) < 80) executiveSummary.topWeaknesses.push("Missing several core technical skills or frameworks typically expected for this specific role.");
+        if ((sectionScores.projects || 0) < 80) executiveSummary.topWeaknesses.push("Project descriptions lack technical depth, architecture details, or quantifiable impact metrics.");
+        if ((sectionScores.experience || 0) < 80) executiveSummary.topWeaknesses.push(isStudent ? "As a student/recent grad, the profile naturally lacks extensive full-time industry exposure." : "Limited professional work experience directly related to the senior requirements of the role.");
         
         // Ensure at least 1 concern
         if (executiveSummary.topWeaknesses.length === 0) {
-           executiveSummary.topWeaknesses.push(overallScore >= 90 ? "Resume is highly optimized, but continuous upskilling in emerging tools is recommended." : "Consider adding more quantifiable metrics (%, $, time saved) to bullet points.");
+           executiveSummary.topWeaknesses.push(overallScore >= 90 ? "Resume is highly competitive, but continuous upskilling in emerging technologies is recommended to stay ahead." : "Consider adding more quantifiable metrics (%, $, time saved) to project and experience bullet points.");
         }
 
         // Deterministic Pass Probability
