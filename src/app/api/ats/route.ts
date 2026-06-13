@@ -266,38 +266,51 @@ Resume: ${optimizedText}`;
     try {
       attempts++;
       console.log(`[ATS] AI Attempt ${attempts} for ${action}...`);
-      const result = await model.generateContent(prompt);
+      
+      // Setup AbortController to explicitly log if we hit our own timeout vs Vercel killing it
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 50000); // 50s internal timeout
+      
+      const result = await model.generateContent(prompt, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
       responseText = result.response.text().trim();
       success = true;
     } catch (err: any) {
-      console.error(`[ATS] AI Attempt ${attempts} failed for ${action}:`, err.message);
+      console.error(`[ATS_ERROR_LOG] Action=${action} | Attempt=${attempts} | ErrorType=${err.name} | ErrorMessage=${err.message} | FullStack=${err.stack}`);
+      if (err.name === 'AbortError') {
+         console.error(`[ATS_TIMEOUT_LOG] Action=${action} | The internal 50s fetch timeout was triggered before Vercel killed the function.`);
+      }
+      
       if (attempts < 2) {
         // Wait 1 second before retrying to prevent rapid rate limit hits
         await new Promise(resolve => setTimeout(resolve, 1000));
       } else {
         console.timeEnd(`ATS_Action_${action}`);
         let userMessage = "Advanced AI analysis is temporarily unavailable.";
-        if (err.message?.includes("429") || err.message?.includes("Quota")) {
+        if (err.message?.includes("429") || err.message?.includes("Quota") || err.status === 429) {
           userMessage = "AI quota reached. Please try again later.";
-        } else if (err.message?.includes("503")) {
+        } else if (err.message?.includes("503") || err.status === 503) {
           userMessage = "AI service is currently overloaded. Please try again later.";
+        } else if (err.name === 'AbortError') {
+          userMessage = "AI response timed out (took > 50s). Please try a shorter resume.";
         }
         return NextResponse.json({ error: userMessage }, { status: 504 });
       }
     }
   }
 
-  if (responseText.startsWith("\`\`\`json")) {
-    responseText = responseText.replace(/^\`\`\`json\n?/, "").replace(/\n?\`\`\`$/, "").trim();
-  } else if (responseText.startsWith("\`\`\`")) {
-    responseText = responseText.replace(/^\`\`\`\n?/, "").replace(/\n?\`\`\`$/, "").trim();
+  if (responseText.startsWith("```json")) {
+    responseText = responseText.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
+  } else if (responseText.startsWith("```")) {
+    responseText = responseText.replace(/^```\n?/, "").replace(/\n?```$/, "").trim();
   }
 
   let parsedData;
   try {
     parsedData = JSON.parse(responseText);
-  } catch (parseError) {
-    console.error(`[ATS] Invalid JSON for ${action}:`, responseText);
+  } catch (parseError: any) {
+    console.error(`[ATS_JSON_ERROR] Action=${action} | ParseErrorMessage=${parseError.message} | RawOutputLength=${responseText.length} | OutputPreview=${responseText.substring(0, 150)}...`);
     console.timeEnd(`ATS_Action_${action}`);
     return NextResponse.json({ error: `Failed to parse AI output for ${action}.` }, { status: 500 });
   }
