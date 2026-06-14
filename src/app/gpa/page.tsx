@@ -259,8 +259,8 @@ export default function GPACalculatorPage() {
               
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="relative">
-                  <div className={`absolute inset-0 blur-2xl opacity-50 rounded-full transition-colors ${gpaFailed ? 'bg-red-500' : 'bg-cyan-500'}`}></div>
-                  <div className={`relative w-40 h-40 rounded-full border-4 flex items-center justify-center bg-black/50 backdrop-blur-sm ${gpaFailed ? 'border-red-500/50' : 'border-cyan-500/50'}`}>
+                  <div className={`hidden md:block absolute inset-0 blur-2xl opacity-50 rounded-full transition-colors ${gpaFailed ? 'bg-red-500' : 'bg-cyan-500'} hardware-accelerated`}></div>
+                  <div className={`relative w-40 h-40 rounded-full border-4 flex items-center justify-center bg-black/50 backdrop-blur-sm ${gpaFailed ? 'border-red-500/50' : 'border-cyan-500/50'} hardware-accelerated`}>
                     <div className="text-center">
                       <span className={`text-5xl font-black block ${gpaFailed ? 'text-red-400' : 'text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 to-purple-400'}`}>
                         {gpa.toFixed(2)}
@@ -365,8 +365,8 @@ export default function GPACalculatorPage() {
               
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-cyan-500 blur-2xl opacity-40 rounded-full"></div>
-                  <div className="relative w-40 h-40 rounded-full border-4 border-cyan-500/50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                  <div className="hidden md:block absolute inset-0 bg-cyan-500 blur-2xl opacity-40 rounded-full hardware-accelerated"></div>
+                  <div className="relative w-40 h-40 rounded-full border-4 border-cyan-500/50 flex items-center justify-center bg-black/50 backdrop-blur-sm hardware-accelerated">
                     <div className="text-center">
                       <span className="text-5xl font-black block text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 to-blue-400">
                         {cgpa.toFixed(2)}

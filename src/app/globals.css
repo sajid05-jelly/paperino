@@ -714,3 +714,23 @@ html, body {
   background: linear-gradient(135deg, #fef08a 0%, #fb923c 100%);
   filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.6));
 }
+
+/* ── Mobile Performance Overrides ────────────────────────────── */
+@media (max-width: 768px) {
+  .vision-glass, .liquid-glass, .premium-panel, .glass-card, .glass-panel {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .animate-blob {
+    animation: none !important;
+    opacity: 0.5 !important;
+    transform: translateZ(0) !important;
+  }
+}
+
+.hardware-accelerated {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}

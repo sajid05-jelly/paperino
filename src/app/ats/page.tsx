@@ -544,11 +544,11 @@ export default function ATSAnalyzerPage() {
             
             {/* 1. Final Verdict & Executive Summary */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className={`col-span-3 p-5 rounded-3xl border backdrop-blur-md shadow-lg flex flex-col justify-center ${
+              <div className={`col-span-3 p-5 rounded-3xl border md:backdrop-blur-md backdrop-blur-sm shadow-md md:shadow-lg flex flex-col justify-center ${
                 result.overallScore >= 80 ? 'bg-emerald-500/10 border-emerald-500/30' : 
                 result.overallScore >= 60 ? 'bg-orange-500/10 border-orange-500/30' : 
                 'bg-red-500/10 border-red-500/30'
-              }`}>
+              } hardware-accelerated`}>
                 <h3 className={`text-sm font-bold mb-1.5 flex items-center gap-2 uppercase tracking-wide ${
                   result.overallScore >= 80 ? 'text-emerald-400' : 
                   result.overallScore >= 60 ? 'text-orange-400' : 
@@ -566,14 +566,14 @@ export default function ATSAnalyzerPage() {
                 </p>
               </div>
 
-              <div className="col-span-2 glass-panel p-5 rounded-3xl flex items-center justify-between border-l-4 border-l-violet-500 relative overflow-hidden">
-                <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-violet-500/20 blur-3xl rounded-full"></div>
+              <div className="col-span-2 glass-panel p-5 rounded-3xl flex items-center justify-between border-l-4 border-l-violet-500 relative overflow-hidden hardware-accelerated">
+                <div className="hidden md:block absolute -right-10 -bottom-10 w-32 h-32 bg-violet-500/20 blur-3xl rounded-full hardware-accelerated"></div>
                 <div className="z-10">
                   <h2 className="text-white text-xl font-bold mb-1">ATS Match</h2>
                   <p className="text-violet-300/70 text-xs">Target: <strong className="text-white break-words max-w-[100px] block truncate">{role}</strong></p>
                 </div>
                 <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <svg className="w-full h-full transform -rotate-90 hardware-accelerated" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/10" />
                     <circle 
                       cx="50" cy="50" r="45" fill="none" 
@@ -591,8 +591,7 @@ export default function ATSAnalyzerPage() {
             </div>
 
             {/* 2. Recruiter Perspective & Benchmarks */}
-            {/* 2. Recruiter Perspective & Benchmarks */}
-            <div className="glass-panel p-5 rounded-3xl flex flex-col gap-4">
+            <div className="glass-panel p-5 rounded-3xl flex flex-col gap-4 hardware-accelerated">
               <h3 className="text-violet-400 font-bold flex items-center gap-2 text-sm uppercase tracking-wide">
                 <Activity size={16} /> Recruiter Perspective
               </h3>

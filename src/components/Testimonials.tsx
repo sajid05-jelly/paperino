@@ -25,7 +25,7 @@ export default function Testimonials() {
   const row2 = REVIEWS.slice(8, 15);
 
   const TestimonialCard = ({ review }: { review: { name: string, text: string } }) => (
-    <div className="w-[300px] md:w-[420px] shrink-0 p-6 md:p-8 rounded-[2rem] bg-[#0a0714]/80 backdrop-blur-xl border border-white/5 transition-all duration-500 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:z-20 hover:border-violet-500/40 hover:shadow-[0_0_50px_rgba(139,92,246,0.15)] hover:bg-[#120b29]/90 group relative overflow-hidden flex flex-col justify-between h-full">
+    <div className="w-[300px] md:w-[420px] shrink-0 p-6 md:p-8 rounded-[2rem] bg-[#0a0714]/90 md:bg-[#0a0714]/80 backdrop-blur-md md:backdrop-blur-xl border border-white/5 transition-all duration-500 ease-out hover:-translate-y-2 hover:scale-[1.02] hover:z-20 hover:border-violet-500/40 hover:shadow-[0_0_50px_rgba(139,92,246,0.15)] hover:bg-[#120b29]/90 group relative overflow-hidden flex flex-col justify-between h-full hardware-accelerated">
       <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 rounded-full blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
       
       <div>
@@ -55,10 +55,10 @@ export default function Testimonials() {
 
   return (
     <section className="w-screen relative py-24 md:py-32 overflow-hidden left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-[#05030a]/50">
-      {/* Background Glows */}
-      <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[500px] h-[500px] bg-fuchsia-500/10 blur-[150px] rounded-full pointer-events-none"></div>
-      <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[500px] h-[500px] bg-violet-500/10 blur-[150px] rounded-full pointer-events-none"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-500/5 blur-[150px] rounded-full pointer-events-none"></div>
+      {/* Background Glows - Hidden on Mobile */}
+      <div className="hidden md:block absolute top-1/2 left-0 -translate-y-1/2 w-[500px] h-[500px] bg-fuchsia-500/10 blur-[150px] rounded-full pointer-events-none hardware-accelerated"></div>
+      <div className="hidden md:block absolute top-1/2 right-0 -translate-y-1/2 w-[500px] h-[500px] bg-violet-500/10 blur-[150px] rounded-full pointer-events-none hardware-accelerated"></div>
+      <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-500/5 blur-[150px] rounded-full pointer-events-none hardware-accelerated"></div>
 
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-16 px-6 relative z-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
