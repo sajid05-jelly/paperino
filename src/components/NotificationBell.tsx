@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bell, CheckCheck, Inbox, X } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
+import { usePulseNotifications } from "@/context/NotificationContext";
 import type { PaperinoNotification } from "@/lib/notifications";
+import { useRouter } from "next/navigation";
 
 /* ── Helpers ──────────────────────────────────────────── */
 
@@ -30,8 +32,16 @@ const TYPE_META: Record<
 /* ── Component ────────────────────────────────────────── */
 
 export default function NotificationBell() {
-  const { notifications, unreadCount, markRead, markAllRead } =
-    useNotifications();
+  const { notifications: standardNotifications, unreadCount: standardUnread, markRead: markStandardRead, markAllRead: markAllStandardRead } = useNotifications();
+  const { unreadUpdates: pulseUpdates, unreadCount: pulseUnread, markAllAsRead: markAllPulseRead } = usePulseNotifications();
+  const router = useRouter();
+
+  const unreadCount = standardUnread + pulseUnread;
+
+  const markAllRead = useCallback(async () => {
+    await markAllStandardRead();
+    await markAllPulseRead();
+  }, [markAllStandardRead, markAllPulseRead]);
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -65,9 +75,9 @@ export default function NotificationBell() {
 
   const handleMarkRead = useCallback(
     (id: string) => {
-      markRead(id);
+      markStandardRead(id);
     },
-    [markRead]
+    [markStandardRead]
   );
 
   return (
@@ -130,16 +140,42 @@ export default function NotificationBell() {
             </div>
           </div>
 
-          {/* List */}
           <div className="flex-1 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {standardNotifications.length === 0 && pulseUpdates.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-600">
                 <Inbox size={32} className="opacity-40" />
                 <p className="text-sm">No notifications yet</p>
               </div>
             ) : (
               <div className="divide-y divide-white/[0.04]">
-                {notifications.map((n) => {
+                {pulseUpdates.map((p) => (
+                  <button
+                    key={`pulse-${p.id}`}
+                    onClick={() => {
+                      markAllPulseRead();
+                      setOpen(false);
+                      router.push("/pulse");
+                    }}
+                    className={`w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] bg-cyan-500/[0.04]`}
+                  >
+                    <div className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-base bg-white/5 border border-white/5 mt-0.5 text-cyan-400">
+                      📻
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">New Update</span>
+                      </div>
+                      <p className="text-sm leading-snug mb-0.5 text-white font-semibold">
+                        {p.title}
+                      </p>
+                      <p className="text-[10px] text-gray-600 mt-1.5">
+                        {p.createdAt ? timeAgo(p.createdAt.toDate().getTime()) : "just now"}
+                      </p>
+                    </div>
+                    <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 bg-cyan-400 shadow-[0_0_6px_currentColor]" />
+                  </button>
+                ))}
+                {standardNotifications.map((n) => {
                   const meta = TYPE_META[n.type] ?? {
                     dot: "bg-gray-400",
                     icon: "🔔",
@@ -188,10 +224,10 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          {notifications.length > 0 && (
+          {(standardNotifications.length > 0 || pulseUpdates.length > 0) && (
             <div className="px-4 py-2.5 border-t border-white/[0.05] flex-shrink-0">
               <p className="text-[10px] text-gray-600 text-center">
-                Showing {notifications.length} notification{notifications.length !== 1 ? "s" : ""}
+                Showing {standardNotifications.length + pulseUpdates.length} notification{(standardNotifications.length + pulseUpdates.length) !== 1 ? "s" : ""}
               </p>
             </div>
           )}

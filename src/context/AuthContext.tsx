@@ -14,6 +14,7 @@ interface AuthContextType {
   role: string;
   loading: boolean;
   paperinoAvatar: string | null;
+  lastPulseReadAt: any; // Firestore Timestamp
   setPaperinoAvatar: (avatarId: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   role: "student",
   loading: true,
   paperinoAvatar: null,
+  lastPulseReadAt: null,
   setPaperinoAvatar: async () => {},
   loginWithGoogle: async () => {},
   logout: async () => {},
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isBlocked, setIsBlocked] = useState(false);
   const [role, setRole] = useState("student");
   const [paperinoAvatar, setPaperinoAvatarState] = useState<string | null>(null);
+  const [lastPulseReadAt, setLastPulseReadAt] = useState<any>(null);
 
   useEffect(() => {
     // Handle redirect result from mobile Google Sign In
@@ -85,13 +88,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             let needsUpdate = false;
             const updates: any = {};
 
-            if (data.points === undefined || data.uploads === undefined || data.seasonPoints === undefined) {
+            if (data.points === undefined || data.uploads === undefined || data.seasonPoints === undefined || data.lastPulseReadAt === undefined) {
               needsUpdate = true;
               updates.points = data.points !== undefined ? data.points : 0;
               updates.uploads = data.uploads !== undefined ? data.uploads : 0;
               updates.seasonPoints = data.seasonPoints !== undefined ? data.seasonPoints : 0;
               updates.seasonUploads = data.seasonUploads !== undefined ? data.seasonUploads : 0;
+              updates.lastPulseReadAt = data.lastPulseReadAt !== undefined ? data.lastPulseReadAt : new Date(0); // Show all existing as unread for new users/legacy users
             }
+
+            setLastPulseReadAt(data.lastPulseReadAt || new Date(0));
 
             // Daily Active Users Tracking (update lastLogin max once per day)
             const now = new Date();
@@ -123,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // First time login
             setPaperinoAvatarState(null);
+            setLastPulseReadAt(new Date(0));
             // Save initial user doc
             await setDoc(userRef, {
               displayName: currentUser.displayName,
@@ -133,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               uploads: 0,
               seasonPoints: 0,
               seasonUploads: 0,
+              lastPulseReadAt: new Date(0), // default to far past so they see new/pinned
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp()
             }, { merge: true });
@@ -221,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       loading, 
       paperinoAvatar, 
+      lastPulseReadAt,
       setPaperinoAvatar: savePaperinoAvatar, 
       loginWithGoogle, 
       logout 

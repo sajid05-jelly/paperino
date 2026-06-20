@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { SubjectsProvider } from "@/context/SubjectsContext";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import RouteTracker from "@/components/RouteTracker";
@@ -113,29 +114,31 @@ export default function RootLayout({
         <ToastProvider>
           <ThemeProvider>
             <AuthProvider>
-              <SubjectsProvider>
+              <NotificationProvider>
+                <SubjectsProvider>
 
-                {/* Route change tracker */}
-                <Suspense fallback={null}>
-                  <RouteTracker />
-                </Suspense>
+                  {/* Route change tracker */}
+                  <Suspense fallback={null}>
+                    <RouteTracker />
+                  </Suspense>
 
-                {/* Maintenance banner — sits above navbar, reads from Firestore */}
-                <MaintenanceBanner />
+                  {/* Maintenance banner — sits above navbar, reads from Firestore */}
+                  <MaintenanceBanner />
 
-                <Navbar />
-                <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
-                  {children}
-                </main>
-                <Footer />
+                  <Navbar />
+                  <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
+                    {children}
+                  </main>
+                  <Footer />
 
-                {/* Floating global elements */}
-                <FloatingFeedback />
-                <ThemeSelector />
-                <AvatarProvider />
-                <BackToTop />
+                  {/* Floating global elements */}
+                  <FloatingFeedback />
+                  <ThemeSelector />
+                  <AvatarProvider />
+                  <BackToTop />
 
-              </SubjectsProvider>
+                </SubjectsProvider>
+              </NotificationProvider>
             </AuthProvider>
           </ThemeProvider>
         </ToastProvider>
