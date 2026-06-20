@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Upload, Settings, FileText, Activity, Bot, ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen } from "lucide-react";
+import { LayoutDashboard, Upload, Settings, FileText, Activity, Bot, ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio } from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -65,6 +65,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/team" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <ShieldCheck size={20} className="text-emerald-400" />
               Manage Team
+            </Link>
+            <Link href="/admin/pulse" className="flex items-center gap-3 px-4 py-3 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors font-medium border border-cyan-500/20">
+              <Radio size={20} />
+              Manage Pulse Updates
             </Link>
             <Link href="/admin/feedback" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <MessageSquare size={20} className="text-fuchsia-400" />

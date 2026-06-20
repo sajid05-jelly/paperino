@@ -49,6 +49,9 @@ export default function Navbar() {
     if (href === '/developer') {
       return `${baseClass} menu-dev-glossy ${isActive ? 'active shadow-[0_0_20px_rgba(249,115,22,0.4)]' : ''}`;
     }
+    if (href === '/pulse') {
+      return `${baseClass} menu-pulse-glossy ${isActive ? 'active shadow-[0_0_20px_rgba(6,182,212,0.4)]' : ''}`;
+    }
 
     if (isActive) {
       return `${baseClass} liquid-btn text-white text-glow z-10 relative`;
@@ -70,6 +73,9 @@ export default function Navbar() {
     }
     if (href === '/developer') {
       return `${baseClass} border-transparent hover:bg-white/5 menu-dev-mobile-glow ${isActive ? 'active-mobile' : ''}`;
+    }
+    if (href === '/pulse') {
+      return `${baseClass} border-transparent hover:bg-white/5 menu-pulse-mobile-glow ${isActive ? 'active-mobile' : ''}`;
     }
 
     if (isActive) {
@@ -115,6 +121,7 @@ export default function Navbar() {
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
             
+            <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
             <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
             <Link href="/team" className={getLinkClass("/team", true)}>Team</Link>
             <Link href="/developer" className={getLinkClass("/developer", true)}>Developer</Link>
@@ -272,6 +279,7 @@ export default function Navbar() {
 
               {/* Discover */}
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Paperino Team</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
