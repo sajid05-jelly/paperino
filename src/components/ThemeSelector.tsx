@@ -26,7 +26,7 @@ export default function ThemeSelector() {
 
         {/* WhatsApp Community Button */}
         <a
-          href="https://chat.whatsapp.com/Bfv1WPGO001BGcuFj8XnWX"
+          href="https://chat.whatsapp.com/BAu2CuzzE5JC0DPgzgsz6M"
           target="_blank"
           rel="noopener noreferrer"
           title="Join WhatsApp Community"
@@ -43,7 +43,7 @@ export default function ThemeSelector() {
 
         {/* Instagram Button */}
         <a
-          href="https://www.instagram.com/paperino.study?igsh=a3dkZTNtdXEwNDNu"
+          href="https://www.instagram.com/hi_paperino/"
           target="_blank"
           rel="noopener noreferrer"
           title="Follow on Instagram"
