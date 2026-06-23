@@ -62,7 +62,46 @@ export default function PYQPredictorPage() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const analyzePYQs = async (isOcrRetry = false) => {
+  const performClientOCR = async (pdfFiles: File[]) => {
+    setOcrActive(true);
+    let fullText = "";
+    
+    try {
+      // Dynamic imports to keep initial bundle small
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+      const Tesseract = (await import('tesseract.js')).default;
+      
+      for (let i = 0; i < pdfFiles.length; i++) {
+        const file = pdfFiles[i];
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 2.0 });
+          
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          await page.render({ canvasContext: context!, viewport: viewport } as any).promise;
+          
+          const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
+          fullText += `\n\n--- EXAM PAPER ${i + 1} (${file.name}) PAGE ${pageNum} ---\n\n` + text;
+        }
+      }
+    } catch (e: any) {
+      console.error("OCR Failed:", e);
+      throw new Error("Failed to run OCR on image PDF.");
+    } finally {
+      setOcrActive(false);
+    }
+    return fullText;
+  };
+
+  const analyzePYQs = async (ocrTextFallback?: string) => {
     if (files.length === 0) {
       setError("Please upload at least one PYQ PDF.");
       return;
@@ -72,14 +111,18 @@ export default function PYQPredictorPage() {
       return;
     }
 
-    if (!isOcrRetry) {
+    if (!ocrTextFallback) {
       setLoading(true);
       setError("");
       setOcrActive(false);
     }
 
     const formData = new FormData();
-    files.forEach(f => formData.append("files", f));
+    if (ocrTextFallback) {
+      formData.append("extractedText", ocrTextFallback);
+    } else {
+      files.forEach(f => formData.append("files", f));
+    }
     formData.append("subject", subject);
 
     try {
@@ -92,7 +135,7 @@ export default function PYQPredictorPage() {
         return;
       }
 
-      const url = isOcrRetry ? "/api/pyq?ocr=true" : "/api/pyq";
+      const url = "/api/pyq";
       const response = await fetch(url, {
         method: "POST",
         headers: { "Authorization": `Bearer ${idToken}` },
@@ -108,10 +151,13 @@ export default function PYQPredictorPage() {
         throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
       }
       if (!response.ok) {
-        if (data.errorType === "NEEDS_OCR" && !isOcrRetry) {
-          setOcrActive(true);
-          await analyzePYQs(true);
-          return;
+        if (data.errorType === "NEEDS_OCR" && !ocrTextFallback) {
+          const extracted = await performClientOCR(files);
+          if (extracted.trim().length > 10) {
+            return await analyzePYQs(extracted);
+          } else {
+            throw new Error("OCR could not extract readable text from these images.");
+          }
         }
         throw new Error(data.error || "Failed to analyze PYQs.");
       }
@@ -120,8 +166,8 @@ export default function PYQPredictorPage() {
       setLoading(false);
     } catch (err: any) {
       setError(err.message);
-      setOcrActive(false);
       setLoading(false);
+      setOcrActive(false);
     }
   };
 
@@ -149,7 +195,7 @@ export default function PYQPredictorPage() {
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">PYQ AI Predictor</h1>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-4">
-              Upload up to 5 Previous Year Question (PYQ) papers. Gemini AI will cross-reference them to predict the most important units, repeated questions, and expected concepts for your upcoming exam.
+              Upload up to 5 Previous Year Question (PYQ) papers. Paperino AI will cross-reference them to predict the most important units, repeated questions, and expected concepts for your upcoming exam.
             </p>
             <AICreditsDisplay tool="pyq" />
           </div>
@@ -237,7 +283,7 @@ export default function PYQPredictorPage() {
                 <>
                   <Loader2 className="animate-spin relative z-10" size={20} />
                   <span className="relative z-10">
-                    {ocrActive ? "Using OCR for scanned PDF..." : "AI is cross-referencing your PYQs..."}
+                    {ocrActive ? "Extracting text using OCR..." : "AI is cross-referencing papers..."}
                   </span>
                 </>
               ) : (
@@ -269,20 +315,6 @@ export default function PYQPredictorPage() {
             </button>
           </div>
 
-          {/* Smart Insight Panel */}
-          <div className="glass-panel p-6 rounded-3xl mb-8 border-l-4 border-l-fuchsia-500 shadow-[0_0_20px_rgba(var(--secondary-rgb),0.15)] bg-fuchsia-500/5 relative overflow-hidden">
-            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-fuchsia-500/20 blur-3xl rounded-full"></div>
-            <div className="relative z-10 flex gap-4 items-start">
-              <div className="mt-1 p-2 bg-fuchsia-500/20 rounded-xl">
-                <Sparkles size={24} className="text-fuchsia-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white mb-1">AI Final Verdict</h3>
-                <p className="text-fuchsia-200/90 leading-relaxed">{result.summaryInsight}</p>
-              </div>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Left Column: Heatmap & Topics */}
@@ -291,21 +323,21 @@ export default function PYQPredictorPage() {
               {/* Unit Heatmap */}
               <div className="glass-panel p-6 rounded-3xl border border-white/5 relative overflow-hidden">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4">
-                  <Flame className="text-orange-400" /> Unit Probability Heatmap
+                  <Flame className="text-orange-400" /> Unit Weightage Heatmap
                 </h3>
                 <div className="space-y-5">
-                  {result.unitImportance?.sort((a:any,b:any) => b.probabilityScore - a.probabilityScore).map((unit: any, i: number) => (
+                  {result.unitWeightage?.sort((a:any,b:any) => b.score - a.score).map((unit: any, i: number) => (
                     <div key={i}>
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium text-gray-300">{unit.unit}</span>
-                        <span className={`text-sm font-bold ${getHeatmapTextColor(unit.probabilityScore)}`}>
-                          {unit.probabilityScore}%
+                        <span className={`text-sm font-bold ${getHeatmapTextColor(unit.score)}`}>
+                          {unit.score}%
                         </span>
                       </div>
                       <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden shadow-inner">
                         <div 
-                          className={`h-full rounded-full transition-all duration-1000 ${getHeatmapColor(unit.probabilityScore)}`} 
-                          style={{ width: `${unit.probabilityScore}%` }}
+                          className={`h-full rounded-full transition-all duration-1000 ${getHeatmapColor(unit.score)}`} 
+                          style={{ width: `${unit.score}%` }}
                         ></div>
                       </div>
                     </div>
@@ -333,22 +365,22 @@ export default function PYQPredictorPage() {
             {/* Right Column: Questions */}
             <div className="lg:col-span-2 space-y-8">
               
-              {/* Repeated Questions */}
+              {/* Most Important Questions */}
               <div className="glass-panel p-8 rounded-3xl border border-white/5">
                 <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4">
-                  <Repeat className="text-rose-400" /> Most Repeated Questions
+                  <Repeat className="text-rose-400" /> Most Important Questions
                 </h3>
                 <div className="space-y-4">
-                  {result.repeatedQuestions?.map((q: any, i: number) => (
+                  {result.importantQuestions?.sort((a:any,b:any) => b.score - a.score).map((q: any, i: number) => (
                     <div key={i} className="p-5 bg-white/[0.02] border border-white/10 rounded-2xl hover:border-rose-500/30 transition-all group">
                       <div className="flex justify-between items-start gap-4 mb-3">
                         <p className="text-gray-200 font-medium leading-relaxed group-hover:text-white transition-colors">{q.questionText}</p>
                         <span className="shrink-0 bg-rose-500/20 text-rose-300 px-3 py-1 rounded-full text-xs font-bold border border-rose-500/30 whitespace-nowrap">
-                          {q.frequencyCount} Times
+                          Score: {q.score}/100
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-rose-400/80 bg-rose-500/5 px-3 py-2 rounded-lg w-fit">
-                        <Activity size={14} /> {q.insight}
+                        <Activity size={14} /> {q.reason}
                       </div>
                     </div>
                   ))}
@@ -359,15 +391,23 @@ export default function PYQPredictorPage() {
               <div className="glass-panel p-8 rounded-3xl border border-white/5 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-[50px] rounded-full"></div>
                 <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4 relative z-10">
-                  <Sparkles className="text-emerald-400" /> Expected in Next Exam
+                  <Sparkles className="text-emerald-400" /> Predicted for Next Exam
                 </h3>
-                <div className="space-y-3 relative z-10">
-                  {result.highProbabilityQuestions?.map((q: string, i: number) => (
-                    <div key={i} className="flex gap-4 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl items-start">
-                      <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
-                        <span className="text-xs font-bold">{i+1}</span>
+                <div className="space-y-4 relative z-10">
+                  {result.predictedQuestions?.sort((a:any,b:any) => b.score - a.score).map((q: any, i: number) => (
+                    <div key={i} className="flex gap-4 p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl hover:bg-emerald-500/10 transition-colors items-start">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                        <span className="text-sm font-bold">{i+1}</span>
                       </div>
-                      <p className="text-gray-300 leading-relaxed text-sm md:text-base">{q}</p>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start gap-4 mb-2">
+                          <p className="text-gray-200 font-medium leading-relaxed">{q.questionText}</p>
+                          <span className="shrink-0 text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+                            Score: {q.score}
+                          </span>
+                        </div>
+                        <p className="text-emerald-300/70 text-xs">{q.reason}</p>
+                      </div>
                     </div>
                   ))}
                 </div>

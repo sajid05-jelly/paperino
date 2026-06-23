@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mammoth from "mammoth";
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { runApiGuard } from "@/lib/api-guard";
+import { generateJSONResponse } from "@/services/groqService";
 import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from 'firebase-admin';
@@ -176,165 +176,59 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
   const body = await req.json();
   const rawText = body.text;
   const role = body.role;
-  const action = body.action; // 'score' | 'keywords' | 'skills' | 'suggestions'
 
-  if (!rawText || !role || !action) {
-    return NextResponse.json({ error: "Text, role, and action are required." }, { status: 400 });
+  if (!rawText || !role) {
+    return NextResponse.json({ error: "Text and role are required." }, { status: 400 });
   }
 
   const sanitizedRole = role.slice(0, 120).replace(/[<>"']/g, "");
   const optimizedText = rawText.slice(0, 10000);
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  console.time(`ATS_Analysis`);
   
-  // Note: We'll define the generation config dynamically based on the action
-  let generationConfig: any = { responseMimeType: "application/json" };
+  // Phase 1: Pure Deterministic Extraction
+  const extractionData = performDeterministicExtraction(rawText);
 
-
-  console.time(`ATS_Action_${action}`);
-  let prompt = "";
-  
-  if (action === "score") {
-    const scoreData = calculateDeterministicScore(rawText);
-    console.timeEnd(`ATS_Action_${action}`);
-    console.log(`[ATS] Deterministic Score Calculation Complete.`);
-    return NextResponse.json(scoreData);
-  } else if (action === "keywords") {
-    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Calculate keyword match percentage. Return STRICTLY JSON:
-{ "keywordMatchPercentage": number }
-Resume: ${optimizedText}`;
-  } else if (action === "skills") {
-    prompt = `You are an ATS Analyzer for the role: "${sanitizedRole}". Identify missing critical skills from the resume and group them by category. Check for fake/corrupted PDF extraction. Return STRICTLY JSON:
-{ 
-  "missingSkills": { 
-    "frontend": ["string"], 
-    "backend": ["string"], 
-    "database": ["string"], 
-    "cloud": ["string"], 
-    "devops": ["string"], 
-    "testing": ["string"] 
-  }, 
-  "isFakeOrCorrupted": boolean, 
-  "fakeReason": "string" 
+  // Phase 2: AI Parser (Only for semantic lists, NO SCORES)
+  const prompt = `You are an expert Technical Recruiter and ATS parser for the role: "${sanitizedRole}".
+Extract and categorize semantic data from the resume.
+DO NOT GENERATE ANY SCORES.
+Return STRICTLY JSON matching this schema:
+{
+  "requiredKeywords": ["string"], // Top 15 keywords expected for this job role
+  "matchedKeywords": ["string"], // Which of the required keywords are actually present in the resume
+  "missingKeywords": ["string"], // Which required keywords are missing
+  "strongSkills": ["string"], // Top impressive skills found
+  "missingSkills": ["string"], // Important industry skills they lack
+  "recruiterSimulation": {
+    "decision": "YES" | "MAYBE" | "NO",
+    "topStrengths": ["string", "string"], // Exactly 2
+    "topConcerns": ["string", "string"] // Exactly 2
+  },
+  "criticalIssues": ["string"], // Max 5 issues (e.g. "No GitHub link", "Missing core AWS skill")
+  "actionableImprovements": [
+    { "current": "string", "replacement": "string" } // Provide 3 exact text replacements
+  ]
 }
-Resume: ${optimizedText}`;
-  } else if (action === "suggestions") {
-    generationConfig.responseSchema = {
-      type: SchemaType.OBJECT,
-      properties: {
-        executiveSummary: {
-          type: SchemaType.OBJECT,
-          properties: {
-            topStrengths: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-            topWeaknesses: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
-          }
-        },
-        recruiterPerspective: {
-          type: SchemaType.OBJECT,
-          properties: {
-            strengths: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-            concerns: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-            hiringReadiness: { type: SchemaType.NUMBER }
-          }
-        },
-        atsPassProbability: { type: SchemaType.NUMBER },
-        industryBenchmark: { type: SchemaType.STRING },
-        topActionItems: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-        issues: {
-          type: SchemaType.ARRAY,
-          items: {
-            type: SchemaType.OBJECT,
-            properties: {
-              type: { type: SchemaType.STRING },
-              priority: { type: SchemaType.STRING },
-              section: { type: SchemaType.STRING },
-              message: { type: SchemaType.STRING },
-              currentText: { type: SchemaType.STRING },
-              suggestedText: { type: SchemaType.STRING }
-            }
-          }
-        }
-      },
-      required: ["executiveSummary", "recruiterPerspective", "atsPassProbability", "industryBenchmark", "topActionItems", "issues"]
-    };
 
-    prompt = `You are an expert ATS Analyzer and Technical Recruiter for the role: "${sanitizedRole}". Evaluate the resume and return STRICTLY JSON. 
-You MUST include ALL 6 of these top-level keys exactly as written, without dropping any.
-IMPORTANT RULES:
-- Keep all feedback concise (maximum 2-3 lines per message).
-- Limit the "issues" array to a MAXIMUM of 4 critical/important items to prioritize quality.
-- Ensure "issues" focus on actionable text improvements.
-- "industryBenchmark" should be a short phrase like "Top 10% of applicants" or "Below Average".
-Resume: ${optimizedText}`;
-  } else {
-    console.timeEnd(`ATS_Action_${action}`);
-    return NextResponse.json({ error: "Invalid action." }, { status: 400 });
-  }
+Resume Text:
+${optimizedText}
+`;
 
-  let responseText = "";
-  let attempts = 0;
-  let success = false;
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    generationConfig,
-  });
-
-  while (attempts < 2 && !success) {
-    try {
-      attempts++;
-      console.log(`[ATS] AI Attempt ${attempts} for ${action}...`);
-      
-      // Setup AbortController to explicitly log if we hit our own timeout vs Vercel killing it
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 50000); // 50s internal timeout
-      
-      const result = await model.generateContent(prompt, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      
-      responseText = result.response.text().trim();
-      success = true;
-    } catch (err: any) {
-      console.error(`[ATS_ERROR_LOG] Action=${action} | Attempt=${attempts} | ErrorType=${err.name} | ErrorMessage=${err.message} | FullStack=${err.stack}`);
-      if (err.name === 'AbortError') {
-         console.error(`[ATS_TIMEOUT_LOG] Action=${action} | The internal 50s fetch timeout was triggered before Vercel killed the function.`);
-      }
-      
-      if (attempts < 2) {
-        // Wait 1 second before retrying to prevent rapid rate limit hits
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        console.timeEnd(`ATS_Action_${action}`);
-        let userMessage = "Advanced AI analysis is temporarily unavailable.";
-        if (err.message?.includes("429") || err.message?.includes("Quota") || err.status === 429) {
-          userMessage = "AI quota reached. Please try again later.";
-        } else if (err.message?.includes("503") || err.status === 503) {
-          userMessage = "AI service is currently overloaded. Please try again later.";
-        } else if (err.name === 'AbortError') {
-          userMessage = "AI response timed out (took > 50s). Please try a shorter resume.";
-        }
-        return NextResponse.json({ error: userMessage }, { status: 504 });
-      }
-    }
-  }
-
-  if (responseText.startsWith("```json")) {
-    responseText = responseText.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
-  } else if (responseText.startsWith("```")) {
-    responseText = responseText.replace(/^```\n?/, "").replace(/\n?```$/, "").trim();
-  }
-
-  let parsedData;
+  let aiData;
   try {
-    parsedData = JSON.parse(responseText);
-  } catch (parseError: any) {
-    console.error(`[ATS_JSON_ERROR] Action=${action} | ParseErrorMessage=${parseError.message} | RawOutputLength=${responseText.length} | OutputPreview=${responseText.substring(0, 150)}...`);
-    console.timeEnd(`ATS_Action_${action}`);
-    return NextResponse.json({ error: `Failed to parse AI output for ${action}.` }, { status: 500 });
+    console.log(`[ATS] AI processing for semantic extraction via Groq...`);
+    aiData = await generateJSONResponse(prompt);
+  } catch (err: any) {
+    console.error(`[ATS_ERROR_LOG] AI parsing failed: ${err.message}`);
+    return NextResponse.json({ error: "AI parsing failed. Please try again." }, { status: 504 });
   }
 
-  // Increment credit usage only on the final step (suggestions) to avoid 4x deduction
-  if (action === "suggestions" && creditCheck.uid && creditCheck.limit !== Infinity) {
+  // Phase 3: Deterministic Scoring Engine
+  const finalResult = calculateFinalScores(extractionData, aiData);
+
+  // Increment credit usage
+  if (creditCheck.uid && creditCheck.limit !== Infinity) {
     await incrementCreditUsage(creditCheck.uid, 'ats');
     if (adminDb) {
       try {
@@ -345,99 +239,169 @@ Resume: ${optimizedText}`;
     }
   }
 
-  console.timeEnd(`ATS_Action_${action}`);
-  console.log(`[ATS] AI Analysis Complete for ${action}.`);
-  return NextResponse.json(parsedData);
+  console.timeEnd(`ATS_Analysis`);
+  return NextResponse.json(finalResult);
 }
 
 // ============================================================================
 // 3. DETERMINISTIC SCORING ENGINE
 // ============================================================================
-function calculateDeterministicScore(text: string) {
+function performDeterministicExtraction(text: string) {
   const lowerText = text.toLowerCase();
   
-  const explanations = {
-    contact: [] as string[],
-    education: [] as string[],
-    skills: [] as string[],
-    projects: [] as string[],
-    experience: [] as string[],
-    formatting: [] as string[]
+  // Project Quality indicators
+  const hasBasicProjects = /(calculator|todo list|basic html|weather app)/.test(lowerText);
+  const hasHighQualityProjects = /(production|deployed|users|ai |machine learning|full stack|system architecture|microservices)/.test(lowerText);
+  
+  // Experience indicators
+  const hasInternship = lowerText.includes("internship") || lowerText.includes("intern ");
+  const internshipCount = (lowerText.match(/internship|intern /g) || []).length;
+  const hasIndustryExperience = /(software engineer|developer|manager|lead|architect)[\s\S]*?(full-time|present|202[0-9]|201[0-9])/i.test(lowerText) && !lowerText.includes("intern");
+  const hasAcademicProjectsOnly = lowerText.includes("academic project") || lowerText.includes("coursework");
+  
+  // Impact indicators
+  const hasMeasurableImpact = /\b\d+%\b/.test(lowerText) || /\b(increased|reduced|improved|achieved|optimized|scaled)[\s\S]{0,30}?\b\d+\b/i.test(lowerText);
+  const hasStrongMeasurableImpact = /\b(increased|reduced|improved|achieved|optimized|scaled)[\s\S]{0,30}?\b\d+(%|x|\+ users)\b/i.test(lowerText);
+
+  // Formatting checks
+  const hasComplexLayout = /\s{10,}/.test(lowerText); // Very large blocks of whitespace indicate complex layouts/tables
+  
+  return {
+    hasEmail: lowerText.includes("@") || lowerText.includes("mail"),
+    hasPhone: /\d{10}/.test(lowerText) || /\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(lowerText),
+    hasLinkedIn: lowerText.includes("linkedin.com") || lowerText.includes("linkedin"),
+    hasGitHub: lowerText.includes("github.com") || lowerText.includes("github"),
+    
+    hasEducation: lowerText.includes("education") || lowerText.includes("university") || lowerText.includes("college"),
+    hasDegree: lowerText.includes("bachelor") || lowerText.includes("b.tech") || lowerText.includes("degree") || lowerText.includes("master"),
+    hasGPA: lowerText.includes("cgpa") || lowerText.includes("gpa") || lowerText.includes("%"),
+    
+    hasSkills: lowerText.includes("skills") || lowerText.includes("technologies") || lowerText.includes("expertise"),
+    hasProjects: lowerText.includes("project") || lowerText.includes("portfolio"),
+    hasExperience: lowerText.includes("experience") || lowerText.includes("internship") || lowerText.includes("work history"),
+    
+    hasBasicProjects,
+    hasHighQualityProjects,
+    hasInternship,
+    internshipCount,
+    hasIndustryExperience,
+    hasAcademicProjectsOnly,
+    hasMeasurableImpact,
+    hasStrongMeasurableImpact,
+    hasComplexLayout,
+    
+    wordCount: text.split(/\s+/).length
   };
+}
 
-  let contactScore = 0;
-  if (lowerText.includes("@") || lowerText.includes("mail")) { contactScore += 40; explanations.contact.push("+40: Email address found"); }
-  else { explanations.contact.push("-40: Missing email address"); }
-  if (/\d{10}/.test(lowerText) || /\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(lowerText)) { contactScore += 30; explanations.contact.push("+30: Phone number found"); }
-  else { explanations.contact.push("-30: Missing phone number"); }
-  if (lowerText.includes("linkedin.com") || lowerText.includes("linkedin")) { contactScore += 15; explanations.contact.push("+15: LinkedIn profile found"); }
-  else { explanations.contact.push("-15: Missing LinkedIn profile"); }
-  if (lowerText.includes("github.com") || lowerText.includes("github")) { contactScore += 15; explanations.contact.push("+15: GitHub profile found"); }
-  else { explanations.contact.push("-15: Missing GitHub profile"); }
-  
-  let educationScore = 0;
-  if (lowerText.includes("education") || lowerText.includes("university") || lowerText.includes("college") || lowerText.includes("institute") || lowerText.includes("school")) { educationScore += 40; explanations.education.push("+40: Education section identified"); }
-  else { explanations.education.push("-40: Missing clear Education section"); }
-  if (lowerText.includes("bachelor") || lowerText.includes("b.tech") || lowerText.includes("degree") || lowerText.includes("b.e") || lowerText.includes("bsc") || lowerText.includes("master")) { educationScore += 30; explanations.education.push("+30: Degree identifier found"); }
-  else { explanations.education.push("-30: Missing degree identifier"); }
-  if (lowerText.includes("cgpa") || lowerText.includes("gpa") || lowerText.includes("%") || /\b20\d{2}\b/.test(lowerText)) { educationScore += 30; explanations.education.push("+30: Graduation year/GPA found"); }
-  else { explanations.education.push("-30: Missing graduation year or GPA metrics"); }
-  
-  let skillsScore = 0;
-  if (lowerText.includes("skills") || lowerText.includes("technologies") || lowerText.includes("expertise") || lowerText.includes("languages")) { skillsScore += 30; explanations.skills.push("+30: Skills section identified"); }
-  else { explanations.skills.push("-30: Missing clear Skills section"); }
-  const commonTech = ["javascript", "python", "java", "react", "node", "sql", "aws", "docker", "html", "css", "c++", "c#", "git", "linux", "api", "typescript", "kubernetes", "azure", "gcp", "spring", "django", "express", "mongodb", "postgresql", "mysql"];
-  let techCount = commonTech.filter(tech => lowerText.includes(tech)).length;
-  skillsScore += Math.min(70, techCount * 10);
-  if (techCount > 0) explanations.skills.push(`+${Math.min(70, techCount * 10)}: Found ${techCount} core technical skills`);
-  else explanations.skills.push("-70: No core technical skills detected");
-  
-  let projectsScore = 0;
-  if (lowerText.includes("project") || lowerText.includes("portfolio")) { projectsScore += 30; explanations.projects.push("+30: Projects section identified"); }
-  else { explanations.projects.push("-30: Missing clear Projects section"); }
-  if (lowerText.includes("developed") || lowerText.includes("built") || lowerText.includes("created") || lowerText.includes("implemented") || lowerText.includes("architected") || lowerText.includes("designed")) { projectsScore += 70; explanations.projects.push("+70: Strong action verbs found in projects"); }
-  else { explanations.projects.push("-70: Weak action verbs in projects"); }
-  
-  let experienceScore = 0;
-  if (lowerText.includes("experience") || lowerText.includes("internship") || lowerText.includes("work history") || lowerText.includes("employment")) { experienceScore += 40; explanations.experience.push("+40: Experience/Internship section identified"); }
-  else { explanations.experience.push("-40: Missing clear Experience section"); }
-  if (lowerText.includes("intern") || lowerText.includes("developer") || lowerText.includes("engineer") || lowerText.includes("role") || lowerText.includes("freelance") || lowerText.includes("software")) { experienceScore += 60; explanations.experience.push("+60: Professional roles detected"); }
-  else { explanations.experience.push("-60: Missing professional roles/titles"); }
+function calculateFinalScores(ext: any, ai: any) {
+  // 1. ATS Compatibility (Max 100 - Weight: 20%)
+  let atsScore = 100;
+  let atsChecks = {
+    contact: ext.hasEmail && ext.hasPhone,
+    education: ext.hasEducation,
+    skills: ext.hasSkills,
+    projects: ext.hasProjects,
+    experience: ext.hasExperience
+  };
+  let atsIssues = [];
+  if (!atsChecks.contact) { atsScore -= 15; atsIssues.push("Missing complete contact info (Email/Phone)"); }
+  if (!atsChecks.education) { atsScore -= 10; atsIssues.push("Missing clear Education section"); }
+  if (!atsChecks.skills) { atsScore -= 10; atsIssues.push("Missing clear Skills section"); }
+  if (!atsChecks.projects) { atsScore -= 10; atsIssues.push("Missing clear Projects section"); }
+  if (!atsChecks.experience) { atsScore -= 10; atsIssues.push("Missing clear Experience section"); }
+  if (ext.hasComplexLayout) { atsScore -= 15; atsIssues.push("Detected complex layout or tables that ATS may fail to parse."); }
 
-  let formattingScore = 0;
-  if (text.length > 500 && text.length < 15000) { formattingScore += 40; explanations.formatting.push("+40: Optimal resume length"); }
-  else { explanations.formatting.push("-40: Resume length is too short or too long"); }
-  const headers = ["education", "experience", "projects", "skills", "summary", "objective"];
-  let headerCount = headers.filter(h => lowerText.includes(h)).length;
-  formattingScore += Math.min(60, headerCount * 15);
-  explanations.formatting.push(`+${Math.min(60, headerCount * 15)}: Found ${headerCount} standard formatting headers`);
-  
-  contactScore = Math.min(100, contactScore);
-  educationScore = Math.min(100, Math.max(0, educationScore));
-  skillsScore = Math.min(100, Math.max(0, skillsScore));
-  projectsScore = Math.min(100, Math.max(0, projectsScore));
-  experienceScore = Math.min(100, Math.max(0, experienceScore));
-  formattingScore = Math.min(100, Math.max(0, formattingScore));
+  // 2. Keyword Match (Max 100 - Weight: 25%)
+  const reqLen = Math.max(1, ai.requiredKeywords?.length || 1);
+  const matchedLen = ai.matchedKeywords?.length || 0;
+  let keywordScore = Math.min(100, Math.round((matchedLen / reqLen) * 100));
+  if (matchedLen < reqLen) {
+    // Never show 100% unless every important keyword exists
+    keywordScore = Math.min(99, keywordScore);
+  }
 
+  // 3. Skills Coverage (Max 100 - Weight: 15%)
+  let skillsScore = ext.hasSkills ? 40 : 0;
+  skillsScore += Math.min(60, (ai.strongSkills?.length || 0) * 10);
+  if (ai.missingSkills?.length > 0) {
+    skillsScore -= (ai.missingSkills.length * 5); // penalty for missing industry skills
+  }
+
+  // 4. Projects Quality (Max 100 - Weight: 10%)
+  let projectsScore = ext.hasProjects ? 40 : 10;
+  if (ext.hasGitHub) projectsScore += 15;
+  if (ext.hasBasicProjects && !ext.hasHighQualityProjects) projectsScore = 50; // Low quality cap
+  if (ext.hasHighQualityProjects) projectsScore += 30;
+  if (ext.hasMeasurableImpact) projectsScore += 15;
+
+  // 5. Experience Strength (Max 100 - Weight: 15%)
+  let expScore = 30; // No Experience
+  if (ext.hasAcademicProjectsOnly) expScore = 40;
+  if (ext.hasInternship) expScore = 60;
+  if (ext.internshipCount > 1) expScore = 80;
+  if (ext.hasIndustryExperience) expScore = 95;
+
+  // 6. Achievements & Impact (Max 100 - Weight: 10%)
+  let achScore = 30; // Weak baseline
+  if (ext.hasMeasurableImpact) achScore = 70;
+  if (ext.hasStrongMeasurableImpact) achScore = 100;
+
+  // 7. Formatting Quality (Max 100 - Weight: 5%)
+  let fmtScore = 100;
+  if (ext.wordCount < 150) fmtScore -= 30;
+  if (ext.wordCount > 1000) fmtScore -= 20;
+  if (ext.hasComplexLayout) fmtScore -= 20;
+
+  // Bound all scores
+  atsScore = Math.max(0, Math.min(100, atsScore));
+  keywordScore = Math.max(0, Math.min(100, keywordScore));
+  skillsScore = Math.max(0, Math.min(100, skillsScore));
+  projectsScore = Math.max(0, Math.min(100, projectsScore));
+  expScore = Math.max(0, Math.min(100, expScore));
+  achScore = Math.max(0, Math.min(100, achScore));
+  fmtScore = Math.max(0, Math.min(100, fmtScore));
+
+  // Overall Score (Weighted Average)
   const overallScore = Math.round(
-    (skillsScore * 0.25) + 
-    (projectsScore * 0.25) + 
-    (experienceScore * 0.20) + 
-    (educationScore * 0.10) + 
-    (contactScore * 0.10) + 
-    (formattingScore * 0.10)
+    (atsScore * 0.20) +
+    (keywordScore * 0.25) +
+    (skillsScore * 0.15) +
+    (projectsScore * 0.10) +
+    (expScore * 0.15) +
+    (achScore * 0.10) +
+    (fmtScore * 0.05)
   );
+
+  let benchmark = "Poor";
+  if (overallScore >= 93) benchmark = "Exceptional";
+  else if (overallScore >= 86) benchmark = "Excellent";
+  else if (overallScore >= 76) benchmark = "Good";
+  else if (overallScore >= 61) benchmark = "Average";
+  else if (overallScore >= 41) benchmark = "Needs Improvement";
 
   return {
     overallScore,
+    atsCompatibility: { score: atsScore, checks: atsChecks, issues: atsIssues },
+    keywordMatch: { score: keywordScore, matched: ai.matchedKeywords || [], missing: ai.missingKeywords || [] },
+    skillsAnalysis: { score: skillsScore, strong: ai.strongSkills || [], missing: ai.missingSkills || [] },
+    projectsQuality: { score: projectsScore },
+    experienceAnalysis: { score: expScore },
+    achievementsAnalysis: { score: achScore },
+    educationQuality: { score: ext.hasEducation ? (ext.hasDegree ? 95 : 70) : 0 }, // For backward compatibility if UI still expects education, we mock a strict score
+    formattingQuality: { score: fmtScore },
     sectionScores: {
       skills: skillsScore,
       projects: projectsScore,
-      experience: experienceScore,
-      education: educationScore,
-      contact: contactScore,
-      formatting: formattingScore
+      experience: expScore,
+      achievements: achScore,
+      education: ext.hasEducation ? (ext.hasDegree ? 95 : 70) : 0,
+      contact: (ext.hasEmail ? 50 : 0) + (ext.hasPhone ? 50 : 0),
+      formatting: fmtScore
     },
-    explanations
+    recruiterSimulation: ai.recruiterSimulation || { decision: "MAYBE", topStrengths: [], topConcerns: [] },
+    criticalIssues: ai.criticalIssues?.slice(0, 5) || [],
+    actionableImprovements: ai.actionableImprovements || [],
+    industryBenchmark: benchmark
   };
 }

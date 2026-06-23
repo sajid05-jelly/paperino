@@ -81,7 +81,7 @@ export default function PrivacyPolicyPage() {
           <p className="text-purple-200/70 mb-3">Paperino may securely interface with:</p>
           <ul className="space-y-3 text-purple-200/70">
             <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Firebase</li>
-            <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Google Gemini API</li>
+            <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Groq API (Llama 3.3)</li>
             <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Google Authentication</li>
           </ul>
         </div>

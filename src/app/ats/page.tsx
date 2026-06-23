@@ -175,171 +175,31 @@ export default function ATSAnalyzerPage() {
         setLoadingStep(1); // Move to analyze step
       }
 
-      // STEP 2: ANALYZE WITH SEQUENTIAL AI REQUESTS (To avoid Gemini concurrency limits)
-      const fetchAction = async (action: string) => {
-        const res = await fetch("/api/ats", {
-          method: "POST",
-          headers: { 
-            "Authorization": `Bearer ${idToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ text: textToAnalyze, role, action }),
-        });
-        const rawText = await res.text();
-        let parsed;
-        try {
-          parsed = JSON.parse(rawText);
-        } catch(e) {
-          throw new Error(`Timeout for ${action}`);
-        }
-        if (!res.ok) {
-          if (res.status === 429) throw new Error(parsed.error || "Rate limit reached");
-          throw new Error(parsed.error || `Failed ${action}`);
-        }
-        return parsed;
-      };
+      // STEP 2: ANALYZE WITH UNIFIED REQUEST
+      setLoadingStep(1); // Generating Unified Analysis
+      const res = await fetch("/api/ats", {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${idToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text: textToAnalyze, role }),
+      });
 
-      const results: Record<string, any> = {};
-
-      setLoadingStep(1); // Calculating ATS Score
-      try { results.score = { status: "fulfilled", value: await fetchAction("score") }; }
-      catch (e: any) { results.score = { status: "rejected", reason: e }; }
-
-      setLoadingStep(2); // Matching Keywords
-      try { results.keywords = { status: "fulfilled", value: await fetchAction("keywords") }; }
-      catch (e: any) { results.keywords = { status: "rejected", reason: e }; }
-
-      setLoadingStep(3); // Analyzing Skills
-      try { results.skills = { status: "fulfilled", value: await fetchAction("skills") }; }
-      catch (e: any) { results.skills = { status: "rejected", reason: e }; }
-
-      setLoadingStep(4); // Generating Suggestions
-      try { results.suggestions = { status: "fulfilled", value: await fetchAction("suggestions") }; }
-      catch (e: any) { results.suggestions = { status: "rejected", reason: e }; }
-
-      const scoreRes = results.score;
-      const keywordsRes = results.keywords;
-      const skillsRes = results.skills;
-      const suggestionsRes = results.suggestions;
-
-      setLoadingStep(5); // Finalizing results
-
-      // If all failed, throw an error
-      if (scoreRes.status === "rejected" && keywordsRes.status === "rejected" && skillsRes.status === "rejected" && suggestionsRes.status === "rejected") {
-         throw new Error(scoreRes.reason?.message || "AI Analysis completely failed due to timeout.");
+      const rawText = await res.text();
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch(e) {
+        throw new Error(`Server returned invalid JSON: ${rawText.substring(0, 50)}`);
       }
 
-      // Combine partial results with safe, user-friendly fallback messages
-      let aggregatedIssues = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.issues || [] : [{
-        type: "ats_compatibility", severity: "warning", section: "General",
-        message: "Advanced AI analysis (Recruiter Perspective & Suggestions) is temporarily unavailable due to high demand or quota limits. Please try again later.",
-        currentText: "", suggestedText: ""
-      }];
-
-      if (scoreRes.status === "rejected") {
-        aggregatedIssues.push({
-          type: "ats_compatibility", severity: "critical", section: "Score Calculation",
-          message: "Failed to calculate ATS score. The service may be temporarily overloaded.",
-          currentText: "", suggestedText: ""
-        });
+      if (!res.ok) {
+        throw new Error(parsed.error || "Failed to analyze resume. Please try again.");
       }
 
-      if (keywordsRes.status === "rejected") {
-        aggregatedIssues.push({
-          type: "missing_keyword", severity: "warning", section: "Keywords",
-          message: "Keyword analysis is temporarily unavailable. We couldn't check specific ATS keyword matches.",
-          currentText: "", suggestedText: ""
-        });
-      }
-
-      const overallScore = scoreRes.status === "fulfilled" ? scoreRes.value.overallScore || 0 : 0;
-      const sectionScores = scoreRes.status === "fulfilled" ? scoreRes.value.sectionScores || {} : { skills: 0, projects: 0, experience: 0, education: 0, contact: 0, formatting: 0 };
-
-      // Deterministic Hiring Readiness Calculation (Adjusted for Students)
-      const isStudent = /bachelor|undergrad|b\.tech|b\.e|pursuing|expected to graduate|2025|2026|2027|2028|intern/i.test(textToAnalyze);
-      const expFactor = isStudent ? 0.80 : 1.0;
-      const projFactor = Math.max(0.5, (sectionScores.projects || 0) / 100);
-      
-      // Hiring Readiness = ATS Score × Experience Factor × Project Quality Factor
-      const deterministicHiringReadiness = Math.round(overallScore * expFactor * projFactor);
-
-      let executiveSummary = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.executiveSummary || {} : {};
-      let recruiterPerspective = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.recruiterPerspective || {} : {};
-      let atsPassProbability = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.atsPassProbability || 0 : 0;
-      let industryBenchmark = suggestionsRes.status === "fulfilled" ? suggestionsRes.value.industryBenchmark || "N/A" : "N/A";
-
-      // If AI failed or returned empty strengths, generate deterministic fallbacks based on sections and raw text
-      if (!executiveSummary.topStrengths || executiveSummary.topStrengths.length < 2) {
-        // Extract tech keywords dynamically from the resume text to make insights less generic
-        const techList = ["React", "Next.js", "Python", "Java", "Node.js", "PostgreSQL", "SQL", "AWS", "Docker", "Machine Learning", "Llama", "WebSockets", "Spring Boot", "MediaPipe", "TypeScript", "JavaScript", "C++", "C#", "MongoDB", "Angular"];
-        const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const detectedTech = techList.filter(t => {
-          try {
-            const startBoundary = /^\w/.test(t) ? '\\b' : '';
-            const endBoundary = /\w$/.test(t) ? '\\b' : '';
-            return new RegExp(`${startBoundary}${escapeRegExp(t)}${endBoundary}`, 'i').test(textToAnalyze);
-          } catch (e) {
-            console.error("Regex parsing error for tech:", t, e);
-            return false;
-          }
-        });
-        const techHighlight = detectedTech.length > 0 ? detectedTech.slice(0, 3).join(", ") : "modern development tools";
-        
-        executiveSummary.topStrengths = [];
-        if ((sectionScores.skills || 0) >= 80) executiveSummary.topStrengths.push(`Demonstrates strong technical proficiency, specifically utilizing ${techHighlight} effectively.`);
-        if ((sectionScores.projects || 0) >= 80) executiveSummary.topStrengths.push(`Showcases highly relevant practical experience through well-architected projects leveraging ${detectedTech.length > 0 ? detectedTech[0] : 'core frameworks'}.`);
-        if ((sectionScores.experience || 0) >= 80) executiveSummary.topStrengths.push("Solid professional workflow experience clearly aligned with standard software engineering practices.");
-        
-        // Ensure at least 2 strengths
-        if (executiveSummary.topStrengths.length < 2) {
-          executiveSummary.topStrengths.push("Resume is well-structured and parsable by standard ATS pipelines.");
-          if (overallScore > 60) executiveSummary.topStrengths.push("Overall profile indicates strong potential for targeted engineering roles.");
-        }
-
-        executiveSummary.topWeaknesses = [];
-        if ((sectionScores.skills || 0) < 80) executiveSummary.topWeaknesses.push("Missing several core technical skills or frameworks typically expected for this specific role.");
-        if ((sectionScores.projects || 0) < 80) executiveSummary.topWeaknesses.push("Project descriptions lack technical depth, architecture details, or quantifiable impact metrics.");
-        if ((sectionScores.experience || 0) < 80) executiveSummary.topWeaknesses.push(isStudent ? "As a student/recent grad, the profile naturally lacks extensive full-time industry exposure." : "Limited professional work experience directly related to the senior requirements of the role.");
-        
-        // Ensure at least 1 concern
-        if (executiveSummary.topWeaknesses.length === 0) {
-           executiveSummary.topWeaknesses.push(overallScore >= 90 ? "Resume is highly competitive, but continuous upskilling in emerging technologies is recommended to stay ahead." : "Consider adding more quantifiable metrics (%, $, time saved) to project and experience bullet points.");
-        }
-
-        // Deterministic Pass Probability
-        atsPassProbability = Math.min(99, Math.round(overallScore * 0.85 + (sectionScores.skills || 0) * 0.12));
-        if (overallScore >= 90 && atsPassProbability < 80) atsPassProbability = 85;
-
-        // Deterministic Industry Benchmark
-        if (overallScore >= 90) industryBenchmark = "Top 10% of Applicants";
-        else if (overallScore >= 80) industryBenchmark = "Top 25% of Applicants";
-        else if (overallScore >= 60) industryBenchmark = "Average for Entry-Level";
-        else industryBenchmark = "Below Average";
-      }
-
-      // Override the AI's subjective readiness score with our deterministic mathematical calculation
-      recruiterPerspective.hiringReadiness = deterministicHiringReadiness;
-
-      const data = {
-        overallScore,
-        sectionScores,
-        explanations: scoreRes.status === "fulfilled" ? scoreRes.value.explanations || {} : {},
-        keywordMatchPercentage: keywordsRes.status === "fulfilled" ? keywordsRes.value.keywordMatchPercentage || 0 : 0,
-        detectedKeywords: keywordsRes.status === "fulfilled" ? keywordsRes.value.detectedKeywords || [] : [],
-        missingKeywords: keywordsRes.status === "fulfilled" ? keywordsRes.value.missingKeywords || [] : [],
-        missingSkills: skillsRes.status === "fulfilled" ? skillsRes.value.missingSkills || {} : {},
-        isFakeOrCorrupted: skillsRes.status === "fulfilled" ? skillsRes.value.isFakeOrCorrupted || false : false,
-        fakeReason: skillsRes.status === "fulfilled" ? skillsRes.value.fakeReason || "" : "",
-        executiveSummary,
-        recruiterPerspective,
-        atsPassProbability,
-        industryBenchmark,
-        topActionItems: suggestionsRes.status === "fulfilled" ? suggestionsRes.value.topActionItems || [] : [],
-        issues: aggregatedIssues,
-        rawExtractedText: textToAnalyze
-      };
-
-      setResult(data);
+      setLoadingStep(2); // Finalizing Results
+      setResult(parsed);
     } catch (err: any) {
       console.error("Analysis failed:", err);
       setError(err.message || "An unexpected error occurred during analysis.");
@@ -509,7 +369,7 @@ export default function ATSAnalyzerPage() {
         <div ref={resultsRef} className="w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-10 duration-700 relative z-10 pt-8 pb-12">
           
           {/* Left Pane: Resume Preview */}
-          <div className="w-full lg:w-[40%] flex flex-col bg-[#07050d] border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)] h-[calc(100vh-6rem)] sticky top-8">
+          <div className="w-full lg:w-[35%] flex flex-col bg-[#07050d] border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)] h-[calc(100vh-6rem)] sticky top-8">
             <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between backdrop-blur-md">
               <div className="flex items-center gap-2 text-violet-300">
                 <FileText size={18} />
@@ -539,289 +399,204 @@ export default function ATSAnalyzerPage() {
             </div>
           </div>
 
-          {/* Right Pane: AI Analysis Dashboard */}
-          <div className="w-full lg:w-[60%] flex flex-col gap-5">
+          {/* Right Pane: Premium Dashboard */}
+          <div className="w-full lg:w-[65%] flex flex-col gap-6">
             
-            {/* 1. Final Verdict & Executive Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className={`col-span-3 p-5 rounded-3xl border md:backdrop-blur-md backdrop-blur-sm shadow-md md:shadow-lg flex flex-col justify-center ${
-                result.overallScore >= 80 ? 'bg-emerald-500/10 border-emerald-500/30' : 
-                result.overallScore >= 60 ? 'bg-orange-500/10 border-orange-500/30' : 
-                'bg-red-500/10 border-red-500/30'
-              } hardware-accelerated`}>
-                <h3 className={`text-sm font-bold mb-1.5 flex items-center gap-2 uppercase tracking-wide ${
-                  result.overallScore >= 80 ? 'text-emerald-400' : 
-                  result.overallScore >= 60 ? 'text-orange-400' : 
-                  'text-red-400'
-                }`}>
-                  <Activity size={16} /> Final Verdict
-                </h3>
-                <p className="text-gray-300 leading-snug text-sm">
-                  {result.overallScore >= 80 
-                    ? "Your resume is highly optimized and compatible with ATS systems. Minor tweaks to layout or specific keywords could make it perfect."
-                    : result.overallScore >= 60
-                    ? "Your resume is moderately ATS-friendly but needs improvement in formatting and keyword optimization to ensure it passes automated screens consistently."
-                    : "Your resume has critical formatting or keyword issues that will likely cause it to be rejected by most ATS systems. Major revisions are strongly recommended."
-                  }
+            {/* HERO SCORE CARD */}
+            <div className="glass-panel p-8 rounded-3xl flex flex-col md:flex-row items-center gap-8 border border-white/10 relative overflow-hidden">
+              <div className={`absolute -right-20 -bottom-20 w-64 h-64 blur-[100px] rounded-full pointer-events-none ${
+                result.overallScore >= 80 ? 'bg-emerald-500/20' : 
+                result.overallScore >= 60 ? 'bg-orange-500/20' : 
+                'bg-red-500/20'
+              }`}></div>
+              
+              <div className="relative w-40 h-40 flex items-center justify-center shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="6" className="text-white/5" />
+                  <circle 
+                    cx="50" cy="50" r="45" fill="none" 
+                    strokeWidth="6" 
+                    strokeLinecap="round"
+                    className={`${getScoreStroke(result.overallScore)} transition-all duration-1000 ease-out`}
+                    strokeDasharray={`${(result.overallScore / 100) * 283} 283`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-4xl font-black ${getScoreColor(result.overallScore)}`}>{result.overallScore}</span>
+                  <span className="text-xs text-gray-400 font-bold mt-1">/ 100</span>
+                </div>
+              </div>
+
+              <div className="text-center md:text-left z-10">
+                <h2 className="text-3xl font-bold text-white mb-2">Overall ATS Score</h2>
+                <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
+                  <span className="bg-white/10 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/20">Target: {role}</span>
+                  <span className="bg-violet-500/20 text-violet-300 px-3 py-1 rounded-full text-xs font-bold border border-violet-500/30">Benchmark: {result.industryBenchmark}</span>
+                </div>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  {result.overallScore >= 80 ? "Excellent. Your resume is highly competitive and well-optimized for ATS pipelines." : 
+                   result.overallScore >= 60 ? "Average. Your resume passes basic screens but needs stronger keywords and impact metrics." : 
+                   "Needs Work. Major formatting, keyword, or section issues detected. High risk of automatic rejection."}
                 </p>
               </div>
+            </div>
 
-              <div className="col-span-2 glass-panel p-5 rounded-3xl flex items-center justify-between border-l-4 border-l-violet-500 relative overflow-hidden hardware-accelerated">
-                <div className="hidden md:block absolute -right-10 -bottom-10 w-32 h-32 bg-violet-500/20 blur-3xl rounded-full hardware-accelerated"></div>
-                <div className="z-10">
-                  <h2 className="text-white text-xl font-bold mb-1">ATS Match</h2>
-                  <p className="text-violet-300/70 text-xs">Target: <strong className="text-white break-words max-w-[100px] block truncate">{role}</strong></p>
+            {/* RECRUITER SIMULATION */}
+            <div className={`p-6 rounded-3xl border shadow-lg flex flex-col relative overflow-hidden ${
+              result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/5 border-emerald-500/20' : 
+              result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/5 border-orange-500/20' : 
+              'bg-red-500/5 border-red-500/20'
+            }`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`p-2 rounded-xl ${
+                  result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 
+                  result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/20 text-orange-400' : 
+                  'bg-red-500/20 text-red-400'
+                }`}>
+                  <Activity size={24} />
                 </div>
-                <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                  <svg className="w-full h-full transform -rotate-90 hardware-accelerated" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/10" />
-                    <circle 
-                      cx="50" cy="50" r="45" fill="none" 
-                      strokeWidth="8" 
-                      strokeLinecap="round"
-                      className={`${getScoreStroke(result.overallScore)} transition-all duration-1000 ease-out`}
-                      strokeDasharray={`${(result.overallScore / 100) * 283} 283`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`text-xl font-black ${getScoreColor(result.overallScore)}`}>{result.overallScore}</span>
-                  </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Recruiter Simulation</h3>
+                  <p className="text-sm text-gray-400">Would a recruiter shortlist this?</p>
+                </div>
+                <div className="ml-auto">
+                  <span className={`text-xl font-black px-4 py-2 rounded-xl border ${
+                    result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 
+                    result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 
+                    'bg-red-500/20 text-red-400 border-red-500/30'
+                  }`}>{result.recruiterSimulation?.decision || "MAYBE"}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Top Strengths</span>
+                  {result.recruiterSimulation?.topStrengths?.map((s: string, i: number) => (
+                    <div key={i} className="flex gap-2 text-sm text-gray-300 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10"><CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />{s}</div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Top Concerns</span>
+                  {result.recruiterSimulation?.topConcerns?.map((s: string, i: number) => (
+                    <div key={i} className="flex gap-2 text-sm text-gray-300 bg-red-500/5 p-3 rounded-xl border border-red-500/10"><AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />{s}</div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* 2. Recruiter Perspective & Benchmarks */}
-            <div className="glass-panel p-5 rounded-3xl flex flex-col gap-4 hardware-accelerated">
-              <h3 className="text-violet-400 font-bold flex items-center gap-2 text-sm uppercase tracking-wide">
-                <Activity size={16} /> Recruiter Perspective
-              </h3>
+            {/* DETAILED METRICS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {!result.executiveSummary?.topStrengths?.length && (!result.recruiterPerspective?.hiringReadiness || result.recruiterPerspective.hiringReadiness === 0) ? (
-                <div className="p-4 border border-violet-500/20 bg-violet-500/5 rounded-xl text-center">
-                  <p className="text-violet-300/80 text-sm italic">Advanced AI insights (Recruiter Perspective, Hiring Readiness) are temporarily unavailable due to high server load or quota limits. Please try again later.</p>
+              {/* Keyword Match */}
+              <div className="glass-panel p-6 rounded-3xl border border-white/10">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-white flex items-center gap-2"><Sparkles className="text-fuchsia-400" size={18}/> Keyword Match</h3>
+                  <span className={`font-bold ${getScoreColor(result.keywordMatch?.score || 0)}`}>{result.keywordMatch?.score || 0}%</span>
                 </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Strengths</span>
-                      <ul className="space-y-1.5">
-                        {result.executiveSummary?.topStrengths?.length ? result.executiveSummary.topStrengths.map((str: string, i: number) => (
-                          <li key={i} className="text-xs text-emerald-300 flex items-start gap-2 leading-tight">
-                            <CheckCircle2 size={12} className="mt-0.5 shrink-0" /> {str}
-                          </li>
-                        )) : <li className="text-xs text-gray-500 italic">No significant strengths identified.</li>}
-                      </ul>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 block">Top Concerns</span>
-                      <ul className="space-y-1.5">
-                        {result.executiveSummary?.topWeaknesses?.length ? result.executiveSummary.topWeaknesses.map((wk: string, i: number) => (
-                          <li key={i} className="text-xs text-red-300 flex items-start gap-2 leading-tight">
-                            <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {wk}
-                          </li>
-                        )) : <li className="text-xs text-gray-500 italic">No significant concerns identified.</li>}
-                      </ul>
+                <div className="w-full bg-white/5 h-2 rounded-full mb-6">
+                  <div className={`h-full rounded-full ${getScoreColor(result.keywordMatch?.score || 0).replace('text-', 'bg-')}`} style={{width: `${result.keywordMatch?.score || 0}%`}}></div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 block">Matched ({result.keywordMatch?.matched?.length || 0})</span>
+                    <div className="flex flex-wrap gap-2">
+                      {result.keywordMatch?.matched?.map((k: string) => <span key={k} className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs rounded-md">{k}</span>)}
                     </div>
                   </div>
-
-                  {/* Benchmarks Row */}
-                  <div className="grid grid-cols-3 gap-3 border-t border-white/5 pt-4 mt-2">
-                    <div>
-                      <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Hiring Readiness</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-black text-white">{result.recruiterPerspective?.hiringReadiness || 0}%</span>
-                        <div className="flex-grow bg-white/10 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-gradient-to-r from-violet-600 to-violet-400 h-full rounded-full" style={{ width: `${result.recruiterPerspective?.hiringReadiness || 0}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Pass Probability</h3>
-                      <div className="text-lg font-black text-cyan-400">{result.atsPassProbability || 0}%</div>
-                    </div>
-                    <div>
-                      <h3 className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Industry Benchmark</h3>
-                      <div className="text-xs font-bold text-white bg-white/10 px-2 py-1 rounded inline-block">
-                        {result.industryBenchmark || "N/A"}
-                      </div>
+                  <div>
+                    <span className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 block">Missing ({result.keywordMatch?.missing?.length || 0})</span>
+                    <div className="flex flex-wrap gap-2">
+                      {result.keywordMatch?.missing?.map((k: string) => <span key={k} className="px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-md">{k}</span>)}
                     </div>
                   </div>
-                </>
-              )}
-            </div>
-
-            {/* 3. Transparent Score Breakdown */}
-            <div className="glass-panel p-6 rounded-3xl">
-              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                <Activity size={18} className="text-emerald-400" /> Score Breakdown
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                {[
-                  { id: 0, key: "skills", label: "Skills", score: result.sectionScores?.skills || 0 },
-                  { id: 1, key: "projects", label: "Projects", score: result.sectionScores?.projects || 0 },
-                  { id: 2, key: "experience", label: "Experience", score: result.sectionScores?.experience || 0 },
-                  { id: 3, key: "education", label: "Education", score: result.sectionScores?.education || 0 },
-                  { id: 4, key: "contact", label: "Contact Info", score: result.sectionScores?.contact || 0 },
-                  { id: 5, key: "formatting", label: "Formatting", score: result.sectionScores?.formatting || 0 }
-                ].map((sec) => (
-                  <div key={sec.id} className="relative">
-                    <div 
-                      onClick={() => setActiveSection(activeSection === sec.id ? null : sec.id)}
-                      className={`flex flex-col items-center p-3 rounded-2xl border text-center cursor-pointer transition-all ${
-                        activeSection === sec.id ? 'bg-white/10 border-white/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">{sec.label}</span>
-                      <div className={`text-base font-bold ${getScoreColor(sec.score)}`}>{sec.score}/100</div>
-                    </div>
-                  </div>
-                ))}
+                </div>
               </div>
-              
-              {/* Active Section Explanation */}
-              {activeSection !== null && (
-                <div className="mt-4 p-4 rounded-xl bg-black/20 border border-white/5 animate-in slide-in-from-top-2">
-                  <h4 className="text-sm font-bold text-white mb-2 uppercase tracking-wider">
-                    {[
-                      { id: 0, key: "skills" },
-                      { id: 1, key: "projects" },
-                      { id: 2, key: "experience" },
-                      { id: 3, key: "education" },
-                      { id: 4, key: "contact" },
-                      { id: 5, key: "formatting" }
-                    ].find(s => s.id === activeSection)?.key} Explanation
-                  </h4>
-                  <ul className="space-y-1">
-                    {result.explanations?.[
-                      [
-                        { id: 0, key: "skills" },
-                        { id: 1, key: "projects" },
-                        { id: 2, key: "experience" },
-                        { id: 3, key: "education" },
-                        { id: 4, key: "contact" },
-                        { id: 5, key: "formatting" }
-                      ].find(s => s.id === activeSection)?.key || "skills"
-                    ]?.map((expl: string, idx: number) => (
-                      <li key={idx} className={`text-xs ${expl.startsWith('+') ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {expl}
-                      </li>
+
+              {/* Skills & Sections */}
+              <div className="space-y-6">
+                
+                {/* ATS Compatibility */}
+                <div className="glass-panel p-6 rounded-3xl border border-white/10">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-white text-sm">ATS Compatibility</h3>
+                    <span className={`font-bold ${getScoreColor(result.atsCompatibility?.score || 0)}`}>{result.atsCompatibility?.score || 0}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {result.atsCompatibility?.checks && Object.entries(result.atsCompatibility.checks).map(([key, passed]) => (
+                      <div key={key} className="flex items-center gap-2 text-xs text-gray-300 capitalize">
+                        {passed ? <CheckCircle2 size={14} className="text-emerald-400" /> : <XCircle size={14} className="text-red-400" />}
+                        {key}
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* 4. Categorized Missing Skills */}
-            {result.missingSkills && Object.keys(result.missingSkills).some(k => result.missingSkills[k]?.length > 0) && (
-              <div className="glass-panel p-5 rounded-3xl">
-                <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
-                  <AlertCircle size={16} /> Missing Critical Skills
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(result.missingSkills).map(([category, skills]: [string, any]) => {
-                    if (!skills || skills.length === 0) return null;
-                    return (
-                      <div key={category} className="p-3 bg-white/5 rounded-xl border border-white/10">
-                        <span className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 block">
-                          {category}
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {skills.map((skill: string, i: number) => (
-                            <span key={i} className="px-2 py-0.5 bg-red-500/20 text-red-200 rounded text-xs border border-red-500/30">
-                              {skill}
-                            </span>
-                          ))}
+                {/* Granular Scores */}
+                <div className="glass-panel p-6 rounded-3xl border border-white/10">
+                  <h3 className="font-bold text-white text-sm mb-4">Sub-Scores</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Skills Coverage", score: result.skillsAnalysis?.score || 0 },
+                      { label: "Projects Quality", score: result.projectsQuality?.score || 0 },
+                      { label: "Experience Strength", score: result.experienceAnalysis?.score || 0 },
+                      { label: "Achievements & Impact", score: result.achievementsAnalysis?.score || 0 },
+                      { label: "Education & Formatting", score: Math.round(((result.educationQuality?.score || 0) + (result.formattingQuality?.score || 0))/2) }
+                    ].map(s => (
+                      <div key={s.label}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-400">{s.label}</span>
+                          <span className={getScoreColor(s.score)}>{s.score}/100</span>
+                        </div>
+                        <div className="w-full bg-white/5 h-1.5 rounded-full">
+                          <div className={`h-full rounded-full ${getScoreColor(s.score).replace('text-', 'bg-')}`} style={{width: `${s.score}%`}}></div>
                         </div>
                       </div>
-                    )
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* 5. Top Action Items */}
-            {result.topActionItems?.length > 0 && (
-              <div className="p-5 rounded-3xl bg-blue-500/10 border border-blue-500/30 backdrop-blur-md">
-                <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
-                  <Activity size={16} /> Top Action Items
+              </div>
+            </div>
+
+            {/* ACTIONABLE IMPROVEMENTS */}
+            {result.actionableImprovements?.length > 0 && (
+              <div className="glass-panel p-6 rounded-3xl border border-white/10">
+                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <CheckCircle2 className="text-violet-400" /> Actionable Improvements
                 </h3>
-                <div className="grid grid-cols-1 gap-2.5">
-                  {result.topActionItems.map((item: string, i: number) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-blue-500/5 rounded-xl border border-blue-500/20">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs">
-                        {i + 1}
-                      </span>
-                      <span className="mt-0.5 text-xs text-blue-100 leading-relaxed">{item}</span>
+                <div className="space-y-4">
+                  {result.actionableImprovements.map((imp: any, i: number) => (
+                    <div key={i} className="flex flex-col md:flex-row items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <div className="flex-1 w-full bg-red-500/5 p-3 rounded-xl border border-red-500/20">
+                        <span className="text-[10px] uppercase font-bold text-red-400 mb-1 block">Current Phrase</span>
+                        <p className="text-xs text-gray-300 italic">"{imp.current}"</p>
+                      </div>
+                      <ArrowRight size={20} className="text-gray-500 hidden md:block shrink-0" />
+                      <div className="flex-1 w-full bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/20">
+                        <span className="text-[10px] uppercase font-bold text-emerald-400 mb-1 block">AI Suggested Replacement</span>
+                        <p className="text-xs text-emerald-100 font-medium">{imp.replacement}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* 6. Granular AI Issues List (Collapsed) */}
-            <div className="space-y-4">
-              <details className="group glass-panel rounded-3xl border border-white/10 [&_summary::-webkit-details-marker]:hidden">
-                <summary className="p-6 cursor-pointer flex items-center justify-between text-xl font-bold text-white">
-                  <span className="flex items-center gap-2"><Activity className="text-violet-400" /> Granular Feedback (Advanced)</span>
-                  <span className="transition group-open:rotate-180">
-                    <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
-                  </span>
-                </summary>
-                
-                <div className="p-6 pt-0 space-y-4">
-                  {result.issues?.length > 0 ? result.issues.map((issue: any, index: number) => {
-                    const isExpanded = activeIssue === index;
-                    
-                    return (
-                      <div 
-                        key={index}
-                        onClick={() => setActiveIssue(isExpanded ? null : index)}
-                        className={`p-4 rounded-xl border backdrop-blur-md transition-all cursor-pointer hover:-translate-y-0.5 ${getSeverityColor(issue.priority)} ${isExpanded ? 'shadow-md shadow-black/50' : ''}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1">{getSeverityIcon(issue.priority)}</div>
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80 px-2 py-0.5 rounded bg-black/20">
-                                  {issue.section}
-                                </span>
-                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-90 px-2 py-0.5 rounded border border-current/30">
-                                  {issue.priority}
-                                </span>
-                              </div>
-                              <h4 className="font-semibold text-white/90 text-sm leading-snug">{issue.message}</h4>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Expandable Before/After Suggestions */}
-                        {isExpanded && issue.currentText && issue.suggestedText && (
-                          <div className="mt-4 pt-4 border-t border-current/20 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-4 duration-300">
-                            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                              <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-2 block">Current Text</span>
-                              <p className="text-red-200/80 text-xs leading-relaxed italic">"{issue.currentText}"</p>
-                            </div>
-                            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 relative overflow-hidden">
-                              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
-                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                                <Sparkles size={10}/> AI Suggestion
-                              </span>
-                              <p className="text-emerald-100/90 text-xs leading-relaxed">"{issue.suggestedText}"</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  }) : (
-                    <div className="p-4 text-center border border-emerald-500/30 rounded-2xl bg-emerald-500/10 text-emerald-200">
-                      No advanced issues found.
+            {/* CRITICAL ISSUES */}
+            {result.criticalIssues?.length > 0 && (
+              <div className="glass-panel p-6 rounded-3xl border border-white/10">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <AlertTriangle className="text-orange-400" /> Critical Issues
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {result.criticalIssues.map((issue: string, i: number) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl text-sm text-gray-300">
+                      <AlertCircle size={16} className="text-orange-400 shrink-0 mt-0.5" />
+                      {issue}
                     </div>
-                  )}
+                  ))}
                 </div>
-              </details>
-            </div>
+              </div>
+            )}
 
           </div>
         </div>

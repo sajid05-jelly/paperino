@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { runApiGuard } from "@/lib/api-guard";
+import { generateChatResponse } from "@/services/groqService";
 
 export async function POST(req: NextRequest) {
   /* ── Security: require auth + enforce server-side daily limit ── */
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message is required." }, { status: 400 });
     }
 
-    // Prevent absurdly long inputs (saves Gemini quota)
+    // Prevent absurdly long inputs (saves quota)
     if (message.length > 1000) {
       return NextResponse.json(
         { error: "Message too long. Please keep it under 1000 characters." },
@@ -23,21 +23,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Gemini API key is not configured." },
-        { status: 500 }
-      );
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { temperature: 0.7 },
-    });
-
-    const prompt = `
+    const systemPrompt = `
 You are "Paperino AI", a highly intelligent and helpful student assistant for SRM University students. 
 Your goal is to help them with quick academic support, such as explaining important topics, giving short summaries, suggesting exam questions, or answering basic math and GPA/CGPA doubts.
 
@@ -47,13 +33,9 @@ CRITICAL RULES:
 3. Answer the user's question directly and accurately. Verify all math carefully before answering.
 4. DO NOT use markdown formatting like asterisks (**) or backticks (\`). Return plain text only.
 5. If a user asks something completely unrelated to academics or university life, politely decline and steer them back to studying.
+`;
 
-User Question: "${message}"
-
-Paperino AI Response:`;
-
-    const result = await model.generateContent(prompt);
-    let responseText = result.response.text();
+    let responseText = await generateChatResponse(systemPrompt, message);
 
     // Clean up any stray markdown formatting
     responseText = responseText.replace(/\*\*/g, "").replace(/\*/g, "").replace(/`/g, "").trim();

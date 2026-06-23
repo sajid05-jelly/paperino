@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { runApiGuard } from "@/lib/api-guard";
 import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager";
+import { analyzeLargePYQ } from "@/services/groqService";
 
 export const maxDuration = 60; // 60 seconds as multi-PDF parsing might take time
 
@@ -38,11 +38,18 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const files = formData.getAll("files") as File[];
     const subject = formData.get("subject") as string;
-    const ocrMode = req.nextUrl.searchParams.get("ocr") === "true";
+    const extractedText = formData.get("extractedText") as string;
 
-    if (!files || files.length === 0 || !subject) {
+    if ((!files || files.length === 0) && !extractedText) {
       return NextResponse.json(
-        { error: "Please provide at least one file and a subject name." },
+        { error: "Please provide at least one file or extracted text." },
+        { status: 400 }
+      );
+    }
+    
+    if (!subject) {
+      return NextResponse.json(
+        { error: "Please provide a subject name." },
         { status: 400 }
       );
     }
@@ -80,24 +87,16 @@ export async function POST(req: NextRequest) {
         .trim();
     };
 
-    let combinedText = "";
-    const inlineDataParts: any[] = [];
+    let combinedText = extractedText || "";
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file.name.toLowerCase().endsWith(".pdf")) continue;
+    if (!extractedText) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.name.toLowerCase().endsWith(".pdf")) continue;
 
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
-      if (ocrMode) {
-        inlineDataParts.push({
-          inlineData: {
-            data: buffer.toString("base64"),
-            mimeType: "application/pdf",
-          },
-        });
-      } else {
         let text = "";
         try {
           const pdfData = await pdfParse(buffer);
@@ -112,85 +111,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!ocrMode && combinedText.trim().length < 50) {
+    if (combinedText.trim().length < 50) {
       return NextResponse.json(
         { errorType: "NEEDS_OCR", error: "Image-based PDF detected. Switch to OCR mode." },
         { status: 400 }
       );
     }
 
-    // Initialize Gemini
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
-    const prompt = `
-You are an advanced Academic AI Predictor.
-Your goal is to deeply analyze the provided Previous Year Question (PYQ) papers for the subject: "${sanitizedSubject}".
-
-Rules:
-1. Identify exact repeated questions and conceptually similar questions that appear across the multiple papers.
-2. Deduce the "Important Topics" and "Important Units" based on frequency of appearance.
-3. Calculate a rough probability score (0-100) for each Unit/Module appearing in the upcoming exam based on historical weightage.
-4. Extract the highest probability concepts/questions to focus on.
-5. Provide actionable, smart insights.
-
-Return the result STRICTLY as a JSON object matching this schema. Do not use markdown wrappers.
-
-{
-  "repeatedQuestions": [
-    {
-      "questionText": "string",
-      "frequencyCount": number,
-      "insight": "string"
-    }
-  ],
-  "importantTopics": [
-    {
-      "topic": "string",
-      "reason": "string"
-    }
-  ],
-  "unitImportance": [
-    {
-      "unit": "string",
-      "probabilityScore": number
-    }
-  ],
-  "highProbabilityQuestions": [
-    "string"
-  ],
-  "summaryInsight": "string"
-}
-
-${
-  ocrMode
-    ? "\nThe PYQ papers are attached as PDF documents. Please read them thoroughly using your OCR capabilities."
-    : `\nCombined Exam Papers Text:\n${combinedText}`
-}
-`;
-
-    const parts = [{ text: prompt }, ...inlineDataParts];
-    const result = await model.generateContent(parts);
-    const responseText = result.response.text().trim();
-
-    let parsedData;
-    try {
-      const cleanedText = responseText
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-      parsedData = JSON.parse(cleanedText);
-    } catch (parseError: any) {
-      console.error("JSON Parsing Error:", parseError.message);
-      return NextResponse.json(
-        { error: "The AI generated an improperly formatted response. Please click predict again." },
-        { status: 500 }
-      );
-    }
+    // Process via Groq AI Service
+    const parsedData = await analyzeLargePYQ(combinedText, sanitizedSubject);
 
     // Successfully generated response, increment credit usage
     if (creditCheck.uid && creditCheck.limit !== Infinity) {
@@ -201,7 +130,7 @@ ${
   } catch (error: any) {
     console.error("PYQ Prediction Error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to analyze PYQs via Gemini AI." },
+      { error: error.message || "Failed to analyze PYQs via Groq AI." },
       { status: 500 }
     );
   }
