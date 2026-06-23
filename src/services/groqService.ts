@@ -12,6 +12,7 @@ const MAX_RETRIES = 1;
  * Helper to safely retry Groq API calls on failure.
  */
 async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promise<T> {
+  console.log("Using Groq Llama 3.3 70B");
   try {
     return await fn();
   } catch (error: any) {

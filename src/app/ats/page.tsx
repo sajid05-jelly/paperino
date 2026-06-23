@@ -282,7 +282,7 @@ export default function ATSAnalyzerPage() {
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">AI Resume Reviewer</h1>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-4">
-              Upload your resume and select a target role. Gemini AI will deeply analyze your structure, keywords, and impact, providing highly specific suggestions to boost your ATS compatibility.
+              Upload your resume and select a target role. Groq Llama 3.3 70B will deeply analyze your structure, keywords, and impact, providing highly specific suggestions to boost your ATS compatibility.
             </p>
             <AICreditsDisplay tool="ats" />
           </div>
