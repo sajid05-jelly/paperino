@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import Link from "next/link";
-import { ArrowLeft, FileText, Loader2, Download, History, BookOpen, HelpCircle, Bookmark, Upload, Sparkles, Clock } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Download, History, BookOpen, HelpCircle, Bookmark, Upload, Sparkles, Clock, Lock } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import QuickUploadModal from "@/components/QuickUploadModal";
@@ -134,6 +134,21 @@ export default function SubjectPage({ params }: { params: Promise<{ semId: strin
   const questionsMaterials = materials.filter(m => m.category === "questions");
 
   const MaterialList = ({ items }: { items: any[] }) => {
+    if (!authLoading && !user) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 px-4 text-center animate-in fade-in zoom-in-95 duration-700 bg-white/[0.02] rounded-xl border border-white/5 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)] h-full mt-2">
+          <div className="p-3 bg-violet-500/10 rounded-full mb-4 shadow-[0_0_15px_rgba(139,92,246,0.2)]">
+            <Lock className="w-5 h-5 text-violet-400" />
+          </div>
+          <p className="text-white font-medium mb-2">Authentication Required</p>
+          <p className="text-gray-400 text-sm mb-4">Please log in to view and download study materials.</p>
+          <Link href="/login" className="px-6 py-2 rounded-full bg-violet-600 hover:bg-violet-500 text-white font-medium text-sm transition-colors shadow-[0_0_15px_rgba(139,92,246,0.4)]">
+            Log In
+          </Link>
+        </div>
+      );
+    }
+
     if (items.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-10 px-4 text-center animate-in fade-in zoom-in-95 duration-700 bg-white/[0.02] rounded-xl border border-white/5 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)] h-full mt-2">
