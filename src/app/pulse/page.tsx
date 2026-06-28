@@ -180,7 +180,7 @@ export default function PulsePage() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/5 hover:border-white/20 w-full sm:w-auto text-center"
                       >
-                        Read More <ExternalLink size={16} />
+                        🔗 Open Link <ExternalLink size={16} />
                       </a>
                     )}
                   </div>
