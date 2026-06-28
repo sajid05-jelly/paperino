@@ -4,11 +4,11 @@ import { useState, useEffect, use } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
 import Link from "next/link";
-import { ArrowLeft, FileText, Loader2, Download, History, BookOpen, HelpCircle, Bookmark, Upload, Sparkles, Clock, Lock } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Download, History, BookOpen, HelpCircle, Bookmark, Upload, Sparkles, Clock, Lock, Eye, X } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import QuickUploadModal from "@/components/QuickUploadModal";
-import { getDownloadHref } from "@/lib/driveUtils";
+import { getDownloadHref, getDrivePreviewUrl } from "@/lib/driveUtils";
 
 export default function SubjectPage({ params }: { params: Promise<{ semId: string, subjectId: string }> }) {
   const resolvedParams = use(params);
@@ -21,6 +21,7 @@ export default function SubjectPage({ params }: { params: Promise<{ semId: strin
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
+  const [previewMat, setPreviewMat] = useState<any | null>(null);
 
   const semesterSubjects = dynamicSubjects[semId] || [];
   const subject = semesterSubjects.find(s => s.id === subjectId);
@@ -217,6 +218,13 @@ export default function SubjectPage({ params }: { params: Promise<{ semId: strin
                 >
                   <Bookmark size={14} fill={bookmarkedIds.has(mat.id) ? "currentColor" : "none"} />
                 </button>
+                <button
+                  onClick={() => setPreviewMat(mat)}
+                  title="Preview"
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-violet-500 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                >
+                  <Eye size={14} />
+                </button>
                 <a 
                   href={getDownloadHref(mat)} 
                   download
@@ -338,6 +346,40 @@ export default function SubjectPage({ params }: { params: Promise<{ semId: strin
         isContributor={isContributor}
         onSuccess={handleUploadSuccess} 
       />
+
+      {/* Preview Modal */}
+      {previewMat && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewMat(null)}></div>
+          <div className="relative w-full max-w-5xl h-[90vh] bg-[#07050d] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
+              <h3 className="text-white font-semibold flex items-center gap-2 truncate pr-4">
+                <Eye size={18} className="text-violet-400 flex-shrink-0" />
+                <span className="truncate">{previewMat.title || previewMat.fileName || "Material"}</span>
+              </h3>
+              <button onClick={() => setPreviewMat(null)} className="flex-shrink-0 text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 bg-white/5 relative h-full w-full">
+              {previewMat.fileId ? (
+                <iframe 
+                  src={getDrivePreviewUrl(previewMat.fileId)} 
+                  className="w-full h-full border-0" 
+                  title="PDF Preview"
+                  allow="autoplay"
+                ></iframe>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                  <FileText size={48} className="mb-4 opacity-20" />
+                  <p>Preview not available for this legacy file.</p>
+                  <p className="text-sm mt-2">Please download it to view.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
