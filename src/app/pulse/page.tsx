@@ -47,6 +47,9 @@ export default function PulsePage() {
       });
       setUpdates(data);
       setLoading(false);
+    }, (error) => {
+      console.error("Error fetching pulse updates:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
