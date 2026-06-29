@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight, Lock } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 interface PulseUpdate {
@@ -31,6 +32,7 @@ const CATEGORIES = [
 
 export default function PulsePage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [updates, setUpdates] = useState<PulseUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -92,6 +94,32 @@ export default function PulsePage() {
           </p>
         </div>
 
+        {/* Global Freemium Lock */}
+        {isLoggedOut && (
+          <div className="mb-12 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="glass-panel p-6 md:p-8 rounded-3xl border border-violet-500/30 shadow-[0_0_40px_rgba(139,92,246,0.15)] flex flex-col md:flex-row items-center gap-6 md:gap-8 backdrop-blur-xl bg-black/40 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-violet-500/10 blur-[50px] rounded-full pointer-events-none transition-all duration-700 group-hover:bg-violet-500/20"></div>
+              
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex flex-shrink-0 items-center justify-center text-violet-400 border border-violet-500/30 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
+                <Lock size={28} />
+              </div>
+              
+              <div className="flex-1 text-center md:text-left z-10">
+                <h3 className="text-xl font-bold text-white mb-2">🔒 Login Required</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-6 md:mb-0">
+                  To access full hackathon details, internship opportunities, registration links and exclusive updates, please login.
+                </p>
+              </div>
+              
+              <div className="w-full md:w-auto z-10">
+                <Link href="/login" className="inline-flex w-full md:w-auto items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold hover:shadow-[0_0_25px_rgba(139,92,246,0.4)] hover:-translate-y-0.5 transition-all duration-300 whitespace-nowrap">
+                  Login to Unlock Pulse
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Categories Filter */}
         <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 pb-2 -mx-4 px-4 md:mx-0 md:px-0 animate-in slide-in-from-bottom-4 duration-500 delay-100 fade-in">
           {CATEGORIES.map((cat) => (
@@ -133,7 +161,8 @@ export default function PulsePage() {
             filteredUpdates.map((update, idx) => (
               <div 
                 key={update.id} 
-                className={`group relative p-6 md:p-8 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both ${
+                onClick={() => isLoggedOut && router.push("/login")}
+                className={`group relative p-6 md:p-8 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both ${isLoggedOut ? "cursor-pointer" : ""} ${
                   update.isPinned 
                   ? 'bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]' 
                   : 'bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 hover:shadow-xl hover:-translate-y-1'
@@ -170,24 +199,11 @@ export default function PulsePage() {
                     {update.title}
                   </h2>
                   <div className="relative">
-                    <p className={`text-gray-400 text-sm md:text-base leading-relaxed mb-6 whitespace-pre-wrap ${isLoggedOut ? "line-clamp-3 blur-[4px] opacity-60 select-none pointer-events-none" : ""}`}>
+                    <p className={`text-gray-400 text-sm md:text-base leading-relaxed mb-6 whitespace-pre-wrap ${isLoggedOut ? "line-clamp-3 blur-[3px] opacity-50 select-none pointer-events-none" : ""}`}>
                       {update.description}
                     </p>
                     {isLoggedOut && (
-                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-t from-[#07050d] via-[#07050d]/80 to-transparent pt-4">
-                        <div className="glass-panel p-6 rounded-2xl border border-violet-500/30 flex flex-col items-center text-center shadow-[0_0_30px_rgba(139,92,246,0.15)] max-w-sm w-full mx-4 backdrop-blur-md">
-                          <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center mb-3 text-violet-400 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]">
-                            <Lock size={20} />
-                          </div>
-                          <h3 className="text-lg font-bold text-white mb-2">🔒 Members Only Content</h3>
-                          <p className="text-gray-400 text-xs mb-5">
-                            Login to view complete details, registration links, hackathons, internships, opportunities and exclusive Paperino Pulse updates.
-                          </p>
-                          <Link href="/login" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-bold hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-0.5 transition-all duration-300 shadow-[0_0_10px_rgba(139,92,246,0.2)]">
-                            Login to Unlock
-                          </Link>
-                        </div>
-                      </div>
+                      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none rounded-b-2xl"></div>
                     )}
                   </div>
 
