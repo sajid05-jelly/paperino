@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
-import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight } from "lucide-react";
+import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight, Lock } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 interface PulseUpdate {
   id: string;
@@ -29,6 +30,7 @@ const CATEGORIES = [
 ];
 
 export default function PulsePage() {
+  const { user, loading: authLoading } = useAuth();
   const [updates, setUpdates] = useState<PulseUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -61,6 +63,8 @@ export default function PulsePage() {
     const diffHours = Math.abs(now.getTime() - date.getTime()) / 36e5;
     return diffHours < 24;
   };
+
+  const isLoggedOut = !authLoading && !user;
 
   return (
     <div className="min-h-screen pt-20 pb-24 relative overflow-hidden">
@@ -162,9 +166,27 @@ export default function PulsePage() {
                   <h2 className="text-xl md:text-2xl font-bold text-white mb-3 leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-all duration-300">
                     {update.title}
                   </h2>
-                  <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-6 whitespace-pre-wrap">
-                    {update.description}
-                  </p>
+                  <div className="relative">
+                    <p className={`text-gray-400 text-sm md:text-base leading-relaxed mb-6 whitespace-pre-wrap ${isLoggedOut ? "line-clamp-3 blur-[4px] opacity-60 select-none pointer-events-none" : ""}`}>
+                      {update.description}
+                    </p>
+                    {isLoggedOut && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gradient-to-t from-[#07050d] via-[#07050d]/80 to-transparent pt-4">
+                        <div className="glass-panel p-6 rounded-2xl border border-violet-500/30 flex flex-col items-center text-center shadow-[0_0_30px_rgba(139,92,246,0.15)] max-w-sm w-full mx-4 backdrop-blur-md">
+                          <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center mb-3 text-violet-400 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]">
+                            <Lock size={20} />
+                          </div>
+                          <h3 className="text-lg font-bold text-white mb-2">🔒 Members Only Content</h3>
+                          <p className="text-gray-400 text-xs mb-5">
+                            Login to view complete details, registration links, hackathons, internships, opportunities and exclusive Paperino Pulse updates.
+                          </p>
+                          <Link href="/login" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-bold hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] hover:-translate-y-0.5 transition-all duration-300 shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                            Login to Unlock
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Footer (Date & Link) */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-white/10">
@@ -173,7 +195,7 @@ export default function PulsePage() {
                       {update.createdAt?.toDate().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </div>
                     
-                    {update.link && (
+                    {!isLoggedOut && update.link && (
                       <a 
                         href={update.link} 
                         target="_blank" 
