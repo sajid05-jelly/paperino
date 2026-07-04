@@ -27,6 +27,125 @@ interface PulseUpdate {
   state?: string;
 }
 
+interface ExtractedDetails {
+  date: string;
+  location: string;
+  organizer: string;
+  fee: string;
+  teamSize: string;
+  prizePool: string;
+  deadline: string;
+  highlights: string[];
+  summary: string;
+}
+
+function parseHackathonDetails(update: PulseUpdate): ExtractedDetails {
+  const desc = update.description || "";
+  
+  const organizer = update.organizer || "Check Website";
+  
+  let location = update.location || "Location Unknown";
+  if (update.state && !location.toLowerCase().includes(update.state.toLowerCase()) && location !== "Location Unknown") {
+    location = `${location}, ${update.state}`;
+  }
+
+  const deadline = update.deadline
+    ? new Date(update.deadline.seconds * 1000).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Check Website";
+
+  let date = "Check Website";
+  const dateRegex = /\b(\d{1,2}(?:-\d{1,2})?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{4})?)\b/i;
+  const dateMatch = desc.match(dateRegex);
+  if (dateMatch) {
+    date = dateMatch[1];
+  }
+
+  let fee = "Free / Check Website";
+  if (desc.toLowerCase().includes("free")) {
+    fee = "Free";
+  } else {
+    const feeMatch = desc.match(/(?:fee|rs|inr|registration)\.?\s*[:\-\s]*₹?\s*(\d+)/i);
+    if (feeMatch) {
+      fee = `₹${feeMatch[1]}`;
+    }
+  }
+
+  let teamSize = "Check Website";
+  const teamMatch = desc.match(/(?:team size|members|team of)\s*[:\-\s]*(\d+(?:-\d+)?)/i);
+  if (teamMatch) {
+    teamSize = `${teamMatch[1]} Members`;
+  } else if (desc.toLowerCase().includes("solo") || desc.toLowerCase().includes("individual")) {
+    teamSize = "1 Member (Solo)";
+  }
+
+  let prizePool = "Check Website";
+  const prizeMatch = desc.match(/(?:prize pool|prizes worth|cash prize|prizes of)\s*[:\-\s]*₹?\s*(\d+(?:,\d+)*(?:\s*k|\s*lakh)?)/i);
+  if (prizeMatch) {
+    prizePool = `₹${prizeMatch[1]}`;
+  } else {
+    const moneyMatch = desc.match(/₹\s*(\d+(?:,\d+)*(?:\s*k|\s*lakh)?)/i);
+    if (moneyMatch) {
+      prizePool = moneyMatch[0];
+    }
+  }
+
+  const highlights: string[] = [];
+  const lines = desc.split("\n");
+  for (const line of lines) {
+    const cleanLine = line.trim().replace(/^[\u2022\-\*\d\.\s]+/, "").trim();
+    if (cleanLine && (line.trim().startsWith("•") || line.trim().startsWith("-") || line.trim().startsWith("*")) && cleanLine.length < 50) {
+      highlights.push(cleanLine);
+    }
+  }
+
+  if (highlights.length === 0) {
+    if (update.mode === "Offline") {
+      highlights.push("Offline Hackathon Experience");
+    } else if (update.mode === "Hybrid") {
+      highlights.push("Hybrid Event Structure");
+    } else {
+      highlights.push("100% Online Hackathon");
+    }
+    
+    if (fee === "Free") {
+      highlights.push("Free Registration");
+    }
+    
+    if (prizePool !== "Check Website") {
+      highlights.push(`Win from ${prizePool} Prize Pool`);
+    }
+
+    highlights.push("Certificates for all participants");
+    highlights.push("Networking & Mentorship");
+  }
+
+  const finalHighlights = highlights.slice(0, 5);
+
+  let summary = desc;
+  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
+  if (sentenceMatch) {
+    summary = sentenceMatch[0];
+  } else if (desc.length > 140) {
+    summary = desc.substring(0, 140) + "...";
+  }
+
+  return {
+    date,
+    location,
+    organizer,
+    fee,
+    teamSize,
+    prizePool,
+    deadline,
+    highlights: finalHighlights,
+    summary,
+  };
+}
+
 const CATEGORIES = [
   "All",
   "Announcements",
@@ -224,7 +343,7 @@ export default function PulsePage() {
         </div>
 
         {/* Feed */}
-        <div className="space-y-4 md:space-y-6">
+        <div className={loading ? "space-y-6" : "grid grid-cols-1 lg:grid-cols-2 gap-6"}>
           {loading ? (
             // Skeleton Loaders
             [1, 2, 3].map(i => (
@@ -238,115 +357,192 @@ export default function PulsePage() {
               </div>
             ))
           ) : filteredUpdates.length === 0 ? (
-            <div className="text-center py-20 px-6 glass-panel rounded-3xl border border-white/10 animate-in fade-in zoom-in-95">
+            <div className="col-span-full text-center py-20 px-6 glass-panel rounded-3xl border border-white/10 animate-in fade-in zoom-in-95">
               <Radio className="mx-auto h-12 w-12 text-gray-500 mb-4 opacity-50" />
               <h3 className="text-xl font-bold text-white mb-2">No updates found</h3>
               <p className="text-gray-400 text-sm">Check back later for new {activeCategory !== 'All' ? activeCategory.toLowerCase() : 'opportunities and announcements'}.</p>
             </div>
           ) : (
-            filteredUpdates.map((update, idx) => (
-              <div 
-                key={update.id} 
-                onClick={() => isLoggedOut && router.push("/login")}
-                className={`group relative p-6 md:p-8 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both ${isLoggedOut ? "cursor-pointer" : ""} ${
-                  update.isPinned 
-                  ? 'bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]' 
-                  : 'bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 hover:shadow-xl hover:-translate-y-1'
-                }`}
-                style={{ animationDelay: `${idx * 100}ms` }}
-              >
-                {/* Glowing border effect on hover for normal cards */}
-                {!update.isPinned && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/0 to-cyan-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
-                )}
-
-                <div className="relative z-10">
-                  {/* Badges */}
-                  <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <span className="px-3 py-1 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
-                      {update.category}
-                    </span>
-                    
-                    {update.mode && (
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border flex items-center gap-1 ${
-                        update.mode === "Offline" 
-                          ? "bg-green-500/20 text-green-400 border-green-500/30" 
-                          : update.mode === "Hybrid"
-                          ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                          : "bg-gray-500/20 text-gray-400 border-gray-500/30"
-                      }`}>
-                        {update.mode === "Offline" ? "🟢" : update.mode === "Hybrid" ? "🔵" : "⚪"} {update.mode}
-                      </span>
-                    )}
-
-                    {update.location && (
-                      <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10 flex items-center gap-1">
-                        📍 {update.location}
-                      </span>
-                    )}
-                    
-                    {update.verifiedSource && (
-                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-green-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(34,197,94,0.3)]" title="Scraped and verified from authentic sources">
-                        <ShieldCheck size={12} /> VERIFIED SOURCE
-                      </span>
-                    )}
-
-                    {isExpired(update.deadline) && (
-                      <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-red-500/30 flex items-center gap-1">
-                        <Clock size={12} /> EXPIRED
-                      </span>
-                    )}
-                    
-                    {update.isPinned && (
-                      <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-violet-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
-                        <Pin size={10} /> PINNED
-                      </span>
-                    )}
-
-                    {isNew(update.createdAt) && !update.isPinned && (
-                      <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse">
-                        NEW
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <h2 className="text-xl md:text-2xl font-bold text-white mb-1 leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-all duration-300">
-                    {update.title}
-                  </h2>
-                  {update.organizer && (
-                    <p className="text-sm font-medium text-gray-500 mb-3">By {update.organizer}</p>
+            filteredUpdates.map((update, idx) => {
+              const parsed = parseHackathonDetails(update);
+              return (
+                <div 
+                  key={update.id} 
+                  onClick={() => isLoggedOut && router.push("/login")}
+                  className={`group relative p-6 md:p-8 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both flex flex-col justify-between ${isLoggedOut ? "cursor-pointer" : ""} ${
+                    update.isPinned 
+                    ? 'bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]' 
+                    : 'bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 hover:shadow-xl hover:-translate-y-1'
+                  }`}
+                  style={{ animationDelay: `${idx * 100}ms` }}
+                >
+                  {/* Glowing border effect on hover for normal cards */}
+                  {!update.isPinned && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/0 to-cyan-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
                   )}
-                  <div className="relative mt-2">
-                    <p className={`text-gray-400 text-sm md:text-base leading-relaxed mb-6 whitespace-pre-wrap ${isLoggedOut ? "line-clamp-3 blur-[3px] opacity-50 select-none pointer-events-none" : ""}`}>
-                      {update.description}
-                    </p>
-                    {isLoggedOut && (
-                      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none rounded-b-2xl"></div>
-                    )}
-                  </div>
 
-                  {/* Footer (Date & Link) */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-white/10">
-                    <div className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <Calendar size={14} />
-                      {update.createdAt?.toDate().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  <div className="relative z-10 flex-1 flex flex-col justify-between">
+                    <div>
+                      {/* Badges */}
+                      <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <span className="px-3 py-1 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
+                          {update.category}
+                        </span>
+                        
+                        {update.mode && (
+                          <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border flex items-center gap-1 ${
+                            update.mode === "Offline" 
+                              ? "bg-green-500/20 text-green-400 border-green-500/30" 
+                              : update.mode === "Hybrid"
+                              ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                          }`}>
+                            {update.mode === "Offline" ? "🟢" : update.mode === "Hybrid" ? "🔵" : "⚪"} {update.mode}
+                          </span>
+                        )}
+
+                        {update.location && (
+                          <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10 flex items-center gap-1">
+                            📍 {update.location}
+                          </span>
+                        )}
+                        
+                        {update.verifiedSource && (
+                          <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-green-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(34,197,94,0.3)]" title="Scraped and verified from authentic sources">
+                            <ShieldCheck size={12} /> VERIFIED SOURCE
+                          </span>
+                        )}
+
+                        {isExpired(update.deadline) && (
+                          <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-red-500/30 flex items-center gap-1">
+                            <Clock size={12} /> EXPIRED
+                          </span>
+                        )}
+                        
+                        {update.isPinned && (
+                          <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-violet-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
+                            <Pin size={10} /> PINNED
+                          </span>
+                        )}
+
+                        {isNew(update.createdAt) && !update.isPinned && (
+                          <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <h2 className="text-xl md:text-2xl font-bold text-white mb-1 leading-tight group-hover:text-violet-400 transition-colors">
+                        {update.title}
+                      </h2>
+                      
+                      {update.organizer && (
+                        <p className="text-sm font-medium text-gray-500 mb-4">By {update.organizer}</p>
+                      )}
+
+                      {/* Short 2-line summary */}
+                      <p className="text-sm text-gray-400 line-clamp-2 mb-6 leading-relaxed">
+                        {parsed.summary}
+                      </p>
                     </div>
-                    
+
+                    <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
+                      <hr className="border-white/5 mb-6" />
+
+                      {/* Premium Details Grid */}
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                          <span className="text-lg">📅</span>
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Date</div>
+                            <div className="text-xs text-white font-medium truncate">{parsed.date}</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                          <span className="text-lg">📍</span>
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Location</div>
+                            <div className="text-xs text-white font-medium truncate">{parsed.location}</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
+                          <span className="text-lg">🏫</span>
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Organizer</div>
+                            <div className="text-xs text-white font-medium truncate">{parsed.organizer}</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                          <span className="text-lg">💰</span>
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Fee</div>
+                            <div className="text-xs text-white font-medium truncate">{parsed.fee}</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                          <span className="text-lg">👥</span>
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Team Size</div>
+                            <div className="text-xs text-white font-medium truncate">{parsed.teamSize}</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                          <span className="text-lg">🏆</span>
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Prize Pool</div>
+                            <div className="text-xs text-emerald-400 font-bold truncate">{parsed.prizePool}</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                          <span className="text-lg">⏰</span>
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Deadline</div>
+                            <div className="text-xs text-red-400 font-medium truncate">{parsed.deadline}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <hr className="border-white/5 mb-6" />
+
+                      {/* Key Highlights */}
+                      <div className="mb-6">
+                        <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                          <span>✨</span> Key Highlights
+                        </div>
+                        <ul className="space-y-2 text-xs text-gray-400">
+                          {parsed.highlights.map((h, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-violet-400 mt-0.5">•</span>
+                              <span className="line-clamp-1">{h}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
                     {!isLoggedOut && update.link && (
-                      <a 
-                        href={update.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="group inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 text-white text-sm font-bold transition-all duration-300 border border-white/5 w-full sm:w-auto text-center cursor-pointer hover:bg-gradient-to-r hover:from-blue-600 hover:to-blue-400 hover:border-blue-400/50 hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] hover:-translate-y-0.5"
-                      >
-                        🔗 Open Link <ExternalLink size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
-                      </a>
+                      <div className="pt-4 border-t border-white/5 mt-auto">
+                        <a 
+                          href={update.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="group inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/5 hover:bg-violet-600/20 text-white hover:text-violet-300 text-sm font-bold transition-all duration-300 border border-white/10 hover:border-violet-500/30 w-full text-center cursor-pointer"
+                        >
+                          🔗 Open Link <ExternalLink size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
