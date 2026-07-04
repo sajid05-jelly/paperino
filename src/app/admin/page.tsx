@@ -58,7 +58,6 @@ export default function AdminDashboard() {
             return res.value;
           } else {
             console.error(`[Analytics] Error fetching ${name}:`, res.reason);
-            setError(prev => prev ? `${prev} | ${name} failed` : `Failed to load: ${name}`);
             return defaultValue;
           }
         };
@@ -148,8 +147,8 @@ export default function AdminDashboard() {
             <div className="glass-panel p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-center gap-3 text-red-400 mb-6 animate-in slide-in-from-top-2">
               <AlertCircle size={20} className="shrink-0" />
               <div>
-                <span className="font-bold block">Partial Data Load</span>
-                <span className="text-sm text-red-300">{error}. Some metrics may show as 0 or N/A. Check console for details.</span>
+                <span className="font-bold block">Error Loading Dashboard</span>
+                <span className="text-sm text-red-300">{error}</span>
               </div>
             </div>
           )}
