@@ -138,6 +138,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  if (!adminDb) {
+    return NextResponse.json({ error: 'Firebase Admin DB not initialized' }, { status: 500 });
+  }
+
   const now = new Date();
   
   let stats = {
