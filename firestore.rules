@@ -177,6 +177,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Pulse Queue (Admin Only) ─────────────────────────────────────────────
+    match /pulse_queue/{queueId} {
+      allow read, write: if isAdmin();
+    }
+
     // ── Pulse Updates ────────────────────────────────────────────────────────
     match /pulse_updates/{updateId} {
       allow read: if true;

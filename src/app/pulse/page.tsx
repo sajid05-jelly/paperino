@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
-import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight, Lock } from "lucide-react";
+import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight, Lock, ShieldCheck, Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +18,10 @@ interface PulseUpdate {
   createdAt: Timestamp;
   createdBy: string;
   isPinned: boolean;
+  verifiedSource?: boolean;
+  sourceName?: string;
+  organizer?: string;
+  deadline?: Timestamp;
 }
 
 const CATEGORIES = [
@@ -27,7 +31,8 @@ const CATEGORIES = [
   "Hackathons",
   "Placements",
   "Website Updates",
-  "Events"
+  "Events",
+  "Archived"
 ];
 
 export default function PulsePage() {
@@ -57,8 +62,22 @@ export default function PulsePage() {
     return () => unsubscribe();
   }, []);
 
+  const isExpired = (deadline?: Timestamp) => {
+    if (!deadline) return false;
+    return deadline.toDate() < new Date();
+  };
+
   const filteredUpdates = updates.filter(
-    (update) => activeCategory === "All" || update.category === activeCategory
+    (u) => {
+      const expired = isExpired(u.deadline);
+      if (activeCategory === "Archived") {
+        return expired;
+      }
+      
+      if (expired) return false; // Hide expired items from other tabs
+      
+      return activeCategory === "All" || u.category === activeCategory;
+    }
   );
 
   const isNew = (timestamp: Timestamp) => {
@@ -181,6 +200,18 @@ export default function PulsePage() {
                       {update.category}
                     </span>
                     
+                    {update.verifiedSource && (
+                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-green-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(34,197,94,0.3)]" title="Scraped and verified from authentic sources">
+                        <ShieldCheck size={12} /> VERIFIED SOURCE
+                      </span>
+                    )}
+
+                    {isExpired(update.deadline) && (
+                      <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-red-500/30 flex items-center gap-1">
+                        <Clock size={12} /> EXPIRED
+                      </span>
+                    )}
+                    
                     {update.isPinned && (
                       <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-violet-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
                         <Pin size={10} /> PINNED
@@ -195,10 +226,13 @@ export default function PulsePage() {
                   </div>
 
                   {/* Content */}
-                  <h2 className="text-xl md:text-2xl font-bold text-white mb-3 leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-all duration-300">
+                  <h2 className="text-xl md:text-2xl font-bold text-white mb-1 leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-all duration-300">
                     {update.title}
                   </h2>
-                  <div className="relative">
+                  {update.organizer && (
+                    <p className="text-sm font-medium text-gray-500 mb-3">By {update.organizer}</p>
+                  )}
+                  <div className="relative mt-2">
                     <p className={`text-gray-400 text-sm md:text-base leading-relaxed mb-6 whitespace-pre-wrap ${isLoggedOut ? "line-clamp-3 blur-[3px] opacity-50 select-none pointer-events-none" : ""}`}>
                       {update.description}
                     </p>

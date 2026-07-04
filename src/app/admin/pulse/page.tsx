@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Radio, Plus, Edit, Trash2, Pin, PinOff, Link as LinkIcon, AlertCircle } from "lucide-react";
+import Link from "next/link";
 
 interface PulseUpdate {
   id: string;
@@ -142,7 +143,7 @@ export default function AdminPulsePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <Radio className="text-cyan-400" size={32} />
@@ -150,12 +151,20 @@ export default function AdminPulsePage() {
           </h1>
           <p className="text-gray-400 mt-2">Create and manage internal news, announcements, and opportunities.</p>
         </div>
-        <button 
-          onClick={openModalForCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-        >
-          <Plus size={20} /> New Update
-        </button>
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/admin/pulse/queue"
+            className="flex items-center gap-2 px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30 rounded-xl font-bold transition-colors"
+          >
+            Review Queue
+          </Link>
+          <button 
+            onClick={openModalForCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+          >
+            <Plus size={20} /> New Update
+          </button>
+        </div>
       </div>
 
       <div className="glass-panel p-6 rounded-2xl">
