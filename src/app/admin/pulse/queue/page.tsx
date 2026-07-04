@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { Radio, Check, X, RefreshCw, Edit, ExternalLink, ShieldCheck } from "lucide-react";
+import { Radio, Check, X, RefreshCw, Edit, ExternalLink, ShieldCheck, Clock, AlertTriangle, BarChart2 } from "lucide-react";
 import Link from "next/link";
 
 interface QueueItem {
@@ -18,6 +18,14 @@ interface QueueItem {
   deadline?: Timestamp;
   status: string;
   createdAt: Timestamp;
+}
+
+interface FetchStats {
+  totalFetched: number;
+  active: number;
+  skippedExpired: number;
+  skippedDuplicates: number;
+  skippedBlacklisted: number;
 }
 
 const CATEGORIES = [
@@ -34,7 +42,8 @@ export default function AdminPulseQueuePage() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
-  const [fetchResult, setFetchResult] = useState<string | null>(null);
+  const [fetchStats, setFetchStats] = useState<FetchStats | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<QueueItem | null>(null);
@@ -57,20 +66,20 @@ export default function AdminPulseQueuePage() {
 
   const handleFetchNow = async () => {
     setFetching(true);
-    setFetchResult(null);
+    setFetchStats(null);
+    setFetchError(null);
     try {
       const res = await fetch("/api/cron/fetch-pulse");
       const data = await res.json();
-      if (res.ok) {
-        setFetchResult(`Successfully fetched ${data.newItemsAdded || 0} new opportunities.`);
+      if (res.ok && data.success) {
+        setFetchStats(data.stats);
       } else {
-        setFetchResult(`Fetch failed: ${data.error}`);
+        setFetchError(data.error || "Failed to fetch opportunities.");
       }
     } catch (e: any) {
-      setFetchResult(`Error: ${e.message}`);
+      setFetchError(`Connection error: ${e.message}`);
     }
     setFetching(false);
-    setTimeout(() => setFetchResult(null), 5000);
   };
 
   const openEditModal = (item: QueueItem) => {
@@ -124,10 +133,18 @@ export default function AdminPulseQueuePage() {
     }
   };
 
-  const handleReject = async (id: string) => {
-    if (!confirm("Are you sure you want to reject and delete this item permanently?")) return;
+  const handleReject = async (item: QueueItem) => {
+    if (!confirm(`Are you sure you want to reject "${item.title}"?\n\nThis will permanently blacklist the URL so it is never fetched again.`)) return;
     try {
-      await deleteDoc(doc(db, "pulse_queue", id));
+      // 1. Add to pulse_blacklist
+      await addDoc(collection(db, "pulse_blacklist"), {
+        link: item.link,
+        title: item.title,
+        blacklistedAt: serverTimestamp()
+      });
+
+      // 2. Remove from pulse_queue
+      await deleteDoc(doc(db, "pulse_queue", item.id));
     } catch (error) {
       console.error("Error rejecting item:", error);
     }
@@ -163,10 +180,41 @@ export default function AdminPulseQueuePage() {
         </div>
       </div>
 
-      {fetchResult && (
-        <div className="p-4 rounded-xl bg-violet-500/20 border border-violet-500/30 text-violet-200 flex items-center gap-2 animate-in fade-in">
-          <Radio size={16} />
-          {fetchResult}
+      {fetchError && (
+        <div className="p-4 rounded-xl bg-red-500/20 border border-red-500/30 text-red-200 flex items-center gap-2 animate-in fade-in">
+          <AlertTriangle size={16} />
+          {fetchError}
+        </div>
+      )}
+
+      {fetchStats && (
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-2 text-violet-400 font-bold text-sm uppercase tracking-wider">
+            <BarChart2 size={18} />
+            Fetch Statistics & Debug Report
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+              <div className="text-xs text-gray-400">Total Scanned</div>
+              <div className="text-xl font-bold text-white mt-1">{fetchStats.totalFetched}</div>
+            </div>
+            <div className="p-3 bg-green-500/10 rounded-xl border border-green-500/20">
+              <div className="text-xs text-green-400">Active (Added)</div>
+              <div className="text-xl font-bold text-green-400 mt-1">{fetchStats.active}</div>
+            </div>
+            <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+              <div className="text-xs text-amber-400">Expired Skipped</div>
+              <div className="text-xl font-bold text-amber-400 mt-1">{fetchStats.skippedExpired}</div>
+            </div>
+            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+              <div className="text-xs text-blue-400">Duplicates Skipped</div>
+              <div className="text-xl font-bold text-blue-400 mt-1">{fetchStats.skippedDuplicates}</div>
+            </div>
+            <div className="p-3 bg-red-500/10 rounded-xl border border-red-500/20">
+              <div className="text-xs text-red-400">Blacklisted Skipped</div>
+              <div className="text-xl font-bold text-red-400 mt-1">{fetchStats.skippedBlacklisted}</div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -216,7 +264,7 @@ export default function AdminPulseQueuePage() {
                 <button onClick={() => handleApprove(item)} className="flex-1 md:w-full flex justify-center items-center gap-2 px-3 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 text-xs font-medium rounded-lg transition-colors border border-green-500/20">
                   <Check size={14} /> Approve
                 </button>
-                <button onClick={() => handleReject(item.id)} className="flex-1 md:w-full flex justify-center items-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-lg transition-colors border border-red-500/20">
+                <button onClick={() => handleReject(item)} className="flex-1 md:w-full flex justify-center items-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-lg transition-colors border border-red-500/20">
                   <X size={14} /> Reject
                 </button>
               </div>

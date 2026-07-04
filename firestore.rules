@@ -25,8 +25,8 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "contributor";
     }
 
-    function isOwner(resource) {
-      return isSignedIn() && resource.data.uploaderId == request.auth.uid;
+    function isOwner(res) {
+      return isSignedIn() && res.data.uploaderId == request.auth.uid;
     }
 
     function isNotBlocked() {
@@ -180,6 +180,11 @@ service cloud.firestore {
                     && request.resource.data.title is string
                     && request.resource.data.message is string;
       allow delete: if isAdmin();
+    }
+
+    // ── Pulse Blacklist (Admin Only) ─────────────────────────────────────────
+    match /pulse_blacklist/{blacklistId} {
+      allow read, write: if isAdmin();
     }
 
     // ── Pulse Queue (Admin Only) ─────────────────────────────────────────────

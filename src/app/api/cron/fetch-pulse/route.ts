@@ -4,6 +4,21 @@ import { adminDb } from "@/lib/firebase-admin";
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
+function cleanHtml(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<[^>]*>/g, "") // strip tags
+    .replace(/&ndash;/g, "–")
+    .replace(/&mdash;/g, "—")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
 export async function GET(req: Request) {
   // Ensure this is only called by Vercel Cron or authorized admin
   const authHeader = req.headers.get('authorization');
@@ -11,9 +26,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const now = new Date();
+  
+  let stats = {
+    totalFetched: 0,
+    active: 0,
+    skippedExpired: 0,
+    skippedDuplicates: 0,
+    skippedBlacklisted: 0
+  };
+
   try {
-    let fetchedCount = 0;
-    
     // --- 1. Fetch from Unstop ---
     try {
       const res = await fetch("https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&page=1", {
@@ -27,33 +50,62 @@ export async function GET(req: Request) {
       if (res.ok) {
         const json = await res.json();
         const items = json?.data?.data || [];
-        
-        for (const item of items) {
-          if (!item.title || !item.public_url) continue;
+        stats.totalFetched += items.length;
+
+        // Process in parallel to avoid sequential network roundtrip lag
+        await Promise.all(items.map(async (item: any) => {
+          if (!item.title || !item.public_url) return;
           
-          const link = `https://unstop.com/${item.public_url}`;
+          const link = item.short_url || `https://unstop.com/${item.public_url}`;
           const title = item.title;
           
-          // Check for duplicates in both collections
+          // Parse Deadline
+          const deadlineStr = item.regnRequirements?.end_regn_dt || item.end_date;
+          const deadline = deadlineStr && !isNaN(Date.parse(deadlineStr)) ? new Date(deadlineStr) : null;
+          
+          // Validation: Skip Expired or Ended
+          if (deadline && deadline < now) {
+            stats.skippedExpired++;
+            return;
+          }
+          if (item.regnRequirements?.reg_status === "ENDED") {
+            stats.skippedExpired++;
+            return;
+          }
+
+          // Check Blacklist
+          const blacklistQuery = await adminDb.collection("pulse_blacklist").where("link", "==", link).get();
+          if (!blacklistQuery.empty) {
+            stats.skippedBlacklisted++;
+            return;
+          }
+          
+          // Check Duplicates
           const queueQuery = await adminDb.collection("pulse_queue").where("link", "==", link).get();
           const updatesQuery = await adminDb.collection("pulse_updates").where("link", "==", link).get();
           
-          if (queueQuery.empty && updatesQuery.empty) {
-            await adminDb.collection("pulse_queue").add({
-              title: title,
-              description: item.seo_meta_description || item.short_description || `A new opportunity on Unstop: ${title}.`,
-              category: "Hackathons",
-              sourceName: "Unstop",
-              link: link,
-              isPinned: false,
-              status: "pending",
-              createdAt: new Date(),
-              organizer: item.organization?.name || "Unstop",
-              deadline: item.regnRequirements?.end_regn_dt ? new Date(item.regnRequirements.end_regn_dt * 1000) : null
-            });
-            fetchedCount++;
+          if (!queueQuery.empty || !updatesQuery.empty) {
+            stats.skippedDuplicates++;
+            return;
           }
-        }
+
+          // Clean up HTML in details
+          const cleanedDescription = cleanHtml(item.details || item.desc || item.seo_meta_description || item.tagline || "");
+
+          await adminDb.collection("pulse_queue").add({
+            title: title,
+            description: cleanedDescription || `A new opportunity on Unstop: ${title}.`,
+            category: "Hackathons",
+            sourceName: "Unstop",
+            link: link,
+            isPinned: false,
+            status: "pending",
+            createdAt: now,
+            organizer: item.organisation?.name || "Unstop",
+            deadline: deadline
+          });
+          stats.active++;
+        }));
       }
     } catch (e) {
       console.error("Unstop fetch error:", e);
@@ -61,55 +113,69 @@ export async function GET(req: Request) {
 
     // --- 2. Fetch from Devfolio ---
     try {
-      const res = await fetch("https://api.devfolio.co/api/search/hackathons", {
-        method: "POST",
+      // Devfolio GET endpoint retrieves active/upcoming hackathons correctly
+      const res = await fetch("https://api.devfolio.co/api/hackathons?page=1&limit=30", {
         headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         },
-        body: JSON.stringify({
-          q: "",
-          filter: { status: ["open"] }
-        }),
         cache: 'no-store'
       });
 
       if (res.ok) {
         const json = await res.json();
-        const items = json?.hits?.hits || [];
-        
-        for (const hit of items) {
-          const item = hit._source;
-          if (!item || !item.name || !item.slug) continue;
+        const items = json?.result || [];
+        stats.totalFetched += items.length;
+
+        // Process in parallel
+        await Promise.all(items.map(async (item: any) => {
+          if (!item.name || !item.slug) return;
 
           const link = `https://${item.slug}.devfolio.co`;
           const title = item.name;
+          const deadline = item.ends_at && !isNaN(Date.parse(item.ends_at)) ? new Date(item.ends_at) : null;
 
+          // Validation: Skip Expired
+          if (deadline && deadline < now) {
+            stats.skippedExpired++;
+            return;
+          }
+
+          // Check Blacklist
+          const blacklistQuery = await adminDb.collection("pulse_blacklist").where("link", "==", link).get();
+          if (!blacklistQuery.empty) {
+            stats.skippedBlacklisted++;
+            return;
+          }
+
+          // Check Duplicates
           const queueQuery = await adminDb.collection("pulse_queue").where("link", "==", link).get();
           const updatesQuery = await adminDb.collection("pulse_updates").where("link", "==", link).get();
 
-          if (queueQuery.empty && updatesQuery.empty) {
-            await adminDb.collection("pulse_queue").add({
-              title: title,
-              description: item.description || `A new hackathon on Devfolio: ${title}.`,
-              category: "Hackathons",
-              sourceName: "Devfolio",
-              link: link,
-              isPinned: false,
-              status: "pending",
-              createdAt: new Date(),
-              organizer: item.hosted_by || "Devfolio",
-              deadline: item.ends_at ? new Date(item.ends_at) : null
-            });
-            fetchedCount++;
+          if (!queueQuery.empty || !updatesQuery.empty) {
+            stats.skippedDuplicates++;
+            return;
           }
-        }
+
+          await adminDb.collection("pulse_queue").add({
+            title: title,
+            description: item.desc || item.tagline || `A new hackathon on Devfolio: ${title}.`,
+            category: "Hackathons",
+            sourceName: "Devfolio",
+            link: link,
+            isPinned: false,
+            status: "pending",
+            createdAt: now,
+            organizer: item.location || "Devfolio",
+            deadline: deadline
+          });
+          stats.active++;
+        }));
       }
     } catch (e) {
       console.error("Devfolio fetch error:", e);
     }
 
-    return NextResponse.json({ success: true, newItemsAdded: fetchedCount });
+    return NextResponse.json({ success: true, stats });
   } catch (error: any) {
     console.error("Cron fetch-pulse error:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
