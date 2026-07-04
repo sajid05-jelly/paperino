@@ -18,6 +18,9 @@ interface QueueItem {
   deadline?: Timestamp;
   status: string;
   createdAt: Timestamp;
+  location?: string;
+  mode?: string;
+  state?: string;
 }
 
 interface FetchStats {
@@ -53,6 +56,8 @@ export default function AdminPulseQueuePage() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Hackathons");
   const [link, setLink] = useState("");
+  const [location, setLocation] = useState("");
+  const [mode, setMode] = useState("Offline");
 
   useEffect(() => {
     const q = query(collection(db, "pulse_queue"), orderBy("createdAt", "desc"));
@@ -88,6 +93,8 @@ export default function AdminPulseQueuePage() {
     setDescription(item.description || "");
     setCategory(item.category || "Hackathons");
     setLink(item.link || "");
+    setLocation(item.location || "");
+    setMode(item.mode || "Offline");
     setIsModalOpen(true);
   };
 
@@ -99,7 +106,9 @@ export default function AdminPulseQueuePage() {
         title,
         description,
         category,
-        link
+        link,
+        location,
+        mode
       });
       setIsModalOpen(false);
     } catch (error) {
@@ -122,6 +131,9 @@ export default function AdminPulseQueuePage() {
         sourceName: item.sourceName || "Automated",
         deadline: item.deadline || null,
         organizer: item.organizer || "",
+        location: item.location || "",
+        mode: item.mode || "Offline",
+        state: item.state || "",
         createdAt: Timestamp.now(),
         createdBy: user?.uid || "system"
       });
@@ -233,6 +245,22 @@ export default function AdminPulseQueuePage() {
                   <span className="px-2 py-1 bg-white/10 text-gray-300 rounded text-[10px] font-bold uppercase tracking-wider">
                     {item.category}
                   </span>
+                  {item.mode && (
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1 ${
+                      item.mode === "Offline" 
+                        ? "bg-green-500/20 text-green-400 border-green-500/30" 
+                        : item.mode === "Hybrid"
+                        ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                        : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                    }`}>
+                      {item.mode === "Offline" ? "🟢" : item.mode === "Hybrid" ? "🔵" : "⚪"} {item.mode}
+                    </span>
+                  )}
+                  {item.location && (
+                    <span className="px-2 py-1 bg-white/5 text-gray-300 border border-white/10 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                      📍 {item.location}
+                    </span>
+                  )}
                   {item.sourceName && (
                     <span className="px-2 py-1 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
                       <ShieldCheck size={12} /> {item.sourceName}
@@ -313,6 +341,31 @@ export default function AdminPulseQueuePage() {
                   onChange={(e) => setLink(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-violet-500 transition-colors"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Mode</label>
+                  <select
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value)}
+                    className="w-full bg-[#161224] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-violet-500 transition-colors"
+                  >
+                    <option value="Offline">Offline</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Online">Online</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Location / College</label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g. Chennai"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
               </div>
 
               <div>

@@ -41,6 +41,8 @@ export default function AdminPulsePage() {
   const [category, setCategory] = useState("Announcements");
   const [link, setLink] = useState("");
   const [priority, setPriority] = useState<"normal" | "important" | "pinned">("normal");
+  const [location, setLocation] = useState("");
+  const [mode, setMode] = useState("Offline");
 
   useEffect(() => {
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
@@ -65,6 +67,8 @@ export default function AdminPulsePage() {
     setCategory("Announcements");
     setLink("");
     setPriority("normal");
+    setLocation("");
+    setMode("Offline");
     setEditingId(null);
   };
 
@@ -73,12 +77,14 @@ export default function AdminPulsePage() {
     setIsModalOpen(true);
   };
 
-  const openModalForEdit = (update: PulseUpdate) => {
+  const openModalForEdit = (update: any) => {
     setTitle(update.title);
     setDescription(update.description);
     setCategory(update.category);
     setLink(update.link || "");
     setPriority(update.priority);
+    setLocation(update.location || "");
+    setMode(update.mode || "Offline");
     setEditingId(update.id);
     setIsModalOpen(true);
   };
@@ -94,6 +100,8 @@ export default function AdminPulsePage() {
       link,
       priority,
       isPinned: priority === "pinned",
+      location,
+      mode,
       updatedAt: Timestamp.now(),
     };
 
@@ -295,6 +303,31 @@ export default function AdminPulsePage() {
                   placeholder="https://..."
                   className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Mode</label>
+                  <select 
+                    value={mode} 
+                    onChange={(e) => setMode(e.target.value)}
+                    className="w-full bg-[#161224] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
+                  >
+                    <option value="Offline">Offline</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Online">Online</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Location / College</label>
+                  <input 
+                    type="text" 
+                    value={location} 
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g. Chennai"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-white/10">

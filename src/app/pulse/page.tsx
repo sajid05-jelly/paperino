@@ -22,6 +22,9 @@ interface PulseUpdate {
   sourceName?: string;
   organizer?: string;
   deadline?: Timestamp;
+  location?: string;
+  mode?: string;
+  state?: string;
 }
 
 const CATEGORIES = [
@@ -46,12 +49,42 @@ export default function PulsePage() {
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
-      // Sort pinned to top
+      
+      const getSortScore = (update: PulseUpdate) => {
+        if (update.isPinned) return 1000;
+        
+        const isTN = 
+          update.state?.toLowerCase().includes("tamil nadu") || 
+          update.location?.toLowerCase().includes("tamil nadu") ||
+          update.location?.toLowerCase().includes("chennai") ||
+          update.location?.toLowerCase().includes("coimbatore") ||
+          update.location?.toLowerCase().includes("trichy") ||
+          update.location?.toLowerCase().includes("madurai") ||
+          update.location?.toLowerCase().includes("salem") ||
+          update.location?.toLowerCase().includes("erode") ||
+          update.location?.toLowerCase().includes("vellore") ||
+          update.location?.toLowerCase().includes("tirunelveli") ||
+          update.title?.toLowerCase().match(/srm|sathyabama|vit chennai|anna university|ssn|psg|kumaraguru|cit/);
+
+        const mode = (update.mode || "Offline").toLowerCase();
+        
+        if (isTN && mode === "offline") return 100;
+        if (isTN && mode === "hybrid") return 90;
+        if (mode === "offline") return 80;
+        if (mode === "hybrid") return 70;
+        if (mode === "online") return 60;
+        return 50;
+      };
+
       data.sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return 0;
+        const scoreA = getSortScore(a);
+        const scoreB = getSortScore(b);
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        return (b.createdAt?.toDate().getTime() || 0) - (a.createdAt?.toDate().getTime() || 0);
       });
+
       setUpdates(data);
       setLoading(false);
     }, (error) => {
@@ -199,6 +232,24 @@ export default function PulsePage() {
                     <span className="px-3 py-1 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
                       {update.category}
                     </span>
+                    
+                    {update.mode && (
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border flex items-center gap-1 ${
+                        update.mode === "Offline" 
+                          ? "bg-green-500/20 text-green-400 border-green-500/30" 
+                          : update.mode === "Hybrid"
+                          ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                          : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                      }`}>
+                        {update.mode === "Offline" ? "🟢" : update.mode === "Hybrid" ? "🔵" : "⚪"} {update.mode}
+                      </span>
+                    )}
+
+                    {update.location && (
+                      <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10 flex items-center gap-1">
+                        📍 {update.location}
+                      </span>
+                    )}
                     
                     {update.verifiedSource && (
                       <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-green-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(34,197,94,0.3)]" title="Scraped and verified from authentic sources">

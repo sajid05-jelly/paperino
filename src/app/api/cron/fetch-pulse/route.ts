@@ -19,6 +19,14 @@ function cleanHtml(html: string): string {
     .trim();
 }
 
+// Check if a country is outside India
+function isInternational(country: string): boolean {
+  if (!country) return false;
+  const c = country.toLowerCase().trim();
+  if (c === "india" || c === "in") return false;
+  return true;
+}
+
 export async function GET(req: Request) {
   // Ensure this is only called by Vercel Cron or authorized admin
   const authHeader = req.headers.get('authorization');
@@ -52,13 +60,31 @@ export async function GET(req: Request) {
         const items = json?.data?.data || [];
         stats.totalFetched += items.length;
 
-        // Process in parallel to avoid sequential network roundtrip lag
         await Promise.all(items.map(async (item: any) => {
           if (!item.title || !item.public_url) return;
           
           const link = item.short_url || `https://unstop.com/${item.public_url}`;
           const title = item.title;
           
+          // Parse Mode (Offline / Online)
+          const modeVal = (item.region || "").toLowerCase();
+          const mode = modeVal === "online" ? "Online" : "Offline"; // Unstop usually has online/offline
+
+          // Exclude Online-only hackathons
+          if (mode === "Online") {
+            return;
+          }
+          
+          // Parse Location
+          const city = item.address_with_country_logo?.city || "";
+          const state = item.address_with_country_logo?.state || "";
+          const country = item.address_with_country_logo?.country?.name || "India";
+
+          // Exclude International
+          if (isInternational(country)) {
+            return;
+          }
+
           // Parse Deadline
           const deadlineStr = item.regnRequirements?.end_regn_dt || item.end_date;
           const deadline = deadlineStr && !isNaN(Date.parse(deadlineStr)) ? new Date(deadlineStr) : null;
@@ -102,7 +128,10 @@ export async function GET(req: Request) {
             status: "pending",
             createdAt: now,
             organizer: item.organisation?.name || "Unstop",
-            deadline: deadline
+            deadline: deadline,
+            location: city || "India",
+            state: state || "",
+            mode: mode
           });
           stats.active++;
         }));
@@ -113,7 +142,6 @@ export async function GET(req: Request) {
 
     // --- 2. Fetch from Devfolio ---
     try {
-      // Devfolio GET endpoint retrieves active/upcoming hackathons correctly
       const res = await fetch("https://api.devfolio.co/api/hackathons?page=1&limit=30", {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -126,13 +154,31 @@ export async function GET(req: Request) {
         const items = json?.result || [];
         stats.totalFetched += items.length;
 
-        // Process in parallel
         await Promise.all(items.map(async (item: any) => {
           if (!item.name || !item.slug) return;
 
           const link = `https://${item.slug}.devfolio.co`;
           const title = item.name;
           const deadline = item.ends_at && !isNaN(Date.parse(item.ends_at)) ? new Date(item.ends_at) : null;
+
+          // Parse Mode
+          let mode = "Offline";
+          if (item.is_online) {
+            mode = "Online";
+          } else if (item.hackathon_setting?.is_hybrid) {
+            mode = "Hybrid";
+          }
+
+          // Exclude Online-only hackathons
+          if (mode === "Online") {
+            return;
+          }
+
+          const country = item.country || "India";
+          // Exclude International
+          if (isInternational(country)) {
+            return;
+          }
 
           // Validation: Skip Expired
           if (deadline && deadline < now) {
@@ -165,8 +211,11 @@ export async function GET(req: Request) {
             isPinned: false,
             status: "pending",
             createdAt: now,
-            organizer: item.location || "Devfolio",
-            deadline: deadline
+            organizer: item.hackathon_setting?.subdomain || "Devfolio",
+            deadline: deadline,
+            location: item.city || "India",
+            state: item.state || "",
+            mode: mode
           });
           stats.active++;
         }));
