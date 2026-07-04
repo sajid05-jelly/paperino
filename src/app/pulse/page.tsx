@@ -65,12 +65,16 @@ export default function PulsePage() {
           locationLower.includes("chennai") ||
           locationLower.includes("coimbatore") ||
           locationLower.includes("trichy") ||
+          locationLower.includes("tiruchirappalli") ||
           locationLower.includes("madurai") ||
           locationLower.includes("salem") ||
           locationLower.includes("erode") ||
           locationLower.includes("vellore") ||
           locationLower.includes("tirunelveli") ||
-          titleLower.match(/srm|sathyabama|vit chennai|anna university|ssn|psg|kumaraguru|cit/);
+          locationLower.includes("thanjavur") ||
+          locationLower.includes("kanchipuram") ||
+          locationLower.includes("hosur") ||
+          titleLower.match(/srm|sathyabama|vit chennai|anna university|ssn|psg|kumaraguru|cit|sastra|amrita|thiagarajar|kct|licet|joseph/);
 
         const isSouthIndia = 
           stateLower.includes("karnataka") || 
@@ -89,20 +93,21 @@ export default function PulsePage() {
           locationLower.includes("trivandrum");
 
         if (modeLower === "offline") {
-          if (isTN) return 100;        // Priority 1: TN Offline
-          if (isSouthIndia) return 90; // Priority 2: South India Offline
-          return 80;                   // Priority 3: India Offline
+          if (isTN) return 100;        // Level 1: Tamil Nadu Offline
+          if (isSouthIndia) return 80; // Level 3: South India Offline
+          return 70;                   // India Offline
         }
         
         if (modeLower === "hybrid") {
-          return 70;                   // Priority 4: Hybrid
+          if (isTN) return 90;         // Level 2: Tamil Nadu Hybrid
+          return 60;                   // Other Hybrid
         }
         
         if (modeLower === "online") {
-          return 60;                   // Priority 5: Online
+          return 50;                   // Online
         }
         
-        return 50;                     // Priority 6: Location Unknown / Others
+        return 40;                     // Location Unknown / Others
       };
 
       data.sort((a, b) => {
