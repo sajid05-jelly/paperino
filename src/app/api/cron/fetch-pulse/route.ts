@@ -138,7 +138,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!adminDb) {
+  const db = adminDb;
+  if (!db) {
     return NextResponse.json({ error: 'Firebase Admin DB not initialized' }, { status: 500 });
   }
 
@@ -206,7 +207,7 @@ export async function GET(req: Request) {
           }
 
           // Check Blacklist
-          const blacklistQuery = await adminDb.collection("pulse_blacklist").where("link", "==", link).get();
+          const blacklistQuery = await db.collection("pulse_blacklist").where("link", "==", link).get();
           if (!blacklistQuery.empty) {
             console.log(`Skipped: ${title} | Reason: Blacklisted`);
             stats.skippedBlacklisted++;
@@ -214,8 +215,8 @@ export async function GET(req: Request) {
           }
           
           // Check Duplicates
-          const queueQuery = await adminDb.collection("pulse_queue").where("link", "==", link).get();
-          const updatesQuery = await adminDb.collection("pulse_updates").where("link", "==", link).get();
+          const queueQuery = await db.collection("pulse_queue").where("link", "==", link).get();
+          const updatesQuery = await db.collection("pulse_updates").where("link", "==", link).get();
           
           if (!queueQuery.empty || !updatesQuery.empty) {
             console.log(`Skipped: ${title} | Reason: Duplicate`);
@@ -245,7 +246,7 @@ export async function GET(req: Request) {
             return;
           }
 
-          await adminDb.collection("pulse_queue").add({
+          await db.collection("pulse_queue").add({
             title: title,
             description: cleanedDescription || `A new opportunity on Unstop: ${title}.`,
             category: "Hackathons",
@@ -311,7 +312,7 @@ export async function GET(req: Request) {
           }
 
           // Check Blacklist
-          const blacklistQuery = await adminDb.collection("pulse_blacklist").where("link", "==", link).get();
+          const blacklistQuery = await db.collection("pulse_blacklist").where("link", "==", link).get();
           if (!blacklistQuery.empty) {
             console.log(`Skipped: ${title} | Reason: Blacklisted`);
             stats.skippedBlacklisted++;
@@ -319,8 +320,8 @@ export async function GET(req: Request) {
           }
 
           // Check Duplicates
-          const queueQuery = await adminDb.collection("pulse_queue").where("link", "==", link).get();
-          const updatesQuery = await adminDb.collection("pulse_updates").where("link", "==", link).get();
+          const queueQuery = await db.collection("pulse_queue").where("link", "==", link).get();
+          const updatesQuery = await db.collection("pulse_updates").where("link", "==", link).get();
 
           if (!queueQuery.empty || !updatesQuery.empty) {
             console.log(`Skipped: ${title} | Reason: Duplicate`);
@@ -352,7 +353,7 @@ export async function GET(req: Request) {
             return;
           }
 
-          await adminDb.collection("pulse_queue").add({
+          await db.collection("pulse_queue").add({
             title: title,
             description: rawDescription || `A new hackathon on Devfolio: ${title}.`,
             category: "Hackathons",
