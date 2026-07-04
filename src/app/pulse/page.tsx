@@ -53,27 +53,56 @@ export default function PulsePage() {
       const getSortScore = (update: PulseUpdate) => {
         if (update.isPinned) return 1000;
         
-        const isTN = 
-          update.state?.toLowerCase().includes("tamil nadu") || 
-          update.location?.toLowerCase().includes("tamil nadu") ||
-          update.location?.toLowerCase().includes("chennai") ||
-          update.location?.toLowerCase().includes("coimbatore") ||
-          update.location?.toLowerCase().includes("trichy") ||
-          update.location?.toLowerCase().includes("madurai") ||
-          update.location?.toLowerCase().includes("salem") ||
-          update.location?.toLowerCase().includes("erode") ||
-          update.location?.toLowerCase().includes("vellore") ||
-          update.location?.toLowerCase().includes("tirunelveli") ||
-          update.title?.toLowerCase().match(/srm|sathyabama|vit chennai|anna university|ssn|psg|kumaraguru|cit/);
-
-        const mode = (update.mode || "Offline").toLowerCase();
+        const locationLower = (update.location || "").toLowerCase();
+        const stateLower = (update.state || "").toLowerCase();
+        const titleLower = (update.title || "").toLowerCase();
+        const modeLower = (update.mode || "Offline").toLowerCase();
         
-        if (isTN && mode === "offline") return 100;
-        if (isTN && mode === "hybrid") return 90;
-        if (mode === "offline") return 80;
-        if (mode === "hybrid") return 70;
-        if (mode === "online") return 60;
-        return 50;
+        const isTN = 
+          stateLower.includes("tamil nadu") || 
+          stateLower.includes("tamilnadu") ||
+          locationLower.includes("tamil nadu") ||
+          locationLower.includes("chennai") ||
+          locationLower.includes("coimbatore") ||
+          locationLower.includes("trichy") ||
+          locationLower.includes("madurai") ||
+          locationLower.includes("salem") ||
+          locationLower.includes("erode") ||
+          locationLower.includes("vellore") ||
+          locationLower.includes("tirunelveli") ||
+          titleLower.match(/srm|sathyabama|vit chennai|anna university|ssn|psg|kumaraguru|cit/);
+
+        const isSouthIndia = 
+          stateLower.includes("karnataka") || 
+          stateLower.includes("kerala") || 
+          stateLower.includes("andhra pradesh") || 
+          stateLower.includes("telangana") ||
+          locationLower.includes("bangalore") ||
+          locationLower.includes("bengaluru") ||
+          locationLower.includes("kochi") ||
+          locationLower.includes("hyderabad") ||
+          locationLower.includes("thiruvananthapuram") ||
+          locationLower.includes("amaravati") ||
+          locationLower.includes("warangal") ||
+          locationLower.includes("visakhapatnam") ||
+          locationLower.includes("cochin") ||
+          locationLower.includes("trivandrum");
+
+        if (modeLower === "offline") {
+          if (isTN) return 100;        // Priority 1: TN Offline
+          if (isSouthIndia) return 90; // Priority 2: South India Offline
+          return 80;                   // Priority 3: India Offline
+        }
+        
+        if (modeLower === "hybrid") {
+          return 70;                   // Priority 4: Hybrid
+        }
+        
+        if (modeLower === "online") {
+          return 60;                   // Priority 5: Online
+        }
+        
+        return 50;                     // Priority 6: Location Unknown / Others
       };
 
       data.sort((a, b) => {

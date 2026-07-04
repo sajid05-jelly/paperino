@@ -19,7 +19,6 @@ function cleanHtml(html: string): string {
     .trim();
 }
 
-// Check if a country is outside India
 function isInternational(country: string): boolean {
   if (!country) return false;
   const c = country.toLowerCase().trim();
@@ -66,22 +65,18 @@ export async function GET(req: Request) {
           const link = item.short_url || `https://unstop.com/${item.public_url}`;
           const title = item.title;
           
-          // Parse Mode (Offline / Online)
+          // Parse Mode
           const modeVal = (item.region || "").toLowerCase();
-          const mode = modeVal === "online" ? "Online" : "Offline"; // Unstop usually has online/offline
+          const mode = modeVal === "online" ? "Online" : "Offline";
 
-          // Exclude Online-only hackathons
-          if (mode === "Online") {
-            return;
-          }
-          
           // Parse Location
           const city = item.address_with_country_logo?.city || "";
           const state = item.address_with_country_logo?.state || "";
-          const country = item.address_with_country_logo?.country?.name || "India";
+          const country = item.address_with_country_logo?.country?.name || "";
 
           // Exclude International
           if (isInternational(country)) {
+            console.log(`Skipped: ${title} | Reason: International Event`);
             return;
           }
 
@@ -91,10 +86,12 @@ export async function GET(req: Request) {
           
           // Validation: Skip Expired or Ended
           if (deadline && deadline < now) {
+            console.log(`Skipped: ${title} | Reason: Expired`);
             stats.skippedExpired++;
             return;
           }
           if (item.regnRequirements?.reg_status === "ENDED") {
+            console.log(`Skipped: ${title} | Reason: Expired`);
             stats.skippedExpired++;
             return;
           }
@@ -102,6 +99,7 @@ export async function GET(req: Request) {
           // Check Blacklist
           const blacklistQuery = await adminDb.collection("pulse_blacklist").where("link", "==", link).get();
           if (!blacklistQuery.empty) {
+            console.log(`Skipped: ${title} | Reason: Blacklisted`);
             stats.skippedBlacklisted++;
             return;
           }
@@ -111,6 +109,7 @@ export async function GET(req: Request) {
           const updatesQuery = await adminDb.collection("pulse_updates").where("link", "==", link).get();
           
           if (!queueQuery.empty || !updatesQuery.empty) {
+            console.log(`Skipped: ${title} | Reason: Duplicate`);
             stats.skippedDuplicates++;
             return;
           }
@@ -129,7 +128,7 @@ export async function GET(req: Request) {
             createdAt: now,
             organizer: item.organisation?.name || "Unstop",
             deadline: deadline,
-            location: city || "India",
+            location: city || "Location Unknown",
             state: state || "",
             mode: mode
           });
@@ -169,19 +168,16 @@ export async function GET(req: Request) {
             mode = "Hybrid";
           }
 
-          // Exclude Online-only hackathons
-          if (mode === "Online") {
-            return;
-          }
-
-          const country = item.country || "India";
+          const country = item.country || "";
           // Exclude International
           if (isInternational(country)) {
+            console.log(`Skipped: ${title} | Reason: International Event`);
             return;
           }
 
           // Validation: Skip Expired
           if (deadline && deadline < now) {
+            console.log(`Skipped: ${title} | Reason: Expired`);
             stats.skippedExpired++;
             return;
           }
@@ -189,6 +185,7 @@ export async function GET(req: Request) {
           // Check Blacklist
           const blacklistQuery = await adminDb.collection("pulse_blacklist").where("link", "==", link).get();
           if (!blacklistQuery.empty) {
+            console.log(`Skipped: ${title} | Reason: Blacklisted`);
             stats.skippedBlacklisted++;
             return;
           }
@@ -198,6 +195,7 @@ export async function GET(req: Request) {
           const updatesQuery = await adminDb.collection("pulse_updates").where("link", "==", link).get();
 
           if (!queueQuery.empty || !updatesQuery.empty) {
+            console.log(`Skipped: ${title} | Reason: Duplicate`);
             stats.skippedDuplicates++;
             return;
           }
@@ -213,7 +211,7 @@ export async function GET(req: Request) {
             createdAt: now,
             organizer: item.hackathon_setting?.subdomain || "Devfolio",
             deadline: deadline,
-            location: item.city || "India",
+            location: item.city || "Location Unknown",
             state: item.state || "",
             mode: mode
           });
