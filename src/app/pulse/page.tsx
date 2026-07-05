@@ -151,8 +151,11 @@ interface InternshipDetails {
   role: string;
   location: string;
   stipend: string;
+  duration: string;
+  eligibility: string;
   deadline: string;
   summary: string;
+  skills: string[];
 }
 
 function parseInternshipDetails(update: PulseUpdate): InternshipDetails {
@@ -189,6 +192,18 @@ function parseInternshipDetails(update: PulseUpdate): InternshipDetails {
     stipend = "Paid";
   }
 
+  let duration = "3-6 Months";
+  const durationMatch = desc.match(/(\d+\s*(?:month|months|week|weeks|year|years|yr|yrs|mon|mons))\s*(?:duration|period)?/i) || desc.match(/(?:duration|period)\s*[:\-\s]*(\d+\s*\w+)/i);
+  if (durationMatch) {
+    duration = durationMatch[1];
+  }
+
+  let eligibility = "B.Tech / MCA / Dual Degree";
+  const eligibilityMatch = desc.match(/(?:eligibility|eligible|batch|criteria|qualification)\s*[:\-\s]*([^\n.]+)/i);
+  if (eligibilityMatch) {
+    eligibility = eligibilityMatch[1].trim();
+  }
+
   const deadline = update.deadline
     ? new Date(update.deadline.seconds * 1000).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -198,24 +213,37 @@ function parseInternshipDetails(update: PulseUpdate): InternshipDetails {
     : "Check Website";
 
   let summary = desc;
-  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
-  if (sentenceMatch) {
-    summary = sentenceMatch[0];
-  } else if (desc.length > 150) {
-    summary = desc.substring(0, 150) + "...";
+  if (desc.length > 550) {
+    summary = desc.substring(0, 550) + "...";
   }
 
-  return { company, role, location, stipend, deadline, summary };
+  const skills: string[] = [];
+  const skillsList = ["react", "node", "javascript", "python", "java", "c++", "sql", "aws", "git", "figma", "machine learning", "ui/ux", "communication", "typescript"];
+  skillsList.forEach(s => {
+    if (desc.toLowerCase().includes(s)) {
+      skills.push(s.toUpperCase());
+    }
+  });
+  if (skills.length === 0) {
+    skills.push("Software Engineering", "Analytical Skills", "Collaboration");
+  }
+
+  return { company, role, location, stipend, duration, eligibility, deadline, summary, skills: skills.slice(0, 5) };
 }
 
 interface WebsiteUpdateDetails {
   title: string;
   summary: string;
   date: string;
+  version: string;
+  modules: string[];
+  whatsNew: string[];
 }
 
 function parseWebsiteUpdateDetails(update: PulseUpdate): WebsiteUpdateDetails {
   const desc = update.description || "";
+  const title = update.title || "";
+  
   const date = update.createdAt
     ? new Date(update.createdAt.seconds * 1000).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -223,15 +251,42 @@ function parseWebsiteUpdateDetails(update: PulseUpdate): WebsiteUpdateDetails {
         year: "numeric",
       })
     : "Recent";
-  
-  let summary = desc;
-  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
-  if (sentenceMatch) {
-    summary = sentenceMatch[0];
-  } else if (desc.length > 140) {
-    summary = desc.substring(0, 140) + "...";
+
+  let version = "v1.1.0";
+  const verMatch = title.match(/(v\d+\.\d+\.\d+)/i) || desc.match(/(v\d+\.\d+\.\d+)/i);
+  if (verMatch) {
+    version = verMatch[1];
   }
-  return { title: update.title, summary, date };
+
+  const modules: string[] = [];
+  const modulesList = ["gpa", "btech", "pyq", "ats", "leaderboard", "pulse", "login", "maintenance", "dashboard"];
+  modulesList.forEach(m => {
+    if (desc.toLowerCase().includes(m)) {
+      modules.push(m.toUpperCase());
+    }
+  });
+  if (modules.length === 0) {
+    modules.push("CORE SYSTEM");
+  }
+
+  const whatsNew: string[] = [];
+  const lines = desc.split("\n");
+  for (const line of lines) {
+    const cleanLine = line.trim().replace(/^[\u2022\-\*\d\.\s]+/, "").trim();
+    if (cleanLine && (line.trim().startsWith("•") || line.trim().startsWith("-") || line.trim().startsWith("*")) && cleanLine.length < 90) {
+      whatsNew.push(cleanLine);
+    }
+  }
+  if (whatsNew.length === 0) {
+    whatsNew.push("Performance optimizations and latency improvements", "Enhanced user interface aesthetics", "General stability and bug fixes");
+  }
+
+  let summary = desc;
+  if (desc.length > 550) {
+    summary = desc.substring(0, 550) + "...";
+  }
+
+  return { title, summary, date, version, modules, whatsNew: whatsNew.slice(0, 5) };
 }
 
 interface AnnouncementDetails {
@@ -251,11 +306,8 @@ function parseAnnouncementDetails(update: PulseUpdate): AnnouncementDetails {
     : "Recent";
   
   let summary = desc;
-  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
-  if (sentenceMatch) {
-    summary = sentenceMatch[0];
-  } else if (desc.length > 160) {
-    summary = desc.substring(0, 160) + "...";
+  if (desc.length > 400) {
+    summary = desc.substring(0, 400) + "...";
   }
   return { title: update.title, summary, date };
 }
@@ -265,8 +317,10 @@ interface PlacementDetails {
   role: string;
   salaryPackage: string;
   eligibility: string;
-  logoLetter: string;
+  deadline: string;
+  skills: string[];
   summary: string;
+  logoLetter: string;
 }
 
 function parsePlacementDetails(update: PulseUpdate): PlacementDetails {
@@ -297,17 +351,33 @@ function parsePlacementDetails(update: PulseUpdate): PlacementDetails {
     eligibility = eligibilityMatch[1].trim();
   }
 
+  const deadline = update.deadline
+    ? new Date(update.deadline.seconds * 1000).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Check Website";
+
+  const skills: string[] = [];
+  const skillsList = ["react", "node", "javascript", "python", "java", "sql", "aws", "machine learning", "dsa", "c++", "oops"];
+  skillsList.forEach(s => {
+    if (desc.toLowerCase().includes(s)) {
+      skills.push(s.toUpperCase());
+    }
+  });
+  if (skills.length === 0) {
+    skills.push("DSA", "Core Java/Python", "Analytical Skills");
+  }
+
   const logoLetter = company.charAt(0).toUpperCase();
 
   let summary = desc;
-  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
-  if (sentenceMatch) {
-    summary = sentenceMatch[0];
-  } else if (desc.length > 140) {
-    summary = desc.substring(0, 140) + "...";
+  if (desc.length > 550) {
+    summary = desc.substring(0, 550) + "...";
   }
 
-  return { company, role, salaryPackage, eligibility, logoLetter, summary };
+  return { company, role, salaryPackage, eligibility, deadline, skills: skills.slice(0, 5), logoLetter, summary };
 }
 
 const CATEGORIES = [
@@ -528,7 +598,7 @@ export default function PulsePage() {
             </div>
           ) : (
             filteredUpdates.map((update, idx) => {
-              // 1. INTERNSHIPS
+              // 1. INTERNSHIPS (Large Premium Card)
               if (update.category === "Internships") {
                 const parsed = parseInternshipDetails(update);
                 return (
@@ -552,8 +622,15 @@ export default function PulsePage() {
                         {/* Header Badges */}
                         <div className="flex flex-wrap items-center gap-2 mb-4">
                           <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-violet-500/30">
-                            {update.category}
+                            💼 {update.category}
                           </span>
+                          
+                          {update.location && (
+                            <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-white/10 flex items-center gap-1">
+                              📍 {update.location}
+                            </span>
+                          )}
+
                           {isNew(update.createdAt) && (
                             <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
                               NEW
@@ -562,46 +639,83 @@ export default function PulsePage() {
                         </div>
 
                         {/* Company and Role */}
-                        <h3 className="text-[11px] text-violet-400 uppercase font-bold tracking-widest mb-1">
+                        <h3 className="text-[11px] text-violet-400 uppercase font-black tracking-widest mb-1">
                           {parsed.company}
                         </h3>
-                        <h2 className="text-xl font-bold text-white mb-3 leading-snug group-hover:text-violet-300 transition-colors">
+                        <h2 className="text-xl md:text-2xl font-bold text-white mb-3 leading-tight group-hover:text-violet-300 transition-colors">
                           {parsed.role}
                         </h2>
 
-                        {/* Description: 2-3 lines max */}
-                        <p className="text-xs text-gray-400 line-clamp-3 mb-5 leading-relaxed">
+                        {/* Full 5-10 lines description */}
+                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
                           {parsed.summary}
                         </p>
                       </div>
 
                       <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
-                        {/* Compact Specs list */}
-                        <div className="space-y-2 mb-5">
-                          <div className="flex items-center justify-between text-xs py-1.5 border-b border-white/5">
-                            <span className="text-gray-500">📍 Location</span>
-                            <span className="text-white font-medium">{parsed.location}</span>
+                        <hr className="border-white/5 mb-6" />
+
+                        {/* Premium Metadata Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                            <span className="text-lg">💰</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Stipend</div>
+                              <div className="text-xs text-emerald-400 font-bold truncate">{parsed.stipend}</div>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between text-xs py-1.5 border-b border-white/5">
-                            <span className="text-gray-500">💰 Stipend</span>
-                            <span className="text-emerald-400 font-bold">{parsed.stipend}</span>
+
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                            <span className="text-lg">⏳</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Duration</div>
+                              <div className="text-xs text-white font-medium truncate">{parsed.duration}</div>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between text-xs py-1.5 border-b border-white/5">
-                            <span className="text-gray-500">⏰ Deadline</span>
-                            <span className="text-red-400 font-medium">{parsed.deadline}</span>
+
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
+                            <span className="text-lg">🎓</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Eligibility</div>
+                              <div className="text-xs text-white font-medium truncate">{parsed.eligibility}</div>
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
+                            <span className="text-lg">⏰</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Deadline</div>
+                              <div className="text-xs text-red-400 font-bold truncate">{parsed.deadline}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <hr className="border-white/5 mb-6" />
+
+                        {/* Key Skills & Benefits */}
+                        <div className="mb-6">
+                          <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                            <span>✨</span> Key Skills & Benefits
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {parsed.skills.map((skill, i) => (
+                              <span key={i} className="px-2.5 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-semibold border border-white/5">
+                                {skill}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       </div>
 
                       {!isLoggedOut && update.link && (
-                        <div className="pt-2 mt-auto">
+                        <div className="pt-4 border-t border-white/5 mt-auto">
                           <a 
                             href={update.link} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-all duration-300 w-full text-center cursor-pointer shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
+                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-bold transition-all duration-300 w-full text-center cursor-pointer shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
                           >
-                            🚀 Apply Now <ExternalLink size={12} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                            🚀 Apply Now <ExternalLink size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
                           </a>
                         </div>
                       )}
@@ -610,7 +724,7 @@ export default function PulsePage() {
                 );
               }
 
-              // 2. WEBSITE UPDATES
+              // 2. WEBSITE UPDATES (Large Featured Update Card)
               if (update.category === "Website Updates") {
                 const parsed = parseWebsiteUpdateDetails(update);
                 return (
@@ -624,30 +738,67 @@ export default function PulsePage() {
                       <div>
                         {/* Header Badge & Date */}
                         <div className="flex items-center justify-between mb-4">
-                          <span className="px-3 py-1 bg-cyan-500/10 text-cyan-400 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/20">
-                            {update.category}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30">
+                              🚀 {update.category}
+                            </span>
+                            <span className="px-2 py-0.5 bg-white/10 text-white rounded text-[9px] font-bold">
+                              {parsed.version}
+                            </span>
+                          </div>
                           <span className="text-[10px] text-gray-500 font-medium">
                             Released: {parsed.date}
                           </span>
                         </div>
 
-                        <h2 className="text-lg font-bold text-white mb-2 leading-snug group-hover:text-cyan-300 transition-colors">
+                        <h2 className="text-xl md:text-2xl font-bold text-white mb-3 leading-tight group-hover:text-cyan-300 transition-colors">
                           {parsed.title}
                         </h2>
 
-                        <p className="text-xs text-gray-400 line-clamp-3 mb-5 leading-relaxed">
+                        {/* Full update description */}
+                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
                           {parsed.summary}
                         </p>
                       </div>
 
+                      <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
+                        <hr className="border-white/5 mb-6" />
+
+                        {/* Affected Modules */}
+                        <div className="mb-5">
+                          <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-2">Affected Modules</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {parsed.modules.map((mod, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded text-[9px] font-bold border border-cyan-500/20">
+                                {mod}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* What's New Bullet Points */}
+                        <div className="mb-6">
+                          <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                            <span>✨</span> What's New
+                          </div>
+                          <ul className="space-y-2 text-xs text-gray-400">
+                            {parsed.whatsNew.map((item, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-cyan-400 mt-0.5">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
                       {!isLoggedOut && update.link && (
-                        <div className="pt-2 mt-auto">
+                        <div className="pt-4 border-t border-white/5 mt-auto">
                           <a 
                             href={update.link} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all duration-300 border border-white/10 w-full text-center"
+                            className="group inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 text-white hover:text-cyan-300 text-sm font-bold transition-all duration-300 border border-white/10 hover:border-cyan-500/30 w-full text-center"
                           >
                             🔍 View Update <ChevronRight size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
                           </a>
@@ -658,7 +809,7 @@ export default function PulsePage() {
                 );
               }
 
-              // 3. ANNOUNCEMENTS
+              // 3. ANNOUNCEMENTS (Medium-sized Details Card)
               if (update.category === "Announcements") {
                 const parsed = parseAnnouncementDetails(update);
                 return (
@@ -671,7 +822,7 @@ export default function PulsePage() {
                     <div className="relative z-10 flex-1 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between mb-4">
-                          <span className="px-3 py-1 bg-amber-500/10 text-amber-400 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-amber-500/20">
+                          <span className="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-amber-500/30">
                             🔔 Announcement
                           </span>
                           <span className="text-[10px] text-gray-500 font-medium">
@@ -679,24 +830,24 @@ export default function PulsePage() {
                           </span>
                         </div>
 
-                        <h2 className="text-lg font-bold text-white mb-2 leading-snug group-hover:text-amber-300 transition-colors">
+                        <h2 className="text-xl font-bold text-white mb-3 leading-snug group-hover:text-amber-300 transition-colors">
                           {parsed.title}
                         </h2>
 
-                        <p className="text-xs text-gray-400 line-clamp-4 leading-relaxed mb-4">
+                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
                           {parsed.summary}
                         </p>
                       </div>
 
                       {!isLoggedOut && update.link && (
-                        <div className="pt-2 mt-auto">
+                        <div className="pt-4 border-t border-white/5 mt-auto">
                           <a 
                             href={update.link} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-white/5 hover:bg-amber-500/10 text-white hover:text-amber-300 text-xs font-bold transition-all duration-300 border border-white/10 w-full text-center"
+                            className="group inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-2xl bg-white/5 hover:bg-amber-500/10 text-white hover:text-amber-300 text-sm font-bold transition-all duration-300 border border-white/10 w-full text-center"
                           >
-                            🔗 Read Details <ExternalLink size={12} />
+                            🔗 Read Full Notice <ExternalLink size={12} />
                           </a>
                         </div>
                       )}
@@ -705,7 +856,7 @@ export default function PulsePage() {
                 );
               }
 
-              // 4. PLACEMENTS
+              // 4. PLACEMENTS (Large Professional Card)
               if (update.category === "Placements") {
                 const parsed = parsePlacementDetails(update);
                 return (
@@ -720,7 +871,7 @@ export default function PulsePage() {
                         {/* Header Badge */}
                         <div className="flex items-center gap-2 mb-4">
                           <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-500/30">
-                            {update.category}
+                            🎓 {update.category}
                           </span>
                         </div>
 
@@ -731,38 +882,72 @@ export default function PulsePage() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="text-xs text-emerald-400 font-bold uppercase tracking-widest truncate">{parsed.company}</h3>
-                            <h2 className="text-base font-bold text-white leading-tight truncate group-hover:text-emerald-300 transition-colors">{parsed.role}</h2>
+                            <h2 className="text-lg md:text-xl font-bold text-white leading-tight group-hover:text-emerald-300 transition-colors">{parsed.role}</h2>
                           </div>
                         </div>
 
-                        <p className="text-xs text-gray-400 line-clamp-3 mb-5 leading-relaxed">
+                        {/* Full details description */}
+                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
                           {parsed.summary}
                         </p>
                       </div>
 
                       <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
+                        <hr className="border-white/5 mb-6" />
+
                         {/* Placement specs */}
-                        <div className="grid grid-cols-2 gap-3 mb-5">
-                          <div className="p-2.5 bg-white/[0.01] rounded-xl border border-white/5 flex flex-col justify-center">
-                            <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">Salary Package</span>
-                            <span className="text-xs text-emerald-400 font-bold truncate">{parsed.salaryPackage}</span>
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                            <span className="text-lg">💰</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">CTC Package</div>
+                              <div className="text-xs text-emerald-400 font-bold truncate">{parsed.salaryPackage}</div>
+                            </div>
                           </div>
-                          <div className="p-2.5 bg-white/[0.01] rounded-xl border border-white/5 flex flex-col justify-center">
-                            <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">Eligibility</span>
-                            <span className="text-xs text-white font-medium truncate" title={parsed.eligibility}>{parsed.eligibility}</span>
+
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                            <span className="text-lg">⏰</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Deadline</div>
+                              <div className="text-xs text-red-400 font-bold truncate">{parsed.deadline}</div>
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
+                            <span className="text-lg">🎓</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Eligibility</div>
+                              <div className="text-xs text-white font-medium truncate">{parsed.eligibility}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <hr className="border-white/5 mb-6" />
+
+                        {/* Skills Required */}
+                        <div className="mb-6">
+                          <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                            <span>💻</span> Skills Required
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {parsed.skills.map((skill, i) => (
+                              <span key={i} className="px-2.5 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-semibold border border-white/5">
+                                {skill}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       </div>
 
                       {!isLoggedOut && update.link && (
-                        <div className="pt-2 mt-auto">
+                        <div className="pt-4 border-t border-white/5 mt-auto">
                           <a 
                             href={update.link} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white/5 hover:bg-emerald-600/20 text-white hover:text-emerald-300 text-xs font-bold transition-all duration-300 border border-white/10 hover:border-emerald-500/30 w-full text-center cursor-pointer"
+                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white/5 hover:bg-emerald-600/20 text-white hover:text-emerald-300 text-sm font-bold transition-all duration-300 border border-white/10 hover:border-emerald-500/30 w-full text-center cursor-pointer"
                           >
-                            💼 View & Apply <ExternalLink size={12} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                            💼 View & Apply <ExternalLink size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
                           </a>
                         </div>
                       )}
