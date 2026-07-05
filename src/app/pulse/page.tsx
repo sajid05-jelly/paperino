@@ -146,6 +146,170 @@ function parseHackathonDetails(update: PulseUpdate): ExtractedDetails {
   };
 }
 
+interface InternshipDetails {
+  company: string;
+  role: string;
+  location: string;
+  stipend: string;
+  deadline: string;
+  summary: string;
+}
+
+function parseInternshipDetails(update: PulseUpdate): InternshipDetails {
+  const desc = update.description || "";
+  const title = update.title || "";
+  
+  let company = update.organizer && update.organizer !== "Unstop" && update.organizer !== "Devfolio" ? update.organizer : "";
+  if (!company) {
+    const match = title.match(/^([^–\-\|]+)/);
+    if (match) {
+      company = match[1].replace(/internship/i, "").trim();
+    }
+  }
+  if (!company) company = "Company Unknown";
+
+  let role = title;
+  const roleMatch = title.match(/(?:internship|intern)\s*-\s*(.*)/i) || title.match(/(.*)\s*(?:internship|intern)/i);
+  if (roleMatch) {
+    role = roleMatch[1].trim();
+  }
+
+  let location = update.location || "Remote / Office";
+  if (update.state && !location.toLowerCase().includes(update.state.toLowerCase()) && location !== "Location Unknown") {
+    location = `${location}, ${update.state}`;
+  }
+
+  let stipend = "Check Website";
+  const stipendMatch = desc.match(/(?:stipend|salary|package|pay)\s*[:\-\s]*₹?\s*(\d+(?:,\d+)*(?:\s*k|\s*lakh|\s*\/month)?)/i);
+  if (stipendMatch) {
+    stipend = stipendMatch[1].toLowerCase().includes("/month") ? `₹${stipendMatch[1]}` : `₹${stipendMatch[1]}/month`;
+  } else if (desc.toLowerCase().includes("unpaid")) {
+    stipend = "Unpaid";
+  } else if (desc.toLowerCase().includes("paid")) {
+    stipend = "Paid";
+  }
+
+  const deadline = update.deadline
+    ? new Date(update.deadline.seconds * 1000).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Check Website";
+
+  let summary = desc;
+  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
+  if (sentenceMatch) {
+    summary = sentenceMatch[0];
+  } else if (desc.length > 150) {
+    summary = desc.substring(0, 150) + "...";
+  }
+
+  return { company, role, location, stipend, deadline, summary };
+}
+
+interface WebsiteUpdateDetails {
+  title: string;
+  summary: string;
+  date: string;
+}
+
+function parseWebsiteUpdateDetails(update: PulseUpdate): WebsiteUpdateDetails {
+  const desc = update.description || "";
+  const date = update.createdAt
+    ? new Date(update.createdAt.seconds * 1000).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Recent";
+  
+  let summary = desc;
+  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
+  if (sentenceMatch) {
+    summary = sentenceMatch[0];
+  } else if (desc.length > 140) {
+    summary = desc.substring(0, 140) + "...";
+  }
+  return { title: update.title, summary, date };
+}
+
+interface AnnouncementDetails {
+  title: string;
+  summary: string;
+  date: string;
+}
+
+function parseAnnouncementDetails(update: PulseUpdate): AnnouncementDetails {
+  const desc = update.description || "";
+  const date = update.createdAt
+    ? new Date(update.createdAt.seconds * 1000).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Recent";
+  
+  let summary = desc;
+  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
+  if (sentenceMatch) {
+    summary = sentenceMatch[0];
+  } else if (desc.length > 160) {
+    summary = desc.substring(0, 160) + "...";
+  }
+  return { title: update.title, summary, date };
+}
+
+interface PlacementDetails {
+  company: string;
+  role: string;
+  salaryPackage: string;
+  eligibility: string;
+  logoLetter: string;
+  summary: string;
+}
+
+function parsePlacementDetails(update: PulseUpdate): PlacementDetails {
+  const desc = update.description || "";
+  const title = update.title || "";
+
+  let company = update.organizer || "Company Name";
+  if (company === "Unstop" || company === "Devfolio") {
+    const match = title.match(/^([^–\-\|]+)/);
+    company = match ? match[1].trim() : "Company Name";
+  }
+
+  let role = title;
+  const roleMatch = title.match(/(?:recruitment|placement|hiring|role)\s*-\s*(.*)/i) || title.match(/(.*)\s*(?:recruitment|placement|hiring|role)/i);
+  if (roleMatch) {
+    role = roleMatch[1].trim();
+  }
+
+  let salaryPackage = "Check Website";
+  const packageMatch = desc.match(/(?:package|lpa|ctc|salary)\s*[:\-\s]*₹?\s*(\d+(?:\.\d+)?\s*(?:lpa|lakhs|lakh|l)?)/i) || desc.match(/(\d+(?:\.\d+)?\s*(?:lpa|lakhs|lakh))/i);
+  if (packageMatch) {
+    salaryPackage = packageMatch[1].toUpperCase();
+  }
+
+  let eligibility = "All Eligible Streams";
+  const eligibilityMatch = desc.match(/(?:eligibility|eligible|batch|criteria)\s*[:\-\s]*([^\n.]+)/i);
+  if (eligibilityMatch) {
+    eligibility = eligibilityMatch[1].trim();
+  }
+
+  const logoLetter = company.charAt(0).toUpperCase();
+
+  let summary = desc;
+  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
+  if (sentenceMatch) {
+    summary = sentenceMatch[0];
+  } else if (desc.length > 140) {
+    summary = desc.substring(0, 140) + "...";
+  }
+
+  return { company, role, salaryPackage, eligibility, logoLetter, summary };
+}
+
 const CATEGORIES = [
   "All",
   "Announcements",
@@ -364,6 +528,250 @@ export default function PulsePage() {
             </div>
           ) : (
             filteredUpdates.map((update, idx) => {
+              // 1. INTERNSHIPS
+              if (update.category === "Internships") {
+                const parsed = parseInternshipDetails(update);
+                return (
+                  <div 
+                    key={update.id} 
+                    onClick={() => isLoggedOut && router.push("/login")}
+                    className={`group relative p-6 md:p-8 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both flex flex-col justify-between ${isLoggedOut ? "cursor-pointer" : ""} ${
+                      update.isPinned 
+                      ? 'bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]' 
+                      : 'bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 hover:shadow-xl hover:-translate-y-1'
+                    }`}
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
+                    {/* Glowing border effect on hover for normal cards */}
+                    {!update.isPinned && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/0 to-cyan-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
+                    )}
+
+                    <div className="relative z-10 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Header Badges */}
+                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                          <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-violet-500/30">
+                            {update.category}
+                          </span>
+                          {isNew(update.createdAt) && (
+                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Company and Role */}
+                        <h3 className="text-[11px] text-violet-400 uppercase font-bold tracking-widest mb-1">
+                          {parsed.company}
+                        </h3>
+                        <h2 className="text-xl font-bold text-white mb-3 leading-snug group-hover:text-violet-300 transition-colors">
+                          {parsed.role}
+                        </h2>
+
+                        {/* Description: 2-3 lines max */}
+                        <p className="text-xs text-gray-400 line-clamp-3 mb-5 leading-relaxed">
+                          {parsed.summary}
+                        </p>
+                      </div>
+
+                      <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
+                        {/* Compact Specs list */}
+                        <div className="space-y-2 mb-5">
+                          <div className="flex items-center justify-between text-xs py-1.5 border-b border-white/5">
+                            <span className="text-gray-500">📍 Location</span>
+                            <span className="text-white font-medium">{parsed.location}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs py-1.5 border-b border-white/5">
+                            <span className="text-gray-500">💰 Stipend</span>
+                            <span className="text-emerald-400 font-bold">{parsed.stipend}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs py-1.5 border-b border-white/5">
+                            <span className="text-gray-500">⏰ Deadline</span>
+                            <span className="text-red-400 font-medium">{parsed.deadline}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {!isLoggedOut && update.link && (
+                        <div className="pt-2 mt-auto">
+                          <a 
+                            href={update.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-all duration-300 w-full text-center cursor-pointer shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
+                          >
+                            🚀 Apply Now <ExternalLink size={12} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              // 2. WEBSITE UPDATES
+              if (update.category === "Website Updates") {
+                const parsed = parseWebsiteUpdateDetails(update);
+                return (
+                  <div 
+                    key={update.id} 
+                    onClick={() => isLoggedOut && router.push("/login")}
+                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
+                    <div className="relative z-10 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Header Badge & Date */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="px-3 py-1 bg-cyan-500/10 text-cyan-400 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/20">
+                            {update.category}
+                          </span>
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            Released: {parsed.date}
+                          </span>
+                        </div>
+
+                        <h2 className="text-lg font-bold text-white mb-2 leading-snug group-hover:text-cyan-300 transition-colors">
+                          {parsed.title}
+                        </h2>
+
+                        <p className="text-xs text-gray-400 line-clamp-3 mb-5 leading-relaxed">
+                          {parsed.summary}
+                        </p>
+                      </div>
+
+                      {!isLoggedOut && update.link && (
+                        <div className="pt-2 mt-auto">
+                          <a 
+                            href={update.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all duration-300 border border-white/10 w-full text-center"
+                          >
+                            🔍 View Update <ChevronRight size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              // 3. ANNOUNCEMENTS
+              if (update.category === "Announcements") {
+                const parsed = parseAnnouncementDetails(update);
+                return (
+                  <div 
+                    key={update.id} 
+                    onClick={() => isLoggedOut && router.push("/login")}
+                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
+                    <div className="relative z-10 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="px-3 py-1 bg-amber-500/10 text-amber-400 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-amber-500/20">
+                            🔔 Announcement
+                          </span>
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            {parsed.date}
+                          </span>
+                        </div>
+
+                        <h2 className="text-lg font-bold text-white mb-2 leading-snug group-hover:text-amber-300 transition-colors">
+                          {parsed.title}
+                        </h2>
+
+                        <p className="text-xs text-gray-400 line-clamp-4 leading-relaxed mb-4">
+                          {parsed.summary}
+                        </p>
+                      </div>
+
+                      {!isLoggedOut && update.link && (
+                        <div className="pt-2 mt-auto">
+                          <a 
+                            href={update.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-white/5 hover:bg-amber-500/10 text-white hover:text-amber-300 text-xs font-bold transition-all duration-300 border border-white/10 w-full text-center"
+                          >
+                            🔗 Read Details <ExternalLink size={12} />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              // 4. PLACEMENTS
+              if (update.category === "Placements") {
+                const parsed = parsePlacementDetails(update);
+                return (
+                  <div 
+                    key={update.id} 
+                    onClick={() => isLoggedOut && router.push("/login")}
+                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
+                    <div className="relative z-10 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Header Badge */}
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-500/30">
+                            {update.category}
+                          </span>
+                        </div>
+
+                        {/* Company info with virtual logo */}
+                        <div className="flex gap-4 items-center mb-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-xl shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                            {parsed.logoLetter}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-xs text-emerald-400 font-bold uppercase tracking-widest truncate">{parsed.company}</h3>
+                            <h2 className="text-base font-bold text-white leading-tight truncate group-hover:text-emerald-300 transition-colors">{parsed.role}</h2>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-gray-400 line-clamp-3 mb-5 leading-relaxed">
+                          {parsed.summary}
+                        </p>
+                      </div>
+
+                      <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
+                        {/* Placement specs */}
+                        <div className="grid grid-cols-2 gap-3 mb-5">
+                          <div className="p-2.5 bg-white/[0.01] rounded-xl border border-white/5 flex flex-col justify-center">
+                            <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">Salary Package</span>
+                            <span className="text-xs text-emerald-400 font-bold truncate">{parsed.salaryPackage}</span>
+                          </div>
+                          <div className="p-2.5 bg-white/[0.01] rounded-xl border border-white/5 flex flex-col justify-center">
+                            <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">Eligibility</span>
+                            <span className="text-xs text-white font-medium truncate" title={parsed.eligibility}>{parsed.eligibility}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {!isLoggedOut && update.link && (
+                        <div className="pt-2 mt-auto">
+                          <a 
+                            href={update.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white/5 hover:bg-emerald-600/20 text-white hover:text-emerald-300 text-xs font-bold transition-all duration-300 border border-white/10 hover:border-emerald-500/30 w-full text-center cursor-pointer"
+                          >
+                            💼 View & Apply <ExternalLink size={12} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              // 5. DEFAULT / HACKATHONS
               const parsed = parseHackathonDetails(update);
               return (
                 <div 
