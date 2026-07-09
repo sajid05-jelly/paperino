@@ -5,6 +5,8 @@ import { Plus, X, CheckCircle2, BookOpen } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useSound } from "@/hooks/useSound";
 import { useAuth } from "@/context/AuthContext";
+import { notifyAdmins } from "@/lib/notifications";
+import { db } from "@/lib/firebase";
 
 interface CreateCourseModalProps {
   isOpen: boolean;
@@ -12,33 +14,81 @@ interface CreateCourseModalProps {
 }
 
 export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModalProps) {
-  const { createSubject } = useSubjects();
+  const { departments, createDepartment, createSubject } = useSubjects();
   const { playSuccess } = useSound();
   const { user, isContributor, isAdmin } = useAuth();
+
+  const [deptMode, setDeptMode] = useState<"select" | "new">("select");
+  const [selectedDeptId, setSelectedDeptId] = useState("");
+  
+  // New Department fields
+  const [newDeptName, setNewDeptName] = useState("");
+  const [newDeptCode, setNewDeptCode] = useState("");
+  const [newDeptSemesters, setNewDeptSemesters] = useState("8");
+
+  // Subject fields
   const [semester, setSemester] = useState("1");
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  const [subjectName, setSubjectName] = useState("");
+  const [subjectCode, setSubjectCode] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  // Only show approved departments to non-admins
+  const visibleDepartments = departments.filter(d => d.status === "approved" || isAdmin);
+
   useEffect(() => {
     if (isOpen) {
+      setDeptMode("select");
+      // Set default selected department to the first one available
+      const firstDept = visibleDepartments[0]?.id || "";
+      setSelectedDeptId(firstDept);
+      
+      setNewDeptName("");
+      setNewDeptCode("");
+      setNewDeptSemesters("8");
+      
       setSemester("1");
-      setName("");
-      setCode("");
+      setSubjectName("");
+      setSubjectCode("");
+      
       setError("");
       setSuccess(false);
       setLoading(false);
     }
-  }, [isOpen]);
+  }, [isOpen, departments]);
+
+  // Update semester options when department changes
+  useEffect(() => {
+    if (deptMode === "select" && selectedDeptId) {
+      setSemester("1");
+    }
+  }, [selectedDeptId, deptMode]);
 
   if (!isOpen) return null;
 
+  // Calculate semester options list dynamically
+  const getSemesterOptions = () => {
+    if (deptMode === "new") {
+      const semCount = parseInt(newDeptSemesters) || 8;
+      return Array.from({ length: semCount }, (_, i) => (i + 1).toString());
+    } else {
+      const activeDept = visibleDepartments.find(d => d.id === selectedDeptId);
+      const semCount = activeDept?.totalSemesters || 8;
+      return Array.from({ length: semCount }, (_, i) => (i + 1).toString());
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError("Course Name is required.");
+    
+    if (deptMode === "new" && !newDeptName.trim()) {
+      setError("Department Name is required.");
+      return;
+    }
+    if (!subjectName.trim()) {
+      setError("Subject Name is required.");
       return;
     }
 
@@ -47,12 +97,54 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
 
     try {
       const isOnlyContributor = isContributor && !isAdmin;
-      await createSubject(semester, name, code, isOnlyContributor, user?.uid, user?.displayName || user?.email || "Unknown");
+      let finalDeptId = selectedDeptId;
+
+      if (deptMode === "new") {
+        // Create department request
+        finalDeptId = await createDepartment(
+          newDeptName,
+          newDeptCode || newDeptName.substring(0, 3).toUpperCase(),
+          parseInt(newDeptSemesters) || 8,
+          isOnlyContributor,
+          user?.uid,
+          user?.displayName || user?.email || "Unknown"
+        );
+
+        if (isOnlyContributor) {
+          await notifyAdmins(
+            db,
+            "New Department Suggestion",
+            `${user?.displayName || "A contributor"} suggested a new department: ${newDeptName}.`,
+            "department_suggested"
+          );
+        }
+      }
+
+      // Create subject request
+      await createSubject(
+        finalDeptId,
+        semester,
+        subjectName,
+        subjectCode,
+        isOnlyContributor,
+        user?.uid,
+        user?.displayName || user?.email || "Unknown"
+      );
+
+      if (isOnlyContributor) {
+        await notifyAdmins(
+          db,
+          "New Subject Suggestion",
+          `${user?.displayName || "A contributor"} suggested a new subject: ${subjectName} under ${deptMode === 'new' ? newDeptName : finalDeptId}.`,
+          "subject_suggested"
+        );
+      }
+
       setSuccess(true);
       playSuccess();
       setTimeout(() => onClose(), 2000);
     } catch (err: any) {
-      setError(err.message || "Failed to create course.");
+      setError(err.message || "Failed to create department / subject.");
       setLoading(false);
     }
   };
@@ -66,7 +158,7 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
 
         <div className="p-6 border-b border-white/5 flex justify-between items-center relative z-10 bg-white/[0.02]">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Plus className="text-fuchsia-400" /> Create New Course
+            <Plus className="text-fuchsia-400" /> Dynamic Course Creation
           </h2>
           <button onClick={!loading ? onClose : undefined} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors" disabled={loading}>
             <X size={20} />
@@ -80,16 +172,91 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
                 <CheckCircle2 size={40} className="text-emerald-400" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">
-                {(isContributor && !isAdmin) ? "Course Requested!" : "Course Created!"}
+                {(isContributor && !isAdmin) ? "Request Submitted!" : "Course Added!"}
               </h3>
               <p className="text-emerald-400 text-center">
                 {(isContributor && !isAdmin) 
-                  ? "Your request has been sent for admin approval." 
-                  : "It is now available on the platform."}
+                  ? "Your suggestions have been submitted for administrator review." 
+                  : "Changes are now live on the platform."}
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              
+              {/* Step 1: Select Department */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">Department</label>
+                <select 
+                  value={deptMode === "new" ? "create_new" : selectedDeptId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "create_new") {
+                      setDeptMode("new");
+                    } else {
+                      setDeptMode("select");
+                      setSelectedDeptId(val);
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer"
+                >
+                  {visibleDepartments.map(d => (
+                    <option key={d.id} value={d.id} className="bg-[#07050d] text-white">
+                      {d.name} ({d.code})
+                    </option>
+                  ))}
+                  <option value="create_new" className="bg-[#07050d] text-fuchsia-400 font-semibold">
+                    + Create New Department
+                  </option>
+                </select>
+              </div>
+
+              {/* If "Create New Department" Selected, render extra department configuration fields */}
+              {deptMode === "new" && (
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                  <h3 className="text-xs font-bold text-fuchsia-400 uppercase tracking-widest">New Department Configuration</h3>
+                  <div>
+                    <label className="block text-[11px] font-medium text-gray-400 mb-1">Department Name</label>
+                    <input 
+                      type="text"
+                      value={newDeptName}
+                      onChange={(e) => setNewDeptName(e.target.value)}
+                      placeholder="e.g. Artificial Intelligence"
+                      required
+                      disabled={loading}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-400 mb-1">Department Code (Optional)</label>
+                      <input 
+                        type="text"
+                        value={newDeptCode}
+                        onChange={(e) => setNewDeptCode(e.target.value)}
+                        placeholder="e.g. AI"
+                        disabled={loading}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-400 mb-1">Number of Semesters</label>
+                      <input 
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={newDeptSemesters}
+                        onChange={(e) => setNewDeptSemesters(e.target.value)}
+                        required
+                        disabled={loading}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Dynamic Semester Selector */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1.5">Semester</label>
                 <select 
@@ -98,35 +265,39 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
                   disabled={loading}
                   className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer"
                 >
-                  {[1,2,3,4,5,6,7,8].map(s => (
+                  {getSemesterOptions().map(s => (
                     <option key={s} value={s} className="bg-[#07050d] text-white">Semester {s}</option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Course Name</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)} 
-                  placeholder="e.g. Artificial Intelligence" 
-                  required 
-                  disabled={loading}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors" 
-                />
-              </div>
+              {/* Step 3: Create Subject details */}
+              <div className="border-t border-white/5 pt-3 space-y-3">
+                <h3 className="text-xs font-bold text-fuchsia-400 uppercase tracking-widest">Subject Information</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Subject Name</label>
+                  <input 
+                    type="text" 
+                    value={subjectName} 
+                    onChange={(e) => setSubjectName(e.target.value)} 
+                    placeholder="e.g. Machine Learning" 
+                    required 
+                    disabled={loading}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors" 
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Subject Code (Optional)</label>
-                <input 
-                  type="text" 
-                  value={code} 
-                  onChange={(e) => setCode(e.target.value)} 
-                  placeholder="e.g. 21CSC301J" 
-                  disabled={loading}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors uppercase" 
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Subject Code (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={subjectCode} 
+                    onChange={(e) => setSubjectCode(e.target.value)} 
+                    placeholder="e.g. 21CSC302J" 
+                    disabled={loading}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors uppercase" 
+                  />
+                </div>
               </div>
 
               {error && (
@@ -137,17 +308,18 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
 
               <button 
                 type="submit" 
-                disabled={loading || !name.trim()} 
-                className="w-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-3 px-4 rounded-xl transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)]"
+                disabled={loading || !subjectName.trim() || (deptMode === "new" && !newDeptName.trim())} 
+                className="w-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)]"
               >
                 {loading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Creating...
+                    Submitting...
                   </>
                 ) : (
                   <>
-                    <BookOpen size={18} /> Create Course
+                    <BookOpen size={18} /> 
+                    {(isContributor && !isAdmin) ? "Submit Suggestion" : "Create Course"}
                   </>
                 )}
               </button>

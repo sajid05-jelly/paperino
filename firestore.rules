@@ -45,6 +45,13 @@ service cloud.firestore {
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']))) || isAdmin();
     }
 
+    // ── Departments ─────────────────────────────────────────────────────────
+    match /departments/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isNotBlocked();
+      allow update, delete: if isAdmin();
+    }
+
     // ── Dynamic Subjects / Courses ──────────────────────────────────────────
     match /dynamic_subjects/{docId} {
       allow read: if true;

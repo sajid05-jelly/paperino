@@ -12,6 +12,7 @@ interface Material {
   id: string;
   semesterId: string;
   subjectId: string;
+  departmentId?: string;
   title: string;
   category: string;
   fileId?: string;
@@ -81,7 +82,7 @@ export default function ContributorDashboardPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const editSubjects = editingMat?.semesterId ? dynamicSubjects[editingMat.semesterId] || [] : [];
+  const editSubjects = editingMat?.semesterId ? dynamicSubjects[editingMat.departmentId || "btech"]?.[editingMat.semesterId] || [] : [];
 
   return (
     <div className="w-full">
@@ -205,7 +206,7 @@ export default function ContributorDashboardPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1">Semester</label>
-                  <select required value={editingMat.semesterId} onChange={e => setEditingMat({...editingMat, semesterId: e.target.value, subjectId: dynamicSubjects[e.target.value]?.[0]?.id || ""})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-fuchsia-500/50 cursor-pointer">
+                  <select required value={editingMat.semesterId} onChange={e => setEditingMat({...editingMat, semesterId: e.target.value, subjectId: dynamicSubjects[editingMat.departmentId || "btech"]?.[e.target.value]?.[0]?.id || ""})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-fuchsia-500/50 cursor-pointer">
                     {Array.from({ length: 8 }, (_, i) => i + 1).map(sem => (
                       <option key={sem} value={sem.toString()} className="bg-[#0a0714] text-white">Semester {sem}</option>
                     ))}

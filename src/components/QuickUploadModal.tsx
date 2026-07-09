@@ -15,6 +15,7 @@ interface QuickUploadModalProps {
   onClose: () => void;
   semesterId: string;
   subjectId: string;
+  departmentId?: string;
   category: "pyq" | "notes" | "questions";
   existingMaterials?: any[];
   isContributor?: boolean;
@@ -26,6 +27,7 @@ export default function QuickUploadModal({
   onClose,
   semesterId,
   subjectId,
+  departmentId = "btech",
   category,
   existingMaterials = [],
   isContributor = false,
@@ -131,6 +133,7 @@ export default function QuickUploadModal({
       const result = await uploadToDriveDirect(file, semesterId, subjectId);
 
       const newMaterial = {
+        departmentId,
         semesterId,
         subjectId,
         title,

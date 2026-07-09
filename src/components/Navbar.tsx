@@ -112,7 +112,7 @@ export default function Navbar() {
           <div 
             className="hidden lg:flex flex-1 items-center justify-center gap-1 xl:gap-2 font-medium min-w-0"
           >
-            <Link href="/btech" className={getLinkClass("/btech")}>B.Tech</Link>
+            <Link href="/courses" className={getLinkClass("/courses")}>Courses</Link>
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
             <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
             <Link href="/ats" className={getLinkClass("/ats")}>ATS</Link>
@@ -267,7 +267,7 @@ export default function Navbar() {
 
               {/* Main Tools */}
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Tools</p>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/btech" className={getMobileLinkClass("/btech")}>B.Tech Resources</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/courses" className={getMobileLinkClass("/courses")}>Courses Resources</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/ats" className={getMobileLinkClass("/ats")}>ATS Analyzer</Link>

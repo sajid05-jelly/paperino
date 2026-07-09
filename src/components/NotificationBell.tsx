@@ -27,6 +27,8 @@ const TYPE_META: Record<
   material_uploaded: { dot: "bg-cyan-400", icon: "📤" },
   material_approved: { dot: "bg-emerald-400", icon: "✅" },
   material_rejected: { dot: "bg-rose-400", icon: "❌" },
+  department_suggested: { dot: "bg-fuchsia-400", icon: "🏢" },
+  subject_suggested: { dot: "bg-purple-400", icon: "📚" },
 };
 
 /* ── Component ────────────────────────────────────────── */

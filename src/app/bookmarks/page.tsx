@@ -49,8 +49,9 @@ export default function BookmarksPage() {
     }
   };
 
-  const getSubjectName = (semId: string, subjectId: string) => {
-    return dynamicSubjects[semId]?.find(s => s.id === subjectId)?.name || subjectId;
+  const getSubjectName = (semId: string, subjectId: string, departmentId?: string) => {
+    const dept = departmentId || "btech";
+    return dynamicSubjects[dept]?.[semId]?.find((s: any) => s.id === subjectId)?.name || subjectId;
   };
 
   const getCategoryLabel = (category: string) => {
@@ -107,13 +108,13 @@ export default function BookmarksPage() {
           <Folder size={64} className="mx-auto text-gray-600 mb-6" />
           <h2 className="text-2xl font-bold text-white mb-4">No bookmarks yet</h2>
           <p className="text-gray-400 text-lg max-w-md mx-auto mb-8">
-            You haven't saved any materials yet. Go browse the B.Tech subjects and click the bookmark icon to save items here!
+            You haven't saved any materials yet. Go browse subjects and click the bookmark icon to save items here!
           </p>
           <Link 
-            href="/btech" 
+            href="/courses" 
             className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-8 py-3 rounded-full font-semibold transition-colors"
           >
-            Explore B.Tech
+            Explore Courses
           </Link>
         </div>
       ) : (
@@ -141,7 +142,7 @@ export default function BookmarksPage() {
                   </p>
                   <p className="text-sm text-gray-400 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                    {getSubjectName(mat.semesterId, mat.subjectId)}
+                    {getSubjectName(mat.semesterId, mat.subjectId, mat.departmentId)}
                   </p>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle } from "lucide-react";
+import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle, GraduationCap } from "lucide-react";
 import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -15,6 +15,10 @@ export default function AdminDashboard() {
     mostVisited: "N/A",
     topDepartment: "N/A",
     highestDownloadedFile: "N/A",
+    totalDepts: 0,
+    pendingDepts: 0,
+    approvedDepts: 0,
+    totalSubjects: 0
   });
   const [materialCounts, setMaterialCounts] = useState({
     pyqs: 0,
@@ -48,7 +52,11 @@ export default function AdminDashboard() {
           getCountFromServer(query(matsColl, where("category", "==", "questions"))),
           getDoc(doc(db, "platform_stats", "global")),
           getDocs(query(collection(db, "platform_stats", "subjects", "visits"), orderBy("visits", "desc"), limit(1))),
-          getDocs(query(collection(db, "platform_stats", "materials", "downloads"), orderBy("downloads", "desc"), limit(1)))
+          getDocs(query(collection(db, "platform_stats", "materials", "downloads"), orderBy("downloads", "desc"), limit(1))),
+          getCountFromServer(collection(db, "departments")),
+          getCountFromServer(query(collection(db, "departments"), where("status", "==", "pending"))),
+          getCountFromServer(query(collection(db, "departments"), where("status", "==", "approved"))),
+          getCountFromServer(query(collection(db, "dynamic_subjects"), where("status", "==", "approved")))
         ]);
 
         // Helper to extract data or log error
@@ -71,6 +79,10 @@ export default function AdminDashboard() {
         const globalStatsSnap = getResult(results[6], "Global Stats", { exists: () => false, data: () => ({ atsUsage: 0, aiUsage: 0 }) });
         const topSubjectSnap = getResult(results[7], "Top Subject", { empty: true, docs: [] });
         const topDownloadSnap = getResult(results[8], "Top Download", { empty: true, docs: [] });
+        const totalDeptsSnap = getResult(results[9], "Total Depts", { data: () => ({ count: 0 }) });
+        const pendingDeptsSnap = getResult(results[10], "Pending Depts", { data: () => ({ count: 0 }) });
+        const approvedDeptsSnap = getResult(results[11], "Approved Depts", { data: () => ({ count: 0 }) });
+        const totalSubjectsSnap = getResult(results[12], "Total Subjects", { data: () => ({ count: 0 }) });
 
         const totalMaterials = totalMatsSnap.data().count;
         const totalUsers = totalUsersSnap.data().count;
@@ -79,6 +91,11 @@ export default function AdminDashboard() {
         const pyqs = pyqsSnap.data().count;
         const notes = notesSnap.data().count;
         const questions = questionsSnap.data().count;
+
+        const totalDepts = totalDeptsSnap.data().count;
+        const pendingDepts = pendingDeptsSnap.data().count;
+        const approvedDepts = approvedDeptsSnap.data().count;
+        const totalSubjects = totalSubjectsSnap.data().count;
 
         const manuals = 0; 
         const syllabus = 0;
@@ -106,7 +123,11 @@ export default function AdminDashboard() {
           aiUsage,
           mostVisited,
           topDepartment: "Pending Update", // Static for now based on original code
-          highestDownloadedFile
+          highestDownloadedFile,
+          totalDepts,
+          pendingDepts,
+          approvedDepts,
+          totalSubjects
         });
         setMaterialCounts({ pyqs, notes, manuals, syllabus, questions, other });
         
@@ -192,6 +213,31 @@ export default function AdminDashboard() {
               <p className="text-3xl font-bold text-white">{stats.atsUsage.toLocaleString()}</p>
             </div>
 
+          </div>
+
+          {/* Course Management Analytics Grid */}
+          <div className="glass-panel p-6 rounded-3xl border border-white/5 relative overflow-hidden">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <GraduationCap className="text-purple-400" size={20} /> Course Management Analytics
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="vision-glass p-5 rounded-2xl relative overflow-hidden group">
+                <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Total Departments</h3>
+                <p className="text-3xl font-bold text-white">{stats.totalDepts.toLocaleString()}</p>
+              </div>
+              <div className="vision-glass p-5 rounded-2xl relative overflow-hidden group">
+                <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Pending Requests</h3>
+                <p className="text-3xl font-bold text-amber-400">{stats.pendingDepts.toLocaleString()}</p>
+              </div>
+              <div className="vision-glass p-5 rounded-2xl relative overflow-hidden group">
+                <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Approved Depts</h3>
+                <p className="text-3xl font-bold text-emerald-400">{stats.approvedDepts.toLocaleString()}</p>
+              </div>
+              <div className="vision-glass p-5 rounded-2xl relative overflow-hidden group">
+                <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Total Active Subjects</h3>
+                <p className="text-3xl font-bold text-white">{stats.totalSubjects.toLocaleString()}</p>
+              </div>
+            </div>
           </div>
 
           {/* Detailed Distribution (Custom CSS Charts) */}
