@@ -405,6 +405,7 @@ export default function PulsePage() {
       
       const getSortScore = (update: PulseUpdate) => {
         if (update.isPinned) return 1000;
+        if (isNew(update.createdAt)) return 900;
         
         const locationLower = (update.location || "").toLowerCase();
         const stateLower = (update.state || "").toLowerCase();
@@ -621,6 +622,11 @@ export default function PulsePage() {
                       <div>
                         {/* Header Badges */}
                         <div className="flex flex-wrap items-center gap-2 mb-4">
+                          {isNew(update.createdAt) && (
+                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
+                              NEW
+                            </span>
+                          )}
                           <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-violet-500/30">
                             💼 {update.category}
                           </span>
@@ -628,12 +634,6 @@ export default function PulsePage() {
                           {update.location && (
                             <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-white/10 flex items-center gap-1">
                               📍 {update.location}
-                            </span>
-                          )}
-
-                          {isNew(update.createdAt) && (
-                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
-                              NEW
                             </span>
                           )}
                         </div>
@@ -739,6 +739,11 @@ export default function PulsePage() {
                         {/* Header Badge & Date */}
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
+                            {isNew(update.createdAt) && (
+                              <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
+                                NEW
+                              </span>
+                            )}
                             <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30">
                               🚀 {update.category}
                             </span>
@@ -764,17 +769,7 @@ export default function PulsePage() {
                       <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
                         <hr className="border-white/5 mb-6" />
 
-                        {/* Affected Modules */}
-                        <div className="mb-5">
-                          <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-2">Affected Modules</div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {parsed.modules.map((mod, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded text-[9px] font-bold border border-cyan-500/20">
-                                {mod}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+
 
                         {/* What's New Bullet Points */}
                         <div className="mb-6">
@@ -822,9 +817,16 @@ export default function PulsePage() {
                     <div className="relative z-10 flex-1 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between mb-4">
-                          <span className="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-amber-500/30">
-                            🔔 Announcement
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {isNew(update.createdAt) && (
+                              <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
+                                NEW
+                              </span>
+                            )}
+                            <span className="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-amber-500/30">
+                              🔔 Announcement
+                            </span>
+                          </div>
                           <span className="text-[10px] text-gray-500 font-medium">
                             {parsed.date}
                           </span>
@@ -870,6 +872,11 @@ export default function PulsePage() {
                       <div>
                         {/* Header Badge */}
                         <div className="flex items-center gap-2 mb-4">
+                          {isNew(update.createdAt) && (
+                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
+                              NEW
+                            </span>
+                          )}
                           <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-500/30">
                             🎓 {update.category}
                           </span>
@@ -978,6 +985,12 @@ export default function PulsePage() {
                     <div>
                       {/* Badges */}
                       <div className="flex flex-wrap items-center gap-2 mb-4">
+                        {isNew(update.createdAt) && !update.isPinned && (
+                          <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse">
+                            NEW
+                          </span>
+                        )}
+
                         <span className="px-3 py-1 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
                           {update.category}
                         </span>
@@ -1001,7 +1014,7 @@ export default function PulsePage() {
                         )}
                         
                         {update.verifiedSource && (
-                          <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-green-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(34,197,94,0.3)]" title="Scraped and verified from authentic sources">
+                          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-amber-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(245,158,11,0.3)]" title="Scraped and verified from authentic sources">
                             <ShieldCheck size={12} /> VERIFIED SOURCE
                           </span>
                         )}
@@ -1015,12 +1028,6 @@ export default function PulsePage() {
                         {update.isPinned && (
                           <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-violet-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
                             <Pin size={10} /> PINNED
-                          </span>
-                        )}
-
-                        {isNew(update.createdAt) && !update.isPinned && (
-                          <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse">
-                            NEW
                           </span>
                         )}
                       </div>
