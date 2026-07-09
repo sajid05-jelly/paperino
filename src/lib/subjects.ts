@@ -92,8 +92,6 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "mt", name: "Marine Technology" }
   ],
   "7": [
-    { id: "bda", name: "Big Data Analytics" },
-    { id: "iot", name: "Internet of Things" }
   ],
   "8": [
     { id: "proj", name: "Major Project" },
