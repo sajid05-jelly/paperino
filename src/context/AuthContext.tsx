@@ -88,6 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             let needsUpdate = false;
             const updates: any = {};
 
+            const allowedAdminsList = [
+              "mohamedsajid.sa@gmail.com",
+              "sudharajsekar2005@gmail.com",
+              "admin.paperinoirfan27@gmail.com",
+              "admin.paperinosam14@gmail.com"
+            ];
+            const envAdminsList = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",") || [];
+            const allAdminsList = [...allowedAdminsList, ...envAdminsList].map(email => email.trim().toLowerCase());
+            const emailIsAdmin = !!currentUser && !!currentUser.email && allAdminsList.includes(currentUser.email.toLowerCase());
+
+            if (emailIsAdmin && data.role !== "admin") {
+              needsUpdate = true;
+              updates.role = "admin";
+              data.role = "admin";
+            }
+
             if (data.points === undefined || data.uploads === undefined || data.seasonPoints === undefined || data.lastPulseReadAt === undefined) {
               needsUpdate = true;
               updates.points = data.points !== undefined ? data.points : 0;
@@ -134,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await setDoc(userRef, {
               displayName: currentUser.displayName,
               email: currentUser.email,
-              role: "student",
+              role: currentIsAdmin ? "admin" : "student",
               status: "active",
               points: 0,
               uploads: 0,

@@ -48,7 +48,7 @@ service cloud.firestore {
     // ── Departments ─────────────────────────────────────────────────────────
     match /departments/{docId} {
       allow read: if true;
-      allow create: if isSignedIn() && isNotBlocked();
+      allow create: if request.auth != null;
       allow update, delete: if isAdmin();
     }
 
