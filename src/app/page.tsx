@@ -1,11 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Bookmark, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useSubjects } from "@/context/SubjectsContext";
 
-const Testimonials = dynamic(() => import("@/components/Testimonials"));
-const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"));
+const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: false });
+const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function Home() {
+  const { departments, loading } = useSubjects();
+  const approvedDepts = departments.filter(d => d.status === "approved");
+
   return (
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">
       <AmbientOrbs />
@@ -41,28 +47,46 @@ export default function Home() {
       </section>
 
       {/* Courses Section */}
-      <section className="w-full max-w-3xl mx-auto mb-24">
-        <div className="flex items-center justify-center mb-8">
+      <section className="w-full max-w-6xl mx-auto mb-24">
+        <div className="flex items-center justify-center mb-10">
           <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
             <Layers className="text-purple-400" aria-hidden="true" />
             Explore Courses
           </h2>
         </div>
 
-        <div className="flex justify-center w-full">
-          <Link href="/btech" className="w-full md:w-2/3">
-            <div className="vision-glass p-8 md:p-10 h-full group cursor-pointer relative overflow-hidden vision-hover">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500 to-fuchsia-400 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
-              <div className="flex items-center justify-between mb-8 relative z-10">
-                <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-lg liquid-btn">
-                  B.TECH
-                </div>
-                <BookOpen size={32} className="text-gray-500 group-hover:text-purple-400 transition-colors" aria-hidden="true" />
-              </div>
-              <h3 className="text-3xl md:text-4xl font-bold text-white mb-4 relative z-10 tracking-tight">Bachelor of Technology</h3>
-              <p className="text-gray-400 relative z-10 text-lg md:text-xl font-light leading-relaxed">Access all 8 semesters of carefully curated question papers, notes, and lab manuals.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full place-items-stretch">
+          {loading ? (
+            <div className="flex justify-center items-center py-16 col-span-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
             </div>
-          </Link>
+          ) : approvedDepts.length === 0 ? (
+            <div className="text-gray-400 py-16 text-center col-span-full">
+              No approved courses available yet.
+            </div>
+          ) : (
+            approvedDepts.map(dept => (
+              <Link href={`/courses/${dept.id}`} key={dept.id} className="w-full flex">
+                <div className="vision-glass p-8 w-full group cursor-pointer relative overflow-hidden vision-hover flex flex-col justify-between rounded-[2rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-violet-500 to-fuchsia-400 rounded-full blur-[60px] opacity-10 group-hover:opacity-30 transition-opacity duration-700"></div>
+                  <div className="relative z-10 flex flex-col h-full justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-xs tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-md">
+                          {dept.code || dept.id.toUpperCase()}
+                        </div>
+                        <BookOpen size={28} className="text-gray-500 group-hover:text-purple-400 transition-colors" aria-hidden="true" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-purple-300 transition-colors">{dept.name}</h3>
+                      <p className="text-gray-400 text-sm font-light leading-relaxed">
+                        Access all {dept.totalSemesters} semesters of carefully curated question papers, notes, and lab manuals.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
         </div>
       </section>
 
