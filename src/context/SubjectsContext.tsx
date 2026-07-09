@@ -100,7 +100,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         deptList.push({ id: docSnap.id, ...docSnap.data() } as Department);
       });
 
-      // Seed B.Tech department if empty
+      // Seed B.Tech department virtually/locally if empty, and try to persist it
       if (deptList.length === 0) {
         const defaultBTech: Department = {
           id: "btech",
@@ -110,14 +110,18 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           createdBy: "system",
           status: "approved"
         };
-        await setDoc(doc(db, "departments", "btech"), {
-          name: defaultBTech.name,
-          code: defaultBTech.code,
-          totalSemesters: defaultBTech.totalSemesters,
-          createdBy: defaultBTech.createdBy,
-          status: defaultBTech.status,
-          createdAt: serverTimestamp()
-        });
+        try {
+          await setDoc(doc(db, "departments", "btech"), {
+            name: defaultBTech.name,
+            code: defaultBTech.code,
+            totalSemesters: defaultBTech.totalSemesters,
+            createdBy: defaultBTech.createdBy,
+            status: defaultBTech.status,
+            createdAt: serverTimestamp()
+          });
+        } catch (seedingError) {
+          console.warn("[Seeding] Skipped writing B.Tech department due to permission levels:", seedingError);
+        }
         deptList = [defaultBTech];
       }
 
