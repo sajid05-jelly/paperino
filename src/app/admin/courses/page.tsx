@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Archive } from "lucide-react";
 import { useSound } from "@/hooks/useSound";
 import { useSubjects } from "@/context/SubjectsContext";
+import { notifyUser } from "@/lib/notifications";
 
 interface DepartmentRequest {
   id: string;
@@ -77,10 +78,22 @@ export default function AdminCoursesPage() {
   const handleApproveDept = async (id: string) => {
     setActionLoading(id);
     try {
+      const dept = departmentsList.find(d => d.id === id);
       await updateDoc(doc(db, "departments", id), { status: "approved" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "approved" } : d));
       playSuccess();
       await refreshSubjects();
+
+      // Notify the contributor who created this department
+      if (dept?.createdBy) {
+        await notifyUser(
+          db,
+          dept.createdBy,
+          "Department Approved! ✅",
+          `Your department request "${dept.name}" has been approved and is now live.`,
+          "department_approved"
+        );
+      }
     } catch (error) {
       console.error("Error approving department:", error);
       alert("Failed to approve department.");
@@ -92,11 +105,23 @@ export default function AdminCoursesPage() {
   const handleRejectDept = async (id: string) => {
     setActionLoading(id);
     try {
+      const dept = departmentsList.find(d => d.id === id);
       // Archive (update status to rejected) instead of delete
       await updateDoc(doc(db, "departments", id), { status: "rejected" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "rejected" } : d));
       playSuccess();
       await refreshSubjects();
+
+      // Notify the contributor who created this department
+      if (dept?.createdBy) {
+        await notifyUser(
+          db,
+          dept.createdBy,
+          "Department Request Rejected",
+          `Your department request "${dept.name}" has been rejected. Please contact an admin for details.`,
+          "department_rejected"
+        );
+      }
     } catch (error) {
       console.error("Error rejecting department:", error);
       alert("Failed to reject department.");
@@ -108,10 +133,22 @@ export default function AdminCoursesPage() {
   const handleApproveSub = async (id: string) => {
     setActionLoading(id);
     try {
+      const sub = subjectsList.find(s => s.id === id);
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "approved" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "approved" } : s));
       playSuccess();
       await refreshSubjects();
+
+      // Notify the contributor who created this subject
+      if (sub?.contributorId) {
+        await notifyUser(
+          db,
+          sub.contributorId,
+          "Subject Approved! ✅",
+          `Your subject request "${sub.name}" has been approved and is now live.`,
+          "subject_approved"
+        );
+      }
     } catch (error) {
       console.error("Error approving subject:", error);
       alert("Failed to approve subject.");
@@ -123,11 +160,23 @@ export default function AdminCoursesPage() {
   const handleRejectSub = async (id: string) => {
     setActionLoading(id);
     try {
+      const sub = subjectsList.find(s => s.id === id);
       // Archive (update status to rejected) instead of delete
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "rejected" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "rejected" } : s));
       playSuccess();
       await refreshSubjects();
+
+      // Notify the contributor who created this subject
+      if (sub?.contributorId) {
+        await notifyUser(
+          db,
+          sub.contributorId,
+          "Subject Request Rejected",
+          `Your subject request "${sub.name}" has been rejected. Please contact an admin for details.`,
+          "subject_rejected"
+        );
+      }
     } catch (error) {
       console.error("Error rejecting subject:", error);
       alert("Failed to reject subject.");

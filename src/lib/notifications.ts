@@ -20,7 +20,12 @@ export type NotificationType =
   | "material_approved"
   | "material_rejected"
   | "department_suggested"
-  | "subject_suggested";
+  | "subject_suggested"
+  | "feedback_submitted"
+  | "department_approved"
+  | "department_rejected"
+  | "subject_approved"
+  | "subject_rejected";
 
 export interface PaperinoNotification {
   id: string;

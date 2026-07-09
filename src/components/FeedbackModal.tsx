@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useSound } from "@/hooks/useSound";
+import { notifyAdmins } from "@/lib/notifications";
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -112,6 +113,15 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
       });
 
       localStorage.setItem("paperino_last_feedback_time", Date.now().toString());
+
+      // Notify all admins about the new feedback
+      await notifyAdmins(
+        db,
+        "New Feedback Received 💬",
+        `${user.displayName || user.email || "A user"} submitted feedback: "${subject}".`,
+        "feedback_submitted"
+      );
+
       setSuccess(true);
       playSuccess();
       

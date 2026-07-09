@@ -29,6 +29,11 @@ const TYPE_META: Record<
   material_rejected: { dot: "bg-rose-400", icon: "❌" },
   department_suggested: { dot: "bg-fuchsia-400", icon: "🏢" },
   subject_suggested: { dot: "bg-purple-400", icon: "📚" },
+  feedback_submitted: { dot: "bg-amber-400", icon: "💬" },
+  department_approved: { dot: "bg-emerald-400", icon: "🏢" },
+  department_rejected: { dot: "bg-rose-400", icon: "🏢" },
+  subject_approved: { dot: "bg-emerald-400", icon: "📚" },
+  subject_rejected: { dot: "bg-rose-400", icon: "📚" },
 };
 
 /* ── Component ────────────────────────────────────────── */
