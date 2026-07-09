@@ -93,6 +93,7 @@ export default function AdminPulsePage() {
     e.preventDefault();
     if (!user) return;
 
+    const showModeAndLoc = ["Hackathons", "Placements", "Internships"].includes(category);
     const data = {
       title,
       description,
@@ -100,8 +101,8 @@ export default function AdminPulsePage() {
       link,
       priority,
       isPinned: priority === "pinned",
-      location,
-      mode,
+      location: showModeAndLoc ? location : "",
+      mode: showModeAndLoc ? mode : "",
       updatedAt: Timestamp.now(),
     };
 
@@ -305,30 +306,32 @@ export default function AdminPulsePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Mode</label>
-                  <select 
-                    value={mode} 
-                    onChange={(e) => setMode(e.target.value)}
-                    className="w-full bg-[#161224] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
-                  >
-                    <option value="Offline">Offline</option>
-                    <option value="Hybrid">Hybrid</option>
-                    <option value="Online">Online</option>
-                  </select>
+              {["Hackathons", "Placements", "Internships"].includes(category) && (
+                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Mode</label>
+                    <select 
+                      value={mode} 
+                      onChange={(e) => setMode(e.target.value)}
+                      className="w-full bg-[#161224] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
+                    >
+                      <option value="Offline">Offline</option>
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="Online">Online</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Location / College</label>
+                    <input 
+                      type="text" 
+                      value={location} 
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="e.g. Chennai"
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Location / College</label>
-                  <input 
-                    type="text" 
-                    value={location} 
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="e.g. Chennai"
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
                 <button 
