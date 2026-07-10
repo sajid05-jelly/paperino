@@ -44,7 +44,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
 
     // Default to far past if null
-    const lastRead = lastPulseReadAt ? lastPulseReadAt.toDate() : new Date(0);
+    const lastRead = lastPulseReadAt 
+      ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate() : new Date(lastPulseReadAt))
+      : new Date(0);
 
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {

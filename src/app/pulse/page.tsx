@@ -305,11 +305,7 @@ function parseAnnouncementDetails(update: PulseUpdate): AnnouncementDetails {
       })
     : "Recent";
   
-  let summary = desc;
-  if (desc.length > 400) {
-    summary = desc.substring(0, 400) + "...";
-  }
-  return { title: update.title, summary, date };
+  return { title: update.title, summary: desc, date };
 }
 
 interface PlacementDetails {
@@ -849,7 +845,7 @@ export default function PulsePage() {
                             rel="noopener noreferrer"
                             className="group inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-2xl bg-white/5 hover:bg-amber-500/10 text-white hover:text-amber-300 text-sm font-bold transition-all duration-300 border border-white/10 w-full text-center"
                           >
-                            🔗 Read Full Notice <ExternalLink size={12} />
+                            🔗 Open Link <ExternalLink size={12} />
                           </a>
                         </div>
                       )}
@@ -1014,7 +1010,7 @@ export default function PulsePage() {
                         )}
                         
                         {update.verifiedSource && (
-                          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-amber-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(245,158,11,0.3)]" title="Scraped and verified from authentic sources">
+                          <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-violet-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(139,92,246,0.3)]" title="Scraped and verified from authentic sources">
                             <ShieldCheck size={12} /> VERIFIED SOURCE
                           </span>
                         )}
