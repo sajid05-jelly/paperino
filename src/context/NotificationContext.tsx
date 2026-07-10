@@ -34,6 +34,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user, lastPulseReadAt } = useAuth();
   const [unreadUpdates, setUnreadUpdates] = useState<PulseUpdate[]>([]);
   const [latestToast, setLatestToast] = useState<PulseUpdate | null>(null);
+  const [localReadTime, setLocalReadTime] = useState<number>(0);
   const router = useRouter();
 
   // Firestore listener
@@ -44,9 +45,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
 
     // Default to far past if null
-    const lastRead = lastPulseReadAt 
+    const firebaseLastRead = lastPulseReadAt 
       ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate() : new Date(lastPulseReadAt))
       : new Date(0);
+
+    const localLastReadStr = typeof window !== "undefined" ? localStorage.getItem(`paperino_last_pulse_read_at_${user.uid}`) : null;
+    const localLastRead = localLastReadStr ? new Date(parseInt(localLastReadStr)) : new Date(0);
+
+    const lastRead = firebaseLastRead > localLastRead ? firebaseLastRead : localLastRead;
 
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -78,16 +84,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [user, lastPulseReadAt]);
+  }, [user, lastPulseReadAt, localReadTime]);
 
   const markAllAsRead = async () => {
     if (!user) return;
+    const now = Date.now();
     try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`paperino_last_pulse_read_at_${user.uid}`, now.toString());
+      }
+      setLocalReadTime(now);
+      setUnreadUpdates([]);
+      
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
         lastPulseReadAt: serverTimestamp()
       });
-      setUnreadUpdates([]);
     } catch (error) {
       console.error("Error marking updates as read:", error);
     }
