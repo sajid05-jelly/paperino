@@ -56,7 +56,8 @@ service cloud.firestore {
         request.resource.data.role == "student" && request.resource.data.status == "active";
       // Users can update their own profile (but not role/status), UNLESS they are an admin OR
       // their email is in the hardcoded admin list (allows initial admin promotion after create)
-      allow update: if isSignedIn() && request.auth.uid == userId && resource.data.status != "blocked" && (
+      allow update: if isSignedIn() && request.auth.uid == userId && 
+                       (!('status' in resource.data) || resource.data.status != "blocked") && (
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])) ||
         (request.resource.data.role == "admin" && resource.data.email in [
           "mohamedsajid.sa@gmail.com",
