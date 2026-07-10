@@ -86,11 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
-            // Save initial user doc
+            // Always create as "student" first (Firestore rules require role="student" on create)
             await setDoc(userRef, {
               displayName: currentUser.displayName,
               email: currentUser.email,
-              role: currentIsAdmin ? "admin" : "student",
+              role: "student",
               status: "active",
               points: 0,
               uploads: 0,
@@ -99,7 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               lastPulseReadAt: new Date(0),
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp()
-            }, { merge: true });
+            });
+            // If this email is an admin, promote via update (update rule allows admin role changes)
+            if (currentIsAdmin) {
+              await setDoc(userRef, { role: "admin" }, { merge: true });
+            }
           } else {
             // Daily Active Users Tracking (update lastLogin max once per day)
             const data = userSnap.data();
