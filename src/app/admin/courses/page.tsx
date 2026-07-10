@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Archive } from "lucide-react";
+import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Ban } from "lucide-react";
 import { useSound } from "@/hooks/useSound";
 import { useSubjects } from "@/context/SubjectsContext";
 import { notifyUser } from "@/lib/notifications";
@@ -48,6 +48,9 @@ export default function AdminCoursesPage() {
   const [editCode, setEditCode] = useState("");
   const [editSemesters, setEditSemesters] = useState(8);
   const [editSemesterId, setEditSemesterId] = useState("1");
+
+  // Delete confirmation modal state
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: "dept" | "sub"; name: string } | null>(null);
   
   const { playSuccess } = useSound();
   const { refreshSubjects } = useSubjects();
@@ -106,7 +109,6 @@ export default function AdminCoursesPage() {
     setActionLoading(id);
     try {
       const dept = departmentsList.find(d => d.id === id);
-      // Archive (update status to rejected) instead of delete
       await updateDoc(doc(db, "departments", id), { status: "rejected" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "rejected" } : d));
       playSuccess();
@@ -127,6 +129,22 @@ export default function AdminCoursesPage() {
       alert("Failed to reject department.");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleDeleteDept = async (id: string) => {
+    setActionLoading(id);
+    try {
+      await deleteDoc(doc(db, "departments", id));
+      setDepartmentsList(prev => prev.filter(d => d.id !== id));
+      playSuccess();
+      await refreshSubjects();
+    } catch (error) {
+      console.error("Error deleting department:", error);
+      alert("Failed to delete department.");
+    } finally {
+      setActionLoading(null);
+      setDeleteConfirm(null);
     }
   };
 
@@ -161,7 +179,6 @@ export default function AdminCoursesPage() {
     setActionLoading(id);
     try {
       const sub = subjectsList.find(s => s.id === id);
-      // Archive (update status to rejected) instead of delete
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "rejected" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "rejected" } : s));
       playSuccess();
@@ -182,6 +199,31 @@ export default function AdminCoursesPage() {
       alert("Failed to reject subject.");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleDeleteSub = async (id: string) => {
+    setActionLoading(id);
+    try {
+      await deleteDoc(doc(db, "dynamic_subjects", id));
+      setSubjectsList(prev => prev.filter(s => s.id !== id));
+      playSuccess();
+      await refreshSubjects();
+    } catch (error) {
+      console.error("Error deleting subject:", error);
+      alert("Failed to delete subject.");
+    } finally {
+      setActionLoading(null);
+      setDeleteConfirm(null);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.type === "dept") {
+      handleDeleteDept(deleteConfirm.id);
+    } else {
+      handleDeleteSub(deleteConfirm.id);
     }
   };
 
@@ -251,7 +293,7 @@ export default function AdminCoursesPage() {
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
             <GraduationCap className="text-purple-400" /> Dynamic Course Review Queue
           </h1>
-          <p className="text-gray-400">Approve, Edit, or Archive department and subject suggestions from contributors.</p>
+          <p className="text-gray-400">Approve, Edit, Reject, or Delete department and subject suggestions from contributors.</p>
         </div>
       </div>
 
@@ -291,7 +333,7 @@ export default function AdminCoursesPage() {
           onClick={() => setActiveTab("rejected")} 
           className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${activeTab === "rejected" ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-white/5 border-transparent text-gray-400 hover:text-white"}`}
         >
-          Archived ({activeReviewType === "departments" ? departmentsList.filter(d => d.status === "rejected").length : subjectsList.filter(s => s.status === "rejected").length})
+          Rejected ({activeReviewType === "departments" ? departmentsList.filter(d => d.status === "rejected").length : subjectsList.filter(s => s.status === "rejected").length})
         </button>
       </div>
 
@@ -384,17 +426,31 @@ export default function AdminCoursesPage() {
                         <Edit2 size={16} />
                       </button>
                       
-                      {activeTab !== "approved" && (
+                      {activeTab === "pending" && (
+                        <>
+                          <button onClick={() => handleApproveDept(dept.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
+                            <CheckCircle2 size={14} /> Approve
+                          </button>
+                          <button onClick={() => handleRejectDept(dept.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold hover:bg-orange-500/20">
+                            <Ban size={14} /> Reject
+                          </button>
+                        </>
+                      )}
+
+                      {activeTab === "rejected" && (
                         <button onClick={() => handleApproveDept(dept.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
                           <CheckCircle2 size={14} /> Approve
                         </button>
                       )}
 
-                      {activeTab !== "rejected" && (
-                        <button onClick={() => handleRejectDept(dept.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20">
-                          <Archive size={14} /> Archive
-                        </button>
-                      )}
+                      {/* Delete button — always visible */}
+                      <button 
+                        onClick={() => setDeleteConfirm({ id: dept.id, type: "dept", name: dept.name })} 
+                        className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all" 
+                        title="Permanently delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </>
                   )}
                 </div>
@@ -493,17 +549,31 @@ export default function AdminCoursesPage() {
                         <Edit2 size={16} />
                       </button>
                       
-                      {activeTab !== "approved" && (
+                      {activeTab === "pending" && (
+                        <>
+                          <button onClick={() => handleApproveSub(sub.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
+                            <CheckCircle2 size={14} /> Approve
+                          </button>
+                          <button onClick={() => handleRejectSub(sub.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold hover:bg-orange-500/20">
+                            <Ban size={14} /> Reject
+                          </button>
+                        </>
+                      )}
+
+                      {activeTab === "rejected" && (
                         <button onClick={() => handleApproveSub(sub.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
                           <CheckCircle2 size={14} /> Approve
                         </button>
                       )}
 
-                      {activeTab !== "rejected" && (
-                        <button onClick={() => handleRejectSub(sub.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold hover:bg-red-500/20">
-                          <Archive size={14} /> Archive
-                        </button>
-                      )}
+                      {/* Delete button — always visible */}
+                      <button 
+                        onClick={() => setDeleteConfirm({ id: sub.id, type: "sub", name: sub.name })} 
+                        className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all" 
+                        title="Permanently delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </>
                   )}
                 </div>
@@ -511,6 +581,48 @@ export default function AdminCoursesPage() {
             ))}
           </div>
         )
+      )}
+
+      {/* ==================== DELETE CONFIRMATION MODAL ==================== */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
+          <div 
+            className="bg-[#1a0e1c]/95 backdrop-blur-xl border border-red-500/30 rounded-2xl p-6 max-w-md w-full mx-4 shadow-[0_0_40px_rgba(239,68,68,0.15)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                <Trash2 size={20} className="text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Permanently Delete?</h3>
+                <p className="text-xs text-gray-400">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 mb-5">
+              <p className="text-sm text-gray-300">
+                You are about to permanently delete <span className="text-red-400 font-semibold">&quot;{deleteConfirm.name}&quot;</span> from Firestore. 
+                This will remove it from all admin tabs and it cannot be recovered.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => setDeleteConfirm(null)} 
+                className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm font-semibold hover:text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete} 
+                className="px-4 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-bold hover:bg-red-500/30 transition-all flex items-center gap-2"
+              >
+                <Trash2 size={14} /> Delete Forever
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
