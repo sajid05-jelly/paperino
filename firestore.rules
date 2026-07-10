@@ -40,7 +40,7 @@ service cloud.firestore {
       // Anyone signed in can read their own profile; admins can read all; signed-in users can query admin profiles
       allow read: if isSignedIn() && (
         request.auth.uid == userId || 
-        isAdmin() || 
+        (request.auth.uid != userId && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin") || 
         (resource != null && (
           resource.data.role == "admin" || 
           resource.data.email in [
@@ -65,7 +65,7 @@ service cloud.firestore {
           "admin.paperinosam14@gmail.com",
           "gameplayitlifeitis@gmail.com"
         ])
-      ) || isAdmin();
+      ) || (request.auth.uid != userId && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
     }
 
     // ── Departments ─────────────────────────────────────────────────────────
