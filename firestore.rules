@@ -8,103 +8,67 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
+    // Check if the current user has the admin role in the database
     function isAdmin() {
       return isSignedIn() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin') ||
-        (resource != null && 'createdBy' in resource.data && resource.data.createdBy == request.auth.uid)
-      );
-    }
-
-    function isContributor() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "contributor";
-    }
-
-    function isOwner(res) {
-      return isSignedIn() && res.data.uploaderId == request.auth.uid;
-    }
-
-    function isNotBlocked() {
-      return isSignedIn() &&
-        (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status != "blocked");
-    }
-
-    // ── Users collection ────────────────────────────────────────────────────
-    match /users/{userId} {
-      // Anyone signed in can read their own profile; admins can read all; signed-in users can query admin profiles
-      allow read: if isSignedIn() && (
-        request.auth.uid == userId || 
-        (request.auth.uid != userId && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin") || 
-        (resource != null && (
-          resource.data.role == "admin" || 
-          resource.data.email in [
-            "mohamedsajid.sa@gmail.com",
-            "sudharajsekar2005@gmail.com",
-            "admin.paperinoirfan27@gmail.com",
-            "admin.paperinosam14@gmail.com"
-          ]
-        ))
-      );
-      // Users can only create their own profile as a student
-      allow create: if isSignedIn() && request.auth.uid == userId && 
-        request.resource.data.role == "student" && request.resource.data.status == "active";
-      // Users can update their own profile (but not role/status), UNLESS they are an admin OR
-      // their email is in the hardcoded admin list (allows initial admin promotion after create)
-      allow update: if isSignedIn() && request.auth.uid == userId && 
-                       (!('status' in resource.data) || resource.data.status != "blocked") && (
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])) ||
-        (request.resource.data.role == "admin" && resource.data.email in [
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email in [
           "mohamedsajid.sa@gmail.com",
           "sudharajsekar2005@gmail.com",
           "admin.paperinoirfan27@gmail.com",
           "admin.paperinosam14@gmail.com",
           "gameplayitlifeitis@gmail.com"
         ])
-      ) || (request.auth.uid != userId && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
+      );
+    }
+
+    // ── Users collection ────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Any signed-in user can read profiles (needed for notifyAdmins lookup & leaderboard)
+      allow read: if isSignedIn();
+      
+      // Users can only create their own profile as a student
+      allow create: if isSignedIn() && request.auth.uid == userId && 
+        request.resource.data.role == "student" && request.resource.data.status == "active";
+      
+      // Users can update their own profile (but not role/status), unless promoting to admin 
+      // when they are on the whitelisted admin list. Admins can update any profile.
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && (
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])) ||
+          (request.resource.data.role == "admin" && request.resource.data.email in [
+            "mohamedsajid.sa@gmail.com",
+            "sudharajsekar2005@gmail.com",
+            "admin.paperinoirfan27@gmail.com",
+            "admin.paperinosam14@gmail.com",
+            "gameplayitlifeitis@gmail.com"
+          ])
+        )) || isAdmin()
+      );
+      
+      allow delete: if isAdmin();
     }
 
     // ── Departments ─────────────────────────────────────────────────────────
     match /departments/{docId} {
       allow read: if true;
-      allow create: if request.auth != null;
+      allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
 
     // ── Dynamic Subjects / Courses ──────────────────────────────────────────
     match /dynamic_subjects/{docId} {
       allow read: if true;
-      allow create: if isAdmin() || (isContributor() && isNotBlocked());
+      allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
 
     // ── Study Materials ─────────────────────────────────────────────────────
     match /materials/{docId} {
       allow read: if true;
-      allow create: if isAdmin() || (
-        isContributor() && 
-        isNotBlocked() && 
-        request.resource.data.status == "pending" && 
-        request.resource.data.uploaderId == request.auth.uid
-      );
-      allow update: if isAdmin() || (
-        isContributor() && 
-        isNotBlocked() && 
-        isOwner(resource) && 
-        resource.data.status == "pending" && 
-        request.resource.data.status == "pending"
-      );
-      allow delete: if isAdmin() || (
-        isContributor() && 
-        isNotBlocked() && 
-        isOwner(resource) && 
-        resource.data.status == "pending"
-      );
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uploaderId == request.auth.uid);
     }
 
     // ── Semesters ───────────────────────────────────────────────────────────
@@ -115,8 +79,8 @@ service cloud.firestore {
 
     match /semesters/{semId}/{rest=**} {
       allow read: if true;
-      allow create: if isAdmin() || (isContributor() && isNotBlocked());
-      allow update, delete: if isAdmin() || (isContributor() && isOwner(resource) && isNotBlocked());
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uploaderId == request.auth.uid);
     }
 
     // ── Bookmarks ───────────────────────────────────────────────────────────
@@ -127,13 +91,13 @@ service cloud.firestore {
     // ── Grades ──────────────────────────────────────────────────────────────
     match /grades/{gradeId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow write: if isSignedIn() && isNotBlocked() && request.resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     // ── Leaderboard / User Stats ─────────────────────────────────────────────
     match /leaderboard/{userId} {
       allow read: if true;
-      allow write: if isSignedIn() && request.auth.uid == userId && isNotBlocked();
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /leaderboards/{docId} {
@@ -144,14 +108,13 @@ service cloud.firestore {
     // ── Feedback ────────────────────────────────────────────────────────────
     match /user_feedback/{feedbackId} {
       allow read: if isAdmin();
-      allow create: if isSignedIn() && isNotBlocked();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
     // ── Settings (maintenance mode, AI status) ───────────────────────────────
     match /settings/{settingId} {
-      allow read: if true;  // maintenance banner needs public read
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -168,7 +131,6 @@ service cloud.firestore {
     // ── AI Credits (root collection) ─────────────────────────────────────────
     match /user_credits/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
-      // Note: writes to user_credits are handled exclusively by the Admin SDK on the server
       allow write: if false; 
     }
 
@@ -187,7 +149,7 @@ service cloud.firestore {
     // ── Contributor Requests ────────────────────────────────────────────────
     match /contributor_requests/{requestId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow create: if isSignedIn() && isNotBlocked() && request.resource.data.uid == request.auth.uid && request.resource.data.status == "pending";
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.status == "pending";
       allow update, delete: if isAdmin();
     }
 
@@ -202,7 +164,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow create: if isSignedIn() && isNotBlocked()
+      allow create: if isSignedIn()
                     && request.resource.data.keys().hasAll(['userId', 'title', 'message', 'type', 'read', 'createdAt'])
                     && request.resource.data.read == false
                     && request.resource.data.userId is string
