@@ -37,8 +37,18 @@ service cloud.firestore {
 
     // ── Users collection ────────────────────────────────────────────────────
     match /users/{userId} {
-      // Anyone signed in can read their own profile; admins can read all
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Anyone signed in can read their own profile; admins can read all; signed-in users can query admin profiles
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId || 
+        isAdmin() || 
+        resource.data.role == "admin" || 
+        resource.data.email in [
+          "mohamedsajid.sa@gmail.com",
+          "sudharajsekar2005@gmail.com",
+          "admin.paperinoirfan27@gmail.com",
+          "admin.paperinosam14@gmail.com"
+        ]
+      );
       // Split write into create and update to prevent role self-escalation
       allow create: if isSignedIn() && request.auth.uid == userId && request.resource.data.role == "student" && request.resource.data.status == "active";
       allow update: if (isSignedIn() && request.auth.uid == userId && isNotBlocked() &&
@@ -97,9 +107,7 @@ service cloud.firestore {
 
     // ── Bookmarks ───────────────────────────────────────────────────────────
     match /users/{userId}/bookmarks/{bookmarkId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
-      allow create: if isSignedIn() && isNotBlocked() && request.auth.uid == userId;
-      allow delete: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // ── Grades ──────────────────────────────────────────────────────────────
