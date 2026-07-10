@@ -11,6 +11,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import RouteTracker from "@/components/RouteTracker";
 import { ToastProvider } from "@/components/Toast";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
+import ErrorSniffer from "@/components/ErrorSniffer";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 
@@ -110,6 +111,7 @@ export default function RootLayout({
 
         {/* GA4 — loads after hydration, never blocks render */}
         <GoogleAnalytics />
+        <ErrorSniffer />
 
         <ToastProvider>
           <ThemeProvider>
