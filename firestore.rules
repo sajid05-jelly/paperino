@@ -50,8 +50,17 @@ service cloud.firestore {
         ]
       );
       // Split write into create and update to prevent role self-escalation
-      allow create: if isSignedIn() && request.auth.uid == userId && request.resource.data.role == "student" && request.resource.data.status == "active";
-      allow update: if (isSignedIn() && request.auth.uid == userId && isNotBlocked() &&
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        (request.resource.data.role == "student" && request.resource.data.status == "active") ||
+        (request.resource.data.role == "admin" && request.resource.data.status == "active" && request.resource.data.email in [
+          "mohamedsajid.sa@gmail.com",
+          "sudharajsekar2005@gmail.com",
+          "admin.paperinoirfan27@gmail.com",
+          "admin.paperinosam14@gmail.com"
+        ])
+      );
+      allow update: if (isSignedIn() && request.auth.uid == userId && 
+                       resource.data.status != "blocked" &&
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']))) || isAdmin();
     }
 
