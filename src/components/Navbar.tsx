@@ -117,7 +117,10 @@ export default function Navbar() {
             <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
             <Link href="/ats" className={getLinkClass("/ats")}>ATS</Link>
             {user && (
-              <Link href="/contributor" className={getLinkClass("/contributor")}>Dashboard</Link>
+              <>
+                <Link href="/contributor/upload" className={getLinkClass("/contributor/upload")}>Contribution</Link>
+                <Link href="/contributor" className={getLinkClass("/contributor")}>Dashboard</Link>
+              </>
             )}
             <Link href="/bookmarks" className={getLinkClass("/bookmarks")}>Bookmarks</Link>
             
@@ -271,7 +274,10 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/ats" className={getMobileLinkClass("/ats")}>ATS Analyzer</Link>
               {user && (
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor")}>Dashboard</Link>
+                <>
+                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor/upload" className={getMobileLinkClass("/contributor/upload")}>Contribution</Link>
+                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor")}>Dashboard</Link>
+                </>
               )}
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/bookmarks" className={getMobileLinkClass("/bookmarks")}>Bookmarks</Link>
 

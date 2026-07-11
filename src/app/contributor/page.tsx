@@ -1,19 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { 
-  Trophy, Upload, FileText, Edit2, Download, Copy, CheckCircle2, 
+  Trophy, FileText, Edit2, Download, Copy, CheckCircle2, 
   Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles, 
-  Bookmark, Bell, Trash2, Inbox, Info, Plus, ChevronRight 
+  Bookmark, Bell, Trash2, Info, Plus, Upload 
 } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { getDownloadHref } from "@/lib/driveUtils";
-import { uploadToDriveDirect } from "@/lib/driveUpload";
-import { notifyAdmins } from "@/lib/notifications";
-import CreateCourseModal from "@/components/CreateCourseModal";
 
 interface Material {
   id: string;
@@ -47,48 +44,16 @@ export default function ContributorDashboardPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   // Dashboard Tab Selector
-  const [dashboardTab, setDashboardTab] = useState<"overview" | "upload" | "uploads" | "bookmarks" | "notifications">("overview");
-  
-  // Suggest course modal trigger
-  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState<"overview" | "uploads" | "bookmarks" | "notifications">("overview");
 
-  // File Upload states
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadLoading, setUploadLoading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState("");
-  const [uploadFormData, setUploadFormData] = useState({
-    department: "",
-    semester: "1",
-    subject: "",
-    title: "",
-    category: "pyq",
-  });
-
-  const { departments, subjects: dynamicSubjects, loading: contextLoading } = useSubjects();
+  const { subjects: dynamicSubjects } = useSubjects();
   const [downloadsCount, setDownloadsCount] = useState(0);
-
-  // Filter approved departments only
-  const approvedDepts = departments.filter(d => d.status === "approved");
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
     }
   }, [user]);
-
-  // Sync upload options when context loads
-  useEffect(() => {
-    if (approvedDepts.length > 0 && !uploadFormData.department) {
-      const firstDeptId = approvedDepts[0].id;
-      const firstSubId = dynamicSubjects[firstDeptId]?.["1"]?.[0]?.id || "";
-      setUploadFormData(prev => ({
-        ...prev,
-        department: firstDeptId,
-        semester: "1",
-        subject: firstSubId
-      }));
-    }
-  }, [approvedDepts, dynamicSubjects, uploadFormData.department]);
 
   const fetchDashboardData = async () => {
     if (!user) return;
@@ -147,92 +112,6 @@ export default function ContributorDashboardPage() {
     setActionLoading(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setUploadFile(e.target.files[0]);
-    }
-  };
-
-  const handleFileUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!uploadFile || !user) {
-      setUploadMessage("Please select a file to upload and ensure you are logged in.");
-      return;
-    }
-    if (!uploadFormData.department || !uploadFormData.subject) {
-      setUploadMessage("Please ensure department and subject are selected.");
-      return;
-    }
-    
-    setUploadLoading(true);
-    setUploadMessage("");
-    
-    try {
-      const result = await uploadToDriveDirect(uploadFile, uploadFormData.semester, uploadFormData.subject);
-
-      const newMaterialDoc = {
-        departmentId: uploadFormData.department,
-        semesterId: uploadFormData.semester,
-        subjectId: uploadFormData.subject,
-        title: uploadFormData.title,
-        category: uploadFormData.category,
-        fileId: result.fileId,
-        fileName: uploadFile.name,
-        uploaderId: user.uid,
-        uploaderName: user.displayName || "Contributor",
-        uploadedBy: "contributor",
-        status: "pending",
-        createdAt: Date.now()
-      };
-
-      const docRef = await addDoc(collection(db, "materials"), newMaterialDoc);
-
-      // Append to local materials list
-      setMaterials(prev => [{ id: docRef.id, ...newMaterialDoc } as Material, ...prev]);
-
-      // Notify admins
-      await notifyAdmins(
-        db,
-        "New Material Uploaded 📤",
-        `New material uploaded by ${user.displayName || user.email || "a contributor"} and is waiting for review.`,
-        "material_uploaded"
-      );
-
-      setUploadMessage("Material uploaded successfully! Thank you for contributing.");
-      setUploadFormData(prev => ({ ...prev, title: "" }));
-      setUploadFile(null);
-      
-    } catch (error: any) {
-      console.error("Error saving material:", error);
-      setUploadMessage(error.message || "Error saving material. Check console.");
-    } finally {
-      setUploadLoading(false);
-    }
-  };
-
-  const handleUploadChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    if (name === "department") {
-      const firstSubId = dynamicSubjects[value]?.["1"]?.[0]?.id || "";
-      setUploadFormData({ 
-        ...uploadFormData, 
-        department: value, 
-        semester: "1", 
-        subject: firstSubId 
-      });
-    } else if (name === "semester") {
-      const firstSubId = dynamicSubjects[uploadFormData.department]?.[value]?.[0]?.id || "";
-      setUploadFormData({ 
-        ...uploadFormData, 
-        semester: value, 
-        subject: firstSubId 
-      });
-    } else {
-      setUploadFormData({ ...uploadFormData, [name]: value });
-    }
-  };
-
   const removeBookmark = async (id: string) => {
     if (!user) return;
     try {
@@ -279,15 +158,18 @@ export default function ContributorDashboardPage() {
     ? (premiumEndDate.toDate ? premiumEndDate.toDate() : new Date(premiumEndDate)).toLocaleDateString()
     : null;
 
-  const selectedDeptObj = approvedDepts.find(d => d.id === uploadFormData.department);
-  const semCount = selectedDeptObj?.totalSemesters || 8;
-  const currentSubjects = (dynamicSubjects[uploadFormData.department]?.[uploadFormData.semester] || []).filter(s => s.status !== "pending");
-
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Contributor Hub</h1>
-        <p className="text-gray-400">Your unified control panel to suggest new subjects, upload study files, track milestones, and view points.</p>
+      <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">My Dashboard</h1>
+          <p className="text-gray-400">View your contributions, saved bookmarks, reward points, and system updates.</p>
+        </div>
+        <div className="flex gap-3">
+          <a href="/contributor/upload" className="bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(232,121,249,0.3)] flex items-center gap-2 text-sm">
+            <Upload size={16} /> Contribute Now
+          </a>
+        </div>
       </div>
 
       {/* Profile & Premium details */}
@@ -393,13 +275,6 @@ export default function ContributorDashboardPage() {
           {dashboardTab === "overview" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
         </button>
         <button 
-          onClick={() => setDashboardTab("upload")} 
-          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap ${dashboardTab === "upload" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
-        >
-          <Upload size={16} /> Upload Materials
-          {dashboardTab === "upload" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
-        </button>
-        <button 
           onClick={() => setDashboardTab("uploads")} 
           className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap ${dashboardTab === "uploads" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
         >
@@ -481,7 +356,7 @@ export default function ContributorDashboardPage() {
               {/* Suggestions, Premium Benefits, Journey */}
               <div className="space-y-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Star className="text-amber-400 animate-pulse" size={20} /> Premium Benefits & Suggestions
+                  <Star className="text-amber-400 animate-pulse" size={20} /> Premium Benefits
                 </h3>
                 
                 <div className="bg-gradient-to-r from-fuchsia-500/10 to-transparent p-5 rounded-2xl border border-fuchsia-500/20 space-y-3">
@@ -489,116 +364,6 @@ export default function ContributorDashboardPage() {
                   <p className="text-xs text-gray-400 leading-relaxed">
                     Active premium accounts get safe limits of <strong>1000 credits/day</strong> for ATS Analyzer and PYQ Analyzer tools, displayed as "Premium Unlimited".
                   </p>
-                </div>
-
-                <div className="bg-white/5 border border-white/5 p-5 rounded-2xl space-y-4">
-                  <h4 className="text-sm font-bold text-white">Suggest New Course Listings</h4>
-                  <p className="text-xs text-gray-400 leading-relaxed">
-                    If your department, course code, or syllabus list is missing, suggest it to the platform catalogs. Approved suggestions award point rewards.
-                  </p>
-                  <button 
-                    onClick={() => setIsSuggestModalOpen(true)}
-                    className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-xs rounded-xl transition-all shadow-md"
-                  >
-                    Suggest Course / Subject
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* FILE UPLOADER FORM TAB */}
-          {dashboardTab === "upload" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Upload className="text-fuchsia-400" size={20} /> Upload Study Materials
-                </h3>
-                
-                {contextLoading ? (
-                  <div className="flex justify-center py-6"><Loader2 className="animate-spin text-fuchsia-400" /></div>
-                ) : (
-                  <form onSubmit={handleFileUpload} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Department</label>
-                        <select name="department" value={uploadFormData.department} onChange={handleUploadChange} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-fuchsia-500 cursor-pointer">
-                          {approvedDepts.map(d => (
-                            <option key={d.id} value={d.id} className="bg-[#0a0714] text-white">{d.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Semester</label>
-                        <select name="semester" value={uploadFormData.semester} onChange={handleUploadChange} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-fuchsia-500 cursor-pointer">
-                          {Array.from({ length: semCount }, (_, i) => i + 1).map(sem => (
-                            <option key={sem} value={sem.toString()} className="bg-[#0a0714] text-white">Semester {sem}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Subject</label>
-                        <select name="subject" value={uploadFormData.subject} onChange={handleUploadChange} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-fuchsia-500 cursor-pointer">
-                          {currentSubjects.map(sub => (
-                            <option key={sub.id} value={sub.id} className="bg-[#0a0714] text-white">{sub.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Material Title</label>
-                      <input name="title" value={uploadFormData.title} onChange={handleUploadChange} type="text" placeholder="e.g., Unit 1 Syllabus Handwritten Notes" required className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-fuchsia-500" />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Category</label>
-                      <select name="category" value={uploadFormData.category} onChange={handleUploadChange} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-fuchsia-500 cursor-pointer">
-                        <option value="pyq" className="bg-[#0a0714] text-white">Previous Year Question Papers</option>
-                        <option value="notes" className="bg-[#0a0714] text-white">Study Notes</option>
-                        <option value="questions" className="bg-[#0a0714] text-white">Important Questions</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase">Select Document File</label>
-                      <div className={`border-2 border-dashed ${uploadFile ? 'border-fuchsia-500 bg-fuchsia-500/10' : 'border-white/10 hover:border-fuchsia-500/40'} rounded-2xl p-6 text-center transition-all cursor-pointer`} onClick={() => document.getElementById("fileUploadDashboard")?.click()}>
-                        <Upload className={`mx-auto mb-2.5 ${uploadFile ? 'text-fuchsia-400 animate-bounce' : 'text-gray-500'}`} size={32} />
-                        <p className="text-gray-300 text-xs font-semibold mb-1">
-                          {uploadFile ? uploadFile.name : "Select a document to contribute"}
-                        </p>
-                        <p className="text-[10px] text-gray-500">PDF, DOCX, JPG or PNG. Max size 20MB.</p>
-                        <input type="file" onChange={handleFileChange} className="hidden" id="fileUploadDashboard" accept=".pdf,.doc,.docx,.jpg,.png" />
-                      </div>
-                    </div>
-
-                    {uploadMessage && <div className={`p-4 rounded-xl text-sm ${uploadMessage.includes("Error") ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"}`}>{uploadMessage}</div>}
-
-                    <button disabled={uploadLoading || !uploadFormData.title || !uploadFile || !uploadFormData.subject} type="submit" className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-[0_0_20px_rgba(217,70,239,0.2)] transition-all disabled:opacity-50 flex justify-center items-center gap-2">
-                      {uploadLoading ? <Loader2 size={16} className="animate-spin" /> : "Upload Material"}
-                    </button>
-                  </form>
-                )}
-              </div>
-
-              {/* Guidelines panel */}
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Info className="text-cyan-400" size={18} /> Guidelines
-                </h3>
-                <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-4 text-xs text-gray-400">
-                  <li className="flex gap-2">
-                    <span className="text-fuchsia-400 font-bold">1.</span>
-                    <span>Ensure documents are high resolution and legible.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-fuchsia-400 font-bold">2.</span>
-                    <span>Avoid uploading duplicate files for the same course units.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-fuchsia-400 font-bold">3.</span>
-                    <span>Enter clear titles (e.g., "Unit 1 Lecture Slides" instead of "Notes").</span>
-                  </li>
                 </div>
               </div>
             </div>
@@ -610,7 +375,7 @@ export default function ContributorDashboardPage() {
               <div className="text-center py-16 text-gray-500 space-y-3">
                 <FileText size={40} className="mx-auto opacity-30" />
                 <p>You haven't uploaded any study materials yet.</p>
-                <button onClick={() => setDashboardTab("upload")} className="text-xs font-bold text-fuchsia-400 underline">Upload your first note</button>
+                <a href="/contributor/upload" className="text-xs font-bold text-fuchsia-400 underline">Upload your first note</a>
               </div>
             ) : (
               <div className="space-y-4">
@@ -777,8 +542,6 @@ export default function ContributorDashboardPage() {
           </div>
         </div>
       )}
-
-      <CreateCourseModal isOpen={isSuggestModalOpen} onClose={() => setIsSuggestModalOpen(false)} />
     </div>
   );
 }
