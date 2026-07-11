@@ -36,15 +36,13 @@ export default function ContributorDashboardPage() {
   } = useAuth();
   
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [bookmarks, setBookmarks] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingMat, setEditingMat] = useState<Material | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   // Dashboard Tab Selector
-  const [dashboardTab, setDashboardTab] = useState<"overview" | "uploads" | "bookmarks" | "notifications">("overview");
+  const [dashboardTab, setDashboardTab] = useState<"overview" | "uploads">("overview");
 
   const { subjects: dynamicSubjects } = useSubjects();
   const [downloadsCount, setDownloadsCount] = useState(0);
@@ -67,19 +65,7 @@ export default function ContributorDashboardPage() {
       mats.sort((a, b) => b.createdAt - a.createdAt);
       setMaterials(mats);
 
-      // 2. Fetch Bookmarks
-      const bSnap = await getDocs(collection(db, "users", user.uid, "bookmarks"));
-      const bList = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      bList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
-      setBookmarks(bList);
-
-      // 3. Fetch Notifications
-      const nSnap = await getDocs(query(collection(db, "notifications"), where("userId", "==", user.uid)));
-      const nList = nSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      nList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
-      setNotifications(nList);
-
-      // 4. Fetch downloads
+      // 2. Fetch downloads
       const udoc = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
       if (!udoc.empty) {
         setDownloadsCount(udoc.docs[0].data().downloads || 0);
@@ -110,16 +96,6 @@ export default function ContributorDashboardPage() {
       alert("Error updating material.");
     }
     setActionLoading(false);
-  };
-
-  const removeBookmark = async (id: string) => {
-    if (!user) return;
-    try {
-      await deleteDoc(doc(db, "users", user.uid, "bookmarks", id));
-      setBookmarks(prev => prev.filter(b => b.id !== id));
-    } catch (error) {
-      console.error("Error removing bookmark:", error);
-    }
   };
 
   const copyToClipboard = (url: string, id: string) => {
@@ -281,20 +257,6 @@ export default function ContributorDashboardPage() {
           <FileText size={16} /> My Uploads ({materials.length})
           {dashboardTab === "uploads" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
         </button>
-        <button 
-          onClick={() => setDashboardTab("bookmarks")} 
-          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap ${dashboardTab === "bookmarks" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
-        >
-          <Bookmark size={16} /> Bookmarks ({bookmarks.length})
-          {dashboardTab === "bookmarks" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
-        </button>
-        <button 
-          onClick={() => setDashboardTab("notifications")} 
-          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap ${dashboardTab === "notifications" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
-        >
-          <Bell size={16} /> Notifications ({notifications.length})
-          {dashboardTab === "notifications" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
-        </button>
       </div>
 
       {/* Main Tab Panels content */}
@@ -426,64 +388,6 @@ export default function ContributorDashboardPage() {
                       <a href={getDownloadHref(mat)} download className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20">
                         Download <Download size={14} />
                       </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-
-          {/* BOOKMARKS LIST TAB */}
-          {dashboardTab === "bookmarks" && (
-            bookmarks.length === 0 ? (
-              <div className="text-center py-16 text-gray-500 space-y-3">
-                <Bookmark size={40} className="mx-auto opacity-30" />
-                <p>No saved bookmarks found.</p>
-                <a href="/courses" className="inline-block text-xs font-bold text-fuchsia-400 underline">Browse courses to save items</a>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {bookmarks.map((b) => (
-                  <div key={b.id} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-start gap-4 hover:border-purple-500/20 transition-all">
-                    <div>
-                      <span className="text-[9px] uppercase tracking-wider font-bold text-gray-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded">
-                        {b.category}
-                      </span>
-                      <h4 className="text-white font-semibold text-lg leading-tight mt-2 mb-1 line-clamp-1">{b.title || b.fileName}</h4>
-                      <p className="text-xs text-gray-500">Subject: {b.subjectId} · Sem {b.semesterId}</p>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <a href={getDownloadHref(b)} download className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20" title="Download">
-                        <Download size={15} />
-                      </a>
-                      <button onClick={() => removeBookmark(b.id)} className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20" title="Remove Bookmark">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-
-          {/* NOTIFICATIONS LIST TAB */}
-          {dashboardTab === "notifications" && (
-            notifications.length === 0 ? (
-              <div className="text-center py-16 text-gray-500 space-y-2">
-                <Bell size={40} className="mx-auto opacity-30" />
-                <p>You have no recent notifications.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {notifications.map((n) => (
-                  <div key={n.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex gap-3.5 items-start">
-                    <div className="w-8 h-8 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-lg flex-shrink-0">
-                      {n.type === "premium_unlocked" ? "🚀" : n.type === "material_approved" ? "✅" : "🔔"}
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white leading-tight">{n.title}</h4>
-                      <p className="text-xs text-gray-400 mt-1 leading-normal">{n.message}</p>
-                      <p className="text-[10px] text-gray-500 font-medium font-mono mt-1.5">{new Date(n.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}
