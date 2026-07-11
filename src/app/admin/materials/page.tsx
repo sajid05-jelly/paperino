@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { FileText, Loader2, Download, Trash2, Edit2, Search, X, Check, CheckCircle2, AlertTriangle } from "lucide-react";
+import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useToast } from "@/components/Toast";
@@ -37,7 +37,6 @@ export default function ManageMaterialsPage() {
 
   // Modals
   const [editingMat, setEditingMat] = useState<Material | null>(null);
-  const [deletingMat, setDeletingMat] = useState<Material | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
@@ -90,22 +89,6 @@ export default function ManageMaterialsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deletingMat) return;
-    setActionLoading(true);
-    try {
-      await deleteDoc(doc(db, "materials", deletingMat.id));
-      setMaterials(prev => prev.filter(m => m.id !== deletingMat.id));
-      showToast("Material deleted successfully.", "success");
-      setDeletingMat(null);
-    } catch (err) {
-      console.error("Error deleting material:", err);
-      showToast("Failed to delete material.", "error");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   // Filter logic
   const filteredMaterials = materials.filter(m => {
     const matchesSearch = m.title?.toLowerCase().includes(searchTerm.toLowerCase()) || m.fileName?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -135,7 +118,7 @@ export default function ManageMaterialsPage() {
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
             <FileText className="text-purple-400" /> Manage Study Materials
           </h1>
-          <p className="text-gray-400">View, edit details, or delete uploaded study materials on Google Drive.</p>
+          <p className="text-gray-400">View and edit details of uploaded study materials on Google Drive.</p>
         </div>
       </div>
 
@@ -217,9 +200,6 @@ export default function ManageMaterialsPage() {
                 <button onClick={() => setEditingMat(mat)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5" title="Edit">
                   <Edit2 size={16} />
                 </button>
-                <button onClick={() => setDeletingMat(mat)} className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/10" title="Delete">
-                  <Trash2 size={16} />
-                </button>
               </div>
             </div>
           ))}
@@ -276,28 +256,6 @@ export default function ManageMaterialsPage() {
                 {actionLoading ? "Saving..." : "Save Changes"}
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deletingMat && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="absolute inset-0" onClick={() => !actionLoading && setDeletingMat(null)}></div>
-          <div className="relative w-full max-w-md bg-[#07050d] border border-red-500/20 rounded-[2rem] p-6 shadow-2xl z-10 text-center">
-            <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
-            <h3 className="text-xl font-bold text-white mb-2">Delete Study Material?</h3>
-            <p className="text-gray-400 text-sm mb-6">
-              Are you sure you want to permanently delete <span className="text-white font-semibold">"{deletingMat.title}"</span>? This action cannot be undone.
-            </p>
-            <div className="flex gap-4">
-              <button onClick={() => setDeletingMat(null)} disabled={actionLoading} className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold py-3 px-4 rounded-xl transition-all">
-                Cancel
-              </button>
-              <button onClick={handleDelete} disabled={actionLoading} className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(239,68,68,0.3)]">
-                {actionLoading ? "Deleting..." : "Confirm Delete"}
-              </button>
-            </div>
           </div>
         </div>
       )}
