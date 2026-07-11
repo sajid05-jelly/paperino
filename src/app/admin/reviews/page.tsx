@@ -348,16 +348,20 @@ export default function AdminReviewsPage() {
     const mat = deleteConfirmMat;
     setActionLoading(mat.id);
     try {
-      // 1. Delete file from Google Drive
+      // 1. Delete file from Google Drive (non-fatal if already missing)
       if (mat.fileId) {
-        const token = user ? await user.getIdToken() : "";
-        const res = await fetch(`/api/upload?fileId=${mat.fileId}`, {
-          method: "DELETE",
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        if (!res.ok) {
-          const resData = await res.json();
-          throw new Error(resData.error || "Failed to delete file from Google Drive");
+        try {
+          const token = user ? await user.getIdToken() : "";
+          const res = await fetch(`/api/upload?fileId=${mat.fileId}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (!res.ok) {
+            const resData = await res.json();
+            console.warn("Drive delete warning (non-fatal):", resData.error);
+          }
+        } catch (driveErr) {
+          console.warn("Drive delete error (ignored):", driveErr);
         }
       }
       
