@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const authHeader = req.headers.get("Authorization");
     const verifiedUser = await verifyServerAuth(authHeader);
     
-    if (!verifiedUser || (verifiedUser.role !== "contributor" && verifiedUser.role !== "admin")) {
+    if (!verifiedUser) {
       return NextResponse.json({ error: "Unauthorized. Insufficient permissions." }, { status: 403 });
     }
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const authHeader = req.headers.get("Authorization");
     const verifiedUser = await verifyServerAuth(authHeader);
     
-    if (!verifiedUser || (verifiedUser.role !== "contributor" && verifiedUser.role !== "admin")) {
+    if (!verifiedUser) {
       return NextResponse.json({ error: "Unauthorized. Insufficient permissions." }, { status: 403 });
     }
 
