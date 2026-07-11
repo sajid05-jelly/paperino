@@ -112,11 +112,16 @@ export default function Navbar() {
           <div 
             className="hidden lg:flex flex-1 items-center justify-center gap-1 xl:gap-2 font-medium min-w-0"
           >
-            <Link href="/courses" className={getLinkClass("/courses")}>Courses</Link>
+            <Link href="/courses" className={getLinkClass("/courses")}>Materials</Link>
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
             <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
             <Link href="/ats" className={getLinkClass("/ats")}>ATS</Link>
-            <Link href="/grades" className={getLinkClass("/grades")}>Grades</Link>
+            {user && (
+              <>
+                <Link href="/contributor" className={getLinkClass("/contributor")}>Dashboard</Link>
+                <Link href="/contributor/upload" className={getLinkClass("/contributor/upload")}>Contribution</Link>
+              </>
+            )}
             <Link href="/bookmarks" className={getLinkClass("/bookmarks")}>Bookmarks</Link>
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
@@ -128,9 +133,6 @@ export default function Navbar() {
             
             {isAdmin && (
               <Link href="/admin" className={getLinkClass("/admin", true)}>Admin</Link>
-            )}
-            {!isAdmin && isContributor && (
-              <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
             )}
           </div>
 
@@ -267,11 +269,16 @@ export default function Navbar() {
 
               {/* Main Tools */}
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Tools</p>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/courses" className={getMobileLinkClass("/courses")}>Courses Resources</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/courses" className={getMobileLinkClass("/courses")}>Materials</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/ats" className={getMobileLinkClass("/ats")}>ATS Analyzer</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/grades" className={getMobileLinkClass("/grades")}>Grades</Link>
+              {user && (
+                <>
+                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor")}>Dashboard</Link>
+                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor/upload" className={getMobileLinkClass("/contributor/upload")}>Contribution</Link>
+                </>
+              )}
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/bookmarks" className={getMobileLinkClass("/bookmarks")}>Bookmarks</Link>
 
               {/* Divider */}
@@ -284,18 +291,12 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Become a Contributor</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
 
-              {/* Admin / Contributor */}
+              {/* Admin */}
               {isAdmin && (
                 <>
                   <div className="h-px bg-white/[0.06] my-3 mx-2" />
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Admin</p>
                   <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin" className={getMobileLinkClass("/admin", true)}>Admin Dashboard</Link>
-                </>
-              )}
-              {!isAdmin && isContributor && (
-                <>
-                  <div className="h-px bg-white/[0.06] my-3 mx-2" />
-                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Contributor Dashboard</Link>
                 </>
               )}
             </div>

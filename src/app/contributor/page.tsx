@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { 
   Trophy, Upload, FileText, Edit2, Download, Copy, CheckCircle2, 
-  Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles 
+  Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles, 
+  Bookmark, Bell, Trash2, Inbox, Info 
 } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { getDownloadHref } from "@/lib/driveUtils";
@@ -35,40 +36,54 @@ export default function ContributorDashboardPage() {
   } = useAuth();
   
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingMat, setEditingMat] = useState<Material | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [dashboardTab, setDashboardTab] = useState<"uploads" | "bookmarks" | "notifications">("uploads");
   const { subjects: dynamicSubjects } = useSubjects();
 
-  // Mock download count (or retrieve from DB if stored in future)
   const [downloadsCount, setDownloadsCount] = useState(0);
 
   useEffect(() => {
     if (user) {
-      fetchMyUploads();
+      fetchDashboardData();
     }
   }, [user]);
 
-  const fetchMyUploads = async () => {
+  const fetchDashboardData = async () => {
     if (!user) return;
     setLoading(true);
     try {
+      // 1. Fetch Uploads
       const q = query(collection(db, "materials"), where("uploaderId", "==", user.uid));
       const snap = await getDocs(q);
       const mats: Material[] = [];
       snap.forEach(doc => mats.push({ id: doc.id, ...doc.data() } as Material));
-      
       mats.sort((a, b) => b.createdAt - a.createdAt);
       setMaterials(mats);
 
-      // Fetch user specific download counts if uploader record holds it
+      // 2. Fetch Bookmarks
+      const bSnap = await getDocs(collection(db, "users", user.uid, "bookmarks"));
+      const bList = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      bList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+      setBookmarks(bList);
+
+      // 3. Fetch Notifications
+      const nSnap = await getDocs(query(collection(db, "notifications"), where("userId", "==", user.uid)));
+      const nList = nSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      nList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+      setNotifications(nList);
+
+      // 4. Fetch downloads
       const udoc = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
       if (!udoc.empty) {
         setDownloadsCount(udoc.docs[0].data().downloads || 0);
       }
     } catch (err) {
-      console.error("Error fetching my uploads:", err);
+      console.error("Error fetching dashboard stats:", err);
     }
     setLoading(false);
   };
@@ -95,6 +110,16 @@ export default function ContributorDashboardPage() {
     setActionLoading(false);
   };
 
+  const removeBookmark = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "bookmarks", id));
+      setBookmarks(prev => prev.filter(b => b.id !== id));
+    } catch (error) {
+      console.error("Error removing bookmark:", error);
+    }
+  };
+
   const copyToClipboard = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
@@ -103,12 +128,12 @@ export default function ContributorDashboardPage() {
 
   const editSubjects = editingMat?.semesterId ? dynamicSubjects[editingMat.departmentId || "btech"]?.[editingMat.semesterId] || [] : [];
 
-  // Local Counts calculations
+  // Local Counts
   const approvedCount = materials.filter(m => m.status === "approved").length;
   const pendingCount = materials.filter(m => !m.status || m.status === "pending").length;
   const rejectedCount = materials.filter(m => m.status === "rejected").length;
 
-  // Next Milestone Target Calculations
+  // Next Milestone Target
   let nextMilestone = 5;
   if (approvedCount >= 20) nextMilestone = 20;
   else if (approvedCount >= 15) nextMilestone = 20;
@@ -127,21 +152,20 @@ export default function ContributorDashboardPage() {
     normal: { name: "Academic Explorer", icon: "📖", color: "text-gray-400 bg-gray-500/10 border-gray-500/20" }
   }[badgeLevel];
 
-  // Premium End Date Formatter
   const formattedExpiry = premiumEndDate
     ? (premiumEndDate.toDate ? premiumEndDate.toDate() : new Date(premiumEndDate)).toLocaleDateString()
     : null;
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Contributor Hub</h1>
-          <p className="text-gray-400">Share study materials, suggest new subjects, and unlock premium academic benefits.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">My Dashboard</h1>
+          <p className="text-gray-400">View your contributions, saved bookmarks, reward points, and system updates.</p>
         </div>
         <div className="flex gap-3">
-          <a href="/contributor/upload" className="bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)] flex items-center gap-2 text-sm">
-            <Upload size={16} /> Upload New Material
+          <a href="/contributor/upload" className="bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(232,121,249,0.3)] flex items-center gap-2 text-sm">
+            <Upload size={16} /> Go to Contribution Section
           </a>
         </div>
       </div>
@@ -215,7 +239,7 @@ export default function ContributorDashboardPage() {
         </div>
       )}
 
-      {/* Numerical Stats Grid */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="glass-panel p-5 rounded-2xl border border-white/5">
           <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Approved</p>
@@ -239,75 +263,163 @@ export default function ContributorDashboardPage() {
         </div>
       </div>
 
-      {/* Uploads History List Table */}
-      <div className="glass-panel p-6 rounded-3xl border border-white/5">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <FileText className="text-gray-400" size={20} /> Upload History
-        </h2>
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin text-fuchsia-400" size={32} />
-          </div>
-        ) : materials.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            You haven't uploaded any materials yet. Head over to Upload Material to start contributing!
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {materials.map(mat => (
-              <div key={mat.id} className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors flex flex-col md:flex-row justify-between gap-4">
-                <div className="flex-1 min-w-0 pr-4">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded">
-                      Sem {mat.semesterId}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500">
-                      {mat.category}
-                    </span>
-                    {(!mat.status || mat.status === "pending") && (
-                      <span className="text-[10px] font-bold bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap animate-pulse tracking-wide font-mono ml-2">
-                        Pending Review
-                      </span>
-                    )}
-                    {mat.status === "approved" && (
-                      <span className="text-[10px] font-semibold bg-gradient-to-r from-fuchsia-500/10 to-purple-500/10 text-fuchsia-300 px-2.5 py-0.5 rounded-full border border-fuchsia-500/20 whitespace-nowrap tracking-wide ml-2">
-                        Approved & Live
-                      </span>
-                    )}
-                    {mat.status === "rejected" && (
-                      <span className="text-[10px] font-bold bg-gradient-to-r from-rose-500/20 to-red-500/20 text-rose-300 px-2.5 py-0.5 rounded-full border border-rose-500/40 whitespace-nowrap shadow-[0_0_10px_rgba(244,63,94,0.15)] font-mono ml-2">
-                        Rejected
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-white font-medium text-lg leading-tight mb-1 truncate">{mat.title || mat.fileName}</h4>
-                  <p className="text-xs text-gray-500 truncate">Subject: {mat.subjectId} • Uploaded: {new Date(mat.createdAt).toLocaleDateString()}</p>
-                </div>
-
-                <div className="flex items-center gap-2 md:self-center flex-wrap flex-shrink-0 mt-4 md:mt-0">
-                  {(!mat.status || mat.status === "pending") ? (
-                    <button onClick={() => setEditingMat(mat)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors border border-white/5" title="Edit Metadata">
-                      <Edit2 size={14} /> Edit
-                    </button>
-                  ) : (
-                    <button disabled className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 opacity-50 cursor-not-allowed text-xs font-medium text-gray-500 border border-white/5" title="Approved or Rejected materials cannot be edited">
-                      <Edit2 size={14} /> Edit Locked
-                    </button>
-                  )}
-                  <button onClick={() => copyToClipboard(getDownloadHref(mat), mat.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors border border-white/5">
-                    {copiedId === mat.id ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                    {copiedId === mat.id ? "Copied" : "Copy"}
-                  </button>
-                  <a href={getDownloadHref(mat)} download className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20">
-                    Download <Download size={14} />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Tab Switcher: Upload History vs Bookmarks vs Notifications */}
+      <div className="flex border-b border-white/10 gap-6">
+        <button 
+          onClick={() => setDashboardTab("uploads")} 
+          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 ${dashboardTab === "uploads" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
+        >
+          <FileText size={16} /> My Uploads ({materials.length})
+          {dashboardTab === "uploads" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
+        </button>
+        <button 
+          onClick={() => setDashboardTab("bookmarks")} 
+          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 ${dashboardTab === "bookmarks" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
+        >
+          <Bookmark size={16} /> Bookmarks ({bookmarks.length})
+          {dashboardTab === "bookmarks" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
+        </button>
+        <button 
+          onClick={() => setDashboardTab("notifications")} 
+          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 ${dashboardTab === "notifications" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
+        >
+          <Bell size={16} /> Notifications ({notifications.length})
+          {dashboardTab === "notifications" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
+        </button>
       </div>
+
+      {/* Main Tab Render Block */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="animate-spin text-fuchsia-400" size={32} />
+        </div>
+      ) : (
+        <div className="glass-panel p-6 rounded-3xl border border-white/5 min-h-[300px]">
+          
+          {/* UPLOADS TAB */}
+          {dashboardTab === "uploads" && (
+            materials.length === 0 ? (
+              <div className="text-center py-16 text-gray-500 space-y-3">
+                <FileText size={40} className="mx-auto opacity-30" />
+                <p>You haven't uploaded any study materials yet.</p>
+                <a href="/contributor/upload" className="inline-block text-xs font-bold text-fuchsia-400 underline">Upload your first note</a>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {materials.map(mat => (
+                  <div key={mat.id} className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors flex flex-col md:flex-row justify-between gap-4">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded">
+                          Sem {mat.semesterId}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider text-gray-500">
+                          {mat.category}
+                        </span>
+                        {(!mat.status || mat.status === "pending") && (
+                          <span className="text-[10px] font-bold bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap animate-pulse tracking-wide font-mono ml-2">
+                            Pending Review
+                          </span>
+                        )}
+                        {mat.status === "approved" && (
+                          <span className="text-[10px] font-semibold bg-gradient-to-r from-fuchsia-500/10 to-purple-500/10 text-fuchsia-300 px-2.5 py-0.5 rounded-full border border-fuchsia-500/20 whitespace-nowrap tracking-wide ml-2">
+                            Approved & Live
+                          </span>
+                        )}
+                        {mat.status === "rejected" && (
+                          <span className="text-[10px] font-bold bg-gradient-to-r from-rose-500/20 to-red-500/20 text-rose-300 px-2.5 py-0.5 rounded-full border border-rose-500/40 whitespace-nowrap shadow-[0_0_10px_rgba(244,63,94,0.15)] font-mono ml-2">
+                            Rejected
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-white font-medium text-lg leading-tight mb-1 truncate">{mat.title || mat.fileName}</h4>
+                      <p className="text-xs text-gray-500 truncate">Subject: {mat.subjectId} • Uploaded: {new Date(mat.createdAt).toLocaleDateString()}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 md:self-center flex-wrap flex-shrink-0 mt-4 md:mt-0">
+                      {(!mat.status || mat.status === "pending") ? (
+                        <button onClick={() => setEditingMat(mat)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors border border-white/5" title="Edit Metadata">
+                          <Edit2 size={14} /> Edit
+                        </button>
+                      ) : (
+                        <button disabled className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 opacity-50 cursor-not-allowed text-xs font-medium text-gray-500 border border-white/5" title="Approved or Rejected materials cannot be edited">
+                          <Edit2 size={14} /> Edit Locked
+                        </button>
+                      )}
+                      <button onClick={() => copyToClipboard(getDownloadHref(mat), mat.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors border border-white/5">
+                        {copiedId === mat.id ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                        {copiedId === mat.id ? "Copied" : "Copy"}
+                      </button>
+                      <a href={getDownloadHref(mat)} download className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20">
+                        Download <Download size={14} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {/* BOOKMARKS TAB */}
+          {dashboardTab === "bookmarks" && (
+            bookmarks.length === 0 ? (
+              <div className="text-center py-16 text-gray-500 space-y-3">
+                <Bookmark size={40} className="mx-auto opacity-30" />
+                <p>No saved bookmarks found.</p>
+                <a href="/courses" className="inline-block text-xs font-bold text-fuchsia-400 underline">Browse courses to save items</a>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {bookmarks.map((b) => (
+                  <div key={b.id} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-start gap-4 hover:border-purple-500/20 transition-all">
+                    <div>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-gray-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                        {b.category}
+                      </span>
+                      <h4 className="text-white font-semibold text-lg leading-tight mt-2 mb-1 line-clamp-1">{b.title || b.fileName}</h4>
+                      <p className="text-xs text-gray-500">Subject: {b.subjectId} · Sem {b.semesterId}</p>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <a href={getDownloadHref(b)} download className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20" title="Download">
+                        <Download size={15} />
+                      </a>
+                      <button onClick={() => removeBookmark(b.id)} className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20" title="Remove Bookmark">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {/* NOTIFICATIONS TAB */}
+          {dashboardTab === "notifications" && (
+            notifications.length === 0 ? (
+              <div className="text-center py-16 text-gray-500 space-y-2">
+                <Bell size={40} className="mx-auto opacity-30" />
+                <p>You have no recent notifications.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notifications.map((n) => (
+                  <div key={n.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex gap-3.5 items-start">
+                    <div className="w-8 h-8 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-lg flex-shrink-0">
+                      {n.type === "premium_unlocked" ? "🚀" : n.type === "material_approved" ? "✅" : "🔔"}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white leading-tight">{n.title}</h4>
+                      <p className="text-xs text-gray-400 mt-1 leading-normal">{n.message}</p>
+                      <p className="text-[10px] text-gray-500 font-medium font-mono mt-1.5">{new Date(n.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+        </div>
+      )}
 
       {/* Editing Modal */}
       {editingMat && (
