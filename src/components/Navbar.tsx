@@ -123,7 +123,7 @@ export default function Navbar() {
             
             <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
             <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
-            <Link href="/team" className={getLinkClass("/team", true)}>Team</Link>
+            <Link href="/team" className={getLinkClass("/team", true)}>Contribute</Link>
             <Link href="/developer" className={getLinkClass("/developer", true)}>Developer</Link>
             
             {isAdmin && (
@@ -281,7 +281,7 @@ export default function Navbar() {
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Paperino Team</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Become a Contributor</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
 
               {/* Admin / Contributor */}
