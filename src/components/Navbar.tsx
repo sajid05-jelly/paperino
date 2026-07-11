@@ -116,7 +116,7 @@ export default function Navbar() {
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
             <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
             <Link href="/ats" className={getLinkClass("/ats")}>ATS</Link>
-            {user && (
+            {user && !isAdmin && (
               <Link href="/contributor" className={getLinkClass("/contributor")}>Dashboard</Link>
             )}
             <Link href="/bookmarks" className={getLinkClass("/bookmarks")}>Bookmarks</Link>
@@ -125,7 +125,9 @@ export default function Navbar() {
             
             <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
             <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
-            <Link href="/team" className={getLinkClass("/team", true)}>Contribute</Link>
+            {!isAdmin && (
+              <Link href="/team" className={getLinkClass("/team", true)}>Contribute</Link>
+            )}
             <Link href="/developer" className={getLinkClass("/developer", true)}>Developer</Link>
             
             {isAdmin && (
@@ -270,7 +272,7 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/ats" className={getMobileLinkClass("/ats")}>ATS Analyzer</Link>
-              {user && (
+              {user && !isAdmin && (
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor")}>Dashboard</Link>
               )}
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/bookmarks" className={getMobileLinkClass("/bookmarks")}>Bookmarks</Link>
@@ -282,7 +284,9 @@ export default function Navbar() {
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Become a Contributor</Link>
+              {!isAdmin && (
+                <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Become a Contributor</Link>
+              )}
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
 
               {/* Admin */}
