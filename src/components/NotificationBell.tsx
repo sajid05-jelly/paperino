@@ -34,6 +34,7 @@ const TYPE_META: Record<
   department_rejected: { dot: "bg-rose-400", icon: "🏢" },
   subject_approved: { dot: "bg-emerald-400", icon: "📚" },
   subject_rejected: { dot: "bg-rose-400", icon: "📚" },
+  premium_unlocked: { dot: "bg-amber-400 animate-pulse", icon: "🚀" },
 };
 
 /* ── Component ────────────────────────────────────────── */

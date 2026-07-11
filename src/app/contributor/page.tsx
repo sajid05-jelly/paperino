@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
-import { Trophy, Upload, FileText, Edit2, Download, Copy, CheckCircle2, Loader2, BookOpen, Award, Target } from "lucide-react";
+import { 
+  Trophy, Upload, FileText, Edit2, Download, Copy, CheckCircle2, 
+  Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles 
+} from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { getDownloadHref } from "@/lib/driveUtils";
 
@@ -17,18 +20,29 @@ interface Material {
   category: string;
   fileId?: string;
   fileUrl?: string;
+  fileName?: string;
   createdAt: number;
   status?: string;
 }
 
 export default function ContributorDashboardPage() {
-  const { user } = useAuth();
+  const { 
+    user, 
+    uploads: approvedCountDb, 
+    contributionPoints, 
+    isPremiumActive, 
+    premiumEndDate 
+  } = useAuth();
+  
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingMat, setEditingMat] = useState<Material | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { subjects: dynamicSubjects } = useSubjects();
+
+  // Mock download count (or retrieve from DB if stored in future)
+  const [downloadsCount, setDownloadsCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -45,9 +59,14 @@ export default function ContributorDashboardPage() {
       const mats: Material[] = [];
       snap.forEach(doc => mats.push({ id: doc.id, ...doc.data() } as Material));
       
-      // Sort by newest
       mats.sort((a, b) => b.createdAt - a.createdAt);
       setMaterials(mats);
+
+      // Fetch user specific download counts if uploader record holds it
+      const udoc = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
+      if (!udoc.empty) {
+        setDownloadsCount(udoc.docs[0].data().downloads || 0);
+      }
     } catch (err) {
       console.error("Error fetching my uploads:", err);
     }
@@ -84,45 +103,143 @@ export default function ContributorDashboardPage() {
 
   const editSubjects = editingMat?.semesterId ? dynamicSubjects[editingMat.departmentId || "btech"]?.[editingMat.semesterId] || [] : [];
 
+  // Local Counts calculations
+  const approvedCount = materials.filter(m => m.status === "approved").length;
+  const pendingCount = materials.filter(m => !m.status || m.status === "pending").length;
+  const rejectedCount = materials.filter(m => m.status === "rejected").length;
+
+  // Next Milestone Target Calculations
+  let nextMilestone = 5;
+  if (approvedCount >= 20) nextMilestone = 20;
+  else if (approvedCount >= 15) nextMilestone = 20;
+  else if (approvedCount >= 10) nextMilestone = 15;
+  else if (approvedCount >= 5) nextMilestone = 10;
+
+  const uploadsRemaining = Math.max(0, nextMilestone - approvedCount);
+  const progressPercent = Math.min(100, (approvedCount / nextMilestone) * 100);
+
+  // Badge Level Selection
+  const badgeLevel = approvedCount >= 20 ? "elite" : approvedCount >= 5 ? "active" : approvedCount >= 1 ? "contributor" : "normal";
+  const badgeInfo = {
+    elite: { name: "Elite Contributor", icon: "🥇", color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.15)]" },
+    active: { name: "Active Contributor", icon: "🥈", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.15)]" },
+    contributor: { name: "Contributor", icon: "🥉", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
+    normal: { name: "Academic Explorer", icon: "📖", color: "text-gray-400 bg-gray-500/10 border-gray-500/20" }
+  }[badgeLevel];
+
+  // Premium End Date Formatter
+  const formattedExpiry = premiumEndDate
+    ? (premiumEndDate.toDate ? premiumEndDate.toDate() : new Date(premiumEndDate)).toLocaleDateString()
+    : null;
+
   return (
-    <div className="w-full">
-      <div className="flex flex-col md:flex-row justify-between md:items-end mb-8 gap-4">
+    <div className="w-full space-y-8">
+      <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">My Contributions</h1>
-          <p className="text-gray-400">View and edit the study materials you have shared with the community.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Contributor Hub</h1>
+          <p className="text-gray-400">Share study materials, suggest new subjects, and unlock premium academic benefits.</p>
         </div>
         <div className="flex gap-3">
-          <a href="/contributor/upload" className="bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-2 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)] flex items-center gap-2 text-sm">
+          <a href="/contributor/upload" className="bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)] flex items-center gap-2 text-sm">
             <Upload size={16} /> Upload New Material
           </a>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <div className="glass-panel p-6 rounded-2xl border border-white/5 flex items-center gap-4 relative overflow-hidden group">
-          <div className="absolute -right-4 -top-4 w-20 h-20 bg-fuchsia-500/10 blur-2xl rounded-full"></div>
-          <div className="w-14 h-14 rounded-xl bg-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-            <Award size={24} />
+      {/* Contributor Profile Banner */}
+      <div className="vision-glass p-6 rounded-3xl border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-fuchsia-500/5 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl shadow-inner">
+            {badgeInfo.icon}
           </div>
           <div>
-            <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider mb-1">Total Uploads</h3>
-            <p className="text-3xl font-bold text-white">{materials.length}</p>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h2 className="text-xl font-bold text-white">{user?.displayName || "Student"}</h2>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${badgeInfo.color}`}>
+                {badgeInfo.name}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400">{user?.email}</p>
           </div>
         </div>
-        <div className="glass-panel p-6 rounded-2xl border border-white/5 flex items-center gap-4 relative overflow-hidden group">
-          <div className="absolute -right-4 -top-4 w-20 h-20 bg-cyan-500/10 blur-2xl rounded-full"></div>
-          <div className="w-14 h-14 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-            <Target size={24} />
+
+        {/* Premium Status Info Box */}
+        <div className="w-full md:w-auto bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isPremiumActive ? "bg-amber-500/20 text-amber-400" : "bg-white/5 text-gray-500"}`}>
+            <Sparkles size={20} className={isPremiumActive ? "animate-pulse" : ""} />
           </div>
           <div>
-            <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider mb-1">Impact Status</h3>
-            <p className="text-xl font-bold text-emerald-400">Active Contributor</p>
+            <p className="text-xs text-gray-500 font-medium">Premium Status</p>
+            {isPremiumActive ? (
+              <p className="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+                Active <span className="text-[10px] text-gray-400 font-normal">(Expires: {formattedExpiry})</span>
+              </p>
+            ) : (
+              <p className="text-sm font-bold text-gray-400">Inactive</p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Uploads List */}
+      {/* Rewards Progress Milestone Indicator */}
+      {uploadsRemaining > 0 ? (
+        <div className="vision-glass p-6 rounded-3xl border border-white/5 space-y-3">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-gray-400 font-medium flex items-center gap-1.5">
+              <Trophy size={14} className="text-yellow-400" />
+              Next reward: <strong className="text-white">+{nextMilestone === 20 ? "30 Days Bonus" : "10 Days Premium"}</strong>
+            </span>
+            <span className="text-fuchsia-400 font-bold">{uploadsRemaining} Approved Uploads Left</span>
+          </div>
+          
+          <div className="w-full bg-black/50 border border-white/5 h-2.5 rounded-full overflow-hidden p-0.5">
+            <div 
+              className="bg-gradient-to-r from-fuchsia-500 to-rose-500 h-full rounded-full transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          
+          <div className="flex justify-between text-[10px] text-gray-500 font-bold">
+            <span>{approvedCount} Approved</span>
+            <span>{nextMilestone} Goal</span>
+          </div>
+        </div>
+      ) : (
+        <div className="vision-glass p-6 rounded-3xl border border-yellow-500/20 bg-yellow-500/5 flex items-center gap-4">
+          <Trophy className="text-yellow-400 animate-bounce" size={24} />
+          <div>
+            <h4 className="text-sm font-bold text-white">Elite Contributor Achieved!</h4>
+            <p className="text-xs text-gray-400">You have completed all standard reward milestones. Thank you for building the community!</p>
+          </div>
+        </div>
+      )}
+
+      {/* Numerical Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="glass-panel p-5 rounded-2xl border border-white/5">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Approved</p>
+          <p className="text-2xl font-bold text-emerald-400">{approvedCount}</p>
+        </div>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Pending</p>
+          <p className="text-2xl font-bold text-amber-400">{pendingCount}</p>
+        </div>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Rejected</p>
+          <p className="text-2xl font-bold text-red-400">{rejectedCount}</p>
+        </div>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Downloads</p>
+          <p className="text-2xl font-bold text-cyan-400">{downloadsCount}</p>
+        </div>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 col-span-2 md:col-span-1 bg-fuchsia-500/5 border-fuchsia-500/10">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Points</p>
+          <p className="text-2xl font-bold text-fuchsia-400">{contributionPoints}</p>
+        </div>
+      </div>
+
+      {/* Uploads History List Table */}
       <div className="glass-panel p-6 rounded-3xl border border-white/5">
         <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
           <FileText className="text-gray-400" size={20} /> Upload History
@@ -148,14 +265,14 @@ export default function ContributorDashboardPage() {
                     <span className="text-[10px] uppercase tracking-wider text-gray-500">
                       {mat.category}
                     </span>
-                    {mat.status === "pending" && (
-                      <span className="text-[10px] font-bold bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap shadow-[0_0_12px_rgba(245,158,11,0.3)] animate-pulse tracking-wide font-mono ml-2">
+                    {(!mat.status || mat.status === "pending") && (
+                      <span className="text-[10px] font-bold bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap animate-pulse tracking-wide font-mono ml-2">
                         Pending Review
                       </span>
                     )}
                     {mat.status === "approved" && (
                       <span className="text-[10px] font-semibold bg-gradient-to-r from-fuchsia-500/10 to-purple-500/10 text-fuchsia-300 px-2.5 py-0.5 rounded-full border border-fuchsia-500/20 whitespace-nowrap tracking-wide ml-2">
-                        Community Upload
+                        Approved & Live
                       </span>
                     )}
                     {mat.status === "rejected" && (
@@ -164,7 +281,7 @@ export default function ContributorDashboardPage() {
                       </span>
                     )}
                   </div>
-                  <h4 className="text-white font-medium text-lg leading-tight mb-1 truncate">{mat.title}</h4>
+                  <h4 className="text-white font-medium text-lg leading-tight mb-1 truncate">{mat.title || mat.fileName}</h4>
                   <p className="text-xs text-gray-500 truncate">Subject: {mat.subjectId} • Uploaded: {new Date(mat.createdAt).toLocaleDateString()}</p>
                 </div>
 

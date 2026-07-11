@@ -41,20 +41,31 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
     const uid = decodedToken.uid;
     const role = decodedToken.role || 'student'; // Assuming role is set in custom claims, else fallback
 
-    // Even if custom claims aren't set, we can check the users collection for the role
     let actualRole = role;
-    if (!decodedToken.role) {
-       const userDoc = await adminDb.collection('users').doc(uid).get();
-       if (userDoc.exists) {
-         actualRole = userDoc.data()?.role || 'student';
-       }
+    let hasPremium = false;
+    
+    const userDoc = await adminDb.collection('users').doc(uid).get();
+    if (userDoc.exists) {
+      const userData = userDoc.data() || {};
+      actualRole = userData.role || 'student';
+      
+      if (userData.premiumEndDate) {
+        const now = new Date();
+        const end = userData.premiumEndDate.toDate ? userData.premiumEndDate.toDate() : new Date(userData.premiumEndDate);
+        if (now <= end) {
+          hasPremium = true;
+        }
+      }
     }
 
     const limits = getLimits(actualRole);
-    const toolLimit = tool === 'pyq' ? limits.pyq : limits.ats;
+    let toolLimit = tool === 'pyq' ? limits.pyq : limits.ats;
+    if (hasPremium) {
+      toolLimit = 1000;
+    }
 
-    if (toolLimit === Infinity) {
-      return { allowed: true, uid, role: actualRole, used: 0, limit: Infinity };
+    if (actualRole === 'admin') {
+      return { allowed: true, uid, role: actualRole, used: 0, limit: 1000 }; // Safe limit for admin too
     }
 
     const todayIST = getISTDateString();

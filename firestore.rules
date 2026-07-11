@@ -32,11 +32,11 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId && 
         request.resource.data.role == "student" && request.resource.data.status == "active";
       
-      // Users can update their own profile (but not role/status), unless promoting to admin 
-      // when they are on the whitelisted admin list. Admins can update any profile.
+      // Users can update their own profile (but not role/status/contributorLevel/premium/points), UNLESS they are an admin OR
+      // their email is in the hardcoded admin list (allows initial admin promotion after create)
       allow update: if isSignedIn() && (
         (request.auth.uid == userId && (
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])) ||
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'contributorLevel', 'premiumStartDate', 'premiumEndDate', 'uploads', 'contributionPoints'])) ||
           (request.resource.data.role == "admin" && request.resource.data.email in [
             "mohamedsajid.sa@gmail.com",
             "sudharajsekar2005@gmail.com",
@@ -53,22 +53,31 @@ service cloud.firestore {
     // ── Departments ─────────────────────────────────────────────────────────
     match /departments/{docId} {
       allow read: if true;
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.status == "pending";
       allow update, delete: if isAdmin();
     }
 
     // ── Dynamic Subjects / Courses ──────────────────────────────────────────
     match /dynamic_subjects/{docId} {
       allow read: if true;
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.status == "pending";
       allow update, delete: if isAdmin();
     }
 
     // ── Study Materials ─────────────────────────────────────────────────────
     match /materials/{docId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uploaderId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.status == "pending";
+      allow update: if isAdmin() || (
+        isSignedIn() && 
+        resource.data.uploaderId == request.auth.uid && 
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']))
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && 
+        resource.data.uploaderId == request.auth.uid && 
+        resource.data.status == "pending"
+      );
     }
 
     // ── Semesters ───────────────────────────────────────────────────────────

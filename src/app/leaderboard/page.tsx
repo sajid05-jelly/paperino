@@ -14,7 +14,9 @@ interface ContributorStats {
   paperinoAvatar: string | null;
   joinedDate: Date | null;
   uploads: number;
-  points: number;
+  points: number; // stores contributionPoints
+  downloads: number;
+  contributorLevel: string;
   rankTitle: string;
 }
 
@@ -46,37 +48,11 @@ export default function LeaderboardPage() {
         }
       }
 
-      const getRankTitle = (points: number) => {
-        if (points >= 100) return "Elite Contributor";
-        if (points >= 50) return "Top Contributor";
-        if (points >= 20) return "Active Helper";
-        if (points >= 1) return "Community Supporter";
-        return "Newcomer";
-      };
-
-      const mapDocToStats = (docSnap: any, useSeason: boolean = false): ContributorStats => {
-        const data = docSnap.data();
-        const uploads = useSeason ? (data.seasonUploads || 0) : (data.uploads || 0);
-        const points = useSeason ? (data.seasonPoints || 0) : (data.points || 0);
-        
-        let joinedDate: Date | null = null;
-        if (data.createdAt) {
-          if (typeof data.createdAt.toDate === "function") {
-            joinedDate = data.createdAt.toDate();
-          } else {
-            joinedDate = new Date(data.createdAt);
-          }
-        }
-
-        return {
-          uid: docSnap.id,
-          displayName: data.displayName || "Anonymous Contributor",
-          paperinoAvatar: data.paperinoAvatar || null,
-          joinedDate,
-          uploads,
-          points,
-          rankTitle: getRankTitle(points)
-        };
+      const getRankTitle = (uploadsCount: number) => {
+        if (uploadsCount >= 20) return "Elite Contributor";
+        if (uploadsCount >= 5) return "Active Contributor";
+        if (uploadsCount >= 1) return "Contributor";
+        return "Academic Explorer";
       };
 
       // 2. Fetch Season Contributors from pre-aggregated document
@@ -95,8 +71,10 @@ export default function LeaderboardPage() {
             paperinoAvatar: c.paperinoAvatar || null,
             joinedDate,
             uploads: c.uploads || 0,
-            points: c.points || 0,
-            rankTitle: c.rankTitle || getRankTitle(c.points || 0)
+            points: c.contributionPoints || c.points || 0,
+            downloads: c.downloads || 0,
+            contributorLevel: c.contributorLevel || "",
+            rankTitle: c.rankTitle || getRankTitle(c.uploads || 0)
           });
         });
       }
@@ -118,8 +96,10 @@ export default function LeaderboardPage() {
             paperinoAvatar: c.paperinoAvatar || null,
             joinedDate,
             uploads: c.uploads || 0,
-            points: c.points || 0,
-            rankTitle: c.rankTitle || getRankTitle(c.points || 0)
+            points: c.contributionPoints || c.points || 0,
+            downloads: c.downloads || 0,
+            contributorLevel: c.contributorLevel || "",
+            rankTitle: c.rankTitle || getRankTitle(c.uploads || 0)
           });
         });
       }
@@ -317,7 +297,12 @@ export default function LeaderboardPage() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-white font-bold text-base truncate group-hover:text-amber-400 transition-colors">{user.displayName}</h4>
+                        <h4 className="text-white font-bold text-base truncate group-hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                          {user.displayName} 
+                          {user.uploads >= 20 && <span title="Elite Contributor">🥇</span>}
+                          {user.uploads >= 5 && user.uploads < 20 && <span title="Active Contributor">🥈</span>}
+                          {user.uploads >= 1 && user.uploads < 5 && <span title="Contributor">🥉</span>}
+                        </h4>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs text-gray-400 truncate">{user.rankTitle}</span>
                         </div>
@@ -325,9 +310,9 @@ export default function LeaderboardPage() {
 
                       <div className="text-right">
                         <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-500">
-                          {user.points} <span className="text-xs text-amber-500/80 font-bold uppercase tracking-wider">pts</span>
+                          {user.points} <span className="text-xs text-amber-500/80 font-bold uppercase tracking-wider font-mono">pts</span>
                         </div>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">{user.uploads} Uploads</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{user.uploads} U · {user.downloads || 0} D</p>
                       </div>
                       
                       <div className="hidden sm:flex text-gray-600 group-hover:text-amber-500 transition-colors pr-2">
@@ -428,14 +413,18 @@ export default function LeaderboardPage() {
                 <Medal size={12} /> {selectedUser.rankTitle}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                  <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-600 mb-1">{selectedUser.points}</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Total Points</p>
+              <div className="grid grid-cols-3 gap-2.5 mb-6">
+                <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+                  <p className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-600 mb-1">{selectedUser.points}</p>
+                  <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Points</p>
                 </div>
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                  <p className="text-3xl font-black text-white mb-1">{selectedUser.uploads}</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Approved Uploads</p>
+                <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+                  <p className="text-xl font-black text-white mb-1">{selectedUser.uploads}</p>
+                  <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Uploads</p>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
+                  <p className="text-xl font-black text-cyan-400 mb-1">{selectedUser.downloads || 0}</p>
+                  <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Downloads</p>
                 </div>
               </div>
 

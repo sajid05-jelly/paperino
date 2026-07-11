@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Ban } from "lucide-react";
+import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Ban, RotateCcw } from "lucide-react";
 import { useSound } from "@/hooks/useSound";
 import { useSubjects } from "@/context/SubjectsContext";
 import { notifyUser } from "@/lib/notifications";
@@ -84,10 +84,17 @@ export default function AdminCoursesPage() {
       const dept = departmentsList.find(d => d.id === id);
       await updateDoc(doc(db, "departments", id), { status: "approved" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "approved" } : d));
+      
+      if (dept?.createdBy) {
+        await updateDoc(doc(db, "users", dept.createdBy), {
+          contributionPoints: increment(15),
+          points: increment(15) // legacy compatibility
+        });
+      }
+
       playSuccess();
       await refreshSubjects();
 
-      // Notify the contributor who created this department
       if (dept?.createdBy) {
         await notifyUser(
           db,
@@ -114,19 +121,33 @@ export default function AdminCoursesPage() {
       playSuccess();
       await refreshSubjects();
 
-      // Notify the contributor who created this department
       if (dept?.createdBy) {
         await notifyUser(
           db,
           dept.createdBy,
-          "Department Request Rejected",
-          `Your department request "${dept.name}" has been rejected. Please contact an admin for details.`,
+          "Department Request Rejected ❌",
+          `Your department request "${dept.name}" has been rejected.`,
           "department_rejected"
         );
       }
     } catch (error) {
       console.error("Error rejecting department:", error);
       alert("Failed to reject department.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestoreDept = async (id: string) => {
+    setActionLoading(id);
+    try {
+      await updateDoc(doc(db, "departments", id), { status: "pending" });
+      setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "pending" } : d));
+      playSuccess();
+      await refreshSubjects();
+    } catch (error) {
+      console.error("Error restoring department:", error);
+      alert("Failed to restore department.");
     } finally {
       setActionLoading(null);
     }
@@ -154,10 +175,17 @@ export default function AdminCoursesPage() {
       const sub = subjectsList.find(s => s.id === id);
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "approved" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "approved" } : s));
+      
+      if (sub?.contributorId) {
+        await updateDoc(doc(db, "users", sub.contributorId), {
+          contributionPoints: increment(15),
+          points: increment(15) // legacy compatibility
+        });
+      }
+
       playSuccess();
       await refreshSubjects();
 
-      // Notify the contributor who created this subject
       if (sub?.contributorId) {
         await notifyUser(
           db,
@@ -184,13 +212,12 @@ export default function AdminCoursesPage() {
       playSuccess();
       await refreshSubjects();
 
-      // Notify the contributor who created this subject
       if (sub?.contributorId) {
         await notifyUser(
           db,
           sub.contributorId,
-          "Subject Request Rejected",
-          `Your subject request "${sub.name}" has been rejected. Please contact an admin for details.`,
+          "Subject Request Rejected ❌",
+          `Your subject request "${sub.name}" has been rejected.`,
           "subject_rejected"
         );
       }
@@ -201,6 +228,23 @@ export default function AdminCoursesPage() {
       setActionLoading(null);
     }
   };
+
+  const handleRestoreSub = async (id: string) => {
+    setActionLoading(id);
+    try {
+      await updateDoc(doc(db, "dynamic_subjects", id), { status: "pending" });
+      setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "pending" } : s));
+      playSuccess();
+      await refreshSubjects();
+    } catch (error) {
+      console.error("Error restoring subject:", error);
+      alert("Failed to restore subject.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+
 
   const handleDeleteSub = async (id: string) => {
     setActionLoading(id);
@@ -438,9 +482,14 @@ export default function AdminCoursesPage() {
                       )}
 
                       {activeTab === "rejected" && (
-                        <button onClick={() => handleApproveDept(dept.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
-                          <CheckCircle2 size={14} /> Approve
-                        </button>
+                        <>
+                          <button onClick={() => handleApproveDept(dept.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
+                            <CheckCircle2 size={14} /> Approve
+                          </button>
+                          <button onClick={() => handleRestoreDept(dept.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold hover:bg-indigo-500/20">
+                            <RotateCcw size={14} /> Restore
+                          </button>
+                        </>
                       )}
 
                       {/* Delete button — always visible */}
@@ -561,9 +610,14 @@ export default function AdminCoursesPage() {
                       )}
 
                       {activeTab === "rejected" && (
-                        <button onClick={() => handleApproveSub(sub.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
-                          <CheckCircle2 size={14} /> Approve
-                        </button>
+                        <>
+                          <button onClick={() => handleApproveSub(sub.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20">
+                            <CheckCircle2 size={14} /> Approve
+                          </button>
+                          <button onClick={() => handleRestoreSub(sub.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold hover:bg-indigo-500/20">
+                            <RotateCcw size={14} /> Restore
+                          </button>
+                        </>
                       )}
 
                       {/* Delete button — always visible */}

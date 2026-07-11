@@ -11,15 +11,14 @@ interface AICreditsDisplayProps {
 }
 
 export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
-  const { user, isContributor, isAdmin } = useAuth();
+  const { user, isContributor, isAdmin, isPremiumActive } = useAuth();
   const [used, setUsed] = useState(0);
 
-  // Determine limits based on role
-  const limit = isAdmin ? Infinity : isContributor ? 9 : 3;
+  // Premium / Admins get 1000 credits/day, contributors get 9, students get 3
+  const limit = isAdmin || isPremiumActive ? 1000 : isContributor ? 9 : 3;
 
   useEffect(() => {
     if (!user) return;
-    if (isAdmin) return; // Admins are unlimited, no need to listen to db
 
     const creditsRef = doc(db, "user_credits", user.uid);
     const unsubscribe = onSnapshot(
@@ -47,7 +46,7 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
     );
 
     return () => unsubscribe();
-  }, [user, isAdmin, tool]);
+  }, [user, tool]);
 
   if (!user) return null;
 
@@ -59,6 +58,17 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
       <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 font-bold text-xs shadow-sm w-fit mx-auto mt-4">
         <Sparkles size={14} className="text-violet-400" />
         Admin: Unlimited Credits
+      </div>
+    );
+  }
+
+  if (isPremiumActive) {
+    return (
+      <div className="flex flex-col items-center mt-4 space-y-1">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 text-yellow-300 font-bold text-xs shadow-sm w-fit mx-auto">
+          <Sparkles size={14} className="text-yellow-400 animate-pulse" />
+          Premium Unlimited ({remaining} left)
+        </div>
       </div>
     );
   }

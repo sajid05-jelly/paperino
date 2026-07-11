@@ -96,7 +96,7 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
     setError("");
 
     try {
-      const isOnlyContributor = isContributor && !isAdmin;
+      const isSuggestion = !isAdmin;
       let finalDeptId = selectedDeptId;
 
       if (deptMode === "new") {
@@ -105,15 +105,15 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
           newDeptName,
           newDeptCode || newDeptName.substring(0, 3).toUpperCase(),
           parseInt(newDeptSemesters) || 8,
-          isOnlyContributor,
+          isSuggestion,
           user?.uid,
           user?.displayName || user?.email || "Unknown"
         );
 
-        if (isOnlyContributor) {
+        if (isSuggestion) {
           await notifyAdmins(
             db,
-            "New Department Suggestion",
+            "New Department Suggested 🏢",
             `${user?.displayName || "A contributor"} suggested a new department: ${newDeptName}.`,
             "department_suggested"
           );
@@ -126,15 +126,15 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
         semester,
         subjectName,
         subjectCode,
-        isOnlyContributor,
+        isSuggestion,
         user?.uid,
         user?.displayName || user?.email || "Unknown"
       );
 
-      if (isOnlyContributor) {
+      if (isSuggestion) {
         await notifyAdmins(
           db,
-          "New Subject Suggestion",
+          "New Subject Suggested 📚",
           `${user?.displayName || "A contributor"} suggested a new subject: ${subjectName} under ${deptMode === 'new' ? newDeptName : finalDeptId}.`,
           "subject_suggested"
         );

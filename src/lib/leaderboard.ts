@@ -45,7 +45,6 @@ export async function recalculateLeaderboards(db: any) {
       if (!data.uploaderId) return;
       const uid = data.uploaderId;
       
-      // Only count if user is active and exists
       if (!usersMap.has(uid)) return;
 
       allTimeCounts[uid] = (allTimeCounts[uid] || 0) + 1;
@@ -55,19 +54,20 @@ export async function recalculateLeaderboards(db: any) {
       }
     });
 
-    const getRankTitle = (points: number) => {
-      if (points >= 100) return "Elite Contributor";
-      if (points >= 50) return "Top Contributor";
-      if (points >= 20) return "Active Helper";
-      if (points >= 1) return "Community Supporter";
-      return "Newcomer";
+    const getBadgeTitle = (uploads: number) => {
+      if (uploads >= 20) return "Elite Contributor";
+      if (uploads >= 5) return "Active Contributor";
+      if (uploads >= 1) return "Contributor";
+      return "Explorer";
     };
 
-    const buildBoard = (counts: Record<string, number>) => {
-      return Object.entries(counts)
-        .map(([uid, uploads]) => {
+    const buildBoard = (counts: Record<string, number>, useSeason: boolean = false) => {
+      return Object.keys(counts)
+        .map((uid) => {
           const user = usersMap.get(uid);
-          const points = uploads * 10;
+          const uploads = useSeason ? (user.seasonUploads || 0) : (user.uploads || 0);
+          const contributionPoints = useSeason ? (user.seasonPoints || 0) : (user.contributionPoints || 0);
+          const downloads = user.downloads || 0;
           
           let joinedDateStr = null;
           if (user.createdAt) {
@@ -86,15 +86,25 @@ export async function recalculateLeaderboards(db: any) {
             paperinoAvatar: user.paperinoAvatar || null,
             joinedDate: joinedDateStr,
             uploads,
-            points,
-            rankTitle: getRankTitle(points)
+            downloads,
+            contributionPoints,
+            contributorLevel: user.contributorLevel || "",
+            rankTitle: getBadgeTitle(user.uploads || 0)
           };
         })
-        .sort((a, b) => b.points - a.points);
+        .sort((a, b) => {
+          if (b.contributionPoints !== a.contributionPoints) {
+            return b.contributionPoints - a.contributionPoints;
+          }
+          if (b.uploads !== a.uploads) {
+            return b.uploads - a.uploads;
+          }
+          return b.downloads - a.downloads;
+        });
     };
 
-    const seasonBoard = buildBoard(seasonCounts);
-    const allTimeBoard = buildBoard(allTimeCounts);
+    const seasonBoard = buildBoard(seasonCounts, true);
+    const allTimeBoard = buildBoard(allTimeCounts, false);
 
     // Save aggregated documents to the leaderboards collection
     await setDoc(doc(db, "leaderboards", "currentSeason"), {

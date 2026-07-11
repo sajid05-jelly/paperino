@@ -14,13 +14,13 @@ export default function ContributorLayout({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (!loading) {
-      if (!user || (!isContributor && !isAdmin)) {
-        router.push("/team");
+      if (!user) {
+        router.push("/login");
       }
     }
-  }, [user, isContributor, isAdmin, loading, router]);
+  }, [user, loading, router]);
 
-  if (loading || !user || (!isContributor && !isAdmin)) {
+  if (loading || !user) {
     return <div className="flex items-center justify-center min-h-[50vh] text-fuchsia-400 animate-pulse">Loading Contributor Dashboard...</div>;
   }
 

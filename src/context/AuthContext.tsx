@@ -12,6 +12,12 @@ interface AuthContextType {
   isContributor: boolean;
   isBlocked: boolean;
   role: string;
+  contributorLevel: "contributor" | "active" | "elite" | "";
+  contributionPoints: number;
+  uploads: number;
+  isPremiumActive: boolean;
+  premiumEndDate: any;
+  premiumStartDate: any;
   loading: boolean;
   paperinoAvatar: string | null;
   lastPulseReadAt: any; // Firestore Timestamp
@@ -26,6 +32,12 @@ const AuthContext = createContext<AuthContextType>({
   isContributor: false,
   isBlocked: false,
   role: "student",
+  contributorLevel: "",
+  contributionPoints: 0,
+  uploads: 0,
+  isPremiumActive: false,
+  premiumEndDate: null,
+  premiumStartDate: null,
   loading: true,
   paperinoAvatar: null,
   lastPulseReadAt: null,
@@ -43,6 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isContributor, setIsContributor] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [role, setRole] = useState("student");
+  const [contributorLevel, setContributorLevel] = useState<"contributor" | "active" | "elite" | "">("");
+  const [contributionPoints, setContributionPoints] = useState(0);
+  const [uploads, setUploads] = useState(0);
+  const [isPremiumActive, setIsPremiumActive] = useState(false);
+  const [premiumEndDate, setPremiumEndDate] = useState<any>(null);
+  const [premiumStartDate, setPremiumStartDate] = useState<any>(null);
   const [paperinoAvatar, setPaperinoAvatarState] = useState<string | null>(null);
   const [lastPulseReadAt, setLastPulseReadAt] = useState<any>(null);
 
@@ -130,10 +148,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             const isBlockedUser = data.status === "blocked";
             const isAdminUser = data.role === "admin" || currentIsAdmin;
-            const isContributorUser = data.role === "contributor";
+            const hasUploads = (data.uploads || 0) >= 1;
             
+            // Determing contributorLevel dynamically or from DB field
+            let level = data.contributorLevel || "";
+            if (!level && hasUploads) {
+              const count = data.uploads || 0;
+              level = count >= 20 ? "elite" : count >= 5 ? "active" : "contributor";
+            }
+
+            setContributorLevel(level);
+            setContributionPoints(data.contributionPoints || 0);
+            setUploads(data.uploads || 0);
+            setPremiumStartDate(data.premiumStartDate || null);
+            setPremiumEndDate(data.premiumEndDate || null);
+
+            let activePremium = false;
+            if (data.premiumEndDate) {
+              const now = new Date();
+              const end = data.premiumEndDate.toDate ? data.premiumEndDate.toDate() : new Date(data.premiumEndDate);
+              if (now <= end) {
+                activePremium = true;
+              }
+            }
+            setIsPremiumActive(activePremium);
+
             setIsAdmin(isAdminUser);
-            setIsContributor(isContributorUser);
+            setIsContributor(hasUploads || !!level);
             setIsBlocked(isBlockedUser);
             setRole(data.role || "student");
 
@@ -154,6 +195,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsContributor(false);
         setIsBlocked(false);
         setRole("student");
+        setContributorLevel("");
+        setContributionPoints(0);
+        setUploads(0);
+        setIsPremiumActive(false);
+        setPremiumStartDate(null);
+        setPremiumEndDate(null);
         setLoading(false);
       }
     });
@@ -220,6 +267,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isContributor,
       isBlocked,
       role,
+      contributorLevel,
+      contributionPoints,
+      uploads,
+      isPremiumActive,
+      premiumEndDate,
+      premiumStartDate,
       loading, 
       paperinoAvatar, 
       lastPulseReadAt,
