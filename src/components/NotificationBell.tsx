@@ -115,7 +115,7 @@ export default function NotificationBell() {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-[calc(100%+10px)] w-[340px] sm:w-[380px] max-h-[500px] flex flex-col z-[9999] rounded-2xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          className="fixed md:absolute top-[60px] md:top-[calc(100%+10px)] right-3 md:right-0 left-auto w-[calc(100vw-24px)] md:w-[380px] max-w-[380px] max-h-[70vh] md:max-h-[500px] flex flex-col z-[9999] rounded-2xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           style={{ background: "rgba(8,6,18,0.97)", backdropFilter: "blur(20px)" }}
         >
           {/* Header */}

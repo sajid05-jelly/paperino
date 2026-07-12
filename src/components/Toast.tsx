@@ -210,7 +210,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {toasts.length > 0 && (
         <div
           aria-label="Notifications"
-          className="fixed bottom-24 right-4 sm:right-6 z-[99998] flex flex-col gap-2 max-w-[360px] w-[calc(100vw-2rem)] sm:w-[360px] pointer-events-none"
+          className="fixed bottom-4 left-3 right-3 sm:bottom-24 sm:right-6 sm:left-auto sm:w-[360px] sm:max-w-[360px] z-[9998] flex flex-col gap-2 pointer-events-none"
         >
           {toasts.map((toast) => (
             <div key={toast.id} className="pointer-events-auto">
