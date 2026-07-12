@@ -1,18 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { GraduationCap, Calendar, Search, ChevronRight, Loader2, Plus } from "lucide-react";
+import { GraduationCap, Calendar, Search, ChevronRight, Loader2, Plus, FileText, Sparkles } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 import CreateCourseModal from "@/components/CreateCourseModal";
 import { useAuth } from "@/context/AuthContext";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+const DEPT_PRIORITY: Record<string, number> = {
+  btech: 1,
+  mca: 2,
+  mba: 3,
+  msc: 4,
+  bsc: 5,
+  bcom: 6,
+  bba: 7
+};
 
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { departments, loading } = useSubjects();
   const { user } = useAuth();
+  
+  const [materialCounts, setMaterialCounts] = useState<Record<string, number>>({});
+  const [countsLoading, setCountsLoading] = useState(true);
+
+  // Fetch approved material counts per department
+  useEffect(() => {
+    const fetchMaterialCounts = async () => {
+      setCountsLoading(true);
+      try {
+        const snap = await getDocs(query(collection(db, "materials"), where("status", "==", "approved")));
+        const counts: Record<string, number> = {};
+        snap.forEach(doc => {
+          const data = doc.data();
+          const deptId = data.departmentId || "btech";
+          counts[deptId] = (counts[deptId] || 0) + 1;
+        });
+        setMaterialCounts(counts);
+      } catch (err) {
+        console.error("Error fetching material counts:", err);
+      }
+      setCountsLoading(false);
+    };
+    fetchMaterialCounts();
+  }, []);
 
   // Filter approved departments only for public display
   const approvedDepts = departments.filter(d => d.status === "approved");
@@ -21,6 +57,30 @@ export default function CoursesPage() {
     d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Sort: count (descending) -> priority index (ascending)
+  const sortedDepts = [...filteredDepts].sort((a, b) => {
+    const countA = materialCounts[a.id] || 0;
+    const countB = materialCounts[b.id] || 0;
+    
+    if (countA !== countB) {
+      return countB - countA;
+    }
+    
+    const prioA = DEPT_PRIORITY[a.id] || 99;
+    const prioB = DEPT_PRIORITY[b.id] || 99;
+    return prioA - prioB;
+  });
+
+  // Featured First: force B.Tech card to be at the top-left position (first element)
+  const btechIndex = sortedDepts.findIndex(d => d.id === "btech");
+  let finalDepts = [...sortedDepts];
+  if (btechIndex > -1) {
+    const [btechDept] = finalDepts.splice(btechIndex, 1);
+    finalDepts.unshift(btechDept);
+  }
+
+  const isPageLoading = loading || countsLoading;
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 relative min-h-[80vh]">
@@ -64,12 +124,12 @@ export default function CoursesPage() {
         </div>
       </div>
 
-      {loading ? (
+      {isPageLoading ? (
         <div className="flex flex-col items-center justify-center py-20 w-full">
           <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
           <p className="text-gray-400">Loading departments...</p>
         </div>
-      ) : filteredDepts.length === 0 ? (
+      ) : finalDepts.length === 0 ? (
         <div className="vision-glass p-12 text-center rounded-3xl w-full max-w-2xl mx-auto border border-white/10 mt-6 animate-in fade-in zoom-in-95">
           <GraduationCap className="mx-auto text-gray-600 mb-4" size={48} />
           <h3 className="text-xl font-medium text-white mb-2">No departments found</h3>
@@ -85,37 +145,65 @@ export default function CoursesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full relative z-10 mt-4">
-          {filteredDepts.map((dept, i) => (
-            <Link key={dept.id} href={`/courses/${dept.id}`}>
-              <div 
-                className="vision-glass p-6 rounded-[2rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[160px] animate-in fade-in slide-in-from-bottom-8" 
-                style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="flex items-center justify-between mb-4 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
-                    <GraduationCap size={22} />
+          {finalDepts.map((dept, i) => {
+            const isBTech = dept.id === "btech";
+            return (
+              <Link key={dept.id} href={`/courses/${dept.id}`}>
+                <div 
+                  className={`vision-glass p-6 rounded-[2rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[180px] animate-in fade-in slide-in-from-bottom-8 relative overflow-hidden ${
+                    isBTech ? 'border-amber-500/20 bg-gradient-to-br from-amber-500/[0.03] to-transparent shadow-[0_0_25px_rgba(245,158,11,0.05)]' : ''
+                  }`}
+                  style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  {isBTech && (
+                    <div className="absolute top-0 right-0 h-16 w-16 bg-gradient-to-bl from-amber-500/10 to-transparent pointer-events-none" />
+                  )}
+
+                  <div className="flex items-center justify-between mb-4 relative z-10">
+                    <div className={`w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-all shadow-sm ${
+                      isBTech ? 'text-amber-400 group-hover:bg-amber-500/20 group-hover:border-amber-500/30' : 'text-purple-400 group-hover:bg-purple-500/20 group-hover:border-purple-500/30'
+                    }`}>
+                      <GraduationCap size={22} />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isBTech && (
+                        <span className="flex items-center gap-1 text-[9px] bg-gradient-to-r from-amber-500 to-orange-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-[0_0_8px_rgba(245,158,11,0.3)]">
+                          <Sparkles size={8} /> Popular
+                        </span>
+                      )}
+                      <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        {dept.code}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    {dept.code}
-                  </span>
-                </div>
-                <div className="relative z-10">
-                  <h3 className="text-xl font-bold text-white mb-1.5 tracking-tight group-hover:text-purple-300 transition-colors">
-                    {dept.name}
-                  </h3>
-                  <div className="flex items-center justify-between text-xs text-gray-500 group-hover:text-purple-400 transition-colors">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} /> {dept.totalSemesters} Semesters
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      Explore <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                    </span>
+
+                  <div className="relative z-10">
+                    <h3 className={`text-xl font-bold text-white mb-2 tracking-tight transition-colors ${
+                      isBTech ? 'group-hover:text-amber-300' : 'group-hover:text-purple-300'
+                    }`}>
+                      {dept.name}
+                    </h3>
+                    <div className="flex items-center justify-between text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                      <span className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} /> {dept.totalSemesters} Sems
+                        </span>
+                        <span className="flex items-center gap-1 font-medium text-gray-400">
+                          <FileText size={12} className={isBTech ? 'text-amber-500/80' : 'text-purple-400/80'} /> {materialCounts[dept.id] || 0} files
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-0.5 font-semibold">
+                        Explore <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
 
