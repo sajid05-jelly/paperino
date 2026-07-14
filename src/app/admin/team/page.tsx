@@ -1,243 +1,199 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, doc, updateDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { collection, query, where, doc, getDocs, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
-import { notifyUser } from "@/lib/notifications";
-import { Users, UserPlus, ShieldAlert, CheckCircle2, XCircle, Loader2, Ban, ShieldCheck, Trophy } from "lucide-react";
+import { 
+  Users, UserCheck, ShieldCheck, Trophy, Sparkles, 
+  FileText, Clock, ArrowUpRight, Loader2, RefreshCw 
+} from "lucide-react";
 
-
-interface JoinRequest {
+interface ContributorInfo {
   id: string;
-  uid: string;
-  email: string;
   displayName: string;
-  photoURL?: string;
-  status: string;
-  timestamp: any;
+  email: string;
+  contributionPoints: number;
+  uploads: number;
 }
 
-interface Contributor {
+interface RecentMat {
   id: string;
-  email: string;
-  displayName: string;
-  role: string;
+  title: string;
+  fileName: string;
+  category: string;
+  uploaderName?: string;
+  createdAt: number;
   status: string;
-  paperinoAvatar?: string;
 }
 
 export default function AdminTeamPage() {
-  const [requests, setRequests] = useState<JoinRequest[]>([]);
-  const [contributors, setContributors] = useState<Contributor[]>([]);
+  const [stats, setStats] = useState({
+    totalContributors: 0,
+    totalApproved: 0,
+    totalPending: 0,
+    totalPremium: 0
+  });
+  const [topContributors, setTopContributors] = useState<ContributorInfo[]>([]);
+  const [recentContributions, setRecentContributions] = useState<RecentMat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Users stats
+      const usersSnap = await getDocs(collection(db, "users"));
+      let contribCount = 0;
+      let premCount = 0;
+      const usersList: ContributorInfo[] = [];
+      
+      usersSnap.forEach(d => {
+        const u = d.data();
+        const uploads = u.uploads || 0;
+        if (uploads > 0) contribCount++;
+        
+        // Premium check
+        const isPremium = u.isPremiumActive || false;
+        if (isPremium) premCount++;
+        
+        usersList.push({
+          id: d.id,
+          displayName: u.displayName || u.email || "Explorer",
+          email: u.email,
+          contributionPoints: u.contributionPoints || 0,
+          uploads: uploads
+        });
+      });
+      
+      // Sort top contributors
+      usersList.sort((a, b) => b.contributionPoints - a.contributionPoints);
+      setTopContributors(usersList.slice(0, 5));
+
+      // 2. Fetch Materials stats
+      const matsSnap = await getDocs(collection(db, "materials"));
+      let approved = 0;
+      let pending = 0;
+      const matsList: RecentMat[] = [];
+      
+      matsSnap.forEach(d => {
+        const m = d.data();
+        if (m.status === "approved") approved++;
+        else if (!m.status || m.status === "pending") pending++;
+        
+        matsList.push({
+          id: d.id,
+          title: m.title || "Untitled",
+          fileName: m.fileName || "Unknown File",
+          category: m.category || "notes",
+          uploaderName: m.uploaderName || "Contributor",
+          createdAt: m.createdAt || Date.now(),
+          status: m.status || "pending"
+        });
+      });
+      
+      // Sort recent contributions
+      matsList.sort((a, b) => b.createdAt - a.createdAt);
+      setRecentContributions(matsList.slice(0, 5));
+      
+      setStats({
+        totalContributors: contribCount,
+        totalApproved: approved,
+        totalPending: pending,
+        totalPremium: premCount
+      });
+      
+    } catch (err) {
+      console.error("Error loading admin stats:", err);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    setLoading(true);
-    
-    // Real-time listener for Pending Requests
-    const reqQ = query(collection(db, "contributor_requests"), where("status", "==", "pending"));
-    const unsubRequests = onSnapshot(reqQ, (snap) => {
-      const reqs: JoinRequest[] = [];
-      snap.forEach(doc => reqs.push({ id: doc.id, ...doc.data() } as JoinRequest));
-      setRequests(reqs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
-      setLoading(false);
-    }, (err) => {
-      console.error("Error fetching requests:", err);
-      setLoading(false);
-    });
-
-    // Real-time listener for Active Contributors
-    const conQ = query(collection(db, "users"), where("role", "==", "contributor"));
-    const unsubContributors = onSnapshot(conQ, (snap) => {
-      const cons: Contributor[] = [];
-      snap.forEach(doc => cons.push({ id: doc.id, ...doc.data() } as Contributor));
-      setContributors(cons.filter(c => c.status !== "blocked"));
-    }, (err) => {
-      console.error("Error fetching contributors:", err);
-    });
-
-    return () => {
-      unsubRequests();
-      unsubContributors();
-    };
+    fetchAnalytics();
   }, []);
-
-  const handleApprove = async (request: JoinRequest) => {
-    setActionLoading(request.id);
-    try {
-      // 1. Update Join Request
-      await updateDoc(doc(db, "contributor_requests", request.id), { status: "approved" });
-      
-      // 2. Update User Role
-      await updateDoc(doc(db, "users", request.uid), { role: "contributor" });
-      
-      // 3. Notify the applicant
-      await notifyUser(
-        db,
-        request.uid,
-        "Application Approved! 🎉",
-        "Your Paperino Team application has been approved. You can now contribute materials and access contributor features.",
-        "application_approved"
-      );
-
-      // Update leaderboard pre-aggregated tables immediately
-      await recalculateLeaderboards(db);
-    } catch (err) {
-      console.error("Approve error:", err);
-      alert("Failed to approve contributor.");
-    }
-    setActionLoading(null);
-  };
-
-  const handleReject = async (request: JoinRequest) => {
-    setActionLoading(request.id);
-    try {
-      await updateDoc(doc(db, "contributor_requests", request.id), { status: "rejected" });
-
-      // Notify the applicant
-      await notifyUser(
-        db,
-        request.uid,
-        "Application Status Update",
-        "Your Paperino Team application was not approved at this time.",
-        "application_rejected"
-      );
-    } catch (err) {
-      console.error("Reject error:", err);
-    }
-    setActionLoading(null);
-  };
-
-  const handleRevoke = async (uid: string) => {
-    if (!confirm("Are you sure you want to revoke this user's contributor access?")) return;
-    setActionLoading(uid);
-    try {
-      await updateDoc(doc(db, "users", uid), { role: "student" });
-      
-      // Update leaderboard pre-aggregated tables immediately
-      await recalculateLeaderboards(db);
-    } catch (err) {
-      console.error("Revoke error:", err);
-    }
-    setActionLoading(null);
-  };
-
-  const handleBlock = async (uid: string) => {
-    if (!confirm("Are you sure you want to BLOCK this user entirely from Paperino?")) return;
-    setActionLoading(uid);
-    try {
-      await updateDoc(doc(db, "users", uid), { status: "blocked", role: "student" });
-      
-      // Update leaderboard pre-aggregated tables immediately
-      await recalculateLeaderboards(db);
-    } catch (err) {
-      console.error("Block error:", err);
-    }
-    setActionLoading(null);
-  };
 
   return (
     <div className="w-full space-y-8">
       
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <ShieldCheck className="text-emerald-400" /> Team Management
+            <ShieldCheck className="text-emerald-400" /> Platform Analytics & Management
           </h1>
-          <p className="text-gray-400">Approve join requests and manage Paperino Team contributors.</p>
+          <p className="text-gray-400">Track community contributions, premium users metrics, and adjust system levels.</p>
         </div>
+        <button 
+          onClick={fetchAnalytics}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 hover:text-white rounded-xl text-sm font-bold transition-all"
+        >
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+        </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-emerald-400" size={40} /></div>
+        <div className="flex justify-center py-20">
+          <Loader2 className="animate-spin text-emerald-400" size={40} />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Pending Applications List */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 h-fit">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <UserPlus className="text-violet-400" size={20}/> Pending Applications
-            </h2>
+        <>
+          {/* Stats Analytics Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-emerald-500/5 to-transparent">
+              <Users className="text-emerald-400 mb-3" size={24} />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Total Contributors</p>
+              <p className="text-3xl font-black text-white">{stats.totalContributors}</p>
+            </div>
             
-            {requests.length === 0 ? (
-              <div className="text-center py-12 px-4 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
-                <p className="text-gray-500">No pending join requests.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {requests.map(req => (
-                  <div key={req.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col sm:flex-row justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-white font-bold truncate">{req.displayName}</h4>
-                      <p className="text-sm text-gray-400 truncate">{req.email}</p>
-                      <p className="text-xs text-gray-500 mt-1">Applied: {req.timestamp?.toDate().toLocaleDateString() || "Recently"}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button 
-                        onClick={() => handleReject(req)}
-                        disabled={actionLoading === req.id}
-                        className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 transition-colors"
-                        title="Reject Application"
-                      >
-                        {actionLoading === req.id ? <Loader2 size={18} className="animate-spin"/> : <XCircle size={18}/>}
-                      </button>
-                      <button 
-                        onClick={() => handleApprove(req)}
-                        disabled={actionLoading === req.id}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all flex items-center gap-2 text-sm"
-                      >
-                        {actionLoading === req.id ? <Loader2 size={16} className="animate-spin"/> : <CheckCircle2 size={16}/>}
-                        Approve
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-cyan-500/5 to-transparent">
+              <FileText className="text-cyan-400 mb-3" size={24} />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Approved Uploads</p>
+              <p className="text-3xl font-black text-white">{stats.totalApproved}</p>
+            </div>
+
+            <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-amber-500/5 to-transparent">
+              <Clock className="text-amber-400 mb-3" size={24} />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Pending Reviews</p>
+              <p className="text-3xl font-black text-white">{stats.totalPending}</p>
+            </div>
+
+            <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-purple-500/5 to-transparent">
+              <Sparkles className="text-purple-400 mb-3" size={24} />
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Premium Accounts</p>
+              <p className="text-3xl font-black text-white">{stats.totalPremium}</p>
+            </div>
           </div>
 
-          <div className="space-y-8">
-            {/* Active Contributors List */}
-            <div className="glass-panel p-6 rounded-3xl border border-white/5 h-fit">
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Users className="text-emerald-400" size={20}/> Active Contributors
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Top Contributors Leaderboard */}
+            <div className="lg:col-span-2 glass-panel p-6 rounded-3xl border border-white/5 space-y-6">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Trophy className="text-yellow-400" size={20} /> Top Contributors
               </h2>
-
-              {contributors.length === 0 ? (
-                <div className="text-center py-12 px-4 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
-                  <p className="text-gray-500">No active contributors found.</p>
+              
+              {topContributors.length === 0 ? (
+                <div className="text-center py-12 bg-white/[0.01] rounded-2xl border border-white/5 border-dashed">
+                  <p className="text-gray-500">No contributors yet.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {contributors.map(contributor => (
-                    <div key={contributor.id} className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col sm:flex-row justify-between gap-4">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 flex-shrink-0 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold border border-emerald-500/30">
-                          {contributor.displayName?.charAt(0).toUpperCase() || "C"}
+                <div className="space-y-3">
+                  {topContributors.map((c, i) => (
+                    <div key={c.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-sm font-bold text-gray-500 font-mono w-4">#{i + 1}</span>
+                        <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-bold text-gray-300 flex-shrink-0">
+                          {c.displayName.charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-white font-bold truncate">{contributor.displayName}</h4>
-                          <p className="text-sm text-gray-400 truncate">{contributor.email}</p>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-white truncate">{c.displayName}</h4>
+                          <p className="text-xs text-gray-500 truncate">{c.email}</p>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button 
-                          onClick={() => handleRevoke(contributor.id)}
-                          disabled={actionLoading === contributor.id}
-                          className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-gray-300 transition-colors border border-white/5"
-                        >
-                          Revoke Role
-                        </button>
-                        <button 
-                          onClick={() => handleBlock(contributor.id)}
-                          disabled={actionLoading === contributor.id}
-                          className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs font-medium text-rose-400 transition-colors border border-rose-500/20 flex items-center gap-1"
-                        >
-                          <Ban size={12}/> Block
-                        </button>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-emerald-400">{c.contributionPoints} pts</p>
+                        <p className="text-[10px] text-gray-500">{c.uploads} files</p>
                       </div>
                     </div>
                   ))}
@@ -245,33 +201,77 @@ export default function AdminTeamPage() {
               )}
             </div>
 
-            {/* Leaderboard Controls */}
-            <div className="glass-panel p-6 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent h-fit">
-              <h2 className="text-xl font-bold text-amber-400 mb-2 flex items-center gap-2">
-                <Trophy size={20}/> Leaderboard Seasons
-              </h2>
-              <p className="text-sm text-gray-400 mb-6">Reset the main leaderboard by starting a new season. The Hall of Fame will retain all-time scores.</p>
-              
-              <button 
-                onClick={async () => {
-                  if(!confirm("Are you sure you want to start a new Leaderboard Season? This will reset everyone's main score to 0!")) return;
-                  try {
-                    await setDoc(doc(db, "settings", "leaderboard"), { seasonStartDate: new Date() }, { merge: true });
-                    // Recalculate leaderboards with the new season start date
-                    await recalculateLeaderboards(db);
-                    alert("New Season Started!");
-                  } catch (err) {
-                    console.error("Season error", err);
-                  }
-                }}
-                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold transition-all shadow-[0_0_15px_rgba(251,191,36,0.3)]"
-              >
-                Start New Season Now
-              </button>
+            {/* Side Column: Season Reset Controls */}
+            <div className="space-y-6">
+              <div className="glass-panel p-6 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent h-fit space-y-4">
+                <h2 className="text-xl font-bold text-amber-400 flex items-center gap-2">
+                  <Trophy size={20} /> Leaderboard Seasons
+                </h2>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Reset the active season leaderboard. All-time total scores will remain saved and visible in the Hall of Fame.
+                </p>
+                
+                <button 
+                  disabled={actionLoading}
+                  onClick={async () => {
+                    if(!confirm("Are you sure you want to start a new Leaderboard Season? This will reset everyone's active season points to 0!")) return;
+                    setActionLoading(true);
+                    try {
+                      await setDoc(doc(db, "settings", "leaderboard"), { seasonStartDate: new Date() }, { merge: true });
+                      await recalculateLeaderboards(db);
+                      alert("New Season Started Successfully!");
+                      fetchAnalytics();
+                    } catch (err) {
+                      console.error("Season reset error", err);
+                    }
+                    setActionLoading(false);
+                  }}
+                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold transition-all shadow-[0_0_15px_rgba(251,191,36,0.2)] flex justify-center items-center gap-2 text-sm"
+                >
+                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : "Start New Season"}
+                </button>
+              </div>
             </div>
+
           </div>
 
-        </div>
+          {/* Recent Activity */}
+          <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-6">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Clock className="text-cyan-400" size={20} /> Recent Contribution Activity
+            </h2>
+
+            {recentContributions.length === 0 ? (
+              <div className="text-center py-12 bg-white/[0.01] rounded-2xl border border-white/5 border-dashed">
+                <p className="text-gray-500">No uploads found.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.04] space-y-1">
+                {recentContributions.map(m => (
+                  <div key={m.id} className="pt-3 pb-3 flex items-start justify-between gap-4 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                          {m.category}
+                        </span>
+                        <span className="text-xs text-gray-500">by {m.uploaderName}</span>
+                      </div>
+                      <h4 className="text-sm font-semibold text-white truncate" title={m.title}>{m.title}</h4>
+                      <p className="text-[10px] text-gray-600 truncate">{m.fileName}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                      m.status === "approved" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" :
+                      m.status === "rejected" ? "text-rose-400 bg-rose-500/10 border-rose-500/20" :
+                      "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                    }`}>
+                      {m.status.toUpperCase()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
