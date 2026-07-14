@@ -5,12 +5,29 @@ import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Book
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
 
+const DEPT_PRIORITY: Record<string, number> = {
+  btech: 1,
+  mca: 2,
+  mba: 3,
+  msc: 4,
+  bsc: 5,
+  bcom: 6,
+  bba: 7
+};
+
 const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: false });
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function Home() {
   const { departments, loading } = useSubjects();
   const approvedDepts = departments.filter(d => d.status === "approved");
+
+  // Sort strictly by custom priority order
+  const sortedDepts = [...approvedDepts].sort((a, b) => {
+    const prioA = DEPT_PRIORITY[a.id] || 99;
+    const prioB = DEPT_PRIORITY[b.id] || 99;
+    return prioA - prioB;
+  });
 
   return (
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">
@@ -60,12 +77,12 @@ export default function Home() {
             <div className="flex justify-center items-center py-16 col-span-full">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
             </div>
-          ) : approvedDepts.length === 0 ? (
+          ) : sortedDepts.length === 0 ? (
             <div className="text-gray-400 py-16 text-center col-span-full">
               No approved courses available yet.
             </div>
           ) : (
-            approvedDepts.map(dept => (
+            sortedDepts.map(dept => (
               <Link href={`/courses/${dept.id}`} key={dept.id} className="w-full flex">
                 <div className="vision-glass p-8 w-full group cursor-pointer relative overflow-hidden vision-hover flex flex-col justify-between rounded-[2rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl">
                   <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-violet-500 to-fuchsia-400 rounded-full blur-[60px] opacity-10 group-hover:opacity-30 transition-opacity duration-700"></div>
