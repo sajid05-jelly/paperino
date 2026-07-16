@@ -762,26 +762,7 @@ export default function PulsePage() {
                         </p>
                       </div>
 
-                      <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
-                        <hr className="border-white/5 mb-6" />
 
-
-
-                        {/* What's New Bullet Points */}
-                        <div className="mb-6">
-                          <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                            <span>✨</span> What's New
-                          </div>
-                          <ul className="space-y-2 text-xs text-gray-400">
-                            {parsed.whatsNew.map((item, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-cyan-400 mt-0.5">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
 
                       {!isLoggedOut && update.link && (
                         <div className="pt-4 border-t border-white/5 mt-auto">
@@ -1105,22 +1086,7 @@ export default function PulsePage() {
                         </div>
                       </div>
 
-                      <hr className="border-white/5 mb-6" />
 
-                      {/* Key Highlights */}
-                      <div className="mb-6">
-                        <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                          <span>✨</span> Key Highlights
-                        </div>
-                        <ul className="space-y-2 text-xs text-gray-400">
-                          {parsed.highlights.map((h, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-violet-400 mt-0.5">•</span>
-                              <span className="line-clamp-1">{h}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
                     </div>
 
                     {!isLoggedOut && update.link && (
