@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, X, Loader2, Award, Sparkles, BookOpen, Plus, Info } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, X, Loader2, Award, Sparkles, BookOpen, Plus, Info, Zap, Users } from "lucide-react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -224,19 +224,45 @@ export default function ContributorUploadPage() {
         {/* Right Sidebar: Suggestions, Rewards & Guidelines */}
         <div className="space-y-6">
           
-          {/* Suggest Course Card */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 bg-gradient-to-br from-fuchsia-500/5 to-transparent space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Plus className="text-fuchsia-400" size={18} /> Suggest Listings
+          {/* Redesigned Suggest Listings Card */}
+          <div className="glass-panel p-6 rounded-3xl border border-fuchsia-500/20 bg-gradient-to-br from-fuchsia-500/10 via-purple-500/[0.02] to-transparent space-y-5 shadow-[0_0_30px_rgba(217,70,239,0.08)] relative overflow-hidden group">
+            {/* Subtle glow orb inside card */}
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-fuchsia-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
+            
+            <h3 className="text-lg font-extrabold text-white flex items-center gap-2 tracking-tight">
+              🚀 Help Expand Paperino
             </h3>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Don't see your department, subject, or course list? Suggest additions to the academic catalog.
+            <p className="text-xs text-gray-300 leading-relaxed font-light">
+              Can't find your department or subject? Add it and help thousands of students access better study materials.
             </p>
+            
+            {/* 3 Visual Benefits */}
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-2.5 text-xs font-semibold text-fuchsia-300">
+                <div className="w-5 h-5 rounded-lg bg-fuchsia-500/15 border border-fuchsia-500/30 flex items-center justify-center text-fuchsia-400">
+                  <Zap size={12} />
+                </div>
+                Earn Contributor Points
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-semibold text-amber-300">
+                <div className="w-5 h-5 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Sparkles size={12} />
+                </div>
+                Unlock Premium Rewards
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-semibold text-cyan-300">
+                <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <Users size={12} />
+                </div>
+                Help Future Students
+              </div>
+            </div>
+
             <button 
               onClick={() => setIsSuggestModalOpen(true)}
-              className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs rounded-xl transition-all"
+              className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-[0_0_15px_rgba(217,70,239,0.25)] hover:shadow-[0_0_20px_rgba(217,70,239,0.45)] transition-all cursor-pointer border border-fuchsia-500/20"
             >
-              Suggest Department / Subject
+              + Add Missing Department / Subject
             </button>
           </div>
 
