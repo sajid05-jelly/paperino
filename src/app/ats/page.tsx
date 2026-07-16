@@ -211,8 +211,10 @@ export default function ATSAnalyzerPage() {
 
   if (atsEnabled === null) {
     return (
-      <div className="min-h-screen pt-24 bg-[#030108] text-white flex justify-center items-center">
-        <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-400 rounded-full animate-spin"></div>
+      <div className="min-h-screen pt-24 bg-[#030108] text-white flex justify-center items-center relative overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/10 blur-[120px] rounded-full pointer-events-none"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/10 blur-[120px] rounded-full pointer-events-none"></div>
+        <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-400 rounded-full animate-spin relative z-10"></div>
       </div>
     );
   }
@@ -221,10 +223,11 @@ export default function ATSAnalyzerPage() {
     return (
       <div className="min-h-screen pt-24 pb-20 bg-[#030108] text-white selection:bg-fuchsia-500/30 overflow-hidden relative flex flex-col items-center justify-center">
         {/* Background elements */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-fuchsia-600/20 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/20 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-fuchsia-600/15 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/15 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
 
-        <div className="glass-panel max-w-2xl w-full mx-auto p-12 rounded-3xl border border-amber-500/30 shadow-[0_0_60px_rgba(245,158,11,0.1)] text-center relative z-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
+        <div className="backdrop-blur-2xl bg-white/[0.01] max-w-2xl w-full mx-auto p-12 rounded-3xl border border-amber-500/20 shadow-[0_0_60px_rgba(245,158,11,0.05)] text-center relative z-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
           <div className="w-24 h-24 mx-auto bg-amber-500/10 rounded-full flex items-center justify-center mb-8 border border-amber-500/20 shadow-[inset_0_0_20px_rgba(245,158,11,0.2)]">
              <Bot className="text-amber-400 w-12 h-12" />
           </div>
@@ -267,48 +270,89 @@ export default function ATSAnalyzerPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#05030a] py-8 relative overflow-hidden selection:bg-violet-500/30">
+    <div className="w-full min-h-screen bg-[#030108] text-white py-8 relative overflow-hidden selection:bg-violet-500/30">
       
       {/* --- CINEMATIC AMBIENT BACKGROUND --- */}
-      <div className="absolute top-[-20%] left-[-10%] w-[900px] h-[900px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.18)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] animate-[pulse_8s_ease-in-out_infinite] pointer-events-none z-0"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--accent-rgb),0.15)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] animate-[pulse_10s_ease-in-out_infinite_reverse] pointer-events-none z-0"></div>
-      <div className="absolute top-[40%] left-[50%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.12)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[100px] translate-x-[-50%] animate-[pulse_12s_ease-in-out_infinite] pointer-events-none z-0"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0"></div>
+      
+      <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(109,40,217,0.2)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] animate-[pulse_8s_ease-in-out_infinite] pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(6,182,212,0.15)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] animate-[pulse_10s_ease-in-out_infinite_reverse] pointer-events-none z-0"></div>
+      <div className="absolute top-[40%] left-[50%] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(168,85,247,0.12)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[100px] translate-x-[-50%] animate-[pulse_12s_ease-in-out_infinite] pointer-events-none z-0"></div>
+
+      {/* Aurora Light Streaks */}
+      <div className="absolute top-10 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/20 to-transparent blur-[2px] pointer-events-none z-0"></div>
+      <div className="absolute top-40 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent blur-[1px] pointer-events-none z-0"></div>
+
+      {/* Floating Particles */}
+      <div className="absolute top-24 left-[12%] w-1.5 h-1.5 rounded-full bg-violet-400/40 blur-[1px] animate-ping pointer-events-none z-0"></div>
+      <div className="absolute top-80 right-[20%] w-1 h-1 rounded-full bg-fuchsia-400/50 pointer-events-none z-0"></div>
+      <div className="absolute bottom-48 left-[35%] w-2 h-2 rounded-full bg-cyan-400/30 blur-[2px] pointer-events-none z-0"></div>
+
+      {/* Neural Web SVG Overlay */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.02] pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
+        <path d="M100 200 L200 400 L300 250 L400 500 L600 300 L700 600 L850 450" fill="none" stroke="white" strokeWidth="1" />
+        <path d="M150 150 L250 350 L350 200 L550 400 L650 250 L800 550" fill="none" stroke="white" strokeWidth="1" />
+        <circle cx="100" cy="200" r="3" fill="white" />
+        <circle cx="200" cy="400" r="3" fill="white" />
+        <circle cx="300" cy="250" r="3" fill="white" />
+        <circle cx="400" cy="500" r="3" fill="white" />
+        <circle cx="600" cy="300" r="3" fill="white" />
+        <circle cx="700" cy="600" r="3" fill="white" />
+        <circle cx="850" cy="450" r="3" fill="white" />
+      </svg>
 
       {!result ? (
         <div className="max-w-4xl mx-auto px-6 py-12 md:py-16 animate-in fade-in slide-in-from-bottom-10 duration-700 relative z-10">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center p-4 bg-violet-500/20 rounded-full mb-6 shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)]">
-              <Sparkles size={40} className="text-violet-400" />
+          
+          {/* HERO SECTION */}
+          <div className="text-center mb-12 relative">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.25)_0%,transparent_60%)] -z-10 pointer-events-none"></div>
+            
+            {/* Animated AI Energy Rings */}
+            <div className="relative inline-flex items-center justify-center p-6 bg-violet-500/10 rounded-full mb-6 border border-violet-500/20 shadow-[0_0_50px_rgba(139,92,246,0.2)] group overflow-hidden">
+              <div className="absolute inset-0 border border-t-violet-400 border-r-cyan-400 border-b-fuchsia-400 border-l-transparent rounded-full animate-spin duration-3000 pointer-events-none"></div>
+              <Sparkles size={40} className="text-violet-400 relative z-10 animate-pulse" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">AI Resume Reviewer</h1>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-4">
+            
+            <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 tracking-tight mb-4">
+              AI Resume Reviewer
+            </h1>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-6 leading-relaxed">
               Upload your resume and select a target role. Groq Llama 3.3 70B will deeply analyze your structure, keywords, and impact, providing highly specific suggestions to boost your ATS compatibility.
             </p>
-            <AICreditsDisplay tool="ats" />
+            <div className="inline-block backdrop-blur-md bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-3">
+              <AICreditsDisplay tool="ats" />
+            </div>
           </div>
 
-          <div className="vision-glass p-8 rounded-3xl  relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 blur-[100px] rounded-full"></div>
+          {/* UPLOAD CARD */}
+          <div className="backdrop-blur-3xl bg-black/45 border border-violet-500/20 p-8 rounded-3xl relative overflow-hidden shadow-[0_0_50px_rgba(139,92,246,0.08)] hover:shadow-[0_0_60px_rgba(139,92,246,0.15)] transition-all duration-500">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 blur-[100px] rounded-full pointer-events-none"></div>
             
             <div className="mb-8 relative z-10">
-              <label className="block text-sm font-medium text-violet-200 mb-3">Target Job Role</label>
-              <select 
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-black/60 border border-violet-500/20 rounded-2xl p-4 text-white outline-none focus:border-violet-500 focus:shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] transition-all cursor-pointer appearance-none backdrop-blur-md"
-              >
-                {roles.map(r => (
-                  <option key={r} value={r} className="bg-gray-900">{r}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-semibold text-violet-200 mb-3 tracking-wide uppercase">Target Job Role</label>
+              <div className="relative">
+                <select 
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full bg-black/70 border border-violet-500/20 rounded-2xl p-4 text-white outline-none focus:border-violet-500/50 focus:shadow-[0_0_20px_rgba(139,92,246,0.2)] transition-all cursor-pointer appearance-none backdrop-blur-md"
+                >
+                  {roles.map(r => (
+                    <option key={r} value={r} className="bg-gray-955 text-white">{r}</option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-violet-400">
+                  <ArrowRight size={18} className="rotate-90" />
+                </div>
+              </div>
             </div>
 
             <div className="mb-8 relative z-10">
-              <label className="block text-sm font-medium text-violet-200 mb-3">Upload Resume (PDF or DOCX)</label>
+              <label className="block text-sm font-semibold text-violet-200 mb-3 tracking-wide uppercase">Upload Resume (PDF or DOCX)</label>
               <div 
-                className={`border-2 border-dashed rounded-2xl p-6 md:p-8 text-center transition-all cursor-pointer backdrop-blur-sm ${
-                  isDragging ? 'border-violet-400 bg-violet-500/10 shadow-[inset_0_0_30px_rgba(var(--primary-rgb),0.1)]' : 
-                  file ? 'border-fuchsia-500/50 bg-fuchsia-500/5 shadow-[0_0_20px_rgba(var(--secondary-rgb),0.1)]' : 'border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5'
+                className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer backdrop-blur-sm ${
+                  isDragging ? 'border-violet-400 bg-violet-500/15 shadow-[inset_0_0_30px_rgba(139,92,246,0.15)]' : 
+                  file ? 'border-fuchsia-500/40 bg-fuchsia-500/5 shadow-[0_0_30px_rgba(240,70,250,0.08)]' : 'border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5'
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -325,18 +369,18 @@ export default function ATSAnalyzerPage() {
                 
                 {file ? (
                   <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 mb-4 shadow-[0_0_15px_rgba(var(--secondary-rgb),0.3)]">
+                    <div className="w-16 h-16 rounded-full bg-fuchsia-500/15 flex items-center justify-center text-fuchsia-400 mb-4 shadow-[0_0_20px_rgba(240,70,250,0.25)]">
                       <FileText size={32} />
                     </div>
-                    <p className="text-white font-medium text-lg mb-1">{file.name}</p>
-                    <p className="text-gray-500 text-sm">Click or drag to replace</p>
+                    <p className="text-white font-semibold text-lg mb-1">{file.name}</p>
+                    <p className="text-gray-400 text-sm">Click or drag to replace document</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-gray-400 mb-4 transition-transform group-hover:scale-110">
+                  <div className="flex flex-col items-center group">
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-gray-400 mb-4 group-hover:scale-110 group-hover:text-violet-400 group-hover:bg-violet-500/10 transition-all duration-300">
                       <Upload size={32} />
                     </div>
-                    <p className="text-gray-300 font-medium mb-1">Drag & Drop your resume here</p>
+                    <p className="text-gray-200 font-semibold mb-1">Drag & Drop your resume here</p>
                     <p className="text-gray-500 text-sm">Supports PDF and DOCX (Max 5MB)</p>
                   </div>
                 )}
@@ -347,18 +391,18 @@ export default function ATSAnalyzerPage() {
             <button 
               onClick={analyzeResume}
               disabled={!file || loading}
-              className="w-full liquid-btn disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--primary-rgb),0.5)] relative z-10 overflow-hidden group"
+              className="w-full bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_45px_rgba(139,92,246,0.65)] relative z-10 overflow-hidden group"
             >
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
+              <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
               {loading ? (
                 <>
                   <Loader2 className="animate-spin relative z-10" size={20} />
-                  <span className="relative z-10">{loadingSteps[loadingStep] || "Processing..."}</span>
+                  <span className="relative z-10 tracking-wide font-semibold">{loadingSteps[loadingStep] || "Processing..."}</span>
                 </>
               ) : (
                 <>
                   <Sparkles size={20} className="relative z-10" />
-                  <span className="relative z-10">Run AI Analysis</span>
+                  <span className="relative z-10 tracking-wide font-semibold">Run AI Analysis</span>
                 </>
               )}
             </button>
@@ -369,18 +413,18 @@ export default function ATSAnalyzerPage() {
         <div ref={resultsRef} className="w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-10 duration-700 relative z-10 pt-8 pb-12">
           
           {/* Left Pane: Resume Preview */}
-          <div className="w-full lg:w-[35%] flex flex-col bg-[#07050d] border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(var(--primary-rgb),0.05)] h-[calc(100vh-6rem)] sticky top-8">
+          <div className="w-full lg:w-[35%] flex flex-col bg-black/60 backdrop-blur-3xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(139,92,246,0.05)] h-[calc(100vh-6rem)] sticky top-8">
             <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between backdrop-blur-md">
               <div className="flex items-center gap-2 text-violet-300">
                 <FileText size={18} />
-                <span className="font-medium text-sm">Resume Preview</span>
+                <span className="font-semibold text-sm">Resume Preview</span>
               </div>
-              <button onClick={() => setResult(null)} className="text-xs text-gray-400 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors font-medium">
+              <button onClick={() => setResult(null)} className="text-xs text-gray-400 hover:text-white px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full transition-all font-medium border border-white/5 hover:border-white/10">
                 New Analysis
               </button>
             </div>
             
-            <div className="w-full flex-grow bg-white/[0.02] relative">
+            <div className="w-full flex-grow bg-white/[0.01] relative">
               {file?.type === "application/pdf" && fileUrl ? (
                 <iframe 
                   src={`${fileUrl}#toolbar=0&navpanes=0&scrollbar=0`} 
@@ -389,9 +433,9 @@ export default function ATSAnalyzerPage() {
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 p-8 space-y-4">
-                  <FileText size={48} className="text-violet-500/50" />
+                  <FileText size={48} className="text-violet-500/40" />
                   <h3 className="text-xl font-bold text-white">Preview Not Available</h3>
-                  <p className="text-sm max-w-sm">
+                  <p className="text-sm max-w-sm text-gray-400 leading-relaxed">
                     Live document preview is only supported for PDF files. Your Word document has been successfully analyzed, but cannot be rendered visually here.
                   </p>
                 </div>
@@ -403,11 +447,11 @@ export default function ATSAnalyzerPage() {
           <div className="w-full lg:w-[65%] flex flex-col gap-6">
             
             {/* HERO SCORE CARD */}
-            <div className="glass-panel p-8 rounded-3xl flex flex-col md:flex-row items-center gap-8 border border-white/10 relative overflow-hidden">
+            <div className="backdrop-blur-3xl bg-black/45 p-8 rounded-3xl flex flex-col md:flex-row items-center gap-8 border border-violet-500/10 relative overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.3)]">
               <div className={`absolute -right-20 -bottom-20 w-64 h-64 blur-[100px] rounded-full pointer-events-none ${
-                result.overallScore >= 80 ? 'bg-emerald-500/20' : 
-                result.overallScore >= 60 ? 'bg-orange-500/20' : 
-                'bg-red-500/20'
+                result.overallScore >= 80 ? 'bg-emerald-500/15' : 
+                result.overallScore >= 60 ? 'bg-orange-500/15' : 
+                'bg-red-500/15'
               }`}></div>
               
               <div className="relative w-40 h-40 flex items-center justify-center shrink-0">
@@ -423,15 +467,15 @@ export default function ATSAnalyzerPage() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className={`text-4xl font-black ${getScoreColor(result.overallScore)}`}>{result.overallScore}</span>
-                  <span className="text-xs text-gray-400 font-bold mt-1">/ 100</span>
+                  <span className="text-xs text-gray-500 font-bold mt-1">/ 100</span>
                 </div>
               </div>
 
               <div className="text-center md:text-left z-10">
-                <h2 className="text-3xl font-bold text-white mb-2">Overall ATS Score</h2>
+                <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-300 mb-2">Overall ATS Score</h2>
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
-                  <span className="bg-white/10 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/20">Target: {role}</span>
-                  <span className="bg-violet-500/20 text-violet-300 px-3 py-1 rounded-full text-xs font-bold border border-violet-500/30">Benchmark: {result.industryBenchmark}</span>
+                  <span className="bg-white/5 text-white px-3 py-1 rounded-full text-xs font-semibold border border-white/10">Target: {role}</span>
+                  <span className="bg-violet-500/15 text-violet-300 px-3 py-1 rounded-full text-xs font-semibold border border-violet-500/20">Benchmark: {result.industryBenchmark}</span>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed">
                   {result.overallScore >= 80 ? "Excellent. Your resume is highly competitive and well-optimized for ATS pipelines." : 
@@ -442,16 +486,16 @@ export default function ATSAnalyzerPage() {
             </div>
 
             {/* RECRUITER SIMULATION */}
-            <div className={`p-6 rounded-3xl border shadow-lg flex flex-col relative overflow-hidden ${
-              result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/5 border-emerald-500/20' : 
-              result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/5 border-orange-500/20' : 
-              'bg-red-500/5 border-red-500/20'
+            <div className={`p-6 rounded-3xl border flex flex-col relative overflow-hidden backdrop-blur-2xl ${
+              result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.05)]' : 
+              result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/5 border-orange-500/20 shadow-[0_0_30px_rgba(245,158,11,0.05)]' : 
+              'bg-red-500/5 border-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.05)]'
             }`}>
               <div className="flex items-center gap-3 mb-4">
-                <div className={`p-2 rounded-xl ${
-                  result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 
-                  result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/20 text-orange-400' : 
-                  'bg-red-500/20 text-red-400'
+                <div className={`p-2.5 rounded-xl ${
+                  result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/15 text-emerald-400' : 
+                  result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/15 text-orange-400' : 
+                  'bg-red-500/15 text-red-400'
                 }`}>
                   <Activity size={24} />
                 </div>
@@ -460,7 +504,7 @@ export default function ATSAnalyzerPage() {
                   <p className="text-sm text-gray-400">Would a recruiter shortlist this?</p>
                 </div>
                 <div className="ml-auto">
-                  <span className={`text-xl font-black px-4 py-2 rounded-xl border ${
+                  <span className={`text-lg font-extrabold px-4 py-2 rounded-xl border ${
                     result.recruiterSimulation?.decision === 'YES' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 
                     result.recruiterSimulation?.decision === 'MAYBE' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 
                     'bg-red-500/20 text-red-400 border-red-500/30'
@@ -469,15 +513,21 @@ export default function ATSAnalyzerPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Top Strengths</span>
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block mb-1">Top Strengths</span>
                   {result.recruiterSimulation?.topStrengths?.map((s: string, i: number) => (
-                    <div key={i} className="flex gap-2 text-sm text-gray-300 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10"><CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />{s}</div>
+                    <div key={i} className="flex gap-2.5 text-sm text-gray-300 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
+                      <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <span>{s}</span>
+                    </div>
                   ))}
                 </div>
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Top Concerns</span>
+                  <span className="text-xs font-bold text-red-400 uppercase tracking-wider block mb-1">Top Concerns</span>
                   {result.recruiterSimulation?.topConcerns?.map((s: string, i: number) => (
-                    <div key={i} className="flex gap-2 text-sm text-gray-300 bg-red-500/5 p-3 rounded-xl border border-red-500/10"><AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />{s}</div>
+                    <div key={i} className="flex gap-2.5 text-sm text-gray-300 bg-red-500/5 p-3 rounded-xl border border-red-500/10">
+                      <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                      <span>{s}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -487,25 +537,35 @@ export default function ATSAnalyzerPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Keyword Match */}
-              <div className="glass-panel p-6 rounded-3xl border border-white/10">
+              <div className="backdrop-blur-3xl bg-black/45 p-6 rounded-3xl border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.2)]">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-white flex items-center gap-2"><Sparkles className="text-fuchsia-400" size={18}/> Keyword Match</h3>
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <Sparkles className="text-fuchsia-400" size={18}/> Keyword Match
+                  </h3>
                   <span className={`font-bold ${getScoreColor(result.keywordMatch?.score || 0)}`}>{result.keywordMatch?.score || 0}%</span>
                 </div>
-                <div className="w-full bg-white/5 h-2 rounded-full mb-6">
+                <div className="w-full bg-white/5 h-2 rounded-full mb-6 overflow-hidden">
                   <div className={`h-full rounded-full ${getScoreColor(result.keywordMatch?.score || 0).replace('text-', 'bg-')}`} style={{width: `${result.keywordMatch?.score || 0}%`}}></div>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 block">Matched ({result.keywordMatch?.matched?.length || 0})</span>
-                    <div className="flex flex-wrap gap-2">
-                      {result.keywordMatch?.matched?.map((k: string) => <span key={k} className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs rounded-md">{k}</span>)}
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.keywordMatch?.matched?.map((k: string) => (
+                        <span key={k} className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs rounded-md font-medium">
+                          {k}
+                        </span>
+                      ))}
                     </div>
                   </div>
                   <div>
                     <span className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 block">Missing ({result.keywordMatch?.missing?.length || 0})</span>
-                    <div className="flex flex-wrap gap-2">
-                      {result.keywordMatch?.missing?.map((k: string) => <span key={k} className="px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-md">{k}</span>)}
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.keywordMatch?.missing?.map((k: string) => (
+                        <span key={k} className="px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-md font-medium">
+                          {k}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -515,25 +575,25 @@ export default function ATSAnalyzerPage() {
               <div className="space-y-6">
                 
                 {/* ATS Compatibility */}
-                <div className="glass-panel p-6 rounded-3xl border border-white/10">
+                <div className="backdrop-blur-3xl bg-black/45 p-6 rounded-3xl border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.2)]">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-white text-sm">ATS Compatibility</h3>
+                    <h3 className="font-bold text-white text-sm">ATS Compatibility Checks</h3>
                     <span className={`font-bold ${getScoreColor(result.atsCompatibility?.score || 0)}`}>{result.atsCompatibility?.score || 0}%</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {result.atsCompatibility?.checks && Object.entries(result.atsCompatibility.checks).map(([key, passed]) => (
-                      <div key={key} className="flex items-center gap-2 text-xs text-gray-300 capitalize">
-                        {passed ? <CheckCircle2 size={14} className="text-emerald-400" /> : <XCircle size={14} className="text-red-400" />}
-                        {key}
+                      <div key={key} className="flex items-center gap-2 text-xs text-gray-300 capitalize font-medium">
+                        {passed ? <CheckCircle2 size={14} className="text-emerald-400 shrink-0" /> : <XCircle size={14} className="text-red-400 shrink-0" />}
+                        <span>{key.replace(/([A-Z])/g, ' $1')}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Granular Scores */}
-                <div className="glass-panel p-6 rounded-3xl border border-white/10">
+                <div className="backdrop-blur-3xl bg-black/45 p-6 rounded-3xl border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.2)]">
                   <h3 className="font-bold text-white text-sm mb-4">Sub-Scores</h3>
-                  <div className="space-y-3">
+                  <div className="space-y-3.5">
                     {[
                       { label: "Skills Coverage", score: result.skillsAnalysis?.score || 0 },
                       { label: "Projects Quality", score: result.projectsQuality?.score || 0 },
@@ -543,10 +603,10 @@ export default function ATSAnalyzerPage() {
                     ].map(s => (
                       <div key={s.label}>
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-gray-400">{s.label}</span>
-                          <span className={getScoreColor(s.score)}>{s.score}/100</span>
+                          <span className="text-gray-400 font-medium">{s.label}</span>
+                          <span className={`${getScoreColor(s.score)} font-bold`}>{s.score}/100</span>
                         </div>
-                        <div className="w-full bg-white/5 h-1.5 rounded-full">
+                        <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${getScoreColor(s.score).replace('text-', 'bg-')}`} style={{width: `${s.score}%`}}></div>
                         </div>
                       </div>
@@ -559,19 +619,19 @@ export default function ATSAnalyzerPage() {
 
             {/* ACTIONABLE IMPROVEMENTS */}
             {result.actionableImprovements?.length > 0 && (
-              <div className="glass-panel p-6 rounded-3xl border border-white/10">
+              <div className="backdrop-blur-3xl bg-black/45 p-6 rounded-3xl border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.2)]">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                   <CheckCircle2 className="text-violet-400" /> Actionable Improvements
                 </h3>
                 <div className="space-y-4">
                   {result.actionableImprovements.map((imp: any, i: number) => (
-                    <div key={i} className="flex flex-col md:flex-row items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <div className="flex-1 w-full bg-red-500/5 p-3 rounded-xl border border-red-500/20">
+                    <div key={i} className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.02] p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="flex-1 w-full bg-red-500/5 p-3 rounded-xl border border-red-500/10">
                         <span className="text-[10px] uppercase font-bold text-red-400 mb-1 block">Current Phrase</span>
                         <p className="text-xs text-gray-300 italic">"{imp.current}"</p>
                       </div>
-                      <ArrowRight size={20} className="text-gray-500 hidden md:block shrink-0" />
-                      <div className="flex-1 w-full bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/20">
+                      <ArrowRight size={20} className="text-gray-600 hidden md:block shrink-0" />
+                      <div className="flex-1 w-full bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
                         <span className="text-[10px] uppercase font-bold text-emerald-400 mb-1 block">AI Suggested Replacement</span>
                         <p className="text-xs text-emerald-100 font-medium">{imp.replacement}</p>
                       </div>
@@ -583,15 +643,15 @@ export default function ATSAnalyzerPage() {
 
             {/* CRITICAL ISSUES */}
             {result.criticalIssues?.length > 0 && (
-              <div className="glass-panel p-6 rounded-3xl border border-white/10">
+              <div className="backdrop-blur-3xl bg-black/45 p-6 rounded-3xl border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.2)]">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <AlertTriangle className="text-orange-400" /> Critical Issues
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {result.criticalIssues.map((issue: string, i: number) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl text-sm text-gray-300">
+                    <div key={i} className="flex items-start gap-3 p-3 bg-orange-500/5 border border-orange-500/10 rounded-xl text-sm text-gray-300 hover:border-orange-500/20 transition-all">
                       <AlertCircle size={16} className="text-orange-400 shrink-0 mt-0.5" />
-                      {issue}
+                      <span>{issue}</span>
                     </div>
                   ))}
                 </div>
