@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
-import { Sparkles, Infinity as InfinityIcon } from "lucide-react";
+import { Sparkles, Zap } from "lucide-react";
 
 interface AICreditsDisplayProps {
   tool: "pyq" | "ats";
@@ -55,9 +55,9 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
 
   if (isAdmin) {
     return (
-      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 font-bold text-xs shadow-sm w-fit mx-auto mt-4">
-        <Sparkles size={14} className="text-violet-400" />
-        Admin: Unlimited Credits
+      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 backdrop-blur-xl border border-violet-500/25 text-violet-300 font-bold text-xs shadow-[0_0_20px_rgba(139,92,246,0.15)] w-fit mx-auto mt-4">
+        <Zap size={14} className="text-violet-400 drop-shadow-[0_0_4px_rgba(139,92,246,0.6)]" />
+        Admin: Unlimited AI Credits
       </div>
     );
   }
@@ -65,9 +65,9 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
   if (isPremiumActive) {
     return (
       <div className="flex flex-col items-center mt-4 space-y-1">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 text-yellow-300 font-bold text-xs shadow-sm w-fit mx-auto">
-          <Sparkles size={14} className="text-yellow-400 animate-pulse" />
-          Premium Unlimited ({remaining} left)
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/15 to-amber-500/15 backdrop-blur-xl border border-yellow-500/25 text-yellow-300 font-bold text-xs shadow-[0_0_20px_rgba(234,179,8,0.15)] w-fit mx-auto">
+          <Zap size={14} className="text-yellow-400 animate-pulse drop-shadow-[0_0_4px_rgba(234,179,8,0.6)]" />
+          ⚡ AI Credits Available — {remaining} remaining
         </div>
       </div>
     );
@@ -75,13 +75,13 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
 
   return (
     <div className="flex flex-col items-center mt-4 space-y-2">
-      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold shadow-sm transition-colors ${
+      <div className={`flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border text-xs font-bold transition-all ${
         isOutOfCredits 
-          ? "bg-red-500/10 border-red-500/20 text-red-400" 
-          : "bg-violet-500/10 border-violet-500/20 text-violet-300"
+          ? "bg-red-500/10 border-red-500/25 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.15)]" 
+          : "bg-violet-500/10 border-violet-500/25 text-violet-300 shadow-[0_0_20px_rgba(139,92,246,0.15)]"
       }`}>
-        <Sparkles size={14} className={isOutOfCredits ? "text-red-400" : "text-violet-400"} />
-        Credits Remaining: {remaining}/{limit}
+        <Zap size={14} className={isOutOfCredits ? "text-red-400" : "text-violet-400 drop-shadow-[0_0_4px_rgba(139,92,246,0.6)]"} />
+        ⚡ AI Credits Available — {remaining}/{limit}
       </div>
       
       {isOutOfCredits && (
