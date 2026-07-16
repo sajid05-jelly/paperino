@@ -67,7 +67,7 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
       <div className="flex flex-col items-center mt-4 space-y-1">
         <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/15 to-amber-500/15 backdrop-blur-xl border border-yellow-500/25 text-yellow-300 font-bold text-xs shadow-[0_0_20px_rgba(234,179,8,0.15)] w-fit mx-auto">
           <Zap size={14} className="text-yellow-400 animate-pulse drop-shadow-[0_0_4px_rgba(234,179,8,0.6)]" />
-          ⚡ AI Credits Available — {remaining} remaining
+          AI Credits Available — {remaining} remaining
         </div>
       </div>
     );
@@ -81,7 +81,7 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
           : "bg-violet-500/10 border-violet-500/25 text-violet-300 shadow-[0_0_20px_rgba(139,92,246,0.15)]"
       }`}>
         <Zap size={14} className={isOutOfCredits ? "text-red-400" : "text-violet-400 drop-shadow-[0_0_4px_rgba(139,92,246,0.6)]"} />
-        ⚡ AI Credits Available — {remaining}/{limit}
+        AI Credits Available — {remaining}/{limit}
       </div>
       
       {isOutOfCredits && (

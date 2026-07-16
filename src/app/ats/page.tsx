@@ -211,7 +211,7 @@ export default function ATSAnalyzerPage() {
 
   if (atsEnabled === null) {
     return (
-      <div className="min-h-screen pt-24 bg-[#030108] text-white flex justify-center items-center relative overflow-hidden">
+      <div className="min-h-screen pt-24 bg-[#0a0514] text-white flex justify-center items-center relative overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/10 blur-[120px] rounded-full pointer-events-none"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/10 blur-[120px] rounded-full pointer-events-none"></div>
         <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-400 rounded-full animate-spin relative z-10"></div>
@@ -221,7 +221,7 @@ export default function ATSAnalyzerPage() {
 
   if (atsEnabled === false) {
     return (
-      <div className="min-h-screen pt-24 pb-20 bg-[#030108] text-white selection:bg-fuchsia-500/30 overflow-hidden relative flex flex-col items-center justify-center">
+      <div className="min-h-screen pt-24 pb-20 bg-[#0a0514] text-white selection:bg-fuchsia-500/30 overflow-hidden relative flex flex-col items-center justify-center">
         {/* Background elements */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-fuchsia-600/15 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-600/15 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
@@ -270,14 +270,14 @@ export default function ATSAnalyzerPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#030108] text-white py-8 relative overflow-hidden selection:bg-violet-500/30">
+    <div className="w-full min-h-screen bg-[#0a0514] text-white py-8 relative overflow-hidden selection:bg-violet-500/30">
       
       {/* --- CINEMATIC AMBIENT BACKGROUND --- */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0"></div>
       
-      <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(109,40,217,0.2)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] animate-[pulse_8s_ease-in-out_infinite] pointer-events-none z-0"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(6,182,212,0.15)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] animate-[pulse_10s_ease-in-out_infinite_reverse] pointer-events-none z-0"></div>
-      <div className="absolute top-[40%] left-[50%] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(168,85,247,0.12)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[100px] translate-x-[-50%] animate-[pulse_12s_ease-in-out_infinite] pointer-events-none z-0"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(109,40,217,0.32)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] animate-[pulse_8s_ease-in-out_infinite] pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(6,182,212,0.22)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] animate-[pulse_10s_ease-in-out_infinite_reverse] pointer-events-none z-0"></div>
+      <div className="absolute top-[40%] left-[50%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(168,85,247,0.2)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[100px] translate-x-[-50%] animate-[pulse_12s_ease-in-out_infinite] pointer-events-none z-0"></div>
 
       {/* Aurora Light Streaks */}
       <div className="absolute top-10 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/20 to-transparent blur-[2px] pointer-events-none z-0"></div>
