@@ -318,7 +318,7 @@ export default function ATSAnalyzerPage() {
               AI Resume Reviewer
             </h1>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-6 leading-relaxed">
-              Upload your resume and select a target role. Groq Llama 3.3 70B will deeply analyze your structure, keywords, and impact, providing highly specific suggestions to boost your ATS compatibility.
+              Upload your resume and select a target role. Our AI-powered analyzer will evaluate your resume, identify improvement areas, and provide detailed recommendations to maximize your chances of getting shortlisted.
             </p>
             <div className="inline-block backdrop-blur-md bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-3">
               <AICreditsDisplay tool="ats" />
