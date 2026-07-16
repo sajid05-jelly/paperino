@@ -43,7 +43,7 @@ export default function Navbar() {
     const isActive = pathname === href || (href !== '/' && pathname?.startsWith(href + "/"));
     const baseClass = `px-2.5 py-1.5 lg:px-3 lg:py-1.5 xl:px-3.5 xl:py-2 rounded-full text-xs xl:text-sm font-medium transition-all duration-300 border flex-shrink-0 whitespace-nowrap`;
     
-    if (href === '/team') {
+    if (href === '/contributor') {
       return `${baseClass} menu-team-glossy ${isActive ? 'active shadow-[0_0_20px_rgba(139,92,246,0.4)]' : ''}`;
     }
     if (href === '/developer') {
@@ -68,7 +68,7 @@ export default function Navbar() {
     const isActive = pathname === href || (href !== '/' && pathname?.startsWith(href + "/"));
     const baseClass = `block w-full px-3 py-2.5 rounded-xl transition-all duration-300 border text-sm ${isSpecial ? 'font-semibold' : 'font-medium'}`;
     
-    if (href === '/team') {
+    if (href === '/contributor') {
       return `${baseClass} border-transparent hover:bg-white/5 menu-team-mobile-glow ${isActive ? 'active-mobile' : ''}`;
     }
     if (href === '/developer') {
@@ -116,17 +116,14 @@ export default function Navbar() {
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
             <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
             <Link href="/ats" className={getLinkClass("/ats")}>ATS</Link>
-            {user && !isAdmin && (
-              <Link href="/contributor" className={getLinkClass("/contributor")}>Dashboard</Link>
-            )}
             <Link href="/bookmarks" className={getLinkClass("/bookmarks")}>Bookmarks</Link>
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
             
             <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
             <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
-            {!isAdmin && (
-              <Link href="/team" className={getLinkClass("/team", true)}>Contribute</Link>
+            {user && !isAdmin && (
+              <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
             )}
             <Link href="/developer" className={getLinkClass("/developer", true)}>Developer</Link>
             
@@ -272,9 +269,6 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/ats" className={getMobileLinkClass("/ats")}>ATS Analyzer</Link>
-              {user && !isAdmin && (
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor")}>Dashboard</Link>
-              )}
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/bookmarks" className={getMobileLinkClass("/bookmarks")}>Bookmarks</Link>
 
               {/* Divider */}
@@ -284,8 +278,8 @@ export default function Navbar() {
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
-              {!isAdmin && (
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/team" className={getMobileLinkClass("/team", true)}>Become a Contributor</Link>
+              {user && !isAdmin && (
+                <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
               )}
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
 

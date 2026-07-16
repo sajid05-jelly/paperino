@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Upload, Plus, BookOpen } from "lucide-react";
+import { Upload, Plus, BookOpen } from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
 
 export default function ContributorLayout({ children }: { children: React.ReactNode }) {
@@ -34,12 +34,7 @@ export default function ContributorLayout({ children }: { children: React.ReactN
             Contributor
           </h2>
           <nav className="flex flex-col gap-2">
-            <Link href="/contributor" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-              <LayoutDashboard size={20} className="text-cyan-400" />
-              Dashboard
-            </Link>
-            <div className="h-px w-full bg-white/10 my-2"></div>
-            <Link href="/contributor/courses" className="flex items-center gap-3 px-4 py-3 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors font-medium border border-blue-500/20">
+            <Link href="/contributor/courses" className="flex items-center gap-3 px-4 py-3 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors font-medium border border-blue-500/20 w-full">
               <BookOpen size={20} />
               My Suggestions
             </Link>
