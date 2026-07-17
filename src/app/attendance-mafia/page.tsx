@@ -38,9 +38,6 @@ export default function AttendanceMafiaPage() {
     setCurrentAttendance(Math.round(current * 10) / 10);
 
     // Calculate Classes you can skip
-    // (attendedClasses) / (totalClasses + skip) >= target / 100
-    // attendedClasses * 100 / target >= totalClasses + skip
-    // skip <= (attendedClasses * 100 / target) - totalClasses
     let skipCount = 0;
     if (current >= targetAttendance) {
       skipCount = Math.floor((attendedClasses * 100) / targetAttendance - totalClasses);
@@ -48,12 +45,6 @@ export default function AttendanceMafiaPage() {
       setClassesToAttend(0);
     } else {
       setClassesToSkip(0);
-      // Calculate Classes you must attend
-      // (attendedClasses + attend) / (totalClasses + attend) >= target / 100
-      // (attendedClasses + attend) * 100 >= target * (totalClasses + attend)
-      // 100 * attendedClasses + 100 * attend >= target * totalClasses + target * attend
-      // (100 - target) * attend >= target * totalClasses - 100 * attendedClasses
-      // attend >= (target * totalClasses - 100 * attendedClasses) / (100 - target)
       const denom = 100 - targetAttendance;
       if (denom > 0) {
         const attendCount = Math.ceil((targetAttendance * totalClasses - 100 * attendedClasses) / denom);
@@ -110,25 +101,29 @@ export default function AttendanceMafiaPage() {
   const risk = getRiskDetails();
 
   return (
-    <div className="w-full min-h-screen bg-[var(--background)] text-white py-8 relative overflow-hidden selection:bg-violet-500/30">
+    <div className="w-full min-h-screen bg-gradient-to-b from-[rgba(var(--primary-rgb),0.15)] via-[var(--background)] to-[var(--background)] text-white py-8 relative overflow-hidden selection:bg-violet-500/30">
       
       {/* --- Ambient Background Glows --- */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.12)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] pointer-events-none z-0" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.08)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] pointer-events-none z-0" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0" />
+        <div className="absolute top-[-10%] left-[-10%] w-[850px] h-[850px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.32)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[130px] pointer-events-none z-0" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[750px] h-[750px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.25)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] pointer-events-none z-0" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.007)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.007)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none z-0" />
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 md:py-16">
         
         {/* Header */}
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-6 duration-500">
+        <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-6 duration-500 relative">
+          
+          {/* Ambient Aurora Light Streak Behind Hero */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[400px] bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.28)_0%,transparent_60%)] -z-10 pointer-events-none blur-[70px]" />
+
           {/* Pulsing AI Target Orb */}
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-[rgba(var(--primary-rgb),0.3)] blur-[25px] animate-pulse" />
-              <div className="absolute -inset-3 rounded-full bg-[rgba(var(--primary-rgb),0.15)] blur-[18px] animate-pulse [animation-delay:1s]" />
-              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[rgba(var(--primary-rgb),0.3)] via-[rgba(var(--secondary-rgb),0.2)] to-[rgba(var(--primary-rgb),0.3)] backdrop-blur-xl border border-[rgba(var(--primary-rgb),0.25)] flex items-center justify-center shadow-[0_0_35px_rgba(var(--primary-rgb),0.25)]">
+              <div className="absolute inset-0 rounded-full bg-[rgba(var(--primary-rgb),0.35)] blur-[25px] animate-pulse" />
+              <div className="absolute -inset-3 rounded-full bg-[rgba(var(--primary-rgb),0.18)] blur-[18px] animate-pulse [animation-delay:1s]" />
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[rgba(var(--primary-rgb),0.35)] via-[rgba(var(--secondary-rgb),0.25)] to-[rgba(var(--primary-rgb),0.35)] backdrop-blur-xl border border-[rgba(var(--primary-rgb),0.28)] flex items-center justify-center shadow-[0_0_35px_rgba(var(--primary-rgb),0.3)]">
                 <Target size={36} className="text-[rgb(var(--primary-rgb))] drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.75)] animate-pulse" />
               </div>
             </div>
@@ -146,8 +141,8 @@ export default function AttendanceMafiaPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Inputs Panel (Left) */}
-          <div className="lg:col-span-5 backdrop-blur-2xl bg-white/[0.02] border border-white/[0.06] rounded-3xl p-6 md:p-8 shadow-[0_0_30px_rgba(0,0,0,0.4)] space-y-6">
-            <h3 className="text-lg font-bold text-white border-b border-white/[0.06] pb-3 flex items-center gap-2">
+          <div className="lg:col-span-5 backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 hover:border-violet-500/40 rounded-3xl p-6 md:p-8 shadow-[0_0_40px_rgba(var(--primary-rgb),0.12)] space-y-6 transition-all duration-300">
+            <h3 className="text-lg font-bold text-white border-b border-white/[0.08] pb-3 flex items-center gap-2">
               <Calendar size={18} className="text-violet-400" />
               <span>Attendance Stats</span>
             </h3>
@@ -160,7 +155,7 @@ export default function AttendanceMafiaPage() {
                 min={0}
                 value={totalClasses} 
                 onChange={(e) => setTotalClasses(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full bg-black/40 border border-white/[0.08] focus:border-violet-500/40 rounded-xl p-3.5 text-white outline-none focus:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] transition-all font-medium"
+                className="w-full bg-black/50 border border-white/[0.1] focus:border-violet-500/40 rounded-xl p-3.5 text-white outline-none focus:shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)] transition-all font-medium"
               />
             </div>
 
@@ -173,7 +168,7 @@ export default function AttendanceMafiaPage() {
                 max={totalClasses}
                 value={attendedClasses} 
                 onChange={(e) => setAttendedClasses(Math.min(totalClasses, Math.max(0, parseInt(e.target.value) || 0)))}
-                className="w-full bg-black/40 border border-white/[0.08] focus:border-violet-500/40 rounded-xl p-3.5 text-white outline-none focus:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] transition-all font-medium"
+                className="w-full bg-black/50 border border-white/[0.1] focus:border-violet-500/40 rounded-xl p-3.5 text-white outline-none focus:shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)] transition-all font-medium"
               />
             </div>
 
@@ -188,7 +183,7 @@ export default function AttendanceMafiaPage() {
                     className={`py-3 rounded-xl border text-xs font-bold transition-all ${
                       targetAttendance === pct 
                         ? "bg-violet-600 border-violet-500 text-white shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]" 
-                        : "bg-white/[0.02] border-white/[0.06] text-gray-400 hover:bg-white/[0.05]"
+                        : "bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08]"
                     }`}
                   >
                     {pct}%
@@ -202,7 +197,7 @@ export default function AttendanceMafiaPage() {
           <div className="lg:col-span-7 space-y-6">
             
             {/* Main Stats Card */}
-            <div className="backdrop-blur-2xl bg-white/[0.02] border border-white/[0.06] rounded-3xl p-6 md:p-8 shadow-[0_0_30px_rgba(0,0,0,0.4)] flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+            <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-6 md:p-8 shadow-[0_0_40px_rgba(var(--primary-rgb),0.12)] flex flex-col md:flex-row items-center gap-8 relative overflow-hidden transition-all duration-300">
               
               {/* Circular Progress Ring */}
               <div className="relative w-44 h-44 flex items-center justify-center shrink-0">
@@ -233,7 +228,7 @@ export default function AttendanceMafiaPage() {
                     {risk.message}
                   </p>
                 </div>
-                <div className="h-px bg-white/[0.06] w-full" />
+                <div className="h-px bg-white/[0.08] w-full" />
                 <p className="text-xs text-gray-500 font-medium leading-relaxed">
                   Your current metrics are calculated on the basis of <strong>{attendedClasses}</strong> attendance records out of <strong>{totalClasses}</strong> total conducted sessions.
                 </p>
@@ -244,7 +239,7 @@ export default function AttendanceMafiaPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               
               {/* Safe Skips */}
-              <div className="backdrop-blur-2xl bg-white/[0.02] border border-white/[0.06] rounded-3xl p-6 flex items-center gap-4 hover:border-emerald-500/10 transition-all">
+              <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-6 flex items-center gap-4 hover:border-emerald-500/30 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] transition-all">
                 <span className="text-3xl flex items-center justify-center w-12 h-12 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400">😎</span>
                 <div>
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Classes You Can Skip</span>
@@ -253,7 +248,7 @@ export default function AttendanceMafiaPage() {
               </div>
 
               {/* Required Attendance */}
-              <div className="backdrop-blur-2xl bg-white/[0.02] border border-white/[0.06] rounded-3xl p-6 flex items-center gap-4 hover:border-red-500/10 transition-all">
+              <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-6 flex items-center gap-4 hover:border-red-500/30 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] transition-all">
                 <span className="text-3xl flex items-center justify-center w-12 h-12 bg-red-500/10 rounded-2xl border border-red-500/20 text-red-400">💀</span>
                 <div>
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Must Attend Consecutively</span>
@@ -263,7 +258,7 @@ export default function AttendanceMafiaPage() {
             </div>
 
             {/* Smart Insights & Projections */}
-            <div className="backdrop-blur-2xl bg-white/[0.02] border border-white/[0.06] rounded-3xl p-6 md:p-8 space-y-4">
+            <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-6 md:p-8 space-y-4 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)]">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <Sparkles size={16} className="text-violet-400" />
                 <span>Smart Predictions & Suggestions</span>
