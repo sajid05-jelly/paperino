@@ -91,7 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "mohamedsajid.sa@gmail.com",
         "sudharajsekar2005@gmail.com",
         "admin.paperinoirfan27@gmail.com",
-        "admin.paperinosam14@gmail.com"
+        "admin.paperinosam14@gmail.com",
+        "gameplayitlifeitis@gmail.com"
       ];
       
       const envAdmins = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",") || [];
@@ -126,6 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // Daily Active Users Tracking (update lastLogin max once per day)
             const data = userSnap.data();
+            if (currentIsAdmin && data.role !== "admin") {
+              await setDoc(userRef, { role: "admin" }, { merge: true });
+            }
             const now = new Date();
             const lastLoginDate = data.lastLogin?.toDate ? data.lastLogin.toDate() : new Date(0);
             if (
