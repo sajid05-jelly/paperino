@@ -7,7 +7,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, Sparkles } from "lucide-react";
+import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, FlaskConical } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 import { useSound } from "@/hooks/useSound";
@@ -130,20 +130,14 @@ export default function Navbar() {
               <button
                 onClick={() => setIsLabsOpen(!isLabsOpen)}
                 onBlur={() => setTimeout(() => setIsLabsOpen(false), 200)}
-                className="relative group overflow-hidden px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-600/20 to-cyan-500/20 backdrop-blur-xl border border-violet-500/30 hover:border-cyan-500/50 shadow-[0_0_15px_rgba(139,92,246,0.15)] hover:shadow-[0_0_25px_rgba(6,182,212,0.35)] transition-all duration-500 flex items-center gap-2 font-bold text-xs xl:text-sm text-white hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-600/10 to-cyan-500/10 backdrop-blur-xl border border-violet-500/20 hover:border-cyan-500/40 shadow-[0_0_15px_rgba(139,92,246,0.08)] hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] transition-all duration-500 flex items-center gap-2 font-bold text-xs xl:text-sm text-white hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group"
               >
-                {/* Sweep Animation */}
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out" />
-                <div className="absolute inset-0 rounded-full border border-violet-500/10 pointer-events-none animate-pulse" />
-
                 <span className="flex items-center gap-1.5 text-glow relative z-10">
-                  <Sparkles size={13} className="text-cyan-400 animate-pulse" />
-                  🧪 Paperino Labs
-                </span>
-                
-                {/* BETA Badge */}
-                <span className="bg-gradient-to-r from-violet-500 to-cyan-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider relative z-10 shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-                  BETA
+                  <FlaskConical 
+                    size={14} 
+                    className="text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.85)] animate-pulse group-hover:rotate-12 transition-transform duration-300"
+                  />
+                  Paperino Labs
                 </span>
 
                 <ChevronDown size={14} className={`transition-transform duration-300 relative z-10 text-cyan-400 ${isLabsOpen ? 'rotate-180' : ''}`} />
