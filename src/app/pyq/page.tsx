@@ -220,13 +220,13 @@ export default function PYQPredictorPage() {
                   <div className="absolute inset-0 rounded-full bg-[rgba(var(--primary-rgb),0.3)] blur-[30px] animate-pulse" />
                   <div className="absolute -inset-3 rounded-full bg-[rgba(var(--primary-rgb),0.15)] blur-[20px] animate-pulse [animation-delay:1s]" />
                   <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[rgba(var(--primary-rgb),0.3)] via-[rgba(var(--accent-rgb),0.2)] to-[rgba(var(--accent-rgb),0.3)] backdrop-blur-xl border border-[rgba(var(--primary-rgb),0.2)] flex items-center justify-center shadow-[0_0_40px_rgba(var(--primary-rgb),0.3)]">
-                    <BrainCircuit size={36} className="text-[rgb(var(--primary-rgb))]" />
+                    <BrainCircuit size={36} className="text-[rgb(var(--primary-rgb))] drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.75)] animate-pulse" />
                   </div>
                 </div>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-white via-[rgb(var(--primary-rgb))] to-[rgb(var(--accent-rgb))] bg-clip-text text-transparent mb-5 leading-tight tracking-tight">
-                🧠 AI Powered Exam Intelligence
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-white via-[rgb(var(--primary-rgb))] to-[rgb(var(--accent-rgb))] bg-clip-text text-transparent mb-5 leading-tight tracking-tight drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.25)]">
+                AI Powered Exam Intelligence
               </h1>
               <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto mb-6 leading-relaxed">
                 Predict important units, repeated questions, and high-probability exam topics using previous year papers.

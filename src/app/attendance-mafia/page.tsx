@@ -10,7 +10,8 @@ import {
   HelpCircle,
   Calendar,
   Sparkles,
-  Info
+  Info,
+  Target
 } from "lucide-react";
 
 export default function AttendanceMafiaPage() {
@@ -89,7 +90,7 @@ export default function AttendanceMafiaPage() {
         };
       case "Warning":
         return {
-          color: "text-amber-400 border-amber-500/20 bg-amber-500/5",
+          color: "text-amber-400 border-emerald-500/20 bg-amber-500/5",
           ringColor: "stroke-amber-400",
           shadow: "shadow-[0_0_20px_rgba(245,158,11,0.2)]",
           label: "Warning ⚠️",
@@ -121,12 +122,20 @@ export default function AttendanceMafiaPage() {
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 md:py-16">
         
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center p-4 bg-violet-500/10 rounded-full mb-6 border border-violet-500/20 shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]">
-            <Zap size={36} className="text-violet-400" />
+        <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-6 duration-500">
+          {/* Pulsing AI Target Orb */}
+          <div className="flex justify-center mb-8">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-[rgba(var(--primary-rgb),0.3)] blur-[25px] animate-pulse" />
+              <div className="absolute -inset-3 rounded-full bg-[rgba(var(--primary-rgb),0.15)] blur-[18px] animate-pulse [animation-delay:1s]" />
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[rgba(var(--primary-rgb),0.3)] via-[rgba(var(--secondary-rgb),0.2)] to-[rgba(var(--primary-rgb),0.3)] backdrop-blur-xl border border-[rgba(var(--primary-rgb),0.25)] flex items-center justify-center shadow-[0_0_35px_rgba(var(--primary-rgb),0.25)]">
+                <Target size={36} className="text-[rgb(var(--primary-rgb))] drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.75)] animate-pulse" />
+              </div>
+            </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 mb-4">
-            🎯 Attendance Mafia
+
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 mb-4 drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.25)]">
+            Attendance Mafia
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
             Know exactly how many classes you can skip before your attendance falls below the required percentage.
