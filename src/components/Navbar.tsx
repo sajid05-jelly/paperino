@@ -116,12 +116,24 @@ export default function Navbar() {
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
             <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
             <Link href="/ats" className={getLinkClass("/ats")}>ATS</Link>
-            <Link href="/bookmarks" className={getLinkClass("/bookmarks")}>Bookmarks</Link>
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
             
-            <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
             <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
+
+            {/* 🚨 Exam Emergency CTA */}
+            <Link 
+              href="/exam-emergency" 
+              className="relative group overflow-hidden px-4.5 py-1.5 rounded-full bg-white/[0.03] backdrop-blur-xl border border-violet-500/30 hover:border-violet-500/60 shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)] hover:shadow-[0_0_25px_rgba(var(--primary-rgb),0.35)] transition-all duration-300 flex items-center justify-center gap-1.5 font-bold text-xs text-white hover:text-white hover:-translate-y-0.5 active:scale-[0.98] shrink-0"
+            >
+              <span className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-transparent to-violet-500/10 opacity-50 group-hover:opacity-80 transition-opacity" />
+              <div className="absolute inset-0 rounded-full border border-violet-500/20 pointer-events-none animate-pulse" />
+              <span className="relative z-10 flex items-center gap-1">
+                🚨 Exam Emergency
+              </span>
+            </Link>
+
+            <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
             {user && !isAdmin && (
               <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
             )}
@@ -269,15 +281,26 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/ats" className={getMobileLinkClass("/ats")}>ATS Analyzer</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/bookmarks" className={getMobileLinkClass("/bookmarks")}>Bookmarks</Link>
 
               {/* Divider */}
               <div className="h-px bg-white/[0.06] my-3 mx-2" />
 
               {/* Discover */}
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
+
+              {/* 🚨 Exam Emergency CTA */}
+              <Link 
+                onClick={() => setIsMobileMenuOpen(false)} 
+                href="/exam-emergency" 
+                className="relative group overflow-hidden mx-3 my-1.5 px-4 py-2.5 rounded-full bg-white/[0.03] backdrop-blur-xl border border-violet-500/20 hover:border-violet-500/40 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)] transition-all duration-300 flex items-center justify-center gap-1.5 font-bold text-xs text-white hover:text-white"
+              >
+                <span className="relative z-10 flex items-center gap-1">
+                  🚨 Emergency
+                </span>
+              </Link>
+
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
               {user && !isAdmin && (
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
               )}
