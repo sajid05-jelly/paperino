@@ -199,13 +199,13 @@ export default function ExamEmergencyPage() {
     : [];
 
   return (
-    <div className="w-full min-h-screen bg-[var(--background)] text-white py-8 relative overflow-hidden selection:bg-red-500/20">
+    <div className="w-full min-h-screen bg-gradient-to-b from-[rgba(var(--primary-rgb),0.15)] via-[var(--background)] to-[var(--background)] text-white py-8 relative overflow-hidden selection:bg-red-500/20">
       
       {/* ── Background Glow Layers ── */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(239,68,68,0.08)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[130px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.12)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:45px_45px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[850px] h-[850px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.32)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[130px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[750px] h-[750px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.25)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.007)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.007)_1px,transparent_1px)] bg-[size:45px_45px]" />
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-12 md:py-16">
@@ -214,7 +214,7 @@ export default function ExamEmergencyPage() {
         {activeDashboard && (
           <button 
             onClick={() => { setActiveDashboard(false); setError(""); }}
-            className="group flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.03] backdrop-blur-md px-4 py-2 rounded-full border border-white/[0.08] mb-8 hover:-translate-x-0.5"
+            className="group flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4 py-2 rounded-full border border-white/[0.08] mb-8 hover:-translate-x-0.5"
           >
             <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
             Back to Configuration
@@ -223,8 +223,11 @@ export default function ExamEmergencyPage() {
 
         {!activeDashboard ? (
           /* ═══════════════ Activation Configuration View ═══════════════ */
-          <div className="max-w-3xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <div className="max-w-3xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-500 relative">
             
+            {/* Ambient Aurora Light Streak Behind Hero */}
+            <div className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.28)_0%,transparent_60%)] -z-10 pointer-events-none blur-[70px]" />
+
             {/* Pulsing AI Alert Orb */}
             <div className="flex justify-center mb-8">
               <div className="relative">
@@ -236,11 +239,11 @@ export default function ExamEmergencyPage() {
               </div>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 tracking-tight leading-tight mb-4">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 tracking-tight leading-tight mb-4 drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.25)]">
               🚨 Exam Emergency Mode
             </h1>
             
-            <p className="text-gray-300 text-lg md:text-xl font-medium mb-2">
+            <p className="text-gray-200 text-lg md:text-xl font-medium mb-2">
               Exam tomorrow? Don't panic.
             </p>
             <p className="text-gray-400 text-sm md:text-base max-w-xl mx-auto mb-8 leading-relaxed">
@@ -248,8 +251,8 @@ export default function ExamEmergencyPage() {
             </p>
 
             {/* Selector Card */}
-            <div className="backdrop-blur-3xl bg-black/40 border border-white/[0.08] hover:border-red-500/20 transition-all duration-500 rounded-3xl p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)] max-w-xl mx-auto relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-red-500/[0.03] blur-[80px] rounded-full pointer-events-none" />
+            <div className="backdrop-blur-3xl bg-white/[0.04] border border-violet-500/20 hover:border-violet-500/40 transition-all duration-500 rounded-3xl p-8 shadow-[0_0_55px_rgba(var(--primary-rgb),0.15)] max-w-xl mx-auto relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-[rgba(var(--primary-rgb),0.06)] blur-[80px] rounded-full pointer-events-none" />
               
               {/* Daily usage indicator */}
               <div className="mb-8">
@@ -380,7 +383,7 @@ export default function ExamEmergencyPage() {
               <div className="lg:col-span-2 space-y-8">
                 
                 {/* 📌 Most Repeated Questions */}
-                <div className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] hover:border-red-500/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.05)] rounded-3xl p-6 md:p-8 transition-all duration-300">
+                <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 md:p-8 transition-all duration-300">
                   <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/[0.06] pb-4">
                     <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10 text-red-400 font-bold">📌</span>
                     Most Repeated Questions
@@ -398,7 +401,7 @@ export default function ExamEmergencyPage() {
                 </div>
 
                 {/* 🎯 High Probability Questions */}
-                <div className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] hover:border-red-500/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.05)] rounded-3xl p-6 md:p-8 transition-all duration-300">
+                <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 md:p-8 transition-all duration-300">
                   <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/[0.06] pb-4">
                     <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 font-bold">🎯</span>
                     High Probability Questions
@@ -437,7 +440,7 @@ export default function ExamEmergencyPage() {
               <div className="lg:col-span-1 space-y-8">
 
                 {/* ⚡ Important Units */}
-                <div className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] hover:border-red-500/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.05)] rounded-3xl p-6 transition-all duration-300">
+                <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2.5 border-b border-white/[0.06] pb-4">
                     <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-yellow-500/10 text-yellow-400 font-bold">⚡</span>
                     Important Units
@@ -461,7 +464,7 @@ export default function ExamEmergencyPage() {
                 </div>
 
                 {/* ⏳ 2-Hour Revision Plan */}
-                <div className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] hover:border-red-500/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.05)] rounded-3xl p-6 transition-all duration-300">
+                <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2.5 border-b border-white/[0.06] pb-4">
                     <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-cyan-500/10 text-cyan-400 font-bold">⏳</span>
                     2-Hour Revision Plan
@@ -481,7 +484,7 @@ export default function ExamEmergencyPage() {
                 </div>
 
                 {/* 🧠 Key Formulas & Last Minute Notes */}
-                <div className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] hover:border-red-500/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.05)] rounded-3xl p-6 transition-all duration-300">
+                <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2.5 border-b border-white/[0.06] pb-4">
                     <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-violet-500/10 text-violet-400 font-bold">🧠</span>
                     Formulas & Key Notes
