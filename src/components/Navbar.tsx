@@ -7,7 +7,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check } from "lucide-react";
+import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 import { useSound } from "@/hooks/useSound";
@@ -30,6 +30,8 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const { soundEnabled, toggleSound } = useSound();
   const pathname = usePathname();
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isMoreMobileOpen, setIsMoreMobileOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -137,6 +139,36 @@ export default function Navbar() {
             {user && !isAdmin && (
               <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
             )}
+
+            {/* More Menu Dropdown */}
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setIsMoreOpen(!isMoreOpen)}
+                onBlur={() => setTimeout(() => setIsMoreOpen(false), 200)}
+                className="px-2.5 py-1.5 lg:px-3 lg:py-1.5 xl:px-3.5 xl:py-2 rounded-full text-xs xl:text-sm font-medium transition-all duration-300 border flex-shrink-0 whitespace-nowrap text-gray-400 border-transparent hover:text-white hover:bg-white/5 flex items-center gap-1 cursor-pointer"
+              >
+                More <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isMoreOpen && (
+                <div className="absolute right-0 mt-2.5 w-56 rounded-2xl bg-[#07050e]/95 backdrop-blur-3xl border border-white/[0.08] p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.03] via-transparent to-transparent pointer-events-none rounded-2xl" />
+                  <Link
+                    href="/attendance-mafia"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                  >
+                    <span>🎯</span> Attendance Mafia
+                  </Link>
+                  <Link
+                    href="/survival-notes"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                  >
+                    <span>💜</span> Senior Survival Notes
+                  </Link>
+                </div>
+              )}
+            </div>
+
             <Link href="/developer" className={getLinkClass("/developer", true)}>Developer</Link>
             
             {isAdmin && (
@@ -304,6 +336,28 @@ export default function Navbar() {
               {user && !isAdmin && (
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
               )}
+
+              {/* Collapsible Mobile More Dropdown */}
+              <div className="py-1">
+                <button
+                  onClick={() => setIsMoreMobileOpen(!isMoreMobileOpen)}
+                  className="w-[calc(100%-1.5rem)] mx-3 flex items-center justify-between py-2.5 text-gray-300 hover:text-white transition-all text-sm font-medium border border-transparent hover:bg-white/5 px-3 rounded-xl cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">🛠️ More Utilities</span>
+                  <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreMobileOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isMoreMobileOpen && (
+                  <div className="pl-6 pr-3 mt-1 space-y-1 animate-in fade-in duration-200">
+                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsMoreMobileOpen(false); }} href="/attendance-mafia" className={`${getMobileLinkClass("/attendance-mafia")} flex items-center gap-2`}>
+                      <span>🎯</span> Attendance Mafia
+                    </Link>
+                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsMoreMobileOpen(false); }} href="/survival-notes" className={`${getMobileLinkClass("/survival-notes")} flex items-center gap-2`}>
+                      <span>💜</span> Senior Survival Notes
+                    </Link>
+                  </div>
+                )}
+              </div>
+
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
 
               {/* Admin */}
