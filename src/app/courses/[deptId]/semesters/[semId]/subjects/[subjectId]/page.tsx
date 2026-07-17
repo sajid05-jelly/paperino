@@ -111,11 +111,19 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
   };
 
   return (
-    <div className="w-full min-h-screen bg-[var(--background)] text-white py-12 relative overflow-hidden selection:bg-purple-500/20">
-      {/* Background Gradients */}
+    <div className="w-full min-h-screen bg-gradient-to-b from-[rgba(var(--primary-rgb),0.12)] via-[var(--background)] to-[var(--background)] text-white py-12 relative overflow-hidden selection:bg-purple-500/20">
+      {/* ── Background Ambient Glow Layers ── */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.12)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.08)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] pointer-events-none" />
+        {/* Primary violet orb — top-left */}
+        <div className="absolute top-[-15%] left-[-10%] w-[900px] h-[900px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.22)_0%,transparent_65%)] rounded-full mix-blend-screen filter blur-[100px]" />
+        {/* Secondary cyan orb — bottom-right */}
+        <div className="absolute bottom-[-15%] right-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.16)_0%,transparent_65%)] rounded-full mix-blend-screen filter blur-[120px]" />
+        {/* Center hero glow */}
+        <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-[radial-gradient(ellipse,rgba(var(--primary-rgb),0.18)_0%,transparent_70%)] filter blur-[80px]" />
+        {/* Subtle mid-page violet wash */}
+        <div className="absolute top-[40%] left-[20%] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.08)_0%,transparent_70%)] filter blur-[90px]" />
+        {/* Cyan accent — right side */}
+        <div className="absolute top-[30%] right-[-5%] w-[400px] h-[600px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.10)_0%,transparent_70%)] filter blur-[100px]" />
       </div>
 
       <div className="max-w-6xl mx-auto px-6 relative z-10">
@@ -123,16 +131,17 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
         {/* Back Button */}
         <Link 
           href={`/courses/${deptId}/semesters/${semId}`} 
-          className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.03] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] mb-8 hover:-translate-x-0.5"
+          className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] mb-8 hover:-translate-x-0.5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)]"
         >
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" /> Back to Semester
         </Link>
 
-        {/* Header */}
-        <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1">SRM Hub • B.Tech</p>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-2">{subjectName}</h1>
-          <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed">
+        {/* Header with Premium Glow */}
+        <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500 relative">
+          <div className="absolute -top-8 -left-8 w-[300px] h-[200px] bg-[radial-gradient(ellipse,rgba(var(--primary-rgb),0.20)_0%,transparent_70%)] filter blur-[60px] pointer-events-none" />
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1 relative z-10">SRM Hub • B.Tech</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-2 relative z-10 drop-shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)]">{subjectName}</h1>
+          <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed relative z-10">
             Access curated study materials and collaborate with other students by uploading resources.
           </p>
         </div>
@@ -146,7 +155,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-in fade-in duration-700">
             
             {/* PYQ Section */}
-            <div className="vision-glass p-6 rounded-[2rem] border border-white/5 relative flex flex-col justify-between min-h-[300px]">
+            <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -191,7 +200,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
             </div>
 
             {/* Notes Section */}
-            <div className="vision-glass p-6 rounded-[2rem] border border-white/5 relative flex flex-col justify-between min-h-[300px]">
+            <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -236,7 +245,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
             </div>
 
             {/* Important Questions Section */}
-            <div className="vision-glass p-6 rounded-[2rem] border border-white/5 relative flex flex-col justify-between min-h-[300px]">
+            <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">

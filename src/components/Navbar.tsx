@@ -7,7 +7,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, FlaskConical } from "lucide-react";
+import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 import { useSound } from "@/hooks/useSound";
@@ -148,27 +148,27 @@ export default function Navbar() {
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.03] via-transparent to-transparent pointer-events-none rounded-2xl" />
                   <Link
                     href="/ats"
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
-                    <span>⚡</span> ATS Analyzer
+                    <BrainCircuit size={15} className="text-violet-400 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> ATS Analyzer
                   </Link>
                   <Link
                     href="/exam-emergency"
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
-                    <span>🚨</span> Exam Emergency
+                    <ShieldAlert size={15} className="text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Exam Emergency
                   </Link>
                   <Link
                     href="/attendance-mafia"
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
-                    <span>🛡️</span> Attendance Shield
+                    <ShieldCheck size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Attendance Shield
                   </Link>
                   <Link
                     href="/survival-notes"
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
-                    <span>🎓</span> Senior Insights
+                    <GraduationCap size={15} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Senior Insights
                   </Link>
                 </div>
               )}
@@ -349,7 +349,7 @@ export default function Navbar() {
                       href="/ats" 
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
                     >
-                      <span className="text-sm shrink-0 w-5 text-center">⚡</span>
+                      <BrainCircuit size={16} className="text-violet-400 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)] shrink-0" />
                       <span>ATS Analyzer</span>
                     </Link>
                     <Link 
@@ -357,7 +357,7 @@ export default function Navbar() {
                       href="/exam-emergency" 
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
                     >
-                      <span className="text-sm shrink-0 w-5 text-center">🚨</span>
+                      <ShieldAlert size={16} className="text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)] shrink-0" />
                       <span>Exam Emergency</span>
                     </Link>
                     <Link 
@@ -365,7 +365,7 @@ export default function Navbar() {
                       href="/attendance-mafia" 
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
                     >
-                      <span className="text-sm shrink-0 w-5 text-center">🛡️</span>
+                      <ShieldCheck size={16} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)] shrink-0" />
                       <span>Attendance Shield</span>
                     </Link>
                     <Link 
@@ -373,7 +373,7 @@ export default function Navbar() {
                       href="/survival-notes" 
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
                     >
-                      <span className="text-sm shrink-0 w-5 text-center">🎓</span>
+                      <GraduationCap size={16} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] shrink-0" />
                       <span>Senior Insights</span>
                     </Link>
                   </div>
