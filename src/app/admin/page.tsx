@@ -183,7 +183,6 @@ export default function AdminDashboard() {
                 <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]">
                   <Users size={24} />
                 </div>
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full">+12% this week</span>
               </div>
               <h3 className="text-gray-400 text-sm font-medium mb-1">Total Registered Users</h3>
               <p className="text-3xl font-bold text-white">{stats.totalUsers.toLocaleString()}</p>
@@ -195,7 +194,6 @@ export default function AdminDashboard() {
                 <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]">
                   <Activity size={24} />
                 </div>
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full">High</span>
               </div>
               <h3 className="text-gray-400 text-sm font-medium mb-1">Daily Active Users</h3>
               <p className="text-3xl font-bold text-white">{stats.dailyActive.toLocaleString()}</p>
@@ -207,7 +205,6 @@ export default function AdminDashboard() {
                 <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.2)]">
                   <FileSearch size={24} />
                 </div>
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full">+45 today</span>
               </div>
               <h3 className="text-gray-400 text-sm font-medium mb-1">ATS Resumes Analyzed</h3>
               <p className="text-3xl font-bold text-white">{stats.atsUsage.toLocaleString()}</p>
