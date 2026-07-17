@@ -7,7 +7,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, Sparkles } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 import { useSound } from "@/hooks/useSound";
@@ -130,9 +130,23 @@ export default function Navbar() {
               <button
                 onClick={() => setIsLabsOpen(!isLabsOpen)}
                 onBlur={() => setTimeout(() => setIsLabsOpen(false), 200)}
-                className="px-2.5 py-1.5 lg:px-3 lg:py-1.5 xl:px-3.5 xl:py-2 rounded-full text-xs xl:text-sm font-medium transition-all duration-300 border flex-shrink-0 whitespace-nowrap text-gray-400 border-transparent hover:text-white hover:bg-white/5 flex items-center gap-1 cursor-pointer"
+                className="relative group overflow-hidden px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-600/20 to-cyan-500/20 backdrop-blur-xl border border-violet-500/30 hover:border-cyan-500/50 shadow-[0_0_15px_rgba(139,92,246,0.15)] hover:shadow-[0_0_25px_rgba(6,182,212,0.35)] transition-all duration-500 flex items-center gap-2 font-bold text-xs xl:text-sm text-white hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
               >
-                🧪 Paperino Labs <ChevronDown size={14} className={`transition-transform duration-300 ${isLabsOpen ? 'rotate-180' : ''}`} />
+                {/* Sweep Animation */}
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out" />
+                <div className="absolute inset-0 rounded-full border border-violet-500/10 pointer-events-none animate-pulse" />
+
+                <span className="flex items-center gap-1.5 text-glow relative z-10">
+                  <Sparkles size={13} className="text-cyan-400 animate-pulse" />
+                  🧪 Paperino Labs
+                </span>
+                
+                {/* BETA Badge */}
+                <span className="bg-gradient-to-r from-violet-500 to-cyan-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider relative z-10 shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+                  BETA
+                </span>
+
+                <ChevronDown size={14} className={`transition-transform duration-300 relative z-10 text-cyan-400 ${isLabsOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {isLabsOpen && (
@@ -142,13 +156,13 @@ export default function Navbar() {
                     href="/ats"
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
                   >
-                    <span>🔍</span> ATS Analyzer
+                    <span>⚡</span> ATS Analyzer
                   </Link>
                   <Link
                     href="/exam-emergency"
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
                   >
-                    <span>🚨</span> Exam Emergency Mode
+                    <span>🚨</span> Exam Emergency
                   </Link>
                   <Link
                     href="/attendance-mafia"
@@ -333,10 +347,10 @@ export default function Navbar() {
                 {isLabsMobileOpen && (
                   <div className="pl-6 pr-3 mt-1 space-y-1 animate-in fade-in duration-200">
                     <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/ats" className={`${getMobileLinkClass("/ats")} flex items-center gap-2`}>
-                      <span>🔍</span> ATS Analyzer
+                      <span>⚡</span> ATS Analyzer
                     </Link>
                     <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/exam-emergency" className={`${getMobileLinkClass("/exam-emergency")} flex items-center gap-2`}>
-                      <span>🚨</span> Exam Emergency Mode
+                      <span>🚨</span> Exam Emergency
                     </Link>
                     <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/attendance-mafia" className={`${getMobileLinkClass("/attendance-mafia")} flex items-center gap-2`}>
                       <span>🛡️</span> Attendance Shield
