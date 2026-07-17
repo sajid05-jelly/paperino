@@ -30,8 +30,8 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const { soundEnabled, toggleSound } = useSound();
   const pathname = usePathname();
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isMoreMobileOpen, setIsMoreMobileOpen] = useState(false);
+  const [isLabsOpen, setIsLabsOpen] = useState(false);
+  const [isLabsMobileOpen, setIsLabsMobileOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -111,48 +111,45 @@ export default function Navbar() {
             <span className="text-lg sm:text-xl font-bold tracking-tight text-white hidden sm:block group-hover:text-glow transition-all duration-300">Paperino</span>
           </Link>
           
-          <div 
-            className="hidden lg:flex flex-1 items-center justify-center gap-1 xl:gap-2 font-medium min-w-0"
+            <div className="hidden lg:flex flex-1 items-center justify-center gap-1 xl:gap-2 font-medium min-w-0"
           >
             <Link href="/courses" className={getLinkClass("/courses")}>Materials</Link>
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
             <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
-            <Link href="/ats" className={getLinkClass("/ats")}>ATS</Link>
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
             
-            <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
-
-            {/* 🚨 Exam Emergency CTA */}
-            <Link 
-              href="/exam-emergency" 
-              className="relative group overflow-hidden px-4.5 py-1.5 rounded-full bg-white/[0.03] backdrop-blur-xl border border-violet-500/30 hover:border-violet-500/60 shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)] hover:shadow-[0_0_25px_rgba(var(--primary-rgb),0.35)] transition-all duration-300 flex items-center justify-center gap-1.5 font-bold text-xs text-white hover:text-white hover:-translate-y-0.5 active:scale-[0.98] shrink-0"
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-transparent to-violet-500/10 opacity-50 group-hover:opacity-80 transition-opacity" />
-              <div className="absolute inset-0 rounded-full border border-violet-500/20 pointer-events-none animate-pulse" />
-              <span className="relative z-10 flex items-center gap-1">
-                🚨 Exam Emergency
-              </span>
-            </Link>
-
             <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
+            <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
             {user && !isAdmin && (
               <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
             )}
 
-            {/* More Menu Dropdown */}
+            {/* 🧪 Paperino Labs Dropdown */}
             <div className="relative flex-shrink-0">
               <button
-                onClick={() => setIsMoreOpen(!isMoreOpen)}
-                onBlur={() => setTimeout(() => setIsMoreOpen(false), 200)}
+                onClick={() => setIsLabsOpen(!isLabsOpen)}
+                onBlur={() => setTimeout(() => setIsLabsOpen(false), 200)}
                 className="px-2.5 py-1.5 lg:px-3 lg:py-1.5 xl:px-3.5 xl:py-2 rounded-full text-xs xl:text-sm font-medium transition-all duration-300 border flex-shrink-0 whitespace-nowrap text-gray-400 border-transparent hover:text-white hover:bg-white/5 flex items-center gap-1 cursor-pointer"
               >
-                More <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreOpen ? 'rotate-180' : ''}`} />
+                🧪 Paperino Labs <ChevronDown size={14} className={`transition-transform duration-300 ${isLabsOpen ? 'rotate-180' : ''}`} />
               </button>
               
-              {isMoreOpen && (
-                <div className="absolute right-0 mt-2.5 w-56 rounded-2xl bg-[#07050e]/95 backdrop-blur-3xl border border-white/[0.08] p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              {isLabsOpen && (
+                <div className="absolute right-0 mt-2.5 w-60 rounded-2xl bg-[#07050e]/95 backdrop-blur-3xl border border-white/[0.08] p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.03] via-transparent to-transparent pointer-events-none rounded-2xl" />
+                  <Link
+                    href="/ats"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                  >
+                    <span>🔍</span> ATS Analyzer
+                  </Link>
+                  <Link
+                    href="/exam-emergency"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
+                  >
+                    <span>🚨</span> Exam Emergency Mode
+                  </Link>
                   <Link
                     href="/attendance-mafia"
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
@@ -312,7 +309,6 @@ export default function Navbar() {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/courses" className={getMobileLinkClass("/courses")}>Materials</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/ats" className={getMobileLinkClass("/ats")}>ATS Analyzer</Link>
 
               {/* Divider */}
               <div className="h-px bg-white/[0.06] my-3 mx-2" />
@@ -320,38 +316,32 @@ export default function Navbar() {
               {/* Discover */}
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
-
-              {/* 🚨 Exam Emergency CTA */}
-              <Link 
-                onClick={() => setIsMobileMenuOpen(false)} 
-                href="/exam-emergency" 
-                className="relative group overflow-hidden mx-3 my-1.5 px-4 py-2.5 rounded-full bg-white/[0.03] backdrop-blur-xl border border-violet-500/20 hover:border-violet-500/40 shadow-[0_0_10px_rgba(var(--primary-rgb),0.1)] transition-all duration-300 flex items-center justify-center gap-1.5 font-bold text-xs text-white hover:text-white"
-              >
-                <span className="relative z-10 flex items-center gap-1">
-                  🚨 Emergency
-                </span>
-              </Link>
-
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
               {user && !isAdmin && (
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
               )}
 
-              {/* Collapsible Mobile More Dropdown */}
+              {/* Collapsible Mobile Paperino Labs Dropdown */}
               <div className="py-1">
                 <button
-                  onClick={() => setIsMoreMobileOpen(!isMoreMobileOpen)}
+                  onClick={() => setIsLabsMobileOpen(!isLabsMobileOpen)}
                   className="w-[calc(100%-1.5rem)] mx-3 flex items-center justify-between py-2.5 text-gray-300 hover:text-white transition-all text-sm font-medium border border-transparent hover:bg-white/5 px-3 rounded-xl cursor-pointer"
                 >
-                  <span className="flex items-center gap-2">🛠️ More Utilities</span>
-                  <ChevronDown size={14} className={`transition-transform duration-300 ${isMoreMobileOpen ? 'rotate-180' : ''}`} />
+                  <span className="flex items-center gap-2">🧪 Paperino Labs</span>
+                  <ChevronDown size={14} className={`transition-transform duration-300 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
                 </button>
-                {isMoreMobileOpen && (
+                {isLabsMobileOpen && (
                   <div className="pl-6 pr-3 mt-1 space-y-1 animate-in fade-in duration-200">
-                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsMoreMobileOpen(false); }} href="/attendance-mafia" className={`${getMobileLinkClass("/attendance-mafia")} flex items-center gap-2`}>
+                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/ats" className={`${getMobileLinkClass("/ats")} flex items-center gap-2`}>
+                      <span>🔍</span> ATS Analyzer
+                    </Link>
+                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/exam-emergency" className={`${getMobileLinkClass("/exam-emergency")} flex items-center gap-2`}>
+                      <span>🚨</span> Exam Emergency Mode
+                    </Link>
+                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/attendance-mafia" className={`${getMobileLinkClass("/attendance-mafia")} flex items-center gap-2`}>
                       <span>🎯</span> Attendance Mafia
                     </Link>
-                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsMoreMobileOpen(false); }} href="/survival-notes" className={`${getMobileLinkClass("/survival-notes")} flex items-center gap-2`}>
+                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/survival-notes" className={`${getMobileLinkClass("/survival-notes")} flex items-center gap-2`}>
                       <span>💜</span> Senior Survival Notes
                     </Link>
                   </div>
