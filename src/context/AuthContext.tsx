@@ -84,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unsubUserDoc = null;
       }
 
+      setLoading(true);
       setUser(currentUser);
       
       const allowedAdmins = [
