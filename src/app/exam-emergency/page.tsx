@@ -17,6 +17,7 @@ import {
   CheckCircle,
   HelpCircle,
   Activity,
+  ShieldAlert,
   Infinity as InfinityIcon
 } from "lucide-react";
 
@@ -231,10 +232,10 @@ export default function ExamEmergencyPage() {
             {/* Pulsing AI Alert Orb */}
             <div className="flex justify-center mb-8">
               <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-red-500/20 blur-[25px] animate-pulse" />
-                <div className="absolute -inset-3 rounded-full bg-red-600/10 blur-[18px] animate-pulse [animation-delay:1s]" />
-                <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-red-500/20 via-red-950/20 to-violet-500/20 backdrop-blur-xl border border-red-500/30 flex items-center justify-center shadow-[0_0_35px_rgba(239,68,68,0.25)] animate-bounce duration-3000">
-                  <AlertTriangle size={36} className="text-red-400 animate-pulse" />
+                <div className="absolute inset-0 rounded-full bg-[rgba(var(--primary-rgb),0.3)] blur-[25px] animate-pulse" />
+                <div className="absolute -inset-3 rounded-full bg-[rgba(var(--primary-rgb),0.15)] blur-[18px] animate-pulse [animation-delay:1s]" />
+                <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[rgba(var(--primary-rgb),0.35)] via-[rgba(var(--secondary-rgb),0.2)] to-[rgba(var(--primary-rgb),0.35)] backdrop-blur-xl border border-[rgba(var(--primary-rgb),0.3)] flex items-center justify-center shadow-[0_0_40px_rgba(var(--primary-rgb),0.35)] animate-bounce duration-3000">
+                  <ShieldAlert size={36} className="text-[rgb(var(--primary-rgb))] drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.85)] animate-pulse" />
                 </div>
               </div>
             </div>

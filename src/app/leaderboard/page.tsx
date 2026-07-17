@@ -159,20 +159,30 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#05030a] py-12 relative overflow-hidden selection:bg-purple-500/30">
-      <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full mix-blend-screen pointer-events-none z-0 transition-all duration-1000 ${activeTab === 'season' ? 'bg-[radial-gradient(circle,rgba(168,85,247,0.15)_0%,transparent_70%)]' : 'bg-[radial-gradient(circle,rgba(251,191,36,0.15)_0%,transparent_70%)]'}`}></div>
+    <div className="w-full min-h-screen bg-gradient-to-b from-[rgba(var(--primary-rgb),0.15)] via-[var(--background)] to-[var(--background)] text-white py-12 relative overflow-hidden selection:bg-purple-500/30">
+      
+      {/* ── Background Glow Layers ── */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[850px] h-[850px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.32)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[130px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[750px] h-[750px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.25)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.007)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.007)_1px,transparent_1px)] bg-[size:45px_45px]" />
+      </div>
 
       <div className="max-w-5xl mx-auto px-6 relative z-10">
         
         {/* Header */}
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-top-5 duration-700">
-          <div className="inline-flex items-center justify-center p-3 bg-purple-500/10 border border-purple-500/20 rounded-full mb-4 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
+        <div className="text-center mb-12 animate-in fade-in slide-in-from-top-5 duration-700 relative">
+          
+          {/* Spotlight behind title */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.28)_0%,transparent_60%)] -z-10 pointer-events-none blur-[70px]" />
+
+          <div className="inline-flex items-center justify-center p-3 bg-purple-500/10 border border-purple-500/20 rounded-full mb-4 shadow-[0_0_20px_rgba(var(--primary-rgb),0.25)]">
             <Trophy size={28} className="text-purple-400" />
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight">
-            Contributor <span className={`text-transparent bg-clip-text drop-shadow-[0_0_10px_rgba(167,139,250,0.3)] ${activeTab === 'season' ? 'bg-gradient-to-r from-violet-400 to-fuchsia-400' : 'bg-gradient-to-r from-amber-200 to-yellow-500'}`}>Leaderboard</span>
+            Contributor <span className={`text-transparent bg-clip-text drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)] bg-gradient-to-r from-white via-[rgb(var(--primary-rgb))] to-[rgb(var(--accent-rgb))]`}>Leaderboard</span>
           </h1>
-          <p className="text-gray-400 max-w-xl mx-auto">
+          <p className="text-gray-300 max-w-xl mx-auto">
             Honoring the students who actively build and share resources to help the SRM community thrive.
           </p>
         </div>
