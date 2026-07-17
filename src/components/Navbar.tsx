@@ -330,27 +330,51 @@ export default function Navbar() {
               )}
 
               {/* Collapsible Mobile Paperino Labs Dropdown */}
-              <div className="py-1">
+              <div className="mx-3 my-3 bg-gradient-to-br from-violet-600/[0.07] to-cyan-500/[0.07] backdrop-blur-3xl border border-violet-500/20 hover:border-cyan-500/35 rounded-2xl p-1 transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.06)]">
                 <button
                   onClick={() => setIsLabsMobileOpen(!isLabsMobileOpen)}
-                  className="w-[calc(100%-1.5rem)] mx-3 flex items-center justify-between py-2.5 text-gray-300 hover:text-white transition-all text-sm font-medium border border-transparent hover:bg-white/5 px-3 rounded-xl cursor-pointer"
+                  className="w-full flex items-center justify-between py-3 px-4 text-white hover:text-cyan-300 transition-all font-bold text-sm cursor-pointer rounded-xl"
                 >
-                  <span className="flex items-center gap-2">🧪 Paperino Labs</span>
-                  <ChevronDown size={14} className={`transition-transform duration-300 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
+                  <span className="flex items-center gap-2">
+                    <FlaskConical size={15} className="text-cyan-400 animate-pulse" />
+                    <span>Paperino Labs</span>
+                  </span>
+                  <ChevronDown size={14} className={`transition-transform duration-300 text-cyan-400 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
                 </button>
+                
                 {isLabsMobileOpen && (
-                  <div className="pl-6 pr-3 mt-1 space-y-1 animate-in fade-in duration-200">
-                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/ats" className={`${getMobileLinkClass("/ats")} flex items-center gap-2`}>
-                      <span>⚡</span> ATS Analyzer
+                  <div className="px-2 pb-2 space-y-1 animate-in fade-in duration-300">
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                      href="/ats" 
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <span className="text-sm shrink-0 w-5 text-center">⚡</span>
+                      <span>ATS Analyzer</span>
                     </Link>
-                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/exam-emergency" className={`${getMobileLinkClass("/exam-emergency")} flex items-center gap-2`}>
-                      <span>🚨</span> Exam Emergency
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                      href="/exam-emergency" 
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <span className="text-sm shrink-0 w-5 text-center">🚨</span>
+                      <span>Exam Emergency</span>
                     </Link>
-                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/attendance-mafia" className={`${getMobileLinkClass("/attendance-mafia")} flex items-center gap-2`}>
-                      <span>🛡️</span> Attendance Shield
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                      href="/attendance-mafia" 
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <span className="text-sm shrink-0 w-5 text-center">🛡️</span>
+                      <span>Attendance Shield</span>
                     </Link>
-                    <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/survival-notes" className={`${getMobileLinkClass("/survival-notes")} flex items-center gap-2`}>
-                      <span>🎓</span> Senior Insights
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                      href="/survival-notes" 
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <span className="text-sm shrink-0 w-5 text-center">🎓</span>
+                      <span>Senior Insights</span>
                     </Link>
                   </div>
                 )}
