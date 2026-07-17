@@ -788,7 +788,7 @@ export default function PulsePage() {
                   <div 
                     key={update.id} 
                     onClick={() => isLoggedOut && router.push("/login")}
-                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
+                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between h-fit"
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <div className="relative z-10 flex-1 flex flex-col justify-between">
