@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bell, CheckCheck, Inbox, X } from "lucide-react";
+import { Bell, CheckCheck, Inbox, X, Trash2, Loader2 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import type { PaperinoNotification } from "@/lib/notifications";
@@ -40,7 +40,7 @@ const TYPE_META: Record<
 /* ── Component ────────────────────────────────────────── */
 
 export default function NotificationBell() {
-  const { notifications: standardNotifications, unreadCount: standardUnread, markRead: markStandardRead, markAllRead: markAllStandardRead } = useNotifications();
+  const { notifications: standardNotifications, unreadCount: standardUnread, markRead: markStandardRead, markAllRead: markAllStandardRead, clearMyNotifications } = useNotifications();
   const { unreadUpdates: pulseUpdates, unreadCount: pulseUnread, markAllAsRead: markAllPulseRead } = usePulseNotifications();
   const router = useRouter();
 
@@ -50,7 +50,10 @@ export default function NotificationBell() {
     await markAllStandardRead();
     await markAllPulseRead();
   }, [markAllStandardRead, markAllPulseRead]);
+
   const [open, setOpen] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
 
@@ -64,6 +67,7 @@ export default function NotificationBell() {
         !bellRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
+        setConfirmClear(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -73,7 +77,7 @@ export default function NotificationBell() {
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") { setOpen(false); setConfirmClear(false); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -87,6 +91,21 @@ export default function NotificationBell() {
     },
     [markStandardRead]
   );
+
+  const handleClearAll = useCallback(async () => {
+    setClearing(true);
+    try {
+      await clearMyNotifications();
+      await markAllPulseRead();
+      setConfirmClear(false);
+    } catch {
+      // Error already logged in hook
+    } finally {
+      setClearing(false);
+    }
+  }, [clearMyNotifications, markAllPulseRead]);
+
+  const totalCount = standardNotifications.length + pulseUpdates.length;
 
   return (
     <div className="relative flex-shrink-0">
@@ -232,11 +251,41 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          {(standardNotifications.length > 0 || pulseUpdates.length > 0) && (
+          {totalCount > 0 && (
             <div className="px-4 py-2.5 border-t border-white/[0.05] flex-shrink-0">
-              <p className="text-[10px] text-gray-600 text-center">
-                Showing {standardNotifications.length + pulseUpdates.length} notification{(standardNotifications.length + pulseUpdates.length) !== 1 ? "s" : ""}
-              </p>
+              {confirmClear ? (
+                <div className="flex items-center justify-between gap-2 animate-in fade-in duration-200">
+                  <p className="text-[10px] text-rose-400 font-bold">Clear all notifications?</p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleClearAll}
+                      disabled={clearing}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {clearing ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
+                      {clearing ? "Clearing..." : "Confirm"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmClear(false)}
+                      className="px-2 py-1 rounded-lg text-[10px] text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-gray-600">
+                    {totalCount} notification{totalCount !== 1 ? "s" : ""}
+                  </p>
+                  <button
+                    onClick={() => setConfirmClear(true)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  >
+                    <Trash2 size={10} /> Clear all
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

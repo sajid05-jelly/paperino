@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle, GraduationCap } from "lucide-react";
-import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs } from "firebase/firestore";
+import { useState, useEffect, useCallback } from "react";
+import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle, GraduationCap, Bell, Trash2, Loader2, X, CheckCircle2 } from "lucide-react";
+import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function AdminDashboard() {
@@ -30,6 +30,39 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Notification Management
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearingNotifs, setClearingNotifs] = useState(false);
+  const [clearResult, setClearResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const handleClearAllNotifications = useCallback(async () => {
+    setClearingNotifs(true);
+    setClearResult(null);
+    try {
+      const snap = await getDocs(collection(db, "notifications"));
+      if (snap.empty) {
+        setClearResult({ type: "success", message: "No notifications to clear." });
+        setClearingNotifs(false);
+        setTimeout(() => { setShowClearModal(false); setClearResult(null); }, 1500);
+        return;
+      }
+      // Firestore batch max 500 per commit
+      const batchSize = 500;
+      for (let i = 0; i < snap.docs.length; i += batchSize) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + batchSize).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+      setClearResult({ type: "success", message: `Cleared ${snap.docs.length} notification${snap.docs.length !== 1 ? "s" : ""} successfully.` });
+      setTimeout(() => { setShowClearModal(false); setClearResult(null); }, 2000);
+    } catch (err) {
+      console.error("[Admin] Failed to clear notifications:", err);
+      setClearResult({ type: "error", message: "Failed to clear notifications. Please try again." });
+    } finally {
+      setClearingNotifs(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -149,13 +182,96 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="glass-panel p-8 rounded-3xl border border-violet-500/20 relative overflow-hidden shadow-[0_0_40px_rgba(var(--primary-rgb),0.1)]">
         <div className="absolute -right-20 -top-20 w-64 h-64 bg-violet-500/20 blur-[80px] rounded-full pointer-events-none"></div>
-        <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-          <Activity className="text-violet-400" /> Platform Analytics
-        </h1>
-        <p className="text-violet-200/60 max-w-2xl">
-          Real-time metrics tracking student engagement, AI usage, and material distribution across the Paperino platform.
-        </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+              <Activity className="text-violet-400" /> Platform Analytics
+            </h1>
+            <p className="text-violet-200/60 max-w-2xl">
+              Real-time metrics tracking student engagement, AI usage, and material distribution across the Paperino platform.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowClearModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all text-sm font-bold shrink-0 group"
+          >
+            <Bell size={16} className="group-hover:animate-pulse" />
+            Clear All Notifications
+          </button>
+        </div>
       </div>
+
+      {/* Clear All Notifications Confirmation Modal */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { if (!clearingNotifs) { setShowClearModal(false); setClearResult(null); } }} />
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-200" style={{ background: "rgba(12,8,24,0.97)", backdropFilter: "blur(20px)" }}>
+            <button
+              onClick={() => { if (!clearingNotifs) { setShowClearModal(false); setClearResult(null); } }}
+              className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <X size={16} />
+            </button>
+
+            {clearResult ? (
+              <div className="flex flex-col items-center text-center py-4 animate-in fade-in duration-300">
+                {clearResult.type === "success" ? (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
+                      <CheckCircle2 size={28} className="text-emerald-400" />
+                    </div>
+                    <p className="text-white font-bold text-lg mb-1">Done!</p>
+                    <p className="text-gray-400 text-sm">{clearResult.message}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-rose-500/20 flex items-center justify-center mb-4">
+                      <AlertCircle size={28} className="text-rose-400" />
+                    </div>
+                    <p className="text-white font-bold text-lg mb-1">Error</p>
+                    <p className="text-gray-400 text-sm">{clearResult.message}</p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0">
+                    <Trash2 size={22} className="text-rose-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Clear All Notifications</h3>
+                    <p className="text-gray-400 text-xs">This action cannot be undone</p>
+                  </div>
+                </div>
+                <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+                  This will permanently delete <span className="text-white font-bold">all notification documents</span> from Firestore for every user on the platform.
+                </p>
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => setShowClearModal(false)}
+                    disabled={clearingNotifs}
+                    className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleClearAllNotifications}
+                    disabled={clearingNotifs}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:bg-rose-500/30 transition-all text-sm font-bold disabled:opacity-50"
+                  >
+                    {clearingNotifs ? (
+                      <><Loader2 size={14} className="animate-spin" /> Clearing...</>
+                    ) : (
+                      <><Trash2 size={14} /> Clear All Notifications</>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="h-64 flex flex-col items-center justify-center space-y-4">

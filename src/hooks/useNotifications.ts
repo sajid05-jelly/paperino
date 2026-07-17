@@ -82,5 +82,26 @@ export function useNotifications() {
     }
   }, [user]);
 
-  return { notifications, unreadCount, loading, markRead, markAllRead };
+  const clearMyNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", user.uid)
+      );
+      const snap = await getDocs(q);
+      // Firestore batches max 500 docs each
+      const batchSize = 500;
+      for (let i = 0; i < snap.docs.length; i += batchSize) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + batchSize).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (err) {
+      console.error("[useNotifications] clearMyNotifications error:", err);
+      throw err;
+    }
+  }, [user]);
+
+  return { notifications, unreadCount, loading, markRead, markAllRead, clearMyNotifications };
 }
