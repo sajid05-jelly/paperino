@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { 
   Trophy, FileText, Edit2, Download, Copy, CheckCircle2, 
   Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles, 
-  Bookmark, Bell, Trash2, Info, Plus, Upload 
+  Bell, Trash2, Info, Plus, Upload 
 } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { getDownloadHref } from "@/lib/driveUtils";
@@ -139,7 +139,7 @@ export default function ContributorDashboardPage() {
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">My Dashboard</h1>
-          <p className="text-gray-400">View your contributions, saved bookmarks, reward points, and system updates.</p>
+          <p className="text-gray-400">View your contributions, reward points, and system updates.</p>
         </div>
         <div className="flex gap-3">
           <a href="/contributor/upload" className="bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(232,121,249,0.3)] flex items-center gap-2 text-sm">

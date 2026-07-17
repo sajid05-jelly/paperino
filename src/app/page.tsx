@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Bookmark, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot } from "lucide-react";
+import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Download, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
 
@@ -196,7 +196,7 @@ export default function Home() {
                 { icon: <FileText className="w-5 h-5 text-fuchsia-400" aria-hidden="true" />, title: "Previous Year Papers" },
                 { icon: <Calculator className="w-5 h-5 text-purple-400" aria-hidden="true" />, title: "GPA & CGPA Calculator" },
                 { icon: <FileSearch className="w-5 h-5 text-violet-400" aria-hidden="true" />, title: "ATS Resume Analyzer" },
-                { icon: <Bookmark className="w-5 h-5 text-cyan-400" aria-hidden="true" />, title: "Smart Bookmarks" },
+                { icon: <Download className="w-5 h-5 text-cyan-400" aria-hidden="true" />, title: "Instant Downloads" },
                 { icon: <GraduationCap className="w-5 h-5 text-violet-400" aria-hidden="true" />, title: "Important Study Resources" },
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors duration-300">

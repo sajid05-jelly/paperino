@@ -92,11 +92,6 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uploaderId == request.auth.uid);
     }
 
-    // ── Bookmarks ───────────────────────────────────────────────────────────
-    match /users/{userId}/bookmarks/{bookmarkId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
-    }
-
     // ── Grades ──────────────────────────────────────────────────────────────
     match /grades/{gradeId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;

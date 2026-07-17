@@ -14,7 +14,6 @@ export default function PrivacyPolicyPage() {
           <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-violet-500" /> Email address</li>
           <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-violet-500" /> Uploaded study materials</li>
           <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-violet-500" /> Resume files for ATS analysis</li>
-          <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-violet-500" /> Bookmarked resources</li>
         </ul>
       )
     },
@@ -26,7 +25,6 @@ export default function PrivacyPolicyPage() {
         <ul className="space-y-3 mt-4 text-fuchsia-200/70">
           <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-fuchsia-500" /> Improve student experience</li>
           <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-fuchsia-500" /> Provide ATS analysis</li>
-          <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-fuchsia-500" /> Save bookmarks</li>
           <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-fuchsia-500" /> Manage admin access</li>
           <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-fuchsia-500" /> Enhance website features</li>
         </ul>
