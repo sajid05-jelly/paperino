@@ -154,13 +154,13 @@ export default function Navbar() {
                     href="/attendance-mafia"
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
                   >
-                    <span>🎯</span> Attendance Mafia
+                    <span>🛡️</span> Attendance Shield
                   </Link>
                   <Link
                     href="/survival-notes"
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold"
                   >
-                    <span>💜</span> Senior Survival Notes
+                    <span>🎓</span> Senior Insights
                   </Link>
                 </div>
               )}
@@ -339,10 +339,10 @@ export default function Navbar() {
                       <span>🚨</span> Exam Emergency Mode
                     </Link>
                     <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/attendance-mafia" className={`${getMobileLinkClass("/attendance-mafia")} flex items-center gap-2`}>
-                      <span>🎯</span> Attendance Mafia
+                      <span>🛡️</span> Attendance Shield
                     </Link>
                     <Link onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} href="/survival-notes" className={`${getMobileLinkClass("/survival-notes")} flex items-center gap-2`}>
-                      <span>💜</span> Senior Survival Notes
+                      <span>🎓</span> Senior Insights
                     </Link>
                   </div>
                 )}

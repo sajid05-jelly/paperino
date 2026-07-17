@@ -14,7 +14,7 @@ import {
   Target
 } from "lucide-react";
 
-export default function AttendanceMafiaPage() {
+export default function AttendanceShieldPage() {
   const [totalClasses, setTotalClasses] = useState<number>(40);
   const [attendedClasses, setAttendedClasses] = useState<number>(32);
   const [targetAttendance, setTargetAttendance] = useState<number>(75);
@@ -130,7 +130,7 @@ export default function AttendanceMafiaPage() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 mb-4 drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.25)]">
-            Attendance Mafia
+            Attendance Shield
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
             Know exactly how many classes you can skip before your attendance falls below the required percentage.
@@ -279,7 +279,7 @@ export default function AttendanceMafiaPage() {
                 <li className="flex gap-2">
                   <span className="text-violet-400">•</span>
                   <span>
-                    <strong>Mafia Advice:</strong> {classesToSkip > 0 
+                    <strong>Shield Advice:</strong> {classesToSkip > 0 
                       ? `You are in the green! You have a buffer of ${classesToSkip} sessions. Use them wisely.`
                       : `Alert! You must attend the next ${classesToAttend} sessions back-to-back to secure your ${targetAttendance}% standing.`}
                   </span>

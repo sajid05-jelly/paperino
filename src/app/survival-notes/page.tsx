@@ -51,7 +51,7 @@ interface SurvivalNote {
   createdAt: any;
 }
 
-export default function SurvivalNotesPage() {
+export default function SeniorInsightsPage() {
   const { user, isAdmin } = useAuth();
   const { departments, subjects, refreshSubjects } = useSubjects();
 
@@ -139,7 +139,7 @@ export default function SurvivalNotesPage() {
   const handleSubmitNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      setFeedbackMsg("Please log in to submit survival notes.");
+      setFeedbackMsg("Please log in to submit senior insights.");
       return;
     }
     if (!newContent.trim()) {
@@ -316,7 +316,7 @@ export default function SurvivalNotesPage() {
             <BookOpen size={36} className="text-violet-400" />
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 mb-4 drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.25)]">
-            Senior Survival Notes
+            Senior Insights
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
             Real advice, viva experiences, assignments hacks, and faculty insights shared by senior graduates.
@@ -446,7 +446,7 @@ export default function SurvivalNotesPage() {
               {loading ? (
                 <div className="py-20 text-center">
                   <Loader2 className="animate-spin text-violet-500 inline-block mb-3" size={32} />
-                  <p className="text-gray-400 text-sm">Loading survival notes...</p>
+                  <p className="text-gray-400 text-sm">Loading senior insights...</p>
                 </div>
               ) : notes.length === 0 ? (
                 <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-12 text-center text-gray-500 space-y-4 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)]">
@@ -545,7 +545,7 @@ export default function SurvivalNotesPage() {
                 </h3>
 
                 {pendingNotes.length === 0 ? (
-                  <p className="text-xs text-gray-500">No pending survival notes to review.</p>
+                  <p className="text-xs text-gray-500">No pending senior insights to review.</p>
                 ) : (
                   <div className="space-y-4">
                     {pendingNotes.map(pNote => (
@@ -583,7 +583,7 @@ export default function SurvivalNotesPage() {
         ) : (
           <div className="max-w-xl mx-auto text-center py-16 text-gray-500 space-y-3">
             <Bot size={48} className="mx-auto text-violet-500/30" />
-            <p className="text-sm">Please select a Department, Semester, and Subject to view survival notes and tips.</p>
+            <p className="text-sm">Please select a Department, Semester, and Subject to view senior insights and tips.</p>
           </div>
         )}
 
