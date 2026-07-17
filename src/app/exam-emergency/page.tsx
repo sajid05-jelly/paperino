@@ -241,7 +241,7 @@ export default function ExamEmergencyPage() {
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 tracking-tight leading-tight mb-4 drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.25)]">
-              🚨 Exam Emergency Mode
+              Exam Emergency Mode
             </h1>
             
             <p className="text-gray-200 text-lg md:text-xl font-medium mb-2">
@@ -349,9 +349,6 @@ export default function ExamEmergencyPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/[0.08] pb-8 mb-10">
               <div>
                 <div className="flex items-center gap-2.5 mb-2">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.2)]">
-                    🚨
-                  </span>
                   <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
                     Emergency Survival Dashboard
                   </h1>
