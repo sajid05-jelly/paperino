@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment, writeBatch, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment, writeBatch, serverTimestamp, getDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   CheckCircle2, Trash2, Ban, Loader2, ShieldAlert, FileText,
-  Eye, Download, X, FileIcon, ImageIcon, RotateCcw, AlertOctagon
+  Eye, Download, X, FileIcon, ImageIcon, RotateCcw, AlertOctagon,
+  Calendar, UserCheck
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
 import { getDownloadHref, getDrivePreviewUrl } from "@/lib/driveUtils";
 import { notifyUser } from "@/lib/notifications";
+import UserAvatar from "@/components/UserAvatar";
 
 interface Material {
   id: string;
@@ -128,8 +130,9 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
 
 export default function AdminReviewsPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"pending" | "rejected">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "insights" | "rejected">("pending");
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [pendingInsights, setPendingInsights] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [previewMat, setPreviewMat] = useState<Material | null>(null);
@@ -141,6 +144,7 @@ export default function AdminReviewsPage() {
 
   useEffect(() => {
     fetchMaterials();
+    fetchPendingInsights();
   }, []);
 
   const fetchMaterials = async () => {
@@ -196,6 +200,87 @@ export default function AdminReviewsPage() {
       console.error("Error fetching materials:", err);
     }
     setLoading(false);
+  };
+
+  const fetchPendingInsights = async () => {
+    try {
+      const q = query(
+        collection(db, "survival_notes"),
+        where("status", "==", "pending")
+      );
+      const snap = await getDocs(q);
+      const list: any[] = [];
+      
+      const userIds = new Set<string>();
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.contributorId) userIds.add(data.contributorId);
+      });
+      
+      const userAvatars: Record<string, string> = {};
+      if (userIds.size > 0) {
+        const uids = Array.from(userIds);
+        const userPromises = uids.map(uid => getDoc(doc(db, "users", uid)));
+        const userSnaps = await Promise.all(userPromises);
+        userSnaps.forEach(us => {
+          if (us.exists()) {
+            const udata = us.data();
+            userAvatars[us.id] = udata.paperinoAvatar || "";
+          }
+        });
+      }
+
+      snap.forEach(d => {
+        const data = d.data();
+        list.push({
+          id: d.id,
+          ...data,
+          paperinoAvatar: userAvatars[data.contributorId] || null
+        });
+      });
+      list.sort((a, b) => {
+        const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt || 0);
+        const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt || 0);
+        return bTime - aTime;
+      });
+      setPendingInsights(list);
+    } catch (err) {
+      console.error("Error fetching pending insights:", err);
+    }
+  };
+
+  const handleApproveInsight = async (note: any) => {
+    setActionLoading(note.id);
+    try {
+      await updateDoc(doc(db, "survival_notes", note.id), { status: "approved" });
+      if (note.contributorId) {
+        await updateDoc(doc(db, "users", note.contributorId), {
+          contributionPoints: increment(15),
+          uploads: increment(1)
+        });
+      }
+      setPendingInsights(prev => prev.filter(n => n.id !== note.id));
+      showToast("Senior Insight approved successfully!", "success");
+    } catch (err) {
+      console.error("Approve insight error:", err);
+      showToast("Failed to approve insight", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectInsight = async (noteId: string) => {
+    setActionLoading(noteId);
+    try {
+      await deleteDoc(doc(db, "survival_notes", noteId));
+      setPendingInsights(prev => prev.filter(n => n.id !== noteId));
+      showToast("Senior Insight rejected and deleted", "success");
+    } catch (err) {
+      console.error("Reject insight error:", err);
+      showToast("Failed to reject insight", "error");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleApprove = async (id: string) => {
@@ -409,7 +494,7 @@ export default function AdminReviewsPage() {
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
               <ShieldAlert className="text-amber-400" /> Pending Upload Reviews
             </h1>
-            <p className="text-gray-400">Review and moderate study materials submitted by contributors.</p>
+            <p className="text-gray-400">Review and moderate study materials and senior insights submitted by contributors.</p>
           </div>
         </div>
 
@@ -420,6 +505,12 @@ export default function AdminReviewsPage() {
             className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${activeTab === "pending" ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-white/5 border-transparent text-gray-400 hover:text-white"}`}
           >
             Pending Requests ({materials.filter(m => !m.status || m.status === "pending").length})
+          </button>
+          <button 
+            onClick={() => setActiveTab("insights")} 
+            className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${activeTab === "insights" ? "bg-violet-500/10 border-violet-500/30 text-violet-400" : "bg-white/5 border-transparent text-gray-400 hover:text-white"}`}
+          >
+            Senior Insights ({pendingInsights.length})
           </button>
           <button 
             onClick={() => setActiveTab("rejected")} 
@@ -437,83 +528,164 @@ export default function AdminReviewsPage() {
           <div className="glass-panel p-6 rounded-3xl border border-white/5">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-xl font-bold text-white">
-                {activeTab === "pending" ? "Materials Awaiting Approval" : "Rejected Materials (Deletes in 7 days)"}
+                {activeTab === "pending" && "Materials Awaiting Approval"}
+                {activeTab === "insights" && "Senior Insights Pending Review"}
+                {activeTab === "rejected" && "Rejected Materials (Deletes in 7 days)"}
               </h2>
-              <span className={`px-3 py-1 text-xs font-bold rounded-full ${activeTab === "pending" ? "bg-amber-500/20 text-amber-400" : "bg-red-500/20 text-red-400"}`}>
-                {filteredMaterials.length} Items
+              <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                activeTab === "pending" ? "bg-amber-500/20 text-amber-400" :
+                activeTab === "insights" ? "bg-violet-500/20 text-violet-400" :
+                "bg-red-500/20 text-red-400"
+              }`}>
+                {activeTab === "insights" ? pendingInsights.length : filteredMaterials.length} Items
               </span>
             </div>
 
-            {filteredMaterials.length === 0 ? (
-              <div className="text-center py-16 px-4 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
-                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="text-emerald-400" size={32} />
+            {/* ── Tab: Senior Insights Pending Review ── */}
+            {activeTab === "insights" ? (
+              pendingInsights.length === 0 ? (
+                <div className="text-center py-16 px-4 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="text-emerald-400" size={32} />
+                  </div>
+                  <p className="text-lg font-medium text-white mb-1">All clean!</p>
+                  <p className="text-gray-500">There are no pending senior insights to review.</p>
                 </div>
-                <p className="text-lg font-medium text-white mb-1">All clean!</p>
-                <p className="text-gray-500">There are no materials in this queue.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredMaterials.map(mat => (
-                  <div
-                    key={mat.id}
-                    className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-amber-500/30 transition-colors flex flex-col xl:flex-row gap-6"
-                  >
-                    {/* Left: Material Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
-                        {mat.status === "rejected" && (
-                          <span className="text-[10px] uppercase tracking-wider font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
-                            Rejected
-                          </span>
-                        )}
-                        {(!mat.status || mat.status === "pending") && (
-                          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                            Needs Review
-                          </span>
-                        )}
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
-                          Sem {mat.semesterId}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                          {mat.subjectId}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider text-gray-400 border border-white/10 px-2 py-0.5 rounded">
-                          {mat.category}
+              ) : (
+                <div className="grid grid-cols-1 gap-6">
+                  {pendingInsights.map((insight) => (
+                    <div 
+                      key={insight.id} 
+                      className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-violet-500/30 transition-colors flex flex-col gap-4 relative"
+                    >
+                      {/* Submitter profile header */}
+                      <div className="flex items-center justify-between flex-wrap gap-3">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar avatarId={insight.paperinoAvatar} className="w-10 h-10 border border-white/10" size={18} />
+                          <div>
+                            <p className="text-white font-bold text-sm">{insight.contributorName || "Anonymous Senior"}</p>
+                            <p className="text-[10px] text-gray-500">
+                              Submitted: {insight.createdAt?.toDate ? insight.createdAt.toDate().toLocaleString() : new Date(insight.createdAt || 0).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full text-[10px] font-bold tracking-wide uppercase">
+                          {insight.category}
                         </span>
                       </div>
 
-                      <h4 className="text-white font-bold text-xl leading-tight mb-2 truncate" title={mat.title || mat.fileName}>
-                        {mat.title || mat.fileName || "Untitled Material"}
-                      </h4>
+                      {/* Course / Subject metadata labels */}
+                      <div className="flex flex-wrap gap-2.5">
+                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-400 uppercase font-bold">
+                          DEPT: {insight.departmentId}
+                        </span>
+                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-400 uppercase font-bold">
+                          SEM: {insight.semesterId}
+                        </span>
+                        <span className="bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded text-[10px] text-violet-300 uppercase font-bold">
+                          SUBJECT: {insight.subjectId}
+                        </span>
+                      </div>
 
-                      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 bg-black/40 p-3 rounded-xl border border-white/5">
-                        <div className="flex items-center gap-1.5">
-                          <FileText size={14} className="text-gray-500" />
-                          Uploaded: {new Date(mat.createdAt).toLocaleString()}
-                        </div>
-                        {mat.rejectedAt && (
-                          <>
-                            <div className="w-px h-4 bg-white/10 hidden sm:block" />
-                            <div className="flex items-center gap-1.5 text-red-400 font-medium">
-                              <AlertOctagon size={14} />
-                              Rejected: {new Date(mat.rejectedAt).toLocaleDateString()}
-                            </div>
-                          </>
-                        )}
-                        <div className="w-px h-4 bg-white/10 hidden sm:block" />
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[8px] font-bold text-indigo-400">
-                            {mat.uploaderName?.charAt(0).toUpperCase() || "?"}
-                          </span>
-                          By: <span className="text-white font-medium">{mat.uploaderName || "Unknown Contributor"}</span>
-                        </div>
+                      {/* Content */}
+                      <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                        <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-line font-medium">
+                          {insight.content}
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-3 border-t border-white/[0.06] pt-4">
+                        <button
+                          onClick={() => handleRejectInsight(insight.id)}
+                          disabled={actionLoading !== null}
+                          className="px-4 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 text-orange-400 text-xs font-semibold transition-all flex items-center gap-1.5"
+                        >
+                          {actionLoading === insight.id ? <Loader2 size={12} className="animate-spin" /> : <span>✗ Reject</span>}
+                        </button>
+                        <button
+                          onClick={() => handleApproveInsight(insight)}
+                          disabled={actionLoading !== null}
+                          className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                        >
+                          {actionLoading === insight.id ? <Loader2 size={12} className="animate-spin" /> : <span>✓ Approve</span>}
+                        </button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              /* ── Tab: Materials pending or rejected ── */
+              filteredMaterials.length === 0 ? (
+                <div className="text-center py-16 px-4 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="text-emerald-400" size={32} />
+                  </div>
+                  <p className="text-lg font-medium text-white mb-1">All clean!</p>
+                  <p className="text-gray-500">There are no materials in this queue.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredMaterials.map(mat => (
+                    <div
+                      key={mat.id}
+                      className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-amber-500/30 transition-colors flex flex-col xl:flex-row gap-6"
+                    >
+                      {/* Left: Material Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          {mat.status === "rejected" && (
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                              Rejected
+                            </span>
+                          )}
+                          {(!mat.status || mat.status === "pending") && (
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                              Needs Review
+                            </span>
+                          )}
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                            Sem {mat.semesterId}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
+                            {mat.subjectId}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-wider text-gray-400 border border-white/10 px-2 py-0.5 rounded">
+                            {mat.category}
+                          </span>
+                        </div>
 
-                    {/* Right: Actions */}
-                    <div className="flex flex-col sm:flex-row xl:flex-col gap-2 flex-shrink-0 justify-center">
-                      <div className="flex gap-2">
+                        <h4 className="text-white font-bold text-xl leading-tight mb-2 truncate" title={mat.title || mat.fileName}>
+                          {mat.title || mat.fileName || "Untitled Material"}
+                        </h4>
+
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 bg-black/40 p-3 rounded-xl border border-white/5">
+                          <div className="flex items-center gap-1.5">
+                            <FileText size={14} className="text-gray-500" />
+                            Uploaded: {new Date(mat.createdAt).toLocaleString()}
+                          </div>
+                          {mat.rejectedAt && (
+                            <>
+                              <div className="w-px h-4 bg-white/10 hidden sm:block" />
+                              <div className="flex items-center gap-1.5 text-red-400 font-medium">
+                                <AlertOctagon size={14} />
+                                Rejected: {new Date(mat.rejectedAt).toLocaleDateString()}
+                              </div>
+                            </>
+                          )}
+                          <div className="w-px h-4 bg-white/10 hidden sm:block" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[8px] font-bold text-indigo-400">
+                              {mat.uploaderName?.charAt(0).toUpperCase() || "?"}
+                            </span>
+                            By: <span className="text-white font-medium">{mat.uploaderName || "Unknown Contributor"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex flex-col sm:flex-row xl:flex-col gap-2 flex-shrink-0 justify-center">
                         {activeTab === "pending" ? (
                           <button
                             onClick={() => handleApprove(mat.id)}
@@ -537,50 +709,48 @@ export default function AdminReviewsPage() {
                             Restore
                           </button>
                         )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setPreviewMat(mat)}
-                          className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors border border-cyan-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
-                        >
-                          <Eye size={14} /> View File
-                        </button>
-
-                        {activeTab === "pending" ? (
+                        <div className="flex gap-2">
                           <button
-                            onClick={() => handleReject(mat.id)}
-                            disabled={actionLoading === mat.id}
-                            className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 transition-colors border border-orange-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
+                            onClick={() => setPreviewMat(mat)}
+                            className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors border border-cyan-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
                           >
-                            <Ban size={14} /> Reject
+                            <Eye size={14} /> View File
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => setDeleteConfirmMat(mat)}
-                            disabled={actionLoading === mat.id}
-                            className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
-                          >
-                            <Trash2 size={14} /> Delete
-                          </button>
-                        )}
 
-                        {mat.uploaderId && (
-                          <button
-                            onClick={() => handleBlockUser(mat.uploaderId!)}
-                            disabled={actionLoading !== null}
-                            title="Block this contributor from Paperino"
-                            className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center"
-                          >
-                            <Ban size={14} />
-                          </button>
-                        )}
+                          {activeTab === "pending" ? (
+                            <button
+                              onClick={() => handleReject(mat.id)}
+                              disabled={actionLoading === mat.id}
+                              className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 transition-colors border border-orange-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
+                            >
+                              <Ban size={14} /> Reject
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setDeleteConfirmMat(mat)}
+                              disabled={actionLoading === mat.id}
+                              className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
+                            >
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          )}
+
+                          {mat.uploaderId && (
+                            <button
+                              onClick={() => handleBlockUser(mat.uploaderId!)}
+                              disabled={actionLoading !== null}
+                              title="Block this contributor from Paperino"
+                              className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center"
+                            >
+                              <Ban size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         )}

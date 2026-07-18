@@ -304,7 +304,7 @@ export default function SeniorInsightsPage() {
         // Move item to approved list locally
         setPendingNotes(prev => prev.filter(n => n.id !== noteId));
       } else if (action === "reject") {
-        await updateDoc(noteRef, { status: "rejected" });
+        await deleteDoc(noteRef);
         setPendingNotes(prev => prev.filter(n => n.id !== noteId));
       } else if (action === "delete") {
         await deleteDoc(noteRef);
@@ -482,7 +482,7 @@ export default function SeniorInsightsPage() {
               ) : notes.length === 0 ? (
                 <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-12 text-center text-gray-500 space-y-4 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)]">
                   <Bot size={44} className="mx-auto text-violet-500/40 animate-pulse" />
-                  <p className="text-sm font-semibold">No approved notes found for this subject yet.</p>
+                  <p className="text-sm font-semibold">No Senior Insights available for this subject yet.</p>
                   {user && (
                     <button 
                       onClick={() => setShowAddForm(true)}
