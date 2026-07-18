@@ -17,6 +17,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
   const { subjects: dynamicSubjects } = useSubjects();
   
   const [materials, setMaterials] = useState<any[]>([]);
+  const [survivalNotes, setSurvivalNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
@@ -44,6 +45,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
 
   const fetchMaterials = async () => {
     try {
+      // 1. Fetch Subject Materials
       const qMaterials = query(
         collection(db, "materials"),
         where("semesterId", "==", semId),
@@ -68,6 +70,19 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
       
       matList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
       setMaterials(matList);
+
+      // 2. Fetch Approved Survival Advice (Senior Insights)
+      const qSurvival = query(
+        collection(db, "survival_notes"),
+        where("departmentId", "==", deptId),
+        where("semesterId", "==", semId),
+        where("subjectId", "==", subjectId),
+        where("status", "==", "approved")
+      );
+      const survSnapshot = await getDocs(qSurvival);
+      const survList = survSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      survList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+      setSurvivalNotes(survList);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -289,6 +304,40 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ── Senior Survival Advice Section ── */}
+        {!loading && survivalNotes.length > 0 && (
+          <div className="mt-12 space-y-6 animate-in fade-in duration-700">
+            <div className="flex items-center gap-3 border-b border-white/[0.06] pb-4">
+              <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
+                <Sparkles size={16} className="text-violet-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white tracking-tight">Senior Survival Advice</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {survivalNotes.map((note) => (
+                <div 
+                  key={note.id} 
+                  className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between shadow-[0_0_30px_rgba(var(--primary-rgb),0.04)] hover:shadow-[0_0_45px_rgba(var(--primary-rgb),0.08)] transition-all duration-300 group hover:border-violet-500/20"
+                >
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full text-[10px] font-bold tracking-wide uppercase">
+                        {note.category}
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-bold">
+                        By: {note.contributorName || "Anonymous Senior"}
+                      </span>
+                    </div>
+                    <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-line font-medium">
+                      {note.content}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
