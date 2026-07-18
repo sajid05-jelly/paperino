@@ -22,7 +22,7 @@ export default function ThemeSelector() {
   return (
     <>
       {/* Floating Controls — left sidebar, flush to viewport edge, hidden on mobile */}
-      <div className="fixed top-1/2 left-0 -translate-y-1/2 z-[9800] hidden sm:flex flex-col gap-[10px]" style={{ maxWidth: '48px' }}>
+      <div className="fixed top-1/2 left-0 -translate-y-1/2 z-[9800] hidden sm:flex flex-col gap-[10px] tablet-floating-sidebar" style={{ maxWidth: '48px' }}>
 
         {/* WhatsApp Community Button */}
         <a

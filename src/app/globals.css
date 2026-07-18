@@ -778,3 +778,12 @@ html, body {
   will-change: transform, opacity;
   transform: translateZ(0);
 }
+
+/* ── Tablet Floating Left Sidebar Safe-Zone positioning (768px-1024px) ── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-floating-sidebar {
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin-top: 40px !important; /* Vertically offsets centering below header */
+  }
+}
