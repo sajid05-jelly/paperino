@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { collection, getDocs, addDoc, serverTimestamp, setDoc, doc } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp, setDoc, doc, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
@@ -123,6 +123,28 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           console.warn("[Seeding] Skipped writing B.Tech department due to permission levels:", seedingError);
         }
         deptList = [defaultBTech];
+      }
+
+      // 1.5 Fetch approved materials count per department
+      try {
+        const matsSnap = await getDocs(
+          query(collection(db, "materials"), where("status", "==", "approved"))
+        );
+        const counts: Record<string, number> = {};
+        matsSnap.forEach((mSnap) => {
+          const mdata = mSnap.data();
+          const dId = mdata.departmentId || "btech";
+          counts[dId] = (counts[dId] || 0) + 1;
+        });
+
+        // Sort departments descending by material count
+        deptList.sort((a, b) => {
+          const countA = counts[a.id] || 0;
+          const countB = counts[b.id] || 0;
+          return countB - countA;
+        });
+      } catch (countsErr) {
+        console.error("Error computing department material counts:", countsErr);
       }
 
       setDepartments(deptList);
