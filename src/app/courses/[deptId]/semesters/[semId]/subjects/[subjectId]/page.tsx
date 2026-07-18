@@ -96,7 +96,16 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
         userSnaps.forEach(us => {
           if (us.exists()) {
             const udata = us.data();
-            userLevels[us.id] = udata.contributorLevel || "Contributor";
+            const urole = udata.role || "student";
+            if (urole === "admin") {
+              userLevels[us.id] = "👑 PAPERINO ADMIN";
+            } else if (urole === "moderator") {
+              userLevels[us.id] = "MODERATOR";
+            } else if (urole === "contributor") {
+              userLevels[us.id] = "CONTRIBUTOR";
+            } else {
+              userLevels[us.id] = "STUDENT";
+            }
           }
         });
       }
@@ -106,7 +115,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
         list.push({
           id: d.id,
           ...data,
-          contributorLevel: userLevels[data.contributorId] || "Contributor"
+          contributorLevel: userLevels[data.contributorId] || "STUDENT"
         });
       });
 

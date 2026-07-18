@@ -8,6 +8,7 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  getDoc,
   updateDoc, 
   doc, 
   deleteDoc, 
@@ -48,6 +49,7 @@ interface SurvivalNote {
   notHelpfulUsers: string[];
   contributorId: string;
   contributorName: string;
+  contributorLevel?: string;
   createdAt: any;
 }
 
@@ -98,9 +100,44 @@ export default function SeniorInsightsPage() {
         );
         const snap = await getDocs(q);
         const list: SurvivalNote[] = [];
+        
+        const contributorIds = new Set<string>();
         snap.forEach(docSnap => {
-          list.push({ id: docSnap.id, ...docSnap.data() } as SurvivalNote);
+          const data = docSnap.data();
+          if (data.contributorId) contributorIds.add(data.contributorId);
         });
+
+        const userRoles: Record<string, string> = {};
+        if (contributorIds.size > 0) {
+          const uids = Array.from(contributorIds);
+          const userPromises = uids.map(uid => getDoc(doc(db, "users", uid)));
+          const userSnaps = await Promise.all(userPromises);
+          userSnaps.forEach((us: any) => {
+            if (us.exists()) {
+              const udata = us.data();
+              const urole = udata.role || "student";
+              if (urole === "admin") {
+                userRoles[us.id] = "👑 PAPERINO ADMIN";
+              } else if (urole === "moderator") {
+                userRoles[us.id] = "MODERATOR";
+              } else if (urole === "contributor") {
+                userRoles[us.id] = "CONTRIBUTOR";
+              } else {
+                userRoles[us.id] = "STUDENT";
+              }
+            }
+          });
+        }
+
+        snap.forEach(docSnap => {
+          const data = docSnap.data();
+          list.push({ 
+            id: docSnap.id, 
+            ...data,
+            contributorLevel: userRoles[data.contributorId] || "STUDENT"
+          } as SurvivalNote);
+        });
+        
         // Sort by helpfulness score (helpful - notHelpful)
         list.sort((a, b) => (b.helpfulCount - b.notHelpfulCount) - (a.helpfulCount - a.notHelpfulCount));
         setNotes(list);
@@ -506,8 +543,8 @@ export default function SeniorInsightsPage() {
                           <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full text-[10px] font-bold tracking-wide">
                             {note.category}
                           </span>
-                          <span className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
-                            <UserCheck size={12} className="text-violet-400" /> Senior Contributor
+                          <span className="text-[10px] text-violet-400 font-bold flex items-center gap-1 uppercase tracking-wider">
+                            <UserCheck size={12} className="text-violet-400" /> LEVEL: {note.contributorLevel || "STUDENT"}
                           </span>
                         </div>
 
