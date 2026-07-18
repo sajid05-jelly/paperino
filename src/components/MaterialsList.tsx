@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Download, FileText } from "lucide-react";
-import { getDownloadHref } from "@/lib/driveUtils";
+
+import { triggerSecureDownload } from "@/lib/driveUtils";
+import { useToast } from "@/components/Toast";
 
 interface Material {
   id: string;
@@ -17,6 +19,7 @@ interface Material {
 export default function MaterialsList({ departmentId, semesterId, subjectId }: { departmentId: string, semesterId: string, subjectId: string }) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -51,13 +54,17 @@ export default function MaterialsList({ departmentId, semesterId, subjectId }: {
   return (
     <div className="space-y-3">
       {materials.map((mat) => (
-        <a key={mat.id} href={getDownloadHref(mat)} download className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group">
+        <button
+          key={mat.id}
+          onClick={() => triggerSecureDownload(mat, showToast)}
+          className="w-full flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group text-left"
+        >
           <div className="flex items-center gap-3">
             <FileText className={getIconColor(mat.category)} size={18} />
             <span className="text-sm text-gray-200">{mat.title}</span>
           </div>
           <Download size={16} className="text-gray-500 group-hover:text-white" />
-        </a>
+        </button>
       ))}
     </div>
   );

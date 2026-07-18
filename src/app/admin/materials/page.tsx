@@ -7,7 +7,7 @@ import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2 } fr
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useToast } from "@/components/Toast";
-import { getDownloadHref } from "@/lib/driveUtils";
+import { triggerSecureDownload } from "@/lib/driveUtils";
 
 interface Material {
   id: string;
@@ -194,9 +194,9 @@ export default function ManageMaterialsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <a href={getDownloadHref(mat)} download className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5" title="Download">
+                <button onClick={() => triggerSecureDownload(mat, showToast)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Download">
                   <Download size={16} />
-                </a>
+                </button>
                 <button onClick={() => setEditingMat(mat)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5" title="Edit">
                   <Edit2 size={16} />
                 </button>

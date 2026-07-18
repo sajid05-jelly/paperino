@@ -11,7 +11,7 @@ import {
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
-import { getDownloadHref, getDrivePreviewUrl } from "@/lib/driveUtils";
+import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { notifyUser } from "@/lib/notifications";
 import UserAvatar from "@/components/UserAvatar";
 
@@ -41,6 +41,7 @@ interface PreviewModalProps {
 function PreviewModal({ mat, onClose }: PreviewModalProps) {
   const fileName = mat.fileName || mat.title || "File";
   const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(fileName);
+  const { showToast } = useToast();
   const downloadHref = getDownloadHref(mat);
 
   const previewUrl: string | null = (() => {
@@ -78,13 +79,12 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
             <p className="text-gray-500 text-xs mt-0.5">{mat.category} · Sem {mat.semesterId}</p>
           </div>
 
-          <a
-            href={downloadHref}
-            download
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors"
+          <button
+            onClick={() => triggerSecureDownload(mat, showToast)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer"
           >
             <Download size={13} /> Download
-          </a>
+          </button>
 
           <button
             onClick={onClose}
@@ -100,9 +100,9 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
               <FileIcon size={40} className="opacity-30" />
               <p className="text-sm">No preview available.</p>
-              <a href={downloadHref} download className="text-xs text-indigo-400 hover:text-indigo-300 underline">
+              <button onClick={() => triggerSecureDownload(mat, showToast)} className="text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer">
                 Download to view
-              </a>
+              </button>
             </div>
           ) : isImage ? (
             /* eslint-disable-next-line @next/next/no-img-element */
