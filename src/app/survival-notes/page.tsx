@@ -155,13 +155,14 @@ export default function SeniorInsightsPage() {
     setFeedbackMsg("");
 
     try {
+      const noteStatus = isAdmin ? "approved" : "pending";
       await addDoc(collection(db, "survival_notes"), {
         subjectId: selectedSubject,
         departmentId: selectedDept,
         semesterId: selectedSem,
         category: newCategory,
         content: newContent,
-        status: "pending",
+        status: noteStatus,
         helpfulCount: 0,
         notHelpfulCount: 0,
         helpfulUsers: [],
@@ -171,8 +172,38 @@ export default function SeniorInsightsPage() {
         createdAt: serverTimestamp()
       });
 
+      // Award points/uploads to admin contributor directly
+      if (isAdmin) {
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+          contributionPoints: increment(15),
+          uploads: increment(1)
+        });
+      }
+
       setNewContent("");
-      setFeedbackMsg("Notes submitted! Pending admin review before publishing.");
+      setFeedbackMsg(
+        isAdmin 
+          ? "Notes submitted and published successfully!" 
+          : "Notes submitted! Pending admin review before publishing."
+      );
+
+      // If it is admin, refresh the approved notes list immediately!
+      if (isAdmin) {
+        const q = query(
+          collection(db, "survival_notes"),
+          where("subjectId", "==", selectedSubject),
+          where("status", "==", "approved")
+        );
+        const snap = await getDocs(q);
+        const list: SurvivalNote[] = [];
+        snap.forEach(docSnap => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as SurvivalNote);
+        });
+        list.sort((a, b) => (b.helpfulCount - b.notHelpfulCount) - (a.helpfulCount - a.notHelpfulCount));
+        setNotes(list);
+      }
+
       setTimeout(() => setShowAddForm(false), 2000);
     } catch (err) {
       console.error("Error adding note:", err);
