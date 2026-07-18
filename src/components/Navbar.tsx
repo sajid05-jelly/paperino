@@ -111,7 +111,7 @@ export default function Navbar() {
             <span className="text-lg sm:text-xl font-bold tracking-tight text-white hidden sm:block group-hover:text-glow transition-all duration-300">Paperino</span>
           </Link>
           
-            <div className="hidden lg:flex flex-1 items-center justify-center gap-1 xl:gap-2 font-medium min-w-0"
+            <div className="hidden xl:flex flex-1 items-center justify-center gap-1 xl:gap-2 font-medium min-w-0"
           >
             <Link href="/courses" className={getLinkClass("/courses")}>Materials</Link>
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
@@ -327,7 +327,7 @@ export default function Navbar() {
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-              className="lg:hidden p-2 text-gray-300 hover:text-white transition-colors rounded-lg bg-white/5 border border-white/10 ml-1"
+              className="xl:hidden p-2 text-gray-300 hover:text-white transition-colors rounded-lg bg-white/5 border border-white/10 ml-1"
             >
               {isMobileMenuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
             </button>
@@ -340,12 +340,12 @@ export default function Navbar() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
+            className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm xl:hidden animate-in fade-in duration-200"
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
           {/* Drawer Panel */}
-          <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[78vw] max-w-[320px] lg:hidden flex flex-col bg-[#07050e]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-20px_0_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-right duration-300">
+          <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[78vw] max-w-[320px] xl:hidden flex flex-col bg-[#07050e]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-20px_0_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-right duration-300">
 
             {/* Drawer Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
