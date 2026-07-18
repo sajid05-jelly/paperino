@@ -55,7 +55,7 @@ interface SurvivalNote {
 
 export default function SeniorInsightsPage() {
   const { user, isAdmin } = useAuth();
-  const { departments, subjects, refreshSubjects } = useSubjects();
+  const { departments, subjects } = useSubjects();
 
   // Navigation / Selection
   const [selectedDept, setSelectedDept] = useState("");
@@ -64,8 +64,7 @@ export default function SeniorInsightsPage() {
 
   // Notes List
   const [notes, setNotes] = useState<SurvivalNote[]>([]);
-  const [pendingNotes, setPendingNotes] = useState<SurvivalNote[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Form Submission
   const [showAddForm, setShowAddForm] = useState(false);
@@ -83,94 +82,70 @@ export default function SeniorInsightsPage() {
     "📝 Assignment Advice"
   ];
 
-  // Fetch approved notes for selected subject
-  useEffect(() => {
-    if (!selectedSubject) {
-      setNotes([]);
-      return;
-    }
+  const fetchApprovedNotes = async () => {
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, "survival_notes"),
+        where("status", "==", "approved")
+      );
+      const snap = await getDocs(q);
+      const list: SurvivalNote[] = [];
+      
+      const contributorIds = new Set<string>();
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.contributorId) contributorIds.add(data.contributorId);
+      });
 
-    const fetchNotes = async () => {
-      setLoading(true);
-      try {
-        const q = query(
-          collection(db, "survival_notes"),
-          where("subjectId", "==", selectedSubject),
-          where("status", "==", "approved")
-        );
-        const snap = await getDocs(q);
-        const list: SurvivalNote[] = [];
-        
-        const contributorIds = new Set<string>();
-        snap.forEach(docSnap => {
-          const data = docSnap.data();
-          if (data.contributorId) contributorIds.add(data.contributorId);
-        });
-
-        const userRoles: Record<string, string> = {};
-        if (contributorIds.size > 0) {
-          const uids = Array.from(contributorIds);
-          const userPromises = uids.map(uid => getDoc(doc(db, "users", uid)));
-          const userSnaps = await Promise.all(userPromises);
-          userSnaps.forEach((us: any) => {
-            if (us.exists()) {
-              const udata = us.data();
-              const urole = udata.role || "student";
-              if (urole === "admin") {
-                userRoles[us.id] = "👑 PAPERINO ADMIN";
-              } else if (urole === "moderator") {
-                userRoles[us.id] = "MODERATOR";
-              } else if (urole === "contributor") {
-                userRoles[us.id] = "CONTRIBUTOR";
-              } else {
-                userRoles[us.id] = "STUDENT";
-              }
+      const userRoles: Record<string, string> = {};
+      if (contributorIds.size > 0) {
+        const uids = Array.from(contributorIds);
+        const userPromises = uids.map(uid => getDoc(doc(db, "users", uid)));
+        const userSnaps = await Promise.all(userPromises);
+        userSnaps.forEach((us: any) => {
+          if (us.exists()) {
+            const udata = us.data();
+            const urole = udata.role || "student";
+            if (urole === "admin") {
+              userRoles[us.id] = "👑 PAPERINO ADMIN";
+            } else if (urole === "moderator") {
+              userRoles[us.id] = "MODERATOR";
+            } else if (urole === "contributor") {
+              userRoles[us.id] = "CONTRIBUTOR";
+            } else {
+              userRoles[us.id] = "STUDENT";
             }
-          });
-        }
-
-        snap.forEach(docSnap => {
-          const data = docSnap.data();
-          list.push({ 
-            id: docSnap.id, 
-            ...data,
-            contributorLevel: userRoles[data.contributorId] || "STUDENT"
-          } as SurvivalNote);
+          }
         });
-        
-        // Sort by helpfulness score (helpful - notHelpful)
-        list.sort((a, b) => (b.helpfulCount - b.notHelpfulCount) - (a.helpfulCount - a.notHelpfulCount));
-        setNotes(list);
-      } catch (err) {
-        console.error("Error fetching notes:", err);
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchNotes();
-  }, [selectedSubject]);
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        list.push({ 
+          id: docSnap.id, 
+          ...data,
+          contributorLevel: userRoles[data.contributorId] || "STUDENT"
+        } as SurvivalNote);
+      });
+      
+      // Sort newest first by default
+      list.sort((a, b) => {
+        const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt || 0);
+        const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt || 0);
+        return bTime - aTime;
+      });
+      setNotes(list);
+    } catch (err) {
+      console.error("Error fetching notes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Fetch pending review notes (For Admins)
   useEffect(() => {
-    if (!isAdmin) return;
-
-    const fetchPending = async () => {
-      try {
-        const q = query(collection(db, "survival_notes"), where("status", "==", "pending"));
-        const snap = await getDocs(q);
-        const list: SurvivalNote[] = [];
-        snap.forEach(docSnap => {
-          list.push({ id: docSnap.id, ...docSnap.data() } as SurvivalNote);
-        });
-        setPendingNotes(list);
-      } catch (err) {
-        console.error("Error fetching pending notes:", err);
-      }
-    };
-
-    fetchPending();
-  }, [isAdmin, selectedSubject]);
+    fetchApprovedNotes();
+  }, []);
 
   // Handle Note Submission
   const handleSubmitNote = async (e: React.FormEvent) => {
@@ -225,20 +200,8 @@ export default function SeniorInsightsPage() {
           : "Notes submitted! Pending admin review before publishing."
       );
 
-      // If it is admin, refresh the approved notes list immediately!
       if (isAdmin) {
-        const q = query(
-          collection(db, "survival_notes"),
-          where("subjectId", "==", selectedSubject),
-          where("status", "==", "approved")
-        );
-        const snap = await getDocs(q);
-        const list: SurvivalNote[] = [];
-        snap.forEach(docSnap => {
-          list.push({ id: docSnap.id, ...docSnap.data() } as SurvivalNote);
-        });
-        list.sort((a, b) => (b.helpfulCount - b.notHelpfulCount) - (a.helpfulCount - a.notHelpfulCount));
-        setNotes(list);
+        await fetchApprovedNotes();
       }
 
       setTimeout(() => setShowAddForm(false), 2000);
@@ -255,23 +218,21 @@ export default function SeniorInsightsPage() {
     if (!user) return;
 
     const noteRef = doc(db, "survival_notes", noteId);
-    const note = notes.find(n => n.id === noteId) || pendingNotes.find(n => n.id === noteId);
+    const note = notes.find(n => n.id === noteId);
     if (!note) return;
 
     const uid = user.uid;
-    const hasVotedHelpful = note.helpfulUsers.includes(uid);
-    const hasVotedNotHelpful = note.notHelpfulUsers.includes(uid);
+    const hasVotedHelpful = note.helpfulUsers?.includes(uid);
+    const hasVotedNotHelpful = note.notHelpfulUsers?.includes(uid);
 
     try {
       if (type === "helpful") {
         if (hasVotedHelpful) {
-          // Remove vote
           await updateDoc(noteRef, {
             helpfulCount: increment(-1),
             helpfulUsers: arrayRemove(uid)
           });
         } else {
-          // Add vote and remove notHelpful if present
           await updateDoc(noteRef, {
             helpfulCount: increment(1),
             helpfulUsers: arrayUnion(uid),
@@ -283,13 +244,11 @@ export default function SeniorInsightsPage() {
         }
       } else {
         if (hasVotedNotHelpful) {
-          // Remove vote
           await updateDoc(noteRef, {
             notHelpfulCount: increment(-1),
             notHelpfulUsers: arrayRemove(uid)
           });
         } else {
-          // Add vote and remove helpful if present
           await updateDoc(noteRef, {
             notHelpfulCount: increment(1),
             notHelpfulUsers: arrayUnion(uid),
@@ -301,55 +260,21 @@ export default function SeniorInsightsPage() {
         }
       }
 
-      // Refresh list locally
-      const q = query(
-        collection(db, "survival_notes"),
-        where("subjectId", "==", selectedSubject),
-        where("status", "==", "approved")
-      );
-      const snap = await getDocs(q);
-      const list: SurvivalNote[] = [];
-      snap.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as SurvivalNote);
-      });
-      list.sort((a, b) => (b.helpfulCount - b.notHelpfulCount) - (a.helpfulCount - a.notHelpfulCount));
-      setNotes(list);
+      await fetchApprovedNotes();
     } catch (err) {
       console.error("Vote failed:", err);
     }
   };
 
-  // Admin approval flow
-  const handleAdminAction = async (noteId: string, action: "approve" | "reject" | "delete") => {
-    const noteRef = doc(db, "survival_notes", noteId);
-    
+  // Admin Delete action directly from insights page
+  const handleDeleteInsight = async (noteId: string) => {
+    if (!isAdmin) return;
+    if (!confirm("Are you sure you want to permanently delete this Senior Insight?")) return;
     try {
-      if (action === "approve") {
-        const noteData = pendingNotes.find(n => n.id === noteId);
-
-        await updateDoc(noteRef, { status: "approved" });
-        
-        // Award points to contributor
-        if (noteData && noteData.contributorId) {
-          const userRef = doc(db, "users", noteData.contributorId);
-          await updateDoc(userRef, {
-            contributionPoints: increment(15), // approved notes award 15 points
-            uploads: increment(1)
-          });
-        }
-
-        // Move item to approved list locally
-        setPendingNotes(prev => prev.filter(n => n.id !== noteId));
-      } else if (action === "reject") {
-        await deleteDoc(noteRef);
-        setPendingNotes(prev => prev.filter(n => n.id !== noteId));
-      } else if (action === "delete") {
-        await deleteDoc(noteRef);
-        setNotes(prev => prev.filter(n => n.id !== noteId));
-        setPendingNotes(prev => prev.filter(n => n.id !== noteId));
-      }
+      await deleteDoc(doc(db, "survival_notes", noteId));
+      setNotes(prev => prev.filter(n => n.id !== noteId));
     } catch (err) {
-      console.error("Admin action failed:", err);
+      console.error("Delete insight failed:", err);
     }
   };
 
@@ -361,6 +286,13 @@ export default function SeniorInsightsPage() {
   const filteredSubjects = (selectedDept && selectedSem && subjects[selectedDept]?.[selectedSem])
     ? subjects[selectedDept][selectedSem].filter(s => s.status === "approved" || s.contributorId === "system")
     : [];
+
+  const filteredNotes = notes.filter(note => {
+    if (selectedDept && note.departmentId !== selectedDept) return false;
+    if (selectedSem && note.semesterId !== selectedSem) return false;
+    if (selectedSubject && note.subjectId !== selectedSubject) return false;
+    return true;
+  });
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-[rgba(var(--primary-rgb),0.15)] via-[var(--background)] to-[var(--background)] text-white py-8 relative overflow-hidden selection:bg-violet-500/30">
@@ -441,219 +373,183 @@ export default function SeniorInsightsPage() {
         </div>
 
         {/* Content Section */}
-        {selectedSubject ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* Notes List Column */}
-            <div className="lg:col-span-8 space-y-6 animate-in fade-in duration-500">
-              
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Activity size={18} className="text-violet-400" />
-                  <span>Survival Advice ({notes.length})</span>
-                </h3>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Activity size={18} className="text-violet-400" />
+              <span>Survival Advice ({filteredNotes.length})</span>
+            </h3>
 
-                {user && (
-                  <button
-                    onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(var(--primary-rgb),0.35)]"
-                  >
-                    <Plus size={14} /> Contribute Tip
-                  </button>
-                )}
-              </div>
-
-              {/* Add form overlay/block */}
-              {showAddForm && (
-                <form onSubmit={handleSubmitNote} className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/25 rounded-3xl p-6 shadow-[0_0_30px_rgba(var(--primary-rgb),0.1)] space-y-5 animate-in fade-in slide-in-from-top-4 duration-300">
-                  <h4 className="text-sm font-bold text-white">Contribute Survival Tip</h4>
-                  
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Category</label>
-                    <select
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      className="w-full bg-black/60 border border-white/[0.1] focus:border-violet-500/30 rounded-xl p-3.5 text-white outline-none cursor-pointer"
-                    >
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Write your tip (anonymous by default)</label>
-                    <textarea
-                      rows={4}
-                      value={newContent}
-                      onChange={(e) => setNewContent(e.target.value)}
-                      placeholder="Share exam tips, unit importance, viva questions, or assignment details..."
-                      className="w-full bg-black/60 border border-white/[0.1] focus:border-violet-500/30 rounded-xl p-3.5 text-white outline-none"
-                    />
-                  </div>
-
-                  {feedbackMsg && <p className="text-xs text-violet-400 font-bold">{feedbackMsg}</p>}
-
-                  <div className="flex gap-3 justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddForm(false)}
-                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="px-5 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                    >
-                      {submitting ? <Loader2 className="animate-spin" size={14} /> : "Submit"}
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {loading ? (
-                <div className="py-20 text-center">
-                  <Loader2 className="animate-spin text-violet-500 inline-block mb-3" size={32} />
-                  <p className="text-gray-400 text-sm">Loading senior insights...</p>
-                </div>
-              ) : notes.length === 0 ? (
-                <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-12 text-center text-gray-500 space-y-4 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)]">
-                  <Bot size={44} className="mx-auto text-violet-500/40 animate-pulse" />
-                  <p className="text-sm font-semibold">No Senior Insights available for this subject yet.</p>
-                  {user && (
-                    <button 
-                      onClick={() => setShowAddForm(true)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white rounded-xl text-xs font-bold transition-all"
-                    >
-                      Be the first to contribute!
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {notes.map(note => {
-                    const isHelpfulSelected = user ? note.helpfulUsers?.includes(user.uid) : false;
-                    const isNotHelpfulSelected = user ? note.notHelpfulUsers?.includes(user.uid) : false;
-
-                    return (
-                      <div key={note.id} className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 hover:border-violet-500/40 rounded-3xl p-6 transition-all duration-300 relative group/card shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)] hover:shadow-[0_0_40px_rgba(var(--primary-rgb),0.12)]">
-                        
-                        {/* Category Badge & Contributor */}
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full text-[10px] font-bold tracking-wide">
-                            {note.category}
-                          </span>
-                          <span className="text-[10px] text-violet-400 font-bold flex items-center gap-1 uppercase tracking-wider">
-                            <UserCheck size={12} className="text-violet-400" /> LEVEL: {note.contributorLevel || "STUDENT"}
-                          </span>
-                        </div>
-
-                        {/* Content text */}
-                        <p className="text-gray-200 text-sm leading-relaxed mb-6 whitespace-pre-line font-medium">
-                          {note.content}
-                        </p>
-
-                        {/* Voting and actions row */}
-                        <div className="flex items-center justify-between pt-4 border-t border-white/[0.08]">
-                          
-                          {/* Vote buttons */}
-                          <div className="flex items-center gap-3">
-                            <button
-                              disabled={!user}
-                              onClick={() => handleVote(note.id, "helpful")}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                                isHelpfulSelected 
-                                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]" 
-                                  : "bg-white/5 border-white/[0.08] text-gray-400 hover:bg-white/10"
-                              }`}
-                              title={user ? "Mark helpful" : "Log in to rate"}
-                            >
-                              <ThumbsUp size={13} />
-                              <span>{note.helpfulCount}</span>
-                            </button>
-
-                            <button
-                              disabled={!user}
-                              onClick={() => handleVote(note.id, "notHelpful")}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                                isNotHelpfulSelected 
-                                  ? "bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.15)]" 
-                                  : "bg-white/5 border-white/[0.08] text-gray-400 hover:bg-white/10"
-                              }`}
-                              title={user ? "Mark not helpful" : "Log in to rate"}
-                            >
-                              <ThumbsDown size={13} />
-                              <span>{note.notHelpfulCount}</span>
-                            </button>
-                          </div>
-
-                          {/* Delete button for Admin */}
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleAdminAction(note.id, "delete")}
-                              className="text-xs text-red-400 hover:text-red-300 font-bold px-3 py-1.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-lg transition-all"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Admin pending review list (Right Column, displays only to Admins) */}
-            {isAdmin && (
-              <div className="lg:col-span-4 space-y-6 animate-in fade-in duration-500">
-                <h3 className="text-lg font-bold text-amber-400 border-b border-amber-500/20 pb-3 flex items-center gap-2">
-                  <AlertTriangle size={18} className="text-amber-500 animate-pulse" />
-                  <span>Pending Review ({pendingNotes.length})</span>
-                </h3>
-
-                {pendingNotes.length === 0 ? (
-                  <p className="text-xs text-gray-500">No pending senior insights to review.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {pendingNotes.map(pNote => (
-                      <div key={pNote.id} className="p-4 backdrop-blur-3xl bg-white/[0.04] border border-amber-500/35 rounded-2xl space-y-3 shadow-[0_0_20px_rgba(245,158,11,0.05)] transition-all">
-                        <div className="flex justify-between items-center">
-                          <span className="px-2.5 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded text-[9px] font-bold">
-                            {pNote.category}
-                          </span>
-                          <span className="text-[9px] text-gray-400 font-bold">By: {pNote.contributorName}</span>
-                        </div>
-                        <p className="text-xs text-gray-300 leading-relaxed max-h-24 overflow-y-auto whitespace-pre-line font-semibold border-b border-white/[0.06] pb-2">
-                          "{pNote.content}"
-                        </p>
-                        <div className="flex justify-end gap-2 pt-1">
-                          <button
-                            onClick={() => handleAdminAction(pNote.id, "reject")}
-                            className="p-1 text-red-400 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-all text-[10px] font-bold"
-                          >
-                            Reject
-                          </button>
-                          <button
-                            onClick={() => handleAdminAction(pNote.id, "approve")}
-                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all text-[10px] font-bold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                          >
-                            Approve
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            {user && (
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(var(--primary-rgb),0.35)]"
+              >
+                <Plus size={14} /> Contribute Tip
+              </button>
             )}
           </div>
-        ) : (
-          <div className="max-w-xl mx-auto text-center py-16 text-gray-500 space-y-3">
-            <Bot size={48} className="mx-auto text-violet-500/30" />
-            <p className="text-sm">Please select a Department, Semester, and Subject to view senior insights and tips.</p>
-          </div>
-        )}
+
+          {/* Add form overlay/block */}
+          {showAddForm && (
+            <form onSubmit={handleSubmitNote} className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/25 rounded-3xl p-6 shadow-[0_0_30px_rgba(var(--primary-rgb),0.1)] space-y-5 animate-in fade-in slide-in-from-top-4 duration-300">
+              <h4 className="text-sm font-bold text-white">Contribute Survival Tip</h4>
+              
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Category</label>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full bg-black/60 border border-white/[0.1] focus:border-violet-500/30 rounded-xl p-3.5 text-white outline-none cursor-pointer"
+                >
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Write your tip (anonymous by default)</label>
+                <textarea
+                  rows={4}
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                  placeholder="Share exam tips, unit importance, viva questions, or assignment details..."
+                  className="w-full bg-black/60 border border-white/[0.1] focus:border-violet-500/30 rounded-xl p-3.5 text-white outline-none"
+                />
+              </div>
+
+              {feedbackMsg && <p className="text-xs text-violet-400 font-bold">{feedbackMsg}</p>}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                >
+                  {submitting ? <Loader2 className="animate-spin" size={14} /> : "Submit"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {loading ? (
+            <div className="py-20 text-center">
+              <Loader2 className="animate-spin text-violet-500 inline-block mb-3" size={32} />
+              <p className="text-gray-400 text-sm">Loading senior insights...</p>
+            </div>
+          ) : filteredNotes.length === 0 ? (
+            <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-12 text-center text-gray-500 space-y-4 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)]">
+              <Bot size={44} className="mx-auto text-violet-500/40 animate-pulse" />
+              <p className="text-sm font-semibold">No Senior Insights available for this subject yet.</p>
+              {user && (
+                <button 
+                  onClick={() => setShowAddForm(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/[0.08] text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Be the first to contribute!
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredNotes.map(note => {
+                const isHelpfulSelected = user ? note.helpfulUsers?.includes(user.uid) : false;
+                const isNotHelpfulSelected = user ? note.notHelpfulUsers?.includes(user.uid) : false;
+
+                return (
+                  <div key={note.id} className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 hover:border-violet-500/40 rounded-3xl p-6 transition-all duration-300 relative group/card shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)] hover:shadow-[0_0_40px_rgba(var(--primary-rgb),0.12)] flex flex-col justify-between">
+                    <div>
+                      {/* Category Badge & Contributor */}
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full text-[10px] font-bold tracking-wide">
+                          {note.category}
+                        </span>
+                        <span className="text-[10px] text-violet-400 font-bold flex items-center gap-1 uppercase tracking-wider">
+                          <UserCheck size={12} className="text-violet-400" /> LEVEL: {note.contributorLevel || "STUDENT"}
+                        </span>
+                      </div>
+
+                      {/* Course / Subject Metadata Badge labels */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[9px] text-gray-400 uppercase font-bold">
+                          DEPT: {note.departmentId}
+                        </span>
+                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[9px] text-gray-400 uppercase font-bold">
+                          SEM: {note.semesterId}
+                        </span>
+                        <span className="bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded text-[9px] text-violet-300 uppercase font-bold">
+                          SUBJECT: {note.subjectId}
+                        </span>
+                      </div>
+
+                      {/* Content text */}
+                      <p className="text-gray-200 text-sm leading-relaxed mb-6 whitespace-pre-line font-medium">
+                        {note.content}
+                      </p>
+                    </div>
+
+                    {/* Voting and actions row */}
+                    <div className="flex items-center justify-between pt-4 border-t border-white/[0.08] mt-auto">
+                      
+                      {/* Vote buttons */}
+                      <div className="flex items-center gap-3">
+                        <button
+                          disabled={!user}
+                          onClick={() => handleVote(note.id, "helpful")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                            isHelpfulSelected 
+                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]" 
+                              : "bg-white/5 border-white/[0.08] text-gray-400 hover:bg-white/10"
+                          }`}
+                          title={user ? "Mark helpful" : "Log in to rate"}
+                        >
+                          <ThumbsUp size={13} />
+                          <span>{note.helpfulCount || 0}</span>
+                        </button>
+
+                        <button
+                          disabled={!user}
+                          onClick={() => handleVote(note.id, "notHelpful")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                            isNotHelpfulSelected 
+                              ? "bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.15)]" 
+                              : "bg-white/5 border-white/[0.08] text-gray-400 hover:bg-white/10"
+                          }`}
+                          title={user ? "Mark not helpful" : "Log in to rate"}
+                        >
+                          <ThumbsDown size={13} />
+                          <span>{note.notHelpfulCount || 0}</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-gray-500 font-semibold">
+                          {note.createdAt?.toDate ? note.createdAt.toDate().toLocaleDateString() : new Date(note.createdAt || 0).toLocaleDateString()}
+                        </span>
+                        
+                        {/* Delete button for Admin */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteInsight(note.id)}
+                            className="text-xs text-red-400 hover:text-red-300 font-bold px-3 py-1.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-lg transition-all"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
