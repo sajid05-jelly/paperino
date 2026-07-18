@@ -5,29 +5,13 @@ import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Down
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
 
-const DEPT_PRIORITY: Record<string, number> = {
-  btech: 1,
-  mca: 2,
-  mba: 3,
-  msc: 4,
-  bsc: 5,
-  bcom: 6,
-  bba: 7
-};
-
 const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: false });
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function Home() {
   const { departments, loading } = useSubjects();
   const approvedDepts = departments.filter(d => d.status === "approved");
-
-  // Sort strictly by custom priority order
-  const sortedDepts = [...approvedDepts].sort((a, b) => {
-    const prioA = DEPT_PRIORITY[a.id] || 99;
-    const prioB = DEPT_PRIORITY[b.id] || 99;
-    return prioA - prioB;
-  });
+  const sortedDepts = approvedDepts;
 
   return (
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">

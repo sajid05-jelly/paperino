@@ -8,16 +8,6 @@ import AmbientOrbs from "@/components/AmbientOrbs";
 import CreateCourseModal from "@/components/CreateCourseModal";
 import { useAuth } from "@/context/AuthContext";
 
-const DEPT_PRIORITY: Record<string, number> = {
-  btech: 1,
-  mca: 2,
-  mba: 3,
-  msc: 4,
-  bsc: 5,
-  bcom: 6,
-  bba: 7
-};
-
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,12 +22,7 @@ export default function CoursesPage() {
     d.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Sort strictly by custom priority order
-  const sortedDepts = [...filteredDepts].sort((a, b) => {
-    const prioA = DEPT_PRIORITY[a.id] || 99;
-    const prioB = DEPT_PRIORITY[b.id] || 99;
-    return prioA - prioB;
-  });
+  const sortedDepts = filteredDepts;
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 relative min-h-[80vh]">
