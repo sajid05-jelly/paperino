@@ -789,12 +789,11 @@ html, body {
   }
 }
 
-.tablet-only-horizontal {
+.tablet-header-utility {
   display: none !important;
 }
 @media (min-width: 768px) and (max-width: 1024px) {
-  .tablet-only-horizontal {
+  .tablet-header-utility {
     display: flex !important;
-    top: 88px !important; /* Positioned horizontally below header */
   }
 }
