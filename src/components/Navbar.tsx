@@ -182,7 +182,7 @@ export default function Navbar() {
           </div>
 
           {/* ── Tablet View Top Horizontal Row (Only visible on tablet breakpoint, inside header) ── */}
-          <div className="tablet-header-utility hidden items-center gap-1.5 bg-white/5 border border-white/10 rounded-full p-1 backdrop-blur-md">
+          <div className="tablet-header-utility hidden items-center gap-3.5 bg-white/5 border border-white/10 rounded-full p-1.5 px-3 backdrop-blur-md">
             {/* WhatsApp */}
             <a
               href="https://chat.whatsapp.com/BAu2CuzzE5JC0DPgzgsz6M"
