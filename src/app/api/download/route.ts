@@ -21,7 +21,10 @@ export async function GET(req: NextRequest) {
   // 1. Verify Authentication via Bearer Header
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Unauthorized: Missing credentials" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Access Denied", message: "You found the door... but forgot the key 🔑" },
+      { status: 401 }
+    );
   }
 
   const token = authHeader.substring(7);
@@ -31,7 +34,10 @@ export async function GET(req: NextRequest) {
     uid = decodedToken.uid;
   } catch (err) {
     console.error("Auth verification failed:", err);
-    return NextResponse.json({ error: "Unauthorized: Invalid session" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Access Denied", message: "You found the door... but forgot the key 🔑" },
+      { status: 401 }
+    );
   }
 
   const fileId = req.nextUrl.searchParams.get("fileId");
