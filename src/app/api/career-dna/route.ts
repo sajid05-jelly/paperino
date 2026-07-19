@@ -288,6 +288,20 @@ export async function POST(req: NextRequest) {
         if (!opp.applyUrl || !opp.applyUrl.toLowerCase().includes("unstop.com")) {
           return false;
         }
+
+        // AI / ML / Data Science matching filter
+        const targetTitle = opp.title.toLowerCase();
+        const aiKeywords = ["ai", "ml", "machine learning", "deep learning", "nlp", "computer vision", "artificial intelligence", "data scientist", "data science", "tensorflow", "pytorch", "llm"];
+        const hasAiKeywords = aiKeywords.some(kw => targetTitle.includes(kw));
+        if (hasAiKeywords) {
+          const userHasAiSkills = Array.from(userSkills).some(s => 
+            ["python", "tensorflow", "pytorch", "machine learning", "deep learning", "llm", "llms", "nlp", "computer vision", "generative ai", "data science", "keras", "scikit-learn"].includes(s)
+          );
+          if (!userHasAiSkills) {
+            return false;
+          }
+        }
+
         if (!isRoleRelated(dreamRole, opp.title)) {
           return false;
         }
@@ -331,13 +345,13 @@ export async function POST(req: NextRequest) {
         let dreamRoleScore = 0;
         let isDreamRoleMatched = false;
         if (dreamRole && tpl.title.toLowerCase().includes(dreamRole)) {
-          dreamRoleScore = 25;
+          dreamRoleScore = 40;
           isDreamRoleMatched = true;
         } else if (dreamRole) {
           const dreamWords = dreamRole.split(/\s+/);
           const matchedWords = dreamWords.filter(w => tpl.title.toLowerCase().includes(w));
           if (matchedWords.length > 0) {
-            dreamRoleScore = Math.floor((matchedWords.length / dreamWords.length) * 15);
+            dreamRoleScore = Math.floor((matchedWords.length / dreamWords.length) * 30);
             isDreamRoleMatched = true;
           }
         }
@@ -357,18 +371,18 @@ export async function POST(req: NextRequest) {
           isLocationMatched = true;
         }
 
-        const cgpaScore = cgpa >= minCgpa ? 15 : Math.max(0, Math.floor((cgpa / minCgpa) * 10));
+        const cgpaScore = cgpa >= minCgpa ? 10 : Math.max(0, Math.floor((cgpa / minCgpa) * 8));
         
         let yearScore = 0;
         const targetYears = tpl.eligibility?.targetYears || [1, 2, 3, 4];
         if (targetYears.includes(currentYear)) {
-          yearScore = 10;
+          yearScore = 5;
         }
 
         let deptScore = 0;
         const targetDepts = tpl.eligibility?.departments || [];
         if (targetDepts.length === 0 || targetDepts.includes(dept)) {
-          deptScore = 10;
+          deptScore = 5;
         }
 
         const matchScore = dreamRoleScore + skillsScore + locationScore + cgpaScore + yearScore + deptScore;
