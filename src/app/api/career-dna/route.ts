@@ -307,15 +307,21 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (!isRoleRelated(dreamRole, opp.title)) {
+        const target = opp.title.toLowerCase();
+        const dream = dreamRole.toLowerCase();
+        
+        const techKeywords = ["sde", "software", "developer", "frontend", "backend", "full stack", "fullstack", "web", "programmer", "coder", "cloud", "devops", "aws", "data", "ml", "ai", "python", "java", "react", "node", "systems", "platform"];
+        const nonTechKeywords = ["marketing", "seo", "sales", "business development", "social media", "growth", "advertising", "pr", "hr", "human resources", "recruiter", "talent", "finance", "accounting", "analyst", "audit"];
+        
+        const isDreamTech = techKeywords.some(kw => dream.includes(kw)) || dream === "";
+        const isTargetNonTech = nonTechKeywords.some(kw => target.includes(kw));
+        
+        if (isDreamTech && isTargetNonTech) {
           rejectedDreamRoleCount += 1;
           return false;
         }
-        if (isPlacementMode) {
-          return opp.opportunityType === "Placement";
-        } else {
-          return opp.opportunityType === "Internship";
-        }
+
+        return true;
       })
       .map((tpl, index) => {
         // 1. Check eligibility reasons
