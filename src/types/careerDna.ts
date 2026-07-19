@@ -22,6 +22,7 @@ export interface CareerDnaProfile {
   projects: string[];
   github: string;
   linkedin: string;
+  portfolio: string;
   resumeUrl?: string;
   resumeText?: string;
   

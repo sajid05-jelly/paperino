@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db, auth } from "@/lib/firebase";
@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import {
   GraduationCap, Briefcase, Award, Code, CheckCircle, AlertTriangle, HelpCircle,
   TrendingUp, RefreshCw, Layers, Sparkles, Send, Upload, Trash2, ArrowRight,
-  Shield, Bell, BrainCircuit
+  Shield, Bell, BrainCircuit, Globe, Edit2, CheckSquare, Square
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { CareerDnaProfile, CareerOpportunity } from "@/types/careerDna";
@@ -27,6 +27,7 @@ export default function CareerDnaPage() {
   const [activeStep, setActiveStep] = useState(1);
   const [activeFilter, setActiveFilter] = useState<"All" | "High Match" | "Medium Match" | "Stretch Opportunity">("All");
   const [selectedEligibleMat, setSelectedEligibleMat] = useState<CareerOpportunity | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -50,6 +51,7 @@ export default function CareerDnaPage() {
     projects: [] as string[],
     github: "",
     linkedin: "",
+    portfolio: "",
     resumeText: "",
   });
 
@@ -93,6 +95,7 @@ export default function CareerDnaPage() {
             projects: data.profile.projects || [],
             github: data.profile.github || "",
             linkedin: data.profile.linkedin || "",
+            portfolio: data.profile.portfolio || "",
             resumeText: data.profile.resumeText || "",
           });
         }
@@ -105,6 +108,31 @@ export default function CareerDnaPage() {
 
     loadData();
   }, [user]);
+
+  // Dynamic Live Update Career Progress calculation
+  const progressMetrics = useMemo(() => {
+    const checklist = [
+      { label: "Resume Uploaded", checked: !!formData.resumeText, value: 20, missingMsg: "Upload a resume for better AI recommendations." },
+      { label: "LinkedIn Added", checked: !!formData.linkedin && formData.linkedin.includes("linkedin.com"), value: 15, missingMsg: "Improve your LinkedIn profile." },
+      { label: "GitHub Added", checked: !!formData.github && formData.github.includes("github.com"), value: 15, missingMsg: "Upload your GitHub profile." },
+      { label: "Portfolio Website Added", checked: !!formData.portfolio && (formData.portfolio.startsWith("http") || formData.portfolio.includes(".")), value: 15, missingMsg: "Build a portfolio website." },
+      { label: "Skills Added", checked: (formData.languages.length + formData.frameworks.length + formData.tools.length) > 0, value: 15, missingMsg: "Add programming languages, frameworks, or tools." },
+      { label: "Projects Added", checked: formData.projects.length > 0, value: 10, missingMsg: "Complete more technical projects." },
+      { label: "Certifications Added", checked: formData.certifications.length > 0, value: 10, missingMsg: "Add professional certifications." },
+    ];
+
+    const totalPercentage = checklist.reduce((acc, item) => acc + (item.checked ? item.value : 0), 0);
+    const missingItems = checklist.filter(item => !item.checked);
+    const estimatedImprovement = missingItems.reduce((acc, item) => acc + item.value, 0);
+
+    return {
+      percentage: totalPercentage,
+      checklist,
+      missingItems,
+      estimatedImprovement,
+      suggestions: missingItems.map(item => item.missingMsg)
+    };
+  }, [formData]);
 
   // Skill parser from resume text
   const extractSkillsFromText = (text: string) => {
@@ -206,6 +234,7 @@ export default function CareerDnaPage() {
 
       setProfile(profileData as CareerDnaProfile);
       setAnalysis(data);
+      setIsEditing(false);
       showToast("AI Career Analysis updated successfully!", "success");
     } catch (err: any) {
       console.error(err);
@@ -247,7 +276,6 @@ export default function CareerDnaPage() {
     );
   }
 
-  // Filter recommendations
   const filteredOpportunities = analysis?.opportunities?.filter((opp: CareerOpportunity) => {
     if (activeFilter === "All") return true;
     return opp.matchLevel === activeFilter;
@@ -271,438 +299,543 @@ export default function CareerDnaPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                setProfile(null);
+                setIsEditing(!isEditing);
                 setActiveStep(1);
               }}
-              className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition text-xs font-semibold cursor-pointer flex items-center gap-2"
             >
-              Update Profile
+              <Edit2 size={12} />
+              {isEditing ? "View Profile" : "Edit Profile"}
             </button>
-            <button
-              onClick={() => triggerAnalysis()}
-              disabled={analysing}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 text-white transition text-xs font-semibold cursor-pointer"
-            >
-              <RefreshCw size={12} className={analysing ? "animate-spin" : ""} />
-              {analysing ? "Syncing..." : "Sync AI DNA"}
-            </button>
+            {!isEditing && (
+              <button
+                onClick={() => triggerAnalysis()}
+                disabled={analysing}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 text-white transition text-xs font-semibold cursor-pointer"
+              >
+                <RefreshCw size={12} className={analysing ? "animate-spin" : ""} />
+                {analysing ? "Syncing..." : "Sync AI DNA"}
+              </button>
+            )}
           </div>
         )}
       </header>
 
       <div className="w-full relative z-10">
-        {!profile ? (
-          // ONBOARDING FORM SCREEN
-          <div className="max-w-2xl mx-auto bg-[#0c0916]/80 border border-white/10 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl relative">
-            <div className="flex justify-between items-center mb-8 border-b border-white/[0.05] pb-6">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <GraduationCap className="text-purple-400" />
-                  Onboard Career DNA
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">Let's map out your academic and career details.</p>
+        {(!profile || isEditing) ? (
+          // ONBOARDING & EDIT PROFILE FORM SCREEN (Live Updating)
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
+            
+            {/* Form Editor column */}
+            <div className="lg:col-span-2 bg-[#0c0916]/80 border border-white/10 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl relative">
+              <div className="flex justify-between items-center mb-8 border-b border-white/[0.05] pb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <GraduationCap className="text-purple-400" />
+                    {profile ? "Edit Career DNA Profile" : "Onboard Career DNA"}
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Academic and career details.</p>
+                </div>
+                <div className="text-sm font-medium text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+                  Step {activeStep} of 4
+                </div>
               </div>
-              <div className="text-sm font-medium text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
-                Step {activeStep} of 4
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {activeStep === 1 && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">👤 Personal & Basic Details</h3>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.fullName}
+                        onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                        placeholder="e.g. Sajid Mohamed"
+                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">College Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.college}
+                        onChange={e => setFormData({ ...formData, college: e.target.value })}
+                        placeholder="e.g. SRM University"
+                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="sm:col-span-1">
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Department</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.department}
+                          onChange={e => setFormData({ ...formData, department: e.target.value })}
+                          placeholder="e.g. CSE, ECE"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Current Year</label>
+                        <select
+                          value={formData.currentYear}
+                          onChange={e => setFormData({ ...formData, currentYear: Number(e.target.value) })}
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        >
+                          {[1, 2, 3, 4].map(y => (
+                            <option key={y} value={y} className="bg-[#0c0916]">Year {y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Graduation Year</label>
+                        <input
+                          type="number"
+                          required
+                          value={formData.graduationYear}
+                          onChange={e => setFormData({ ...formData, graduationYear: Number(e.target.value) })}
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeStep === 2 && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">🎯 Career Goals</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Role</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.dreamRole}
+                          onChange={e => setFormData({ ...formData, dreamRole: e.target.value })}
+                          placeholder="e.g. Software Engineer"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Company</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.dreamCompany}
+                          onChange={e => setFormData({ ...formData, dreamCompany: e.target.value })}
+                          placeholder="e.g. Microsoft, Google"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Core Goal</label>
+                        <select
+                          value={formData.goal}
+                          onChange={e => setFormData({ ...formData, goal: e.target.value as any })}
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        >
+                          <option value="internship" className="bg-[#0c0916]">Internship Opportunities</option>
+                          <option value="placement" className="bg-[#0c0916]">Full-time Placement</option>
+                          <option value="higher_studies" className="bg-[#0c0916]">Higher Studies / Research</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Preferred Location</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.preferredLocation}
+                          onChange={e => setFormData({ ...formData, preferredLocation: e.target.value })}
+                          placeholder="e.g. Bangalore, Remote"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeStep === 3 && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">📚 Academic Profile</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-xs text-gray-400 font-medium">Current CGPA</label>
+                          <Link href="/gpa" target="_blank" className="text-[10px] text-purple-400 hover:underline">Open GPA Calculator</Link>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="10"
+                          required
+                          value={formData.cgpa}
+                          onChange={e => setFormData({ ...formData, cgpa: Number(e.target.value) })}
+                          placeholder="e.g. 8.5"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Active Backlogs</label>
+                        <input
+                          type="number"
+                          required
+                          value={formData.activeBacklogs}
+                          onChange={e => setFormData({ ...formData, activeBacklogs: Number(e.target.value) })}
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">10th Class Percentage / Grade</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          required
+                          value={formData.tenthPercentage}
+                          onChange={e => setFormData({ ...formData, tenthPercentage: Number(e.target.value) })}
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">12th Class Percentage / Grade</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          required
+                          value={formData.twelfthPercentage}
+                          onChange={e => setFormData({ ...formData, twelfthPercentage: Number(e.target.value) })}
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeStep === 4 && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">💻 Technical Profile & Skills</h3>
+                    
+                    {/* Resume Upload parsing section */}
+                    <div className="p-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-semibold text-white">Upload Resume (Optional)</span>
+                        {uploadingResume && <span className="text-[10px] text-purple-400 animate-pulse">ATS Parsing...</span>}
+                      </div>
+                      <label className="flex flex-col items-center justify-center h-20 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer">
+                        <Upload size={18} className="text-gray-400 mb-1" />
+                        <span className="text-xs text-gray-300">Click to upload PDF or DOCX</span>
+                        <input type="file" onChange={handleResumeUpload} className="hidden" accept=".pdf,.docx" disabled={uploadingResume} />
+                      </label>
+                      {formData.resumeText && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 mt-2 font-medium">
+                          <CheckCircle size={10} /> Resume details successfully integrated!
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Languages Input */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1 font-medium">Programming Languages</label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={langInput}
+                          onChange={e => setLangInput(e.target.value)}
+                          placeholder="e.g. Java, Python"
+                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (langInput.trim()) {
+                              setFormData(prev => ({ ...prev, languages: Array.from(new Set([...prev.languages, langInput.trim()])) }));
+                              setLangInput("");
+                            }
+                          }}
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {formData.languages.map((l, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
+                            {l}
+                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, languages: prev.languages.filter(item => item !== l) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Frameworks Input */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1 font-medium">Frameworks</label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={frameworkInput}
+                          onChange={e => setFrameworkInput(e.target.value)}
+                          placeholder="e.g. React, Next.js"
+                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (frameworkInput.trim()) {
+                              setFormData(prev => ({ ...prev, frameworks: Array.from(new Set([...prev.frameworks, frameworkInput.trim()])) }));
+                              setFrameworkInput("");
+                            }
+                          }}
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {formData.frameworks.map((f, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
+                            {f}
+                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, frameworks: prev.frameworks.filter(item => item !== f) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tools Input */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1 font-medium">Tools</label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={toolInput}
+                          onChange={e => setToolInput(e.target.value)}
+                          placeholder="e.g. Git, Docker"
+                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (toolInput.trim()) {
+                              setFormData(prev => ({ ...prev, tools: Array.from(new Set([...prev.tools, toolInput.trim()])) }));
+                              setToolInput("");
+                            }
+                          }}
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {formData.tools.map((t, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
+                            {t}
+                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, tools: prev.tools.filter(item => item !== t) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Certifications Input */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1 font-medium">Certifications</label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={certInput}
+                          onChange={e => setCertInput(e.target.value)}
+                          placeholder="e.g. AWS Certified Solutions Architect"
+                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (certInput.trim()) {
+                              setFormData(prev => ({ ...prev, certifications: Array.from(new Set([...prev.certifications, certInput.trim()])) }));
+                              setCertInput("");
+                            }
+                          }}
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {formData.certifications.map((c, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
+                            {c}
+                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, certifications: prev.certifications.filter(item => item !== c) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Projects Input */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Key Projects</label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={projectInput}
+                          onChange={e => setProjectInput(e.target.value)}
+                          placeholder="e.g. Ecommerce Platform using MERN Stack"
+                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (projectInput.trim()) {
+                              setFormData(prev => ({ ...prev, projects: Array.from(new Set([...prev.projects, projectInput.trim()])) }));
+                              setProjectInput("");
+                            }
+                          }}
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {formData.projects.map((p, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-[10px] bg-white/5 border border-white/10 text-gray-300 px-2 py-1.5 rounded">
+                            <span>{p}</span>
+                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, projects: prev.projects.filter(item => item !== p) }))} className="text-rose-400 hover:text-rose-300 font-bold ml-2">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* GitHub, LinkedIn & Portfolio Profile Links */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">GitHub Link</label>
+                        <input
+                          type="url"
+                          value={formData.github}
+                          onChange={e => setFormData({ ...formData, github: e.target.value })}
+                          placeholder="https://github.com/username"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">LinkedIn Link</label>
+                        <input
+                          type="url"
+                          value={formData.linkedin}
+                          onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
+                          placeholder="https://linkedin.com/in/username"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Portfolio Link</label>
+                        <input
+                          type="url"
+                          value={formData.portfolio}
+                          onChange={e => setFormData({ ...formData, portfolio: e.target.value })}
+                          placeholder="https://portfolio.com"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Onboarding Navigation buttons */}
+                <div className="flex justify-between border-t border-white/[0.05] pt-6 mt-8">
+                  {activeStep > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveStep(prev => prev - 1)}
+                      className="px-6 py-2.5 rounded-full border border-white/10 bg-white/5 text-gray-300 hover:text-white transition text-xs font-semibold cursor-pointer"
+                    >
+                      Back
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { if (profile) setIsEditing(false); }}
+                      className="px-6 py-2.5 rounded-full border border-white/10 bg-white/5 text-gray-300 hover:text-white transition text-xs font-semibold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+
+                  {activeStep < 4 ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveStep(prev => prev + 1)}
+                      className="px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      Continue <ArrowRight size={14} />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={analysing}
+                      className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white font-semibold hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] transition-all text-xs flex items-center gap-2 cursor-pointer"
+                    >
+                      {analysing && <RefreshCw size={12} className="animate-spin" />}
+                      {analysing ? "Analyzing Career DNA..." : "Generate Career DNA Analysis"}
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Live Progress Preview (Right panel inside onboarding / edit mode) */}
+            <div className="space-y-6">
+              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="text-purple-400" />
+                  <h3 className="text-md font-bold text-white">Live Progress Preview</h3>
+                </div>
+                
+                {/* Progress bar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-gray-300">
+                    <span className="font-semibold">Completeness</span>
+                    <span className="font-bold text-purple-400">{progressMetrics.percentage}%</span>
+                  </div>
+                  <div className="w-full h-3 rounded-full bg-white/5 overflow-hidden border border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 transition-all duration-300 ease-out"
+                      style={{ width: `${progressMetrics.percentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Estimate */}
+                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                  <span className="block text-[9px] text-purple-300 font-bold uppercase tracking-wider mb-0.5">Estimated Improvement:</span>
+                  <span className="text-sm font-extrabold text-white">
+                    +{progressMetrics.estimatedImprovement}% after completing missing items
+                  </span>
+                </div>
+
+                {/* Live Checklist */}
+                <div className="space-y-1.5 pt-2 border-t border-white/[0.05]">
+                  <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold">Profile Checklist:</span>
+                  {progressMetrics.checklist.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 text-xs items-center text-gray-300">
+                      {item.checked ? (
+                        <CheckSquare size={13} className="text-purple-400 shrink-0" />
+                      ) : (
+                        <Square size={13} className="text-gray-600 shrink-0" />
+                      )}
+                      <span className={item.checked ? "text-gray-300 font-medium" : "text-gray-500"}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {activeStep === 1 && (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">👤 Personal & Basic Details</h3>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1.5 font-medium">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.fullName}
-                      onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                      placeholder="e.g. Sajid Mohamed"
-                      className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1.5 font-medium">College Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.college}
-                      onChange={e => setFormData({ ...formData, college: e.target.value })}
-                      placeholder="e.g. SRM University"
-                      className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="sm:col-span-1">
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Department</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.department}
-                        onChange={e => setFormData({ ...formData, department: e.target.value })}
-                        placeholder="e.g. CSE, ECE"
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Current Year</label>
-                      <select
-                        value={formData.currentYear}
-                        onChange={e => setFormData({ ...formData, currentYear: Number(e.target.value) })}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      >
-                        {[1, 2, 3, 4].map(y => (
-                          <option key={y} value={y} className="bg-[#0c0916]">Year {y}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Graduation Year</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.graduationYear}
-                        onChange={e => setFormData({ ...formData, graduationYear: Number(e.target.value) })}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeStep === 2 && (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">🎯 Career Goals</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Role</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.dreamRole}
-                        onChange={e => setFormData({ ...formData, dreamRole: e.target.value })}
-                        placeholder="e.g. Software Engineer"
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Company</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.dreamCompany}
-                        onChange={e => setFormData({ ...formData, dreamCompany: e.target.value })}
-                        placeholder="e.g. Microsoft, Google"
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Core Goal</label>
-                      <select
-                        value={formData.goal}
-                        onChange={e => setFormData({ ...formData, goal: e.target.value as any })}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      >
-                        <option value="internship" className="bg-[#0c0916]">Internship Opportunities</option>
-                        <option value="placement" className="bg-[#0c0916]">Full-time Placement</option>
-                        <option value="higher_studies" className="bg-[#0c0916]">Higher Studies / Research</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Preferred Location</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.preferredLocation}
-                        onChange={e => setFormData({ ...formData, preferredLocation: e.target.value })}
-                        placeholder="e.g. Bangalore, Remote"
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeStep === 3 && (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">📚 Academic Profile</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <label className="block text-xs text-gray-400 font-medium">Current CGPA</label>
-                        <Link href="/gpa" target="_blank" className="text-[10px] text-purple-400 hover:underline">Open GPA Calculator</Link>
-                      </div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="10"
-                        required
-                        value={formData.cgpa}
-                        onChange={e => setFormData({ ...formData, cgpa: Number(e.target.value) })}
-                        placeholder="e.g. 8.5"
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Active Backlogs</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.activeBacklogs}
-                        onChange={e => setFormData({ ...formData, activeBacklogs: Number(e.target.value) })}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">10th Class Percentage / Grade</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        required
-                        value={formData.tenthPercentage}
-                        onChange={e => setFormData({ ...formData, tenthPercentage: Number(e.target.value) })}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">12th Class Percentage / Grade</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        required
-                        value={formData.twelfthPercentage}
-                        onChange={e => setFormData({ ...formData, twelfthPercentage: Number(e.target.value) })}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeStep === 4 && (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">💻 Technical Profile & Skills</h3>
-                  
-                  {/* Resume Upload parsing section */}
-                  <div className="p-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-semibold text-white">Upload Resume (Optional - Auto extracts skills)</span>
-                      {uploadingResume && <span className="text-[10px] text-purple-400 animate-pulse">ATS Parsing...</span>}
-                    </div>
-                    <label className="flex flex-col items-center justify-center h-20 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition cursor-pointer">
-                      <Upload size={18} className="text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-300">Click to upload PDF or DOCX</span>
-                      <input type="file" onChange={handleResumeUpload} className="hidden" accept=".pdf,.docx" disabled={uploadingResume} />
-                    </label>
-                    {formData.resumeText && (
-                      <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 mt-2 font-medium">
-                        <CheckCircle size={10} /> Resume details successfully integrated!
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Languages Input */}
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1 font-medium">Programming Languages</label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={langInput}
-                        onChange={e => setLangInput(e.target.value)}
-                        placeholder="e.g. Java, Python"
-                        className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (langInput.trim()) {
-                            setFormData(prev => ({ ...prev, languages: Array.from(new Set([...prev.languages, langInput.trim()])) }));
-                            setLangInput("");
-                          }
-                        }}
-                        className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {formData.languages.map((l, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
-                          {l}
-                          <button type="button" onClick={() => setFormData(prev => ({ ...prev, languages: prev.languages.filter(item => item !== l) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Frameworks Input */}
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1 font-medium">Frameworks</label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={frameworkInput}
-                        onChange={e => setFrameworkInput(e.target.value)}
-                        placeholder="e.g. React, Next.js"
-                        className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (frameworkInput.trim()) {
-                            setFormData(prev => ({ ...prev, frameworks: Array.from(new Set([...prev.frameworks, frameworkInput.trim()])) }));
-                            setFrameworkInput("");
-                          }
-                        }}
-                        className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {formData.frameworks.map((f, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
-                          {f}
-                          <button type="button" onClick={() => setFormData(prev => ({ ...prev, frameworks: prev.frameworks.filter(item => item !== f) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Tools Input */}
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1 font-medium">Tools</label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={toolInput}
-                        onChange={e => setToolInput(e.target.value)}
-                        placeholder="e.g. Git, Docker"
-                        className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (toolInput.trim()) {
-                            setFormData(prev => ({ ...prev, tools: Array.from(new Set([...prev.tools, toolInput.trim()])) }));
-                            setToolInput("");
-                          }
-                        }}
-                        className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {formData.tools.map((t, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
-                          {t}
-                          <button type="button" onClick={() => setFormData(prev => ({ ...prev, tools: prev.tools.filter(item => item !== t) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Projects Input */}
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1.5 font-medium">Key Projects</label>
-                    <div className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={projectInput}
-                        onChange={e => setProjectInput(e.target.value)}
-                        placeholder="e.g. Ecommerce Platform using MERN Stack"
-                        className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (projectInput.trim()) {
-                            setFormData(prev => ({ ...prev, projects: Array.from(new Set([...prev.projects, projectInput.trim()])) }));
-                            setProjectInput("");
-                          }
-                        }}
-                        className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="space-y-1">
-                      {formData.projects.map((p, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-[10px] bg-white/5 border border-white/10 text-gray-300 px-2 py-1.5 rounded">
-                          <span>{p}</span>
-                          <button type="button" onClick={() => setFormData(prev => ({ ...prev, projects: prev.projects.filter(item => item !== p) }))} className="text-rose-400 hover:text-rose-300 font-bold ml-2">×</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* GitHub & LinkedIn Profile Links */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">GitHub Link</label>
-                      <input
-                        type="url"
-                        value={formData.github}
-                        onChange={e => setFormData({ ...formData, github: e.target.value })}
-                        placeholder="https://github.com/username"
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">LinkedIn Link</label>
-                      <input
-                        type="url"
-                        value={formData.linkedin}
-                        onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
-                        placeholder="https://linkedin.com/in/username"
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Onboarding Navigation buttons */}
-              <div className="flex justify-between border-t border-white/[0.05] pt-6 mt-8">
-                {activeStep > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep(prev => prev - 1)}
-                    className="px-6 py-2.5 rounded-full border border-white/10 bg-white/5 text-gray-300 hover:text-white transition text-xs font-semibold cursor-pointer"
-                  >
-                    Back
-                  </button>
-                ) : (
-                  <div />
-                )}
-
-                {activeStep < 4 ? (
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep(prev => prev + 1)}
-                    className="px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                  >
-                    Continue <ArrowRight size={14} />
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={analysing}
-                    className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white font-semibold hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] transition-all text-xs flex items-center gap-2 cursor-pointer"
-                  >
-                    {analysing && <RefreshCw size={12} className="animate-spin" />}
-                    {analysing ? "Analyzing Career DNA..." : "Generate Career DNA Analysis"}
-                  </button>
-                )}
-              </div>
-            </form>
           </div>
         ) : (
           // MAIN PREMIUM MENTOR DASHBOARD SCREEN
@@ -710,14 +843,20 @@ export default function CareerDnaPage() {
             {/* LEFT 2 COLUMNS: Profile status and matches grid */}
             <div className="lg:col-span-2 space-y-6">
               
-              {/* Profile Card & Readiness Gauge */}
-              <div className="relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              {/* 1. CAREER PROFILE SECTION */}
+              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4 relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[40px] pointer-events-none"></div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-bold text-white leading-tight">{profile.fullName}</h3>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 1</span>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <GraduationCap className="text-purple-400" />
+                      Career Profile
+                    </h3>
+                  </div>
+                  <div>
                     {analysis?.readinessLevel === "High Ready" && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                      <span className="inline-flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)] animate-pulse">
                         🟢 High Ready
                       </span>
                     )}
@@ -732,33 +871,286 @@ export default function CareerDnaPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 text-sm font-light">
-                    {profile.department} · {profile.college} · Year {profile.currentYear}
-                  </p>
-                  <p className="text-xs text-purple-300 font-medium">
-                    🎯 Dream: {profile.dreamRole} at {profile.dreamCompany} ({profile.preferredLocation})
-                  </p>
                 </div>
-                <div className="flex gap-4 sm:border-l border-white/10 sm:pl-8 py-2">
-                  <div className="text-center">
-                    <p className="text-2xl font-extrabold text-white">{profile.cgpa.toFixed(2)}</p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-0.5">CGPA</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-light text-gray-300 pt-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Full Name</span>
+                    <span className="text-sm font-semibold text-white">{profile.fullName}</span>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-extrabold text-white">{profile.activeBacklogs}</p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-0.5">Backlogs</p>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">College / Institute</span>
+                    <span className="text-sm font-semibold text-white">{profile.college}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Department / Major</span>
+                    <span className="text-sm font-semibold text-white">{profile.department}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Current Year</span>
+                      <span className="text-sm font-semibold text-white">Year {profile.currentYear}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Graduation Year</span>
+                      <span className="text-sm font-semibold text-white">{profile.graduationYear}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* 2. CAREER GOALS SECTION */}
+              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 2</span>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Briefcase className="text-purple-400" />
+                    Career Goals
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-light text-gray-300 pt-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Dream Role</span>
+                    <span className="text-sm font-semibold text-white">{profile.dreamRole}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Dream Company</span>
+                    <span className="text-sm font-semibold text-white">{profile.dreamCompany}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Core Goal</span>
+                    <span className="text-sm font-semibold text-white uppercase tracking-wider text-purple-300">
+                      {profile.goal?.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Preferred Location</span>
+                    <span className="text-sm font-semibold text-white">{profile.preferredLocation}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. ACADEMIC INFORMATION SECTION */}
+              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 3</span>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Award className="text-purple-400" />
+                    Academic Information
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-light text-gray-300 pt-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Current CGPA</span>
+                    <span className="text-sm font-semibold text-white">{profile.cgpa.toFixed(2)}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">10th Grade / %</span>
+                    <span className="text-sm font-semibold text-white">{profile.tenthPercentage}%</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">12th Grade / %</span>
+                    <span className="text-sm font-semibold text-white">{profile.twelfthPercentage}%</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Active Backlogs</span>
+                    <span className={`text-sm font-semibold ${profile.activeBacklogs > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                      {profile.activeBacklogs}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. TECHNICAL PROFILE SECTION */}
+              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 4</span>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Code className="text-purple-400" />
+                    Technical Profile
+                  </h3>
+                </div>
+
+                <div className="space-y-3 pt-2 text-xs">
+                  {/* Languages */}
+                  {profile.languages?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Languages:</span>
+                      {profile.languages.map((l, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-gray-300">{l}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Frameworks */}
+                  {profile.frameworks?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Frameworks:</span>
+                      {profile.frameworks.map((f, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-gray-300">{f}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tools */}
+                  {profile.tools?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Tools & Infra:</span>
+                      {profile.tools.map((t, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-gray-300">{t}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Certifications */}
+                  {profile.certifications?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Certificates:</span>
+                      {profile.certifications.map((c, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-purple-300">{c}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Projects */}
+                  {profile.projects?.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Completed Projects:</span>
+                      {profile.projects.map((p, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/10 p-2.5 rounded-xl text-xs text-white leading-normal">
+                          {p}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Profile Links & Resume Status */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 border-t border-white/[0.05]">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">GitHub</span>
+                      {profile.github ? (
+                        <a href={profile.github} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">GitHub Profile</a>
+                      ) : (
+                        <span className="text-gray-600 italic block">Not provided</span>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">LinkedIn</span>
+                      {profile.linkedin ? (
+                        <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">LinkedIn Profile</a>
+                      ) : (
+                        <span className="text-gray-600 italic block">Not provided</span>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Portfolio</span>
+                      {profile.portfolio ? (
+                        <a href={profile.portfolio} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">Portfolio Website</a>
+                      ) : (
+                        <span className="text-gray-600 italic block">Not provided</span>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Resume Doc</span>
+                      {profile.resumeText ? (
+                        <span className="text-emerald-400 flex items-center gap-1 font-medium">✔ Integrated</span>
+                      ) : (
+                        <span className="text-gray-600 italic block">Missing</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. CAREER PROGRESS SECTION (NEW) */}
+              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[40px] pointer-events-none"></div>
+                <div>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 5</span>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <TrendingUp className="text-purple-400" />
+                    Career Progress
+                  </h3>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Progress bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-300">
+                      <span className="font-semibold">Profile Completeness</span>
+                      <span className="font-bold text-purple-400 text-sm">{progressMetrics.percentage}%</span>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-white/5 overflow-hidden border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 transition-all duration-300"
+                        style={{ width: `${progressMetrics.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Estimated profile improvement */}
+                  <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="block text-[10px] text-purple-400 font-bold uppercase tracking-wider mb-0.5">Estimated Improvement:</span>
+                      <p className="text-sm font-extrabold text-white">
+                        +{progressMetrics.estimatedImprovement}% after completing missing items
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-gray-500 italic">Estimated from profile items</span>
+                  </div>
+
+                  {/* Checklist and missing suggestions grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/[0.05]">
+                    {/* Checklist */}
+                    <div className="space-y-2">
+                      <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold">Profile Checklist:</span>
+                      <div className="space-y-1.5">
+                        {progressMetrics.checklist.map((item, idx) => (
+                          <div key={idx} className="flex gap-2 text-xs items-center text-gray-300">
+                            {item.checked ? (
+                              <CheckSquare size={14} className="text-purple-400 shrink-0" />
+                            ) : (
+                              <Square size={14} className="text-gray-600 shrink-0" />
+                            )}
+                            <span className={item.checked ? "text-gray-300 font-semibold" : "text-gray-500"}>
+                              {item.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Suggestions recommendations */}
+                    <div className="space-y-2">
+                      <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold">Suggested Actions:</span>
+                      <div className="space-y-1.5">
+                        {progressMetrics.suggestions.map((s, idx) => (
+                          <div key={idx} className="flex gap-2 text-xs items-start text-purple-300">
+                            <span className="text-purple-400">•</span>
+                            <span>{s}</span>
+                          </div>
+                        ))}
+                        {progressMetrics.suggestions.length === 0 && (
+                          <div className="text-xs text-emerald-400 flex items-center gap-1 font-semibold">
+                            <CheckCircle size={14} /> Congratulations! Your profile is 100% complete!
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
               {/* Opportunities Feed */}
-              <div className="space-y-4">
+              <div className="space-y-4 pt-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <Briefcase className="text-purple-400" />
                     Recommended Opportunities
                   </h3>
-                  {/* Filters */}
                   <div className="flex flex-wrap gap-1.5">
                     {["All", "High Match", "Medium Match", "Stretch Opportunity"].map((f) => (
                       <button
@@ -824,7 +1216,6 @@ export default function CareerDnaPage() {
                           </div>
                         </div>
 
-                        {/* Match Reasons */}
                         {opp.matchReasons && opp.matchReasons.length > 0 && (
                           <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3">
                             <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1.5">Match Analysis:</span>
@@ -838,7 +1229,6 @@ export default function CareerDnaPage() {
                           </div>
                         )}
 
-                        {/* Missing Skills */}
                         {opp.missingSkills && opp.missingSkills.length > 0 && (
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">Missing skills:</span>
@@ -859,7 +1249,7 @@ export default function CareerDnaPage() {
             {/* RIGHT COLUMN: AI Improvement Advisor & Hub integrations */}
             <div className="space-y-6">
               
-              {/* AI Improvement Suggestions */}
+              {/* AI Improvement Advisor */}
               <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-6 space-y-4">
                 <h3 className="text-md font-bold text-white flex items-center gap-2">
                   <Sparkles className="text-purple-400" />
@@ -941,7 +1331,6 @@ export default function CareerDnaPage() {
             </p>
 
             <div className="space-y-3">
-              {/* Eligibility checklist */}
               <div className="space-y-1.5">
                 <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold">Requirement checks:</span>
                 {selectedEligibleMat.eligibilityBreakdown?.reasons?.map((r, idx) => (
@@ -957,7 +1346,6 @@ export default function CareerDnaPage() {
                 )}
               </div>
 
-              {/* Suggestions to improve eligibility */}
               {selectedEligibleMat.eligibilityBreakdown?.suggestions && selectedEligibleMat.eligibilityBreakdown.suggestions.length > 0 && (
                 <div className="pt-2 border-t border-white/[0.05] space-y-1.5">
                   <span className="block text-[10px] text-purple-400 uppercase tracking-widest font-bold">Action items to qualify:</span>
