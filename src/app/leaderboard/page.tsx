@@ -116,6 +116,10 @@ export default function LeaderboardPage() {
   const top3 = currentBoard.slice(0, 3);
   const runnersUp = currentBoard.slice(3);
 
+  const formatSerial = (num: number) => {
+    return num >= 1 && num <= 9 ? `0${num}` : `${num}`;
+  };
+
   const getPodiumColor = (index: number) => {
     if (activeTab === "season") {
       if (index === 0) return "from-violet-500 to-fuchsia-600 shadow-[0_0_30px_rgba(168,85,247,0.4)] border-violet-400/50";
@@ -224,7 +228,7 @@ export default function LeaderboardPage() {
                       <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(1)}`}>
                         {top3[1].paperinoAvatar ? <UserAvatar avatarId={top3[1].paperinoAvatar} size={12} className="w-full h-full scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white">{top3[1].displayName.charAt(0)}</div>}
                       </div>
-                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-200 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#2</div>
+                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-200 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#{formatSerial(2)}</div>
                     </div>
                     <div className="text-center mb-4 truncate w-full px-2 flex flex-col items-center">
                       <h3 className="text-white font-bold text-sm md:text-base truncate w-full">{top3[1].displayName}</h3>
@@ -232,7 +236,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div className={`w-full rounded-t-2xl bg-gradient-to-t ${getPodiumColor(1)} ${getPodiumHeight(1)} border-t border-x relative overflow-hidden flex justify-center pt-4`}>
                       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.2)_0%,transparent_100%)]"></div>
-                      <span className="text-2xl md:text-4xl font-black text-white/40 mix-blend-overlay relative z-10">2</span>
+                      <span className="text-2xl md:text-4xl font-black text-white/40 mix-blend-overlay relative z-10">{formatSerial(2)}</span>
                     </div>
                   </div>
                 )}
@@ -250,7 +254,7 @@ export default function LeaderboardPage() {
                       <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(0)}`}>
                         {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} size={20} className="w-full h-full scale-125 pt-4" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white">{top3[0].displayName.charAt(0)}</div>}
                       </div>
-                      <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 text-sm font-black px-3 py-0.5 rounded-full z-20 border-2 border-white shadow-lg ${activeTab === 'season' ? 'bg-violet-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>#1</div>
+                      <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 text-sm font-black px-3 py-0.5 rounded-full z-20 border-2 border-white shadow-lg ${activeTab === 'season' ? 'bg-violet-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>#{formatSerial(1)}</div>
                     </div>
                     <div className="text-center mb-4 truncate w-full px-2 flex flex-col items-center">
                       <h3 className="text-white font-black text-base md:text-lg truncate drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] w-full">{top3[0].displayName}</h3>
@@ -260,7 +264,7 @@ export default function LeaderboardPage() {
                       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.3)_0%,transparent_100%)]"></div>
                       <Sparkles className="absolute top-4 left-4 text-white/50 animate-pulse" size={16} />
                       <Sparkles className="absolute top-10 right-4 text-white/50 animate-pulse delay-300" size={24} />
-                      <span className="text-4xl md:text-5xl font-black text-white/50 mix-blend-overlay relative z-10 mt-2">1</span>
+                      <span className="text-4xl md:text-5xl font-black text-white/50 mix-blend-overlay relative z-10 mt-2">{formatSerial(1)}</span>
                     </div>
                   </div>
                 )}
@@ -273,7 +277,7 @@ export default function LeaderboardPage() {
                       <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(2)}`}>
                         {top3[2].paperinoAvatar ? <UserAvatar avatarId={top3[2].paperinoAvatar} size={12} className="w-full h-full scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white">{top3[2].displayName.charAt(0)}</div>}
                       </div>
-                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-800 text-amber-100 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#3</div>
+                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-800 text-amber-100 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#{formatSerial(3)}</div>
                     </div>
                     <div className="text-center mb-4 truncate w-full px-2 flex flex-col items-center">
                       <h3 className="text-white font-bold text-sm md:text-base truncate w-full">{top3[2].displayName}</h3>
@@ -281,7 +285,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div className={`w-full rounded-t-2xl bg-gradient-to-t ${getPodiumColor(2)} ${getPodiumHeight(2)} border-t border-x relative overflow-hidden flex justify-center pt-4`}>
                       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.15)_0%,transparent_100%)]"></div>
-                      <span className="text-2xl md:text-4xl font-black text-white/30 mix-blend-overlay relative z-10">3</span>
+                      <span className="text-2xl md:text-4xl font-black text-white/30 mix-blend-overlay relative z-10">{formatSerial(3)}</span>
                     </div>
                   </div>
                 )}
@@ -299,7 +303,7 @@ export default function LeaderboardPage() {
                       className="flex items-center gap-4 p-3 md:p-4 rounded-2xl vision-glass hover:bg-white/10 transition-all cursor-pointer group relative overflow-hidden"
                     >
                       <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-gray-400 border border-white/10 flex-shrink-0 relative z-10">
-                        {index + 4}
+                        {formatSerial(index + 4)}
                       </div>
                       
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">

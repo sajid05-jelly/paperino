@@ -49,6 +49,17 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const toProperCase = (str: string) => {
+    if (!str) return "";
+    return str
+      .split(/\s+/)
+      .map(word => {
+        if (!word) return "";
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(" ");
+  };
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -108,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!userSnap.exists()) {
             // Always create as "student" first (Firestore rules require role="student" on create)
             await setDoc(userRef, {
-              displayName: currentUser.displayName,
+              displayName: toProperCase(currentUser.displayName || ""),
               email: currentUser.email,
               role: "student",
               status: "active",
@@ -222,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, {
         paperinoAvatar: avatarId,
-        displayName: user.displayName,
+        displayName: toProperCase(user.displayName || ""),
         email: user.email,
         lastLogin: serverTimestamp()
       }, { merge: true });

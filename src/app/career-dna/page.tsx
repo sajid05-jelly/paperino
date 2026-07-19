@@ -63,6 +63,21 @@ export default function CareerDnaPage() {
 
   const [uploadingResume, setUploadingResume] = useState(false);
 
+  const toProperCase = (str: string) => {
+    if (!str) return "";
+    return str
+      .split(/\s+/)
+      .map(word => {
+        if (!word) return "";
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(" ");
+  };
+
+  const formatSerial = (num: number) => {
+    return num >= 1 && num <= 9 ? `0${num}` : `${num}`;
+  };
+
   const sanitizeStr = (val: any) => {
     if (val === null || val === undefined) return "";
     const s = String(val).trim();
@@ -81,7 +96,7 @@ export default function CareerDnaPage() {
           setProfile(data.profile as CareerDnaProfile);
           setAnalysis(data.analysis);
           setFormData({
-            fullName: sanitizeStr(data.profile.fullName),
+            fullName: toProperCase(sanitizeStr(data.profile.fullName)),
             college: sanitizeStr(data.profile.college),
             department: sanitizeStr(data.profile.department),
             currentYear: Number(data.profile.currentYear) || 1,
@@ -465,7 +480,7 @@ export default function CareerDnaPage() {
                   <p className="text-xs text-gray-500 mt-0.5">Fill out your profile details below.</p>
                 </div>
                 <div className="text-sm font-medium text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
-                  Step {activeStep} of 4
+                  Step {formatSerial(activeStep)} of 04
                 </div>
               </div>
 
@@ -481,6 +496,7 @@ export default function CareerDnaPage() {
                         id="fullName"
                         value={formData.fullName}
                         onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                        onBlur={e => setFormData({ ...formData, fullName: toProperCase(e.target.value) })}
                         placeholder="e.g. Sajid Mohamed"
                         className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                       />
@@ -1190,7 +1206,7 @@ export default function CareerDnaPage() {
                     {analysis.roadmap.map((step: string, idx: number) => (
                       <div key={idx} className="relative text-xs text-gray-300">
                         <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-purple-500 border border-[#05030a] shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
-                        <span className="font-bold text-white block mb-0.5">Phase {idx + 1}</span>
+                        <span className="font-bold text-white block mb-0.5">Phase {formatSerial(idx + 1)}</span>
                         <span>{step}</span>
                       </div>
                     ))}
@@ -1361,7 +1377,7 @@ export default function CareerDnaPage() {
               
               {/* SECTION 1: Career Profile */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
-                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">1. Personal Profile</h3>
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">01. Personal Profile</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="text-gray-500 block mb-0.5">Full Name</span>
@@ -1390,7 +1406,7 @@ export default function CareerDnaPage() {
 
               {/* SECTION 2: Career Goals */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
-                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">2. Career Goals</h3>
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">02. Career Goals</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div>
                     <span className="text-gray-500 block mb-0.5">Dream Role</span>
@@ -1409,7 +1425,7 @@ export default function CareerDnaPage() {
 
               {/* SECTION 3: Academic Information */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
-                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">3. Academic Information</h3>
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">03. Academic Information</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                   <div>
                     <span className="text-gray-500 block mb-0.5">Current CGPA</span>
@@ -1432,7 +1448,7 @@ export default function CareerDnaPage() {
 
               {/* SECTION 4: Technical Profile */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
-                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">4. Technical Profile</h3>
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">04. Technical Profile</h3>
                 
                 <div className="space-y-3 text-xs">
                   {/* Skill Badges */}
