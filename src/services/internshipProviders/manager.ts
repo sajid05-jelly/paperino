@@ -2,7 +2,6 @@ import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 import { StandardInternship, InternshipProvider } from "./types";
 import { UnstopProvider } from "./unstopProvider";
-import { FallbackProvider } from "./fallbackProvider";
 
 // Strict Apply URL Verification Helper
 async function verifyApplyUrl(url: string): Promise<boolean> {
@@ -59,8 +58,7 @@ async function verifyApplyUrl(url: string): Promise<boolean> {
 
 export class InternshipManager {
   private providers: InternshipProvider[] = [
-    new UnstopProvider(),
-    new FallbackProvider()
+    new UnstopProvider()
   ];
 
   async getAggregatedInternships(): Promise<StandardInternship[]> {
