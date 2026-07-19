@@ -1132,14 +1132,23 @@ export default function CareerDnaPage() {
                             >
                               Why am I not eligible?
                             </button>
-                            <a
-                              href={opp.applyLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-4 py-1.5 rounded-full bg-purple-600/80 hover:bg-purple-600 text-white text-[10px] font-semibold cursor-pointer text-center inline-block"
-                            >
-                              Apply Now
-                            </a>
+                            {opp.applyLink && opp.applyLink.trim() ? (
+                              <a
+                                href={opp.applyLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-1.5 rounded-full bg-purple-600/80 hover:bg-purple-600 text-white text-[10px] font-semibold cursor-pointer text-center inline-block"
+                              >
+                                Apply Now
+                              </a>
+                            ) : (
+                              <button
+                                disabled
+                                className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-gray-500 text-[10px] font-semibold cursor-not-allowed"
+                              >
+                                Application link not available.
+                              </button>
+                            )}
                           </div>
                         </div>
 

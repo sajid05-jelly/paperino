@@ -20,6 +20,7 @@ interface OpportunityTemplate {
   maxBacklogs: number;
   requiredSkills: string[];
   deptMatches: string[];
+  applyLink: string;
 }
 
 const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
@@ -30,7 +31,8 @@ const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 8.0,
     maxBacklogs: 0,
     requiredSkills: ["javascript", "react", "node.js", "git"],
-    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+    deptMatches: ["cse", "it", "ece", "mca", "btech"],
+    applyLink: "https://jobs.netflix.com/"
   },
   {
     role: "Software Engineer Intern",
@@ -39,7 +41,8 @@ const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 8.5,
     maxBacklogs: 0,
     requiredSkills: ["java", "python", "c++", "data structures", "git"],
-    deptMatches: ["cse", "it", "ece", "btech", "mtech"]
+    deptMatches: ["cse", "it", "ece", "btech", "mtech"],
+    applyLink: "https://www.google.com/about/careers/applications/"
   },
   {
     role: "Frontend Developer Intern",
@@ -48,7 +51,8 @@ const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 7.5,
     maxBacklogs: 1,
     requiredSkills: ["javascript", "react", "html", "css", "figma"],
-    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+    deptMatches: ["cse", "it", "ece", "mca", "btech"],
+    applyLink: "https://orchestrix.com/careers"
   },
   {
     role: "Data Science Intern",
@@ -57,7 +61,8 @@ const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 8.0,
     maxBacklogs: 0,
     requiredSkills: ["python", "sql", "aws", "git"],
-    deptMatches: ["cse", "it", "ece", "btech", "mtech", "mba"]
+    deptMatches: ["cse", "it", "ece", "btech", "mtech", "mba"],
+    applyLink: "https://careers.walmart.com/"
   },
   {
     role: "Cloud DevOps Intern",
@@ -66,7 +71,8 @@ const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 8.2,
     maxBacklogs: 0,
     requiredSkills: ["python", "docker", "kubernetes", "aws", "git"],
-    deptMatches: ["cse", "it", "ece", "btech", "mtech"]
+    deptMatches: ["cse", "it", "ece", "btech", "mtech"],
+    applyLink: "https://www.amazon.jobs/"
   },
   {
     role: "Mobile App Developer Intern",
@@ -75,7 +81,8 @@ const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 7.8,
     maxBacklogs: 1,
     requiredSkills: ["javascript", "react", "swift", "kotlin", "git"],
-    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+    deptMatches: ["cse", "it", "ece", "mca", "btech"],
+    applyLink: "https://careers.swiggy.com/"
   }
 ];
 
@@ -87,7 +94,8 @@ const PLACEMENT_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 8.5,
     maxBacklogs: 0,
     requiredSkills: ["java", "c#", "c++", "data structures", "git", "aws"],
-    deptMatches: ["cse", "it", "ece", "btech", "mtech"]
+    deptMatches: ["cse", "it", "ece", "btech", "mtech"],
+    applyLink: "https://careers.microsoft.com/"
   },
   {
     role: "Associate Frontend Developer",
@@ -96,7 +104,8 @@ const PLACEMENT_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 7.0,
     maxBacklogs: 1,
     requiredSkills: ["javascript", "react", "html", "css", "git"],
-    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+    deptMatches: ["cse", "it", "ece", "mca", "btech"],
+    applyLink: "https://www.zoho.com/careers/"
   },
   {
     role: "Full Stack Engineer (L1)",
@@ -105,7 +114,8 @@ const PLACEMENT_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 7.8,
     maxBacklogs: 0,
     requiredSkills: ["javascript", "react", "node.js", "sql", "git"],
-    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+    deptMatches: ["cse", "it", "ece", "mca", "btech"],
+    applyLink: "https://www.freshworks.com/company/careers/"
   },
   {
     role: "Data Analyst / Scientist",
@@ -114,7 +124,8 @@ const PLACEMENT_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 7.5,
     maxBacklogs: 0,
     requiredSkills: ["python", "sql", "aws", "git", "figma"],
-    deptMatches: ["cse", "it", "ece", "btech", "mtech", "mba", "mca"]
+    deptMatches: ["cse", "it", "ece", "btech", "mtech", "mba", "mca"],
+    applyLink: "https://jobs.deloitte.com/"
   },
   {
     role: "Systems DevOps Engineer",
@@ -123,7 +134,8 @@ const PLACEMENT_TEMPLATES: OpportunityTemplate[] = [
     minCgpa: 7.0,
     maxBacklogs: 2,
     requiredSkills: ["python", "docker", "aws", "git"],
-    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+    deptMatches: ["cse", "it", "ece", "mca", "btech"],
+    applyLink: "https://careers.cognizant.com/"
   }
 ];
 
@@ -252,7 +264,7 @@ export async function POST(req: NextRequest) {
         matchScore,
         matchReasons,
         missingSkills,
-        applyLink: `https://paperino.app/jobs/apply/${index}`,
+        applyLink: tpl.applyLink || "",
         eligibilityBreakdown: {
           isEligible,
           reasons,
