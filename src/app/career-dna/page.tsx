@@ -64,6 +64,12 @@ export default function CareerDnaPage() {
 
   const [uploadingResume, setUploadingResume] = useState(false);
 
+  const sanitizeStr = (val: any) => {
+    if (val === null || val === undefined) return "";
+    const s = String(val).trim();
+    return s.toLowerCase() === "null" ? "" : s;
+  };
+
   // Load user profile & saved analysis on mount
   useEffect(() => {
     if (!user) return;
@@ -76,15 +82,15 @@ export default function CareerDnaPage() {
           setProfile(data.profile as CareerDnaProfile);
           setAnalysis(data.analysis);
           setFormData({
-            fullName: data.profile.fullName || "",
-            college: data.profile.college || "",
-            department: data.profile.department || "",
+            fullName: sanitizeStr(data.profile.fullName),
+            college: sanitizeStr(data.profile.college),
+            department: sanitizeStr(data.profile.department),
             currentYear: Number(data.profile.currentYear) || 1,
             graduationYear: Number(data.profile.graduationYear) || (new Date().getFullYear() + 3),
-            dreamRole: data.profile.dreamRole || "",
-            dreamCompany: data.profile.dreamCompany || "",
+            dreamRole: sanitizeStr(data.profile.dreamRole),
+            dreamCompany: sanitizeStr(data.profile.dreamCompany),
             goal: data.profile.goal || "internship",
-            preferredLocation: data.profile.preferredLocation || "",
+            preferredLocation: sanitizeStr(data.profile.preferredLocation),
             cgpa: Number(data.profile.cgpa) || 8.0,
             tenthPercentage: Number(data.profile.tenthPercentage) || 90,
             twelfthPercentage: Number(data.profile.twelfthPercentage) || 90,
@@ -94,10 +100,10 @@ export default function CareerDnaPage() {
             tools: data.profile.tools || [],
             certifications: data.profile.certifications || [],
             projects: data.profile.projects || [],
-            github: data.profile.github || "",
-            linkedin: data.profile.linkedin || "",
-            portfolio: data.profile.portfolio || "",
-            resumeText: data.profile.resumeText || "",
+            github: sanitizeStr(data.profile.github),
+            linkedin: sanitizeStr(data.profile.linkedin),
+            portfolio: sanitizeStr(data.profile.portfolio),
+            resumeText: sanitizeStr(data.profile.resumeText),
           });
         }
       } catch (err) {
@@ -351,7 +357,15 @@ export default function CareerDnaPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form
+                onSubmit={handleSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") {
+                    e.preventDefault();
+                  }
+                }}
+                className="space-y-6"
+              >
                 {activeStep === 1 && (
                   <div className="space-y-4 animate-in fade-in duration-200">
                     <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">👤 Personal & Basic Details</h3>
