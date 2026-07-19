@@ -38,7 +38,6 @@ export default function CareerDnaPage() {
     currentYear: 1,
     graduationYear: new Date().getFullYear() + 3,
     dreamRole: "",
-    dreamCompany: "",
     goal: "internship" as const,
     preferredLocation: "",
     cgpa: 8.0,
@@ -88,7 +87,6 @@ export default function CareerDnaPage() {
             currentYear: Number(data.profile.currentYear) || 1,
             graduationYear: Number(data.profile.graduationYear) || (new Date().getFullYear() + 3),
             dreamRole: sanitizeStr(data.profile.dreamRole),
-            dreamCompany: sanitizeStr(data.profile.dreamCompany),
             goal: data.profile.goal || "internship",
             preferredLocation: sanitizeStr(data.profile.preferredLocation),
             cgpa: Number(data.profile.cgpa) || 8.0,
@@ -357,15 +355,7 @@ export default function CareerDnaPage() {
                 </div>
               </div>
 
-              <form
-                onSubmit={handleSubmit}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") {
-                    e.preventDefault();
-                  }
-                }}
-                className="space-y-6"
-              >
+              <div className="space-y-6">
                 {activeStep === 1 && (
                   <div className="space-y-4 animate-in fade-in duration-200">
                     <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">👤 Personal & Basic Details</h3>
@@ -432,29 +422,16 @@ export default function CareerDnaPage() {
                 {activeStep === 2 && (
                   <div className="space-y-4 animate-in fade-in duration-200">
                     <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">🎯 Career Goals</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Role</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.dreamRole}
-                          onChange={e => setFormData({ ...formData, dreamRole: e.target.value })}
-                          placeholder="e.g. Software Engineer"
-                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Company</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.dreamCompany}
-                          onChange={e => setFormData({ ...formData, dreamCompany: e.target.value })}
-                          placeholder="e.g. Microsoft, Google"
-                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Role</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.dreamRole}
+                        onChange={e => setFormData({ ...formData, dreamRole: e.target.value })}
+                        placeholder="e.g. Software Engineer"
+                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
+                      />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
@@ -801,7 +778,8 @@ export default function CareerDnaPage() {
                     </button>
                   ) : (
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={handleSubmit}
                       disabled={analysing}
                       className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white font-semibold hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] transition-all text-xs flex items-center gap-2 cursor-pointer"
                     >
@@ -810,7 +788,7 @@ export default function CareerDnaPage() {
                     </button>
                   )}
                 </div>
-              </form>
+              </div>
             </div>
 
             {/* Live Progress Preview (Right panel inside onboarding / edit mode) */}
@@ -1240,14 +1218,10 @@ export default function CareerDnaPage() {
               {/* SECTION 2: Career Goals */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
                 <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">2. Career Goals</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div>
                     <span className="text-gray-500 block mb-0.5">Dream Role</span>
                     <span className="font-semibold text-white">{profile.dreamRole}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block mb-0.5">Dream Company</span>
-                    <span className="font-semibold text-white">{profile.dreamCompany}</span>
                   </div>
                   <div>
                     <span className="text-gray-500 block mb-0.5">Career Goal</span>
