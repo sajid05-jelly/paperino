@@ -529,10 +529,15 @@ export async function POST(req: NextRequest) {
 
     // D. PERSIST CACHE AND METRICS TO FIRESTORE
     // ----------------------------------------------------
+    const finalAnalysis = {
+      ...aiResponse,
+      readinessLevel
+    };
+
     await userDnaRef.set({
       profile,
       profileHash: profileHashStr,
-      analysis: aiResponse,
+      analysis: finalAnalysis,
       usage,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });

@@ -654,9 +654,22 @@ export default function CareerDnaPage() {
                         <input
                           type="number"
                           step="0.1"
+                          min="0"
+                          max="100"
                           required
                           value={formData.tenthPercentage}
-                          onChange={e => setFormData({ ...formData, tenthPercentage: Number(e.target.value) })}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              setFormData({ ...formData, tenthPercentage: 0 });
+                              return;
+                            }
+                            const cleanVal = val.replace(/^0+(?=\d)/, "");
+                            const num = parseFloat(cleanVal);
+                            if (!isNaN(num) && num <= 100) {
+                              setFormData({ ...formData, tenthPercentage: num });
+                            }
+                          }}
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                         />
                       </div>
@@ -665,9 +678,22 @@ export default function CareerDnaPage() {
                         <input
                           type="number"
                           step="0.1"
+                          min="0"
+                          max="100"
                           required
                           value={formData.twelfthPercentage}
-                          onChange={e => setFormData({ ...formData, twelfthPercentage: Number(e.target.value) })}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              setFormData({ ...formData, twelfthPercentage: 0 });
+                              return;
+                            }
+                            const cleanVal = val.replace(/^0+(?=\d)/, "");
+                            const num = parseFloat(cleanVal);
+                            if (!isNaN(num) && num <= 100) {
+                              setFormData({ ...formData, twelfthPercentage: num });
+                            }
+                          }}
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                         />
                       </div>
