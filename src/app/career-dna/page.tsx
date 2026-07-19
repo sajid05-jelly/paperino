@@ -1373,7 +1373,13 @@ export default function CareerDnaPage() {
                 <div className="grid grid-cols-1 gap-4">
                   {filteredOpportunities.length === 0 ? (
                     <div className="text-center py-12 bg-white/[0.01] border border-white/5 rounded-2xl text-gray-500 text-sm">
-                      No matching opportunities found for the selected filter.
+                      {activeFilter === "High Match"
+                        ? "No high match internships are available at the moment. Try expanding your skills or check back later."
+                        : activeFilter === "Medium Match"
+                        ? "No medium match internships are available at the moment. Try expanding your skills or check back later."
+                        : activeFilter === "Stretch Opportunity"
+                        ? "No stretch opportunities are available at the moment. Try expanding your skills or check back later."
+                        : "No matching opportunities found for the selected filter."}
                     </div>
                   ) : (
                     filteredOpportunities.map((opp: CareerOpportunity) => (

@@ -12,6 +12,35 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "openrouter/free";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || ""; // Fallback
 
+function isRoleRelated(dreamRole: string, targetRole: string): boolean {
+  const dream = dreamRole.toLowerCase().trim();
+  const target = targetRole.toLowerCase().trim();
+
+  if (target.includes(dream) || dream.includes(target)) return true;
+
+  const techKeywords = ["sde", "software", "developer", "frontend", "backend", "full stack", "fullstack", "web", "programmer", "coder", "cloud", "devops", "aws", "data", "ml", "ai", "python", "java", "react", "node", "systems", "platform"];
+  const marketingKeywords = ["marketing", "seo", "sales", "business development", "social media", "growth", "advertising", "pr"];
+  const hrKeywords = ["hr", "human resources", "recruiter", "talent", "people", "staffing"];
+  const financeKeywords = ["finance", "accounting", "analyst", "audit", "investment", "tax", "wealth"];
+
+  const isDreamTech = techKeywords.some(kw => dream.includes(kw));
+  const isDreamMarketing = marketingKeywords.some(kw => dream.includes(kw));
+  const isDreamHr = hrKeywords.some(kw => dream.includes(kw));
+  const isDreamFinance = financeKeywords.some(kw => dream.includes(kw));
+
+  const isTargetTech = techKeywords.some(kw => target.includes(kw));
+  const isTargetMarketing = marketingKeywords.some(kw => target.includes(kw));
+  const isTargetHr = hrKeywords.some(kw => target.includes(kw));
+  const isTargetFinance = financeKeywords.some(kw => target.includes(kw));
+
+  if (isDreamTech && isTargetTech) return true;
+  if (isDreamMarketing && isTargetMarketing) return true;
+  if (isDreamHr && isTargetHr) return true;
+  if (isDreamFinance && isTargetFinance) return true;
+
+  return false;
+}
+
 // Predefined Opportunities Database for Rule-Based Matcher (Zero AI Cost)
 interface OpportunityTemplate {
   role: string;
@@ -256,6 +285,9 @@ export async function POST(req: NextRequest) {
     // Run Rule-Based Matching for Opportunities
     const opportunities = rawOpportunities
       .filter((opp) => {
+        if (!isRoleRelated(dreamRole, opp.title)) {
+          return false;
+        }
         if (isPlacementMode) {
           return opp.opportunityType === "Placement";
         } else {
@@ -339,11 +371,11 @@ export async function POST(req: NextRequest) {
         const matchScore = dreamRoleScore + skillsScore + locationScore + cgpaScore + yearScore + deptScore;
 
         // Determine matchLevel classification using strict scoring brackets
-        // 90-100 = High Match
-        // 70-89 = Medium Match
+        // 85-100 = High Match
+        // 70-84 = Medium Match
         // Below 70 = Stretch Opportunity
         let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
-        if (matchScore >= 90) {
+        if (matchScore >= 85) {
           matchLevel = "High Match";
         } else if (matchScore >= 70) {
           matchLevel = "Medium Match";
