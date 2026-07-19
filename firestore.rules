@@ -205,6 +205,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Career DNA ──────────────────────────────────────────────────────────
+    match /career_dna/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
     // ── Deny all other paths by default ─────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
