@@ -1373,7 +1373,9 @@ export default function CareerDnaPage() {
                 <div className="grid grid-cols-1 gap-4">
                   {filteredOpportunities.length === 0 ? (
                     <div className="text-center py-12 bg-white/[0.01] border border-white/5 rounded-2xl text-gray-500 text-sm">
-                      {activeFilter === "High Match"
+                      {(!analysis?.opportunities || analysis.opportunities.length === 0)
+                        ? "No active internships matching your profile are currently available."
+                        : activeFilter === "High Match"
                         ? "No high match internships are available at the moment. Try expanding your skills or check back later."
                         : activeFilter === "Medium Match"
                         ? "No medium match internships are available at the moment. Try expanding your skills or check back later."

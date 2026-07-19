@@ -21,8 +21,24 @@ export class UnstopProvider implements InternshipProvider {
       const json = await res.json();
       const rawItems = json?.data?.data || [];
 
+      const now = new Date();
       return rawItems
-        .filter((i: any) => i.title && i.public_url)
+        .filter((i: any) => {
+          if (!i.title || !i.public_url) return false;
+          
+          // Filter out ended registrations
+          const regStatus = i.regnRequirements?.reg_status;
+          if (regStatus === "ENDED") return false;
+
+          // Filter out expired deadlines
+          const deadlineStr = i.regnRequirements?.end_regn_dt || i.end_date;
+          if (deadlineStr) {
+            const deadline = new Date(deadlineStr);
+            if (deadline < now) return false;
+          }
+
+          return true;
+        })
         .map((i: any) => {
           // Parse skills
           const skills = (i.skills || []).map((s: any) => String(s.name || s).toLowerCase().trim());

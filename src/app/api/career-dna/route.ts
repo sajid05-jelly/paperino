@@ -285,6 +285,9 @@ export async function POST(req: NextRequest) {
     // Run Rule-Based Matching for Opportunities
     const opportunities = rawOpportunities
       .filter((opp) => {
+        if (!opp.applyUrl || !opp.applyUrl.toLowerCase().includes("unstop.com")) {
+          return false;
+        }
         if (!isRoleRelated(dreamRole, opp.title)) {
           return false;
         }
