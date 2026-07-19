@@ -413,10 +413,6 @@ export default function CareerDnaPage() {
         showToast("Dream Role is required", "error");
         return;
       }
-      if (!formData.preferredLocation.trim()) {
-        showToast("Preferred Location is required", "error");
-        return;
-      }
     } else if (activeStep === 3) {
       if (formData.cgpa <= 0 || formData.cgpa > 10) {
         showToast("Please enter a valid CGPA between 0 and 10", "error");
@@ -624,7 +620,7 @@ export default function CareerDnaPage() {
                         className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div>
                         <label className="block text-xs text-gray-400 mb-1.5 font-medium">Core Goal</label>
                         <select
@@ -637,17 +633,6 @@ export default function CareerDnaPage() {
                           <option value="placement" className="bg-[#0c0916]">Full-time Placement</option>
                           <option value="higher_studies" className="bg-[#0c0916]">Higher Studies / Research</option>
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Preferred Location</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.preferredLocation}
-                          onChange={e => setFormData({ ...formData, preferredLocation: e.target.value })}
-                          placeholder="e.g. Bangalore, Remote"
-                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                        />
                       </div>
                     </div>
                   </div>
@@ -1699,7 +1684,7 @@ export default function CareerDnaPage() {
               {/* SECTION 2: Career Goals */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
                 <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">02. Career Goals</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="text-gray-500 block mb-0.5">Dream Role</span>
                     <span className="font-semibold text-white">{profile.dreamRole}</span>
@@ -1707,10 +1692,6 @@ export default function CareerDnaPage() {
                   <div>
                     <span className="text-gray-500 block mb-0.5">Career Goal</span>
                     <span className="font-semibold text-purple-300 uppercase tracking-wider">{profile.goal?.replace("_", " ")}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block mb-0.5">Preferred Location</span>
-                    <span className="font-semibold text-white">{profile.preferredLocation}</span>
                   </div>
                 </div>
               </div>

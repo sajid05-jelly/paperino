@@ -345,31 +345,20 @@ export async function POST(req: NextRequest) {
         let dreamRoleScore = 0;
         let isDreamRoleMatched = false;
         if (dreamRole && tpl.title.toLowerCase().includes(dreamRole)) {
-          dreamRoleScore = 40;
+          dreamRoleScore = 50;
           isDreamRoleMatched = true;
         } else if (dreamRole) {
           const dreamWords = dreamRole.split(/\s+/);
           const matchedWords = dreamWords.filter(w => tpl.title.toLowerCase().includes(w));
           if (matchedWords.length > 0) {
-            dreamRoleScore = Math.floor((matchedWords.length / dreamWords.length) * 30);
+            dreamRoleScore = Math.floor((matchedWords.length / dreamWords.length) * 40);
             isDreamRoleMatched = true;
           }
         }
 
         const totalSkillsCount = tpl.skills?.length || 1;
         const matchedSkillsCount = (tpl.skills || []).filter((sk: string) => userSkills.has(sk)).length;
-        const skillsScore = Math.floor((matchedSkillsCount / totalSkillsCount) * 25);
-
-        let locationScore = 0;
-        let isLocationMatched = false;
-        const prefLoc = String(profile.preferredLocation || "").toLowerCase().trim();
-        if (prefLoc && tpl.location.toLowerCase().includes(prefLoc)) {
-          locationScore = 15;
-          isLocationMatched = true;
-        } else if (prefLoc && prefLoc.includes("remote") && tpl.location.toLowerCase().includes("remote")) {
-          locationScore = 15;
-          isLocationMatched = true;
-        }
+        const skillsScore = Math.floor((matchedSkillsCount / totalSkillsCount) * 30);
 
         const cgpaScore = cgpa >= minCgpa ? 10 : Math.max(0, Math.floor((cgpa / minCgpa) * 8));
         
@@ -385,7 +374,7 @@ export async function POST(req: NextRequest) {
           deptScore = 5;
         }
 
-        const matchScore = dreamRoleScore + skillsScore + locationScore + cgpaScore + yearScore + deptScore;
+        const matchScore = dreamRoleScore + skillsScore + cgpaScore + yearScore + deptScore;
 
         // Determine matchLevel classification using strict scoring brackets
         // 85-100 = High Match
@@ -409,9 +398,6 @@ export async function POST(req: NextRequest) {
         if (currentYear >= 1) {
           const suffix = currentYear === 2 ? "nd" : currentYear === 3 ? "rd" : "th";
           matchReasons.push(`✔ Student is eligible for ${currentYear}${suffix} Year`);
-        }
-        if (isLocationMatched) {
-          matchReasons.push("✔ Location preference matches");
         }
         if (isDreamRoleMatched) {
           matchReasons.push("✔ Dream role matches");
