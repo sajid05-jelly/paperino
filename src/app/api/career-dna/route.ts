@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runApiGuard } from "@/lib/api-guard";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
+import { InternshipManager } from "@/services/internshipProviders/manager";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -210,65 +211,22 @@ export async function POST(req: NextRequest) {
 
     // Determine templates based on placement mode (Year 4 gets placement, others get internship)
     const isPlacementMode = currentYear >= 4;
-    const templates = isPlacementMode ? PLACEMENT_TEMPLATES : INTERNSHIP_TEMPLATES;
 
-    // A. UNSTOP API INTEGRATION & CACHE SYSTEM (ZERO SPAM PORT)
+    // A. FETCH STANDARDIZED OPPORTUNITIES FROM MODULAR MANAGER (ZERO TIGHT COUPLING)
     // ----------------------------------------------------
-    let finalTemplates = [...templates];
-    let unstopStatus = "API active. Displaying official internships.";
-
+    let rawOpportunities: any[] = [];
     try {
-      const cacheRef = adminDb.collection("unstop_cache").doc("internships");
-      const cacheSnap = await cacheRef.get();
-      let unstopItems: any[] = [];
-      const CACHE_EXPIRATION_MS = 2 * 60 * 60 * 1000; // 2 hours
+      const manager = new InternshipManager();
+      rawOpportunities = await manager.getAggregatedInternships();
+    } catch (managerErr: any) {
+      console.error("[Career DNA Match Engine] Aggregator failed:", managerErr.message);
+    }
 
-      if (cacheSnap.exists && (Date.now() - (cacheSnap.data()?.updatedAt?.toMillis?.() || 0) < CACHE_EXPIRATION_MS)) {
-        console.log("[Unstop Cache] Using cached internships from Firestore");
-        unstopItems = cacheSnap.data()?.items || [];
-      } else {
-        console.log("[Unstop Fetch] Requesting internship list from Unstop API...");
-        const res = await fetch("https://unstop.com/api/public/opportunity/search-result?opportunity=internships&page=1", {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/json"
-          },
-          next: { revalidate: 7200 }
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          const rawItems = json?.data?.data || [];
-          unstopItems = rawItems.filter((i: any) => i.title && i.public_url).map((i: any) => ({
-            role: i.title,
-            company: i.organisation?.name || "Unstop Partner",
-            location: i.address_with_country_logo?.city || "Remote",
-            minCgpa: 7.0,
-            maxBacklogs: 0,
-            requiredSkills: (i.skills || []).map((s: any) => String(s.name).toLowerCase().trim()) || ["javascript", "git"],
-            deptMatches: ["cse", "it", "ece", "mca", "btech"],
-            applyLink: i.short_url || `https://unstop.com/${i.public_url}`
-          }));
-
-          await cacheRef.set({
-            items: unstopItems,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          console.log(`[Unstop Fetch] Successfully cached ${unstopItems.length} internships.`);
-        } else {
-          console.warn("[Unstop API Warning] Endpoint returned status:", res.status);
-          unstopStatus = "Unstop API does not support internships or is currently unavailable. Curated fallback roles active.";
-        }
-      }
-
-      if (unstopItems.length > 0) {
-        finalTemplates = [...unstopItems, ...templates];
-      } else {
-        unstopStatus = "Unstop API returned no active internships. Curated fallback roles active.";
-      }
-    } catch (unstopErr: any) {
-      console.error("[Unstop API Warning] Fallback triggered:", unstopErr.message);
-      unstopStatus = "Unstop API integration unavailable: " + unstopErr.message + ". Curated fallback roles active.";
+    if (rawOpportunities.length === 0) {
+      return NextResponse.json({
+        error: "Unavailable",
+        message: "Internship recommendations are temporarily unavailable."
+      }, { status: 503 });
     }
 
     // Build user user-skills list for static matching
@@ -278,90 +236,100 @@ export async function POST(req: NextRequest) {
     (profile.tools || []).forEach((s: string) => userSkills.add(s.toLowerCase().trim()));
 
     // Run Rule-Based Matching for Opportunities
-    const opportunities = finalTemplates.map((tpl, index) => {
-      // 1. Check eligibility reasons
-      const reasons: string[] = [];
-      if (cgpa < tpl.minCgpa) {
-        reasons.push(`Minimum CGPA requirement is ${tpl.minCgpa} (Your CGPA: ${cgpa})`);
-      }
-      if (backlogs > tpl.maxBacklogs) {
-        reasons.push(`Maximum allowed backlogs is ${tpl.maxBacklogs} (Your backlogs: ${backlogs})`);
-      }
-      if (isPlacementMode && currentYear < 4) {
-        reasons.push("Final Year preferred");
-      }
-      if (!profile.resumeText) {
-        reasons.push("Resume not uploaded");
-      }
-      if (!profile.github) {
-        reasons.push("GitHub link missing");
-      }
-
-      // Identify missing skills
-      const missingSkills = tpl.requiredSkills.filter(sk => !userSkills.has(sk));
-      missingSkills.forEach(sk => {
-        reasons.push(`${sk.toUpperCase()} required`);
-      });
-
-      const isEligible = reasons.length === 0;
-
-      // 2. Identify match reasons
-      const matchReasons: string[] = [];
-      tpl.requiredSkills.forEach(sk => {
-        if (userSkills.has(sk)) {
-          matchReasons.push(`✔ ${sk.charAt(0).toUpperCase() + sk.slice(1)} Skill Found`);
+    const opportunities = rawOpportunities
+      .filter((opp) => {
+        if (isPlacementMode) {
+          return opp.opportunityType === "Placement";
+        } else {
+          return opp.opportunityType === "Internship";
         }
-      });
-      if (cgpa >= tpl.minCgpa) {
-        matchReasons.push("✔ CGPA Eligible");
-      }
-      if (currentYear >= 2) {
-        // Display ordinal (2nd, 3rd, 4th)
-        const suffix = currentYear === 2 ? "nd" : currentYear === 3 ? "rd" : "th";
-        matchReasons.push(`✔ ${currentYear}${suffix} Year Eligible`);
-      }
+      })
+      .map((tpl, index) => {
+        // 1. Check eligibility reasons
+        const reasons: string[] = [];
+        const minCgpa = tpl.eligibility?.minCgpa || 7.0;
+        const maxBacklogs = tpl.eligibility?.maxBacklogs || 0;
 
-      // Calculate match score
-      let matchScore = 50;
-      if (tpl.role.toLowerCase().includes(dreamRole)) matchScore += 30;
-      matchScore += Math.floor((1 - (missingSkills.length / Math.max(1, tpl.requiredSkills.length))) * 20);
-
-      // Determine classification category
-      let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
-      if (isEligible && tpl.role.toLowerCase().includes(dreamRole) && missingSkills.length <= 1) {
-        matchLevel = "High Match";
-      } else if (isEligible && missingSkills.length <= 2) {
-        matchLevel = "Medium Match";
-      }
-
-      // Actionable advice to qualify
-      const actionSuggestions: string[] = [];
-      if (cgpa < tpl.minCgpa) actionSuggestions.push(`Improve CGPA to above ${tpl.minCgpa}`);
-      if (backlogs > tpl.maxBacklogs) actionSuggestions.push(`Clear active backlogs to less than ${tpl.maxBacklogs}`);
-      if (!profile.resumeText) actionSuggestions.push("Upload your parsed resume");
-      if (!profile.github) actionSuggestions.push("Add your GitHub profile link");
-      missingSkills.forEach(sk => {
-        actionSuggestions.push(`Acquire and add skill: ${sk.toUpperCase()}`);
-      });
-
-      return {
-        id: `opp_${index}`,
-        role: tpl.role,
-        company: tpl.company,
-        location: tpl.location,
-        type: isPlacementMode ? "Placement" : "Internship",
-        matchLevel,
-        matchScore,
-        matchReasons,
-        missingSkills,
-        applyLink: tpl.applyLink || "",
-        eligibilityBreakdown: {
-          isEligible,
-          reasons,
-          suggestions: actionSuggestions
+        if (cgpa < minCgpa) {
+          reasons.push(`Minimum CGPA requirement is ${minCgpa} (Your CGPA: ${cgpa})`);
         }
-      };
-    });
+        if (backlogs > maxBacklogs) {
+          reasons.push(`Maximum allowed backlogs is ${maxBacklogs} (Your backlogs: ${backlogs})`);
+        }
+        if (isPlacementMode && currentYear < 4) {
+          reasons.push("Final Year preferred");
+        }
+        if (!profile.resumeText) {
+          reasons.push("Resume not uploaded");
+        }
+        if (!profile.github) {
+          reasons.push("GitHub link missing");
+        }
+
+        // Identify missing skills
+        const missingSkills = (tpl.skills || []).filter((sk: string) => !userSkills.has(sk));
+        missingSkills.forEach((sk: string) => {
+          reasons.push(`${sk.toUpperCase()} required`);
+        });
+
+        const isEligible = reasons.length === 0;
+
+        // 2. Identify match reasons
+        const matchReasons: string[] = [];
+        (tpl.skills || []).forEach((sk: string) => {
+          if (userSkills.has(sk)) {
+            matchReasons.push(`✔ ${sk.charAt(0).toUpperCase() + sk.slice(1)} Skill Found`);
+          }
+        });
+        if (cgpa >= minCgpa) {
+          matchReasons.push("✔ CGPA Eligible");
+        }
+        if (currentYear >= 2) {
+          const suffix = currentYear === 2 ? "nd" : currentYear === 3 ? "rd" : "th";
+          matchReasons.push(`✔ ${currentYear}${suffix} Year Eligible`);
+        }
+
+        // Calculate match score
+        let matchScore = 50;
+        if (tpl.title.toLowerCase().includes(dreamRole)) matchScore += 30;
+        matchScore += Math.floor((1 - (missingSkills.length / Math.max(1, tpl.skills?.length || 1))) * 20);
+
+        // Determine classification category
+        let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
+        if (isEligible && tpl.title.toLowerCase().includes(dreamRole) && missingSkills.length <= 1) {
+          matchLevel = "High Match";
+        } else if (isEligible && missingSkills.length <= 2) {
+          matchLevel = "Medium Match";
+        }
+
+        // Actionable advice to qualify
+        const actionSuggestions: string[] = [];
+        if (cgpa < minCgpa) actionSuggestions.push(`Improve CGPA to above ${minCgpa}`);
+        if (backlogs > maxBacklogs) actionSuggestions.push(`Clear active backlogs to less than ${maxBacklogs}`);
+        if (!profile.resumeText) actionSuggestions.push("Upload your parsed resume");
+        if (!profile.github) actionSuggestions.push("Add your GitHub profile link");
+        missingSkills.forEach((sk: string) => {
+          actionSuggestions.push(`Acquire and add skill: ${sk.toUpperCase()}`);
+        });
+
+        return {
+          id: tpl.id || `opp_${index}`,
+          role: tpl.title,
+          company: tpl.company,
+          location: tpl.location,
+          type: tpl.opportunityType,
+          matchLevel,
+          matchScore,
+          matchReasons,
+          missingSkills,
+          applyLink: tpl.applyUrl || "",
+          eligibilityBreakdown: {
+            isEligible,
+            reasons,
+            suggestions: actionSuggestions
+          }
+        };
+      });
 
     // B. AI CACHING & RATE LIMIT CONTROLLER (OPENROUTER SPAM PROTECTION)
     // ----------------------------------------------------
