@@ -154,6 +154,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing profile parameters" }, { status: 400 });
     }
 
+    // Backend validation of required fields
+    if (
+      !profile.fullName?.trim() ||
+      !profile.college?.trim() ||
+      !profile.department?.trim() ||
+      !profile.currentYear ||
+      !profile.graduationYear ||
+      !profile.dreamRole?.trim() ||
+      !profile.goal ||
+      profile.cgpa === undefined ||
+      profile.cgpa <= 0 ||
+      profile.cgpa > 10 ||
+      ((profile.languages || []).length === 0 &&
+       (profile.frameworks || []).length === 0 &&
+       (profile.tools || []).length === 0)
+    ) {
+      return NextResponse.json({
+        error: "Validation Error",
+        message: "Please complete all required fields (Name, College, Department, Year, Graduation Year, Dream Role, Goal, CGPA, and at least one technical skill)."
+      }, { status: 400 });
+    }
+
     if (!adminDb) {
       return NextResponse.json({ error: "Database service unavailable" }, { status: 503 });
     }

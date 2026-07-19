@@ -251,43 +251,72 @@ export default function CareerDnaPage() {
 
   const validateForm = () => {
     if (!formData.fullName.trim()) {
-      showToast("Full Name is required in Step 1", "error");
+      showToast("Please complete the required fields before analyzing your Career DNA.", "error");
       setActiveStep(1);
+      setTimeout(() => {
+        const el = document.getElementById("fullName");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+      }, 100);
       return false;
     }
     if (!formData.college.trim()) {
-      showToast("College Name is required in Step 1", "error");
+      showToast("Please complete the required fields before analyzing your Career DNA.", "error");
       setActiveStep(1);
+      setTimeout(() => {
+        const el = document.getElementById("college");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+      }, 100);
       return false;
     }
     if (!formData.department.trim()) {
-      showToast("Department is required in Step 1", "error");
+      showToast("Please complete the required fields before analyzing your Career DNA.", "error");
       setActiveStep(1);
+      setTimeout(() => {
+        const el = document.getElementById("department");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+      }, 100);
       return false;
     }
     if (!formData.dreamRole.trim()) {
-      showToast("Dream Role is required in Step 2", "error");
+      showToast("Please complete the required fields before analyzing your Career DNA.", "error");
       setActiveStep(2);
+      setTimeout(() => {
+        const el = document.getElementById("dreamRole");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+      }, 100);
       return false;
     }
-    if (!formData.preferredLocation.trim()) {
-      showToast("Preferred Location is required in Step 2", "error");
+    if (!formData.goal) {
+      showToast("Please complete the required fields before analyzing your Career DNA.", "error");
       setActiveStep(2);
+      setTimeout(() => {
+        const el = document.getElementById("careerGoal");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+      }, 100);
       return false;
     }
     if (formData.cgpa <= 0 || formData.cgpa > 10) {
-      showToast("Please enter a valid CGPA between 0 and 10 in Step 3", "error");
+      showToast("Please complete the required fields before analyzing your Career DNA.", "error");
       setActiveStep(3);
+      setTimeout(() => {
+        const el = document.getElementById("cgpa");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        el?.focus();
+      }, 100);
       return false;
     }
-    if (formData.tenthPercentage <= 0 || formData.tenthPercentage > 100) {
-      showToast("Please enter a valid 10th Percentage in Step 3", "error");
-      setActiveStep(3);
-      return false;
-    }
-    if (formData.twelfthPercentage <= 0 || formData.twelfthPercentage > 100) {
-      showToast("Please enter a valid 12th Percentage in Step 3", "error");
-      setActiveStep(3);
+    if (formData.languages.length === 0 && formData.frameworks.length === 0 && formData.tools.length === 0) {
+      showToast("Please complete the required fields before analyzing your Career DNA.", "error");
+      setActiveStep(4);
+      setTimeout(() => {
+        const el = document.getElementById("skillsSection");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
       return false;
     }
     return true;
@@ -449,6 +478,7 @@ export default function CareerDnaPage() {
                       <input
                         type="text"
                         required
+                        id="fullName"
                         value={formData.fullName}
                         onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                         placeholder="e.g. Sajid Mohamed"
@@ -460,6 +490,7 @@ export default function CareerDnaPage() {
                       <input
                         type="text"
                         required
+                        id="college"
                         value={formData.college}
                         onChange={e => setFormData({ ...formData, college: e.target.value })}
                         placeholder="e.g. SRM University"
@@ -472,6 +503,7 @@ export default function CareerDnaPage() {
                         <input
                           type="text"
                           required
+                          id="department"
                           value={formData.department}
                           onChange={e => setFormData({ ...formData, department: e.target.value })}
                           placeholder="e.g. CSE, ECE"
@@ -512,6 +544,7 @@ export default function CareerDnaPage() {
                       <input
                         type="text"
                         required
+                        id="dreamRole"
                         value={formData.dreamRole}
                         onChange={e => setFormData({ ...formData, dreamRole: e.target.value })}
                         placeholder="e.g. Software Engineer"
@@ -522,6 +555,7 @@ export default function CareerDnaPage() {
                       <div>
                         <label className="block text-xs text-gray-400 mb-1.5 font-medium">Core Goal</label>
                         <select
+                          id="careerGoal"
                           value={formData.goal}
                           onChange={e => setFormData({ ...formData, goal: e.target.value as any })}
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
@@ -561,6 +595,7 @@ export default function CareerDnaPage() {
                           min="0"
                           max="10"
                           required
+                          id="cgpa"
                           value={formData.cgpa}
                           onChange={e => setFormData({ ...formData, cgpa: Number(e.target.value) })}
                           placeholder="e.g. 8.5"
@@ -606,7 +641,7 @@ export default function CareerDnaPage() {
                 )}
 
                 {activeStep === 4 && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
+                  <div id="skillsSection" className="space-y-4 animate-in fade-in duration-200">
                     <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">💻 Technical Profile & Links</h3>
                     
                     {/* Resume Upload parsing section */}
