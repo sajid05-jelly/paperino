@@ -1144,6 +1144,59 @@ export default function CareerDnaPage() {
                 </div>
               </div>
 
+              {/* AI Career Roadmap */}
+              {analysis?.roadmap && analysis.roadmap.length > 0 && (
+                <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-6 space-y-4">
+                  <h3 className="text-md font-bold text-white flex items-center gap-2">
+                    <TrendingUp className="text-purple-400" />
+                    AI Career Roadmap
+                  </h3>
+                  <div className="relative pl-4 border-l border-purple-500/30 space-y-4 py-1">
+                    {analysis.roadmap.map((step: string, idx: number) => (
+                      <div key={idx} className="relative text-xs text-gray-300">
+                        <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-purple-500 border border-[#05030a] shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
+                        <span className="font-bold text-white block mb-0.5">Phase {idx + 1}</span>
+                        <span>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Technical Skill Gaps & Course Recommendations */}
+              {((analysis?.skillGap && analysis.skillGap.length > 0) || (analysis?.learningRecommendations && analysis.learningRecommendations.length > 0)) && (
+                <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-6 space-y-4">
+                  <h3 className="text-md font-bold text-white flex items-center gap-2">
+                    <Code className="text-purple-400" />
+                    Skill Gaps & Learning
+                  </h3>
+                  <div className="space-y-3">
+                    {analysis?.skillGap && analysis.skillGap.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="block text-[10px] text-rose-400 font-bold uppercase tracking-wider">Identified Skill Gaps:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {analysis.skillGap.map((gap: string, idx: number) => (
+                            <span key={idx} className="text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded font-medium">
+                              {gap}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {analysis?.learningRecommendations && analysis.learningRecommendations.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-white/[0.05]">
+                        <span className="block text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Learning Suggestions:</span>
+                        <ul className="list-disc pl-4 text-xs text-gray-300 space-y-1">
+                          {analysis.learningRecommendations.map((rec: string, idx: number) => (
+                            <li key={idx}>{rec}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Paperino Integration Hub */}
               <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-6 space-y-4">
                 <h3 className="text-md font-bold text-white flex items-center gap-2">

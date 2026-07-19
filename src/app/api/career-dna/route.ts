@@ -1,20 +1,140 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runApiGuard } from "@/lib/api-guard";
-import { generateJSONResponse } from "@/services/groqService";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
+// OpenRouter Settings
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "openrouter/free";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || ""; // Fallback
+
+// Predefined Opportunities Database for Rule-Based Matcher (Zero AI Cost)
+interface OpportunityTemplate {
+  role: string;
+  company: string;
+  location: string;
+  minCgpa: number;
+  maxBacklogs: number;
+  requiredSkills: string[];
+  deptMatches: string[];
+}
+
+const INTERNSHIP_TEMPLATES: OpportunityTemplate[] = [
+  {
+    role: "Full Stack Developer Intern",
+    company: "Netflix",
+    location: "Chennai (Remote)",
+    minCgpa: 8.0,
+    maxBacklogs: 0,
+    requiredSkills: ["javascript", "react", "node.js", "git"],
+    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+  },
+  {
+    role: "Software Engineer Intern",
+    company: "Google",
+    location: "Chennai",
+    minCgpa: 8.5,
+    maxBacklogs: 0,
+    requiredSkills: ["java", "python", "c++", "data structures", "git"],
+    deptMatches: ["cse", "it", "ece", "btech", "mtech"]
+  },
+  {
+    role: "Frontend Developer Intern",
+    company: "Orchestrix",
+    location: "Chennai (Hybrid)",
+    minCgpa: 7.5,
+    maxBacklogs: 1,
+    requiredSkills: ["javascript", "react", "html", "css", "figma"],
+    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+  },
+  {
+    role: "Data Science Intern",
+    company: "Walmart Labs",
+    location: "Bangalore (Remote)",
+    minCgpa: 8.0,
+    maxBacklogs: 0,
+    requiredSkills: ["python", "sql", "aws", "git"],
+    deptMatches: ["cse", "it", "ece", "btech", "mtech", "mba"]
+  },
+  {
+    role: "Cloud DevOps Intern",
+    company: "Amazon Web Services",
+    location: "Bangalore",
+    minCgpa: 8.2,
+    maxBacklogs: 0,
+    requiredSkills: ["python", "docker", "kubernetes", "aws", "git"],
+    deptMatches: ["cse", "it", "ece", "btech", "mtech"]
+  },
+  {
+    role: "Mobile App Developer Intern",
+    company: "Swiggy",
+    location: "Bangalore",
+    minCgpa: 7.8,
+    maxBacklogs: 1,
+    requiredSkills: ["javascript", "react", "swift", "kotlin", "git"],
+    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+  }
+];
+
+const PLACEMENT_TEMPLATES: OpportunityTemplate[] = [
+  {
+    role: "Graduate Software Engineer",
+    company: "Microsoft",
+    location: "Hyderabad",
+    minCgpa: 8.5,
+    maxBacklogs: 0,
+    requiredSkills: ["java", "c#", "c++", "data structures", "git", "aws"],
+    deptMatches: ["cse", "it", "ece", "btech", "mtech"]
+  },
+  {
+    role: "Associate Frontend Developer",
+    company: "Zoho Corporation",
+    location: "Chennai",
+    minCgpa: 7.0,
+    maxBacklogs: 1,
+    requiredSkills: ["javascript", "react", "html", "css", "git"],
+    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+  },
+  {
+    role: "Full Stack Engineer (L1)",
+    company: "Freshworks",
+    location: "Chennai",
+    minCgpa: 7.8,
+    maxBacklogs: 0,
+    requiredSkills: ["javascript", "react", "node.js", "sql", "git"],
+    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+  },
+  {
+    role: "Data Analyst / Scientist",
+    company: "Deloitte",
+    location: "Bangalore",
+    minCgpa: 7.5,
+    maxBacklogs: 0,
+    requiredSkills: ["python", "sql", "aws", "git", "figma"],
+    deptMatches: ["cse", "it", "ece", "btech", "mtech", "mba", "mca"]
+  },
+  {
+    role: "Systems DevOps Engineer",
+    company: "Cognizant",
+    location: "Coimbatore",
+    minCgpa: 7.0,
+    maxBacklogs: 2,
+    requiredSkills: ["python", "docker", "aws", "git"],
+    deptMatches: ["cse", "it", "ece", "mca", "btech"]
+  }
+];
+
 export async function POST(req: NextRequest) {
-  // 1. Run Security API Guard & Token Auth
+  // 1. Security API Guard
   const guard = await runApiGuard(req);
   if (guard.blocked) return guard.response;
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Unauthorized: Missing authentication credentials" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized: Missing credentials" }, { status: 401 });
   }
 
   const token = authHeader.substring(7);
@@ -38,129 +158,252 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Database service unavailable" }, { status: 503 });
     }
 
-    // 2. Query Context: Paperino Pulse (Hiring News)
-    let pulseNewsText = "";
-    try {
-      const pulseSnap = await adminDb
-        .collection("pulse_updates")
-        .orderBy("createdAt", "desc")
-        .limit(10)
-        .get();
-      const news: string[] = [];
-      pulseSnap.forEach((doc) => {
-        const d = doc.data();
-        if (d.title || d.content) {
-          news.push(`- ${d.title || ""}: ${d.content || ""}`);
-        }
-      });
-      pulseNewsText = news.join("\n");
-    } catch (e) {
-      console.warn("[Career DNA API] Pulse context fetch skipped:", e);
+    // A. DYNAMIC SHADOW RULES ENGINE (ZERO TOKEN COST)
+    // ----------------------------------------------------
+    const currentYear = Number(profile.currentYear) || 1;
+    const cgpa = Number(profile.cgpa) || 8.0;
+    const backlogs = Number(profile.activeBacklogs) || 0;
+    const dept = String(profile.department).toLowerCase().trim();
+    const dreamRole = String(profile.dreamRole).toLowerCase().trim();
+
+    // Determine readiness badge statically
+    let readinessLevel: "High Ready" | "Medium Ready" | "Beginner" = "Beginner";
+    if (cgpa >= 8.5 && backlogs === 0 && (!!profile.resumeText || !!profile.github)) {
+      readinessLevel = "High Ready";
+    } else if (cgpa >= 7.0 && backlogs <= 1) {
+      readinessLevel = "Medium Ready";
     }
 
-    // 3. Query Context: Senior Insights
-    let seniorInsightsText = "";
-    try {
-      const insightsSnap = await adminDb
-        .collection("survival_notes")
-        .where("status", "==", "approved")
-        .limit(15)
-        .get();
-      const tips: string[] = [];
-      insightsSnap.forEach((doc) => {
-        const d = doc.data();
-        tips.push(`- [Subject: ${d.subjectName || d.subjectId}] [Topic: ${d.category}] Contributor tip: ${d.advice || ""}`);
-      });
-      seniorInsightsText = tips.join("\n");
-    } catch (e) {
-      console.warn("[Career DNA API] Senior insights context fetch skipped:", e);
-    }
+    // Determine templates based on placement mode (Year 4 gets placement, others get internship)
+    const isPlacementMode = currentYear >= 4;
+    const templates = isPlacementMode ? PLACEMENT_TEMPLATES : INTERNSHIP_TEMPLATES;
 
-    // 4. Construct Groq AI prompt
-    const prompt = `You are the ultimate Career DNA AI Mentor for students at Paperino (the premium study hub).
-Analyze the student's profile, academic stats, skills, resume, campus recruitment news, and senior insights to provide personalized career recommendations and guidance.
+    // Build user user-skills list for static matching
+    const userSkills = new Set<string>();
+    (profile.languages || []).forEach((s: string) => userSkills.add(s.toLowerCase().trim()));
+    (profile.frameworks || []).forEach((s: string) => userSkills.add(s.toLowerCase().trim()));
+    (profile.tools || []).forEach((s: string) => userSkills.add(s.toLowerCase().trim()));
 
-STUDENT PROFILE DATA:
-- Name: ${profile.fullName}
-- College: ${profile.college}
-- Department: ${profile.department}
-- Current Year: ${profile.currentYear}
-- Graduation Year: ${profile.graduationYear}
-- Dream Role: ${profile.dreamRole}
-- Dream Company: ${profile.dreamCompany}
-- Preferred Location: ${profile.preferredLocation}
-- Goals: ${profile.goal}
-- Academic Performance:
-  - CGPA: ${profile.cgpa}
-  - 10th Percentage: ${profile.tenthPercentage}%
-  - 12th Percentage: ${profile.twelfthPercentage}%
-  - Active Backlogs: ${profile.activeBacklogs}
-- Technical Profile:
-  - Languages: ${profile.languages?.join(", ") || "None specified"}
-  - Frameworks: ${profile.frameworks?.join(", ") || "None specified"}
-  - Tools: ${profile.tools?.join(", ") || "None specified"}
-  - Certifications: ${profile.certifications?.join(", ") || "None specified"}
-  - Projects: ${profile.projects?.join("\n") || "None specified"}
-  - GitHub URL: ${profile.github || "None provided"}
-  - LinkedIn: ${profile.linkedin || "None provided"}
-  - Resume Text (parsed): ${profile.resumeText || "No resume uploaded"}
-
-PAPERINO CAMPUS RECRUITMENT NEWS (PULSE):
-${pulseNewsText || "No campus updates available at the moment."}
-
-SENIOR ACADEMIC SURVIVAL NOTES:
-${seniorInsightsText || "No senior advice available."}
-
-RULES:
-1. Evaluate user's profile and determine an internal Readiness Score (0 to 100). Do NOT output the numeric score.
-   Instead map it to one of these:
-   - "High Ready" (CGPA >= 8.5, good projects/skills, no backlogs, GitHub/Resume present)
-   - "Medium Ready" (CGPA 7.0-8.5, some skills, minimal backlogs)
-   - "Beginner" (CGPA < 7.0 or missing key skills/profiles, active backlogs)
-2. Generate 4-6 specific job/internship recommendations matching their Dream Role/Company and technical profile.
-3. Classify matches into "High Match", "Medium Match", or "Stretch Opportunity" using the student's profile qualifications.
-4. PLACEMENT MODE: If the student is in their final year (Year 4, or graduation year is soon), prioritize Full-time Placement opportunities. Otherwise, prioritize Internships.
-5. In eligibilityBreakdown, if a student has active backlogs, CGPA below 8.0, missing Github, or missing resume, mark them as NOT eligible for High/Medium matches and list the explicit reasons (e.g. "Resume missing", "GitHub missing", "CGPA below requirement", etc.) and action items to improve.
-6. Generate 4-6 personalized improvement suggestions (e.g., "Add GitHub profile", "Upload your resume", "Clear active backlogs", etc.).
-7. Return ONLY valid, strict JSON matching this schema:
-{
-  "readinessLevel": "High Ready" | "Medium Ready" | "Beginner",
-  "suggestions": ["string"],
-  "opportunities": [
-    {
-      "id": "string", // Unique ID
-      "role": "string", // Job Role Title
-      "company": "string", // Hiring Company Name
-      "location": "string", // Job Location
-      "type": "Internship" | "Placement" | "Higher Studies",
-      "matchLevel": "High Match" | "Medium Match" | "Stretch Opportunity",
-      "matchScore": number, // 0-100 hidden score
-      "matchReasons": ["string"], // Checked qualifications (e.g. "✔ React Found")
-      "missingSkills": ["string"], // Skills required but missing
-      "applyLink": "string", // Apply URL or dummy link
-      "eligibilityBreakdown": {
-        "isEligible": boolean,
-        "reasons": ["string"], // Reasons why they are not eligible (empty if eligible)
-        "suggestions": ["string"] // Actionable advice to become eligible
+    // Run Rule-Based Matching for Opportunities
+    const opportunities = templates.map((tpl, index) => {
+      // 1. Check eligibility
+      const reasons: string[] = [];
+      if (cgpa < tpl.minCgpa) {
+        reasons.push(`Minimum CGPA requirement is ${tpl.minCgpa} (Your CGPA: ${cgpa})`);
       }
+      if (backlogs > tpl.maxBacklogs) {
+        reasons.push(`Maximum allowed backlogs is ${tpl.maxBacklogs} (Your backlogs: ${backlogs})`);
+      }
+      if (tpl.deptMatches.length > 0 && !tpl.deptMatches.includes(dept)) {
+        // Not matching department
+      }
+
+      const isEligible = reasons.length === 0;
+
+      // 2. Identify missing skills
+      const missingSkills = tpl.requiredSkills.filter(sk => !userSkills.has(sk));
+      const matchReasons = tpl.requiredSkills.filter(sk => userSkills.has(sk)).map(sk => `Matches required skill: ${sk.toUpperCase()}`);
+
+      // Calculate match score
+      let matchScore = 50;
+      if (tpl.role.toLowerCase().includes(dreamRole)) matchScore += 30;
+      matchScore += Math.floor((1 - (missingSkills.length / tpl.requiredSkills.length)) * 20);
+
+      // Determine classification category
+      let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
+      if (isEligible && tpl.role.toLowerCase().includes(dreamRole) && missingSkills.length <= 1) {
+        matchLevel = "High Match";
+      } else if (isEligible && missingSkills.length <= 2) {
+        matchLevel = "Medium Match";
+      }
+
+      // Actionable advice to qualify
+      const actionSuggestions = [...reasons.map(r => `Improve status to clear: ${r}`), ...missingSkills.map(s => `Acquire and add skill: ${s.toUpperCase()}`)];
+
+      return {
+        id: `rule_opp_${index}`,
+        role: tpl.role,
+        company: tpl.company,
+        location: tpl.location,
+        type: isPlacementMode ? "Placement" : "Internship",
+        matchLevel,
+        matchScore,
+        matchReasons,
+        missingSkills,
+        applyLink: `https://paperino.app/jobs/apply/${index}`,
+        eligibilityBreakdown: {
+          isEligible,
+          reasons,
+          suggestions: actionSuggestions
+        }
+      };
+    });
+
+    // B. AI CACHING & RATE LIMIT CONTROLLER (OPENROUTER SPAM PROTECTION)
+    // ----------------------------------------------------
+    const todayStr = new Date().toISOString().split("T")[0];
+    const userDnaRef = adminDb.collection("career_dna").doc(uid);
+    const docSnap = await userDnaRef.get();
+    const savedData = docSnap.exists ? docSnap.data() : null;
+
+    // Construct profile hash for change detection
+    const profileHashStr = JSON.stringify({
+      resumeText: profile.resumeText || "",
+      languages: profile.languages || [],
+      frameworks: profile.frameworks || [],
+      tools: profile.tools || [],
+      projects: profile.projects || [],
+      cgpa: profile.cgpa || 8.0,
+      dreamRole: profile.dreamRole || "",
+    });
+
+    // Check rate limit status
+    let usage = savedData?.usage || {
+      lastResetDate: todayStr,
+      chatCount: 0,
+      resumeCount: 0,
+      skillGapCount: 0,
+      roadmapCount: 0
+    };
+
+    // Daily reset check
+    if (usage.lastResetDate !== todayStr) {
+      usage = {
+        lastResetDate: todayStr,
+        chatCount: 0,
+        resumeCount: 0,
+        skillGapCount: 0,
+        roadmapCount: 0
+      };
     }
-  ]
-}
-`;
 
-    console.log(`[Career DNA API] Requesting AI Analysis for user: ${uid}...`);
-    const response = await generateJSONResponse(prompt);
+    // Limit Check: Skill Gap Analyses (maximum 5/day)
+    if (usage.skillGapCount >= 5 && savedData?.profileHash !== profileHashStr) {
+      return NextResponse.json({
+        error: "Rate Limit Exceeded",
+        message: "You have exceeded your limit of 5 AI Skill Gap analyses per day. Please try again tomorrow."
+      }, { status: 429 });
+    }
 
-    // Save Career DNA analysis & profile history in database
-    await adminDb.collection("career_dna").doc(uid).set({
+    // Return cached response if profile has not changed
+    if (savedData && savedData.profileHash === profileHashStr && savedData.analysis) {
+      console.log(`[Career DNA AI Cache] Profile unchanged. Returning cached analysis for: ${uid}`);
+      return NextResponse.json({
+        readinessLevel,
+        opportunities,
+        ...savedData.analysis
+      });
+    }
+
+    // C. MINIMAL PROMPTING SMART CONTROLLER & OPENROUTER FETCH
+    // ----------------------------------------------------
+    // Send ONLY required parameters to keep context window low
+    const minimalProfile = {
+      role: profile.dreamRole,
+      skills: Array.from(userSkills),
+      cgpa: profile.cgpa,
+      projects: profile.projects || [],
+      certifications: profile.certifications || [],
+      hasResume: !!profile.resumeText
+    };
+
+    const prompt = `You are a premium career advisor.
+    Analyze this student technical profile to generate career improvement steps, roadmap, and learning recommendations.
+    
+    STUDENT PROFILE:
+    - Target Role: ${minimalProfile.role}
+    - Skills: ${minimalProfile.skills.join(", ")}
+    - CGPA: ${minimalProfile.cgpa}
+    - Projects: ${minimalProfile.projects.join("; ")}
+    - Certifications: ${minimalProfile.certifications.join("; ")}
+    
+    Return STRICTLY a JSON object with these key outputs:
+    {
+      "suggestions": ["4-5 quick strategic improvement tips to boost target role preparedness"],
+      "roadmap": ["3-5 clear roadmap step titles"],
+      "skillGap": ["3-4 technical skills missing to qualify for the dream role"],
+      "learningRecommendations": ["3-4 recommended courses or topics to learn"]
+    }
+    Respond ONLY with raw JSON. No conversational text or markdown wrappers.`;
+
+    console.log(`[Career DNA API] Requesting OpenRouter Llama API for: ${uid}...`);
+    
+    let aiResponse = {
+      suggestions: [
+        "Improve profile by uploading a parsed resume.",
+        "Add more coding projects in your repository.",
+        "Clear active backlogs to boost placement criteria.",
+        "Develop additional framework skills matching your target role."
+      ],
+      roadmap: ["Acquire Foundational Core Skills", "Build Projects & Portfolios", "Apply for Internships", "Interview Prep"],
+      skillGap: ["Industry Standard Frameworks", "System Design Fundamentals"],
+      learningRecommendations: ["Complete online developer certification tracks", "Build end-to-end full stack projects"]
+    };
+
+    try {
+      if (!OPENROUTER_API_KEY) {
+        throw new Error("No AI API Keys found");
+      }
+
+      const response = await fetch(OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://paperino.app",
+          "X-Title": "Paperino"
+        },
+        body: JSON.stringify({
+          model: DEFAULT_MODEL,
+          messages: [
+            { role: "system", content: "You are a professional JSON generator. Respond only with raw JSON." },
+            { role: "user", content: prompt }
+          ],
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`OpenRouter API error: ${response.status} ${errText}`);
+      }
+
+      const resData = await response.json();
+      const content = resData.choices?.[0]?.message?.content || "{}";
+      const parsed = JSON.parse(content.replace(/^```json\s*/i, "").replace(/```$/i, "").trim());
+      
+      if (parsed.suggestions && parsed.roadmap) {
+        aiResponse = parsed;
+      }
+      
+      // Increment Usage Count on Successful Call
+      usage.skillGapCount += 1;
+
+    } catch (aiErr) {
+      console.error("[Career DNA AI Failover Warning]:", aiErr);
+      // Soft Failover - return predefined fallback instead of crashing
+    }
+
+    // D. PERSIST CACHE AND METRICS TO FIRESTORE
+    // ----------------------------------------------------
+    await userDnaRef.set({
       profile,
-      analysis: response,
+      profileHash: profileHashStr,
+      analysis: aiResponse,
+      usage,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    return NextResponse.json(response);
+    return NextResponse.json({
+      readinessLevel,
+      opportunities,
+      ...aiResponse
+    });
   } catch (err: any) {
-    console.error("[Career DNA API] Error:", err);
-    return NextResponse.json({ error: err.message || "Failed to analyze career data" }, { status: 500 });
+    console.error("[Career DNA API] Critical Error:", err);
+    return NextResponse.json({
+      error: "AI Career Mentor is temporarily unavailable. Please try again later.",
+      message: err.message
+    }, { status: 500 });
   }
 }
