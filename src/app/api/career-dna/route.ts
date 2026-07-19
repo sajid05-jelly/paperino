@@ -201,11 +201,29 @@ export async function POST(req: NextRequest) {
     const dept = String(profile.department).toLowerCase().trim();
     const dreamRole = String(profile.dreamRole).toLowerCase().trim();
 
-    // Determine readiness badge statically
+    // Determine readiness badge statically using complete profile analysis (projects, certs, resume, etc)
     let readinessLevel: "High Ready" | "Medium Ready" | "Beginner" = "Beginner";
-    if (cgpa >= 8.5 && backlogs === 0 && (!!profile.resumeText || !!profile.github)) {
+    const certsCount = (profile.certifications || []).length;
+    const projectsCount = (profile.projects || []).length;
+    const hasGithub = !!profile.github && String(profile.github).startsWith("http");
+    const hasLinkedin = !!profile.linkedin && String(profile.linkedin).startsWith("http");
+    const hasResume = !!profile.resumeText && String(profile.resumeText).trim().length > 50;
+
+    if (
+      cgpa >= 8.0 &&
+      backlogs === 0 &&
+      hasResume &&
+      hasGithub &&
+      hasLinkedin &&
+      certsCount >= 1 &&
+      projectsCount >= 1
+    ) {
       readinessLevel = "High Ready";
-    } else if (cgpa >= 7.0 && backlogs <= 1) {
+    } else if (
+      cgpa >= 6.5 &&
+      backlogs <= 1 &&
+      (hasResume || hasGithub || hasLinkedin || certsCount >= 1 || projectsCount >= 1)
+    ) {
       readinessLevel = "Medium Ready";
     }
 

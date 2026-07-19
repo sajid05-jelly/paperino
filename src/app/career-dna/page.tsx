@@ -241,9 +241,47 @@ export default function CareerDnaPage() {
         throw new Error(data.error || "Failed to extract text from resume");
       }
 
-      setFormData(prev => ({ ...prev, resumeText: data.text }));
-      extractSkillsFromText(data.text);
-      showToast("Resume parsed! Skills and technical profile populated.", "success");
+      showToast("ATS extraction complete. Running deep semantic AI parsing...", "info");
+
+      // Phase 2: Call AI Career DNA parser
+      const aiRes = await fetch("/api/ats", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${idToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text: data.text,
+          mode: "dna",
+          role: formData.dreamRole || "Software Engineer"
+        })
+      });
+
+      const aiData = await aiRes.json();
+      if (!aiRes.ok) {
+        throw new Error(aiData.error || "AI failed to analyze resume context");
+      }
+
+      // Map structured AI data to form pickers
+      setFormData(prev => ({
+        ...prev,
+        fullName: aiData.name && aiData.name !== "string" ? toProperCase(aiData.name) : prev.fullName,
+        college: aiData.college && aiData.college !== "string" ? aiData.college : prev.college,
+        department: aiData.department && aiData.department !== "string" ? aiData.department : prev.department,
+        graduationYear: Number(aiData.graduationYear) || prev.graduationYear,
+        cgpa: Number(aiData.cgpa) || prev.cgpa,
+        github: aiData.github && aiData.github !== "string" && aiData.github.startsWith("http") ? aiData.github : prev.github,
+        linkedin: aiData.linkedin && aiData.linkedin !== "string" && aiData.linkedin.startsWith("http") ? aiData.linkedin : prev.linkedin,
+        portfolio: aiData.portfolio && aiData.portfolio !== "string" && aiData.portfolio.startsWith("http") ? aiData.portfolio : prev.portfolio,
+        languages: Array.from(new Set([...prev.languages, ...(aiData.languages || []).map((s: string) => toProperCase(s))])),
+        frameworks: Array.from(new Set([...prev.frameworks, ...(aiData.frameworks || []).map((s: string) => toProperCase(s))])),
+        tools: Array.from(new Set([...prev.tools, ...(aiData.tools || []).map((s: string) => toProperCase(s))])),
+        certifications: Array.from(new Set([...prev.certifications, ...(aiData.certifications || []).map((s: string) => toProperCase(s))])),
+        projects: Array.from(new Set([...prev.projects, ...(aiData.projects || []).map((s: string) => toProperCase(s))])),
+        resumeText: data.text
+      }));
+
+      showToast("Resume analyzed! All profile fields and skill pickers populated.", "success");
     } catch (err: any) {
       console.error(err);
       showToast(err.message || "Failed to parse resume file", "error");

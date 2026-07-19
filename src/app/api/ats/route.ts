@@ -177,8 +177,16 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
   const rawText = body.text;
   const role = body.role;
 
-  if (!rawText || !role) {
-    return NextResponse.json({ error: "Text and role are required." }, { status: 400 });
+  if (!rawText) {
+    return NextResponse.json({ error: "Text is required." }, { status: 400 });
+  }
+
+  if (body.mode === "dna") {
+    return await handleDnaAnalysis(req, body, creditCheck);
+  }
+
+  if (!role) {
+    return NextResponse.json({ error: "Role is required." }, { status: 400 });
   }
 
   const sanitizedRole = role.slice(0, 120).replace(/[<>"']/g, "");
@@ -241,6 +249,82 @@ ${optimizedText}
 
   console.timeEnd(`ATS_Analysis`);
   return NextResponse.json(finalResult);
+}
+
+async function handleDnaAnalysis(req: NextRequest, body: any, creditCheck: any) {
+  const rawText = body.text;
+  const dreamRole = body.role || "Software Engineer";
+  
+  if (!rawText) {
+    return NextResponse.json({ error: "Text is required." }, { status: 400 });
+  }
+
+  const optimizedText = rawText.slice(0, 10000);
+
+  const prompt = `You are an expert Technical Recruiter and Career DNA Advisor.
+Analyze the student resume text and extract/analyze ALL sections.
+Target Dream Role: "${dreamRole}".
+
+Return STRICTLY JSON matching this schema:
+{
+  "name": "string",
+  "email": "string",
+  "phone": "string",
+  "linkedin": "string",
+  "github": "string",
+  "portfolio": "string",
+  "college": "string",
+  "degree": "string",
+  "department": "string",
+  "graduationYear": number,
+  "cgpa": number,
+  "languages": ["string"],
+  "frameworks": ["string"],
+  "tools": ["string"],
+  "certifications": ["string"],
+  "projects": ["string"],
+  "detailedProjects": [
+    {
+      "title": "string",
+      "technologies": ["string"],
+      "difficulty": "Beginner" | "Intermediate" | "Advanced",
+      "industryRelevance": "string",
+      "impact": "string",
+      "missingInfo": "string",
+      "atsKeywords": ["string"],
+      "strengths": "string",
+      "weaknesses": "string"
+    }
+  ],
+  "detailedCertifications": [
+    {
+      "name": "string",
+      "classification": "Cloud" | "Programming" | "AI" | "Networking" | "Security" | "Data",
+      "valueForDreamRole": "string",
+      "suggestions": ["string"]
+    }
+  ],
+  "summary": "string"
+}
+
+Resume Text:
+${optimizedText}
+`;
+
+  try {
+    console.log("[ATS] Generating AI Career DNA parsing via Groq...");
+    const parsed = await generateJSONResponse(prompt);
+
+    // Increment credit usage
+    if (creditCheck.uid && creditCheck.limit !== Infinity) {
+      await incrementCreditUsage(creditCheck.uid, 'ats');
+    }
+
+    return NextResponse.json(parsed);
+  } catch (err: any) {
+    console.error("[ATS DNA Error]:", err.message);
+    return NextResponse.json({ error: "Resume analysis failed: " + err.message }, { status: 500 });
+  }
 }
 
 // ============================================================================
