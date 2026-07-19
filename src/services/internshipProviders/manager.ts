@@ -7,54 +7,7 @@ import { UnstopProvider } from "./unstopProvider";
 async function verifyApplyUrl(url: string): Promise<boolean> {
   if (!url || !url.startsWith("http")) return false;
   if (!url.toLowerCase().includes("unstop.com")) return false;
-  
-  try {
-    // Try HEAD first (faster, doesn't load body)
-    let res = await fetch(url, {
-      method: "HEAD",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(4000) // 4 seconds timeout
-    });
-
-    // If HEAD fails (some servers return 405 or 403 for HEAD), fall back to GET
-    if (!res.ok || res.status === 405 || res.status === 403) {
-      res = await fetch(url, {
-        method: "GET",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        },
-        redirect: "follow",
-        signal: AbortSignal.timeout(4000)
-      });
-    }
-
-    if (!res.ok) return false;
-
-    // Check for GoDaddy/parked domain indicators in redirect destination
-    const finalUrl = res.url.toLowerCase();
-    const parkingIndicators = [
-      "godaddy",
-      "parked",
-      "domainparking",
-      "domain-parking",
-      "parkingpage",
-      "sedo.com",
-      "hugedomains",
-      "buy-domain",
-      "domainname"
-    ];
-
-    if (parkingIndicators.some((indicator) => finalUrl.includes(indicator))) {
-      return false;
-    }
-
-    return true;
-  } catch (e) {
-    return false;
-  }
+  return true;
 }
 
 export class InternshipManager {

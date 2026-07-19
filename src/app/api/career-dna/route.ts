@@ -3,6 +3,7 @@ import { runApiGuard } from "@/lib/api-guard";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 import { InternshipManager } from "@/services/internshipProviders/manager";
+import { runStats } from "@/services/internshipProviders/stats";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -282,6 +283,9 @@ export async function POST(req: NextRequest) {
     (profile.frameworks || []).forEach((s: string) => userSkills.add(s.toLowerCase().trim()));
     (profile.tools || []).forEach((s: string) => userSkills.add(s.toLowerCase().trim()));
 
+    let rejectedDreamRoleCount = 0;
+    let rejectedSkillsCount = 0;
+
     // Run Rule-Based Matching for Opportunities
     const opportunities = rawOpportunities
       .filter((opp) => {
@@ -298,11 +302,13 @@ export async function POST(req: NextRequest) {
             ["python", "tensorflow", "pytorch", "machine learning", "deep learning", "llm", "llms", "nlp", "computer vision", "generative ai", "data science", "keras", "scikit-learn"].includes(s)
           );
           if (!userHasAiSkills) {
+            rejectedSkillsCount += 1;
             return false;
           }
         }
 
         if (!isRoleRelated(dreamRole, opp.title)) {
+          rejectedDreamRoleCount += 1;
           return false;
         }
         if (isPlacementMode) {
@@ -345,46 +351,58 @@ export async function POST(req: NextRequest) {
         let dreamRoleScore = 0;
         let isDreamRoleMatched = false;
         if (dreamRole && tpl.title.toLowerCase().includes(dreamRole)) {
-          dreamRoleScore = 50;
+          dreamRoleScore = 40;
           isDreamRoleMatched = true;
         } else if (dreamRole) {
           const dreamWords = dreamRole.split(/\s+/);
           const matchedWords = dreamWords.filter(w => tpl.title.toLowerCase().includes(w));
           if (matchedWords.length > 0) {
-            dreamRoleScore = Math.floor((matchedWords.length / dreamWords.length) * 40);
+            dreamRoleScore = Math.floor((matchedWords.length / dreamWords.length) * 30);
             isDreamRoleMatched = true;
           }
         }
 
         const totalSkillsCount = tpl.skills?.length || 1;
         const matchedSkillsCount = (tpl.skills || []).filter((sk: string) => userSkills.has(sk)).length;
-        const skillsScore = Math.floor((matchedSkillsCount / totalSkillsCount) * 30);
+        const skillsScore = Math.floor((matchedSkillsCount / totalSkillsCount) * 25);
 
         const cgpaScore = cgpa >= minCgpa ? 10 : Math.max(0, Math.floor((cgpa / minCgpa) * 8));
         
         let yearScore = 0;
         const targetYears = tpl.eligibility?.targetYears || [1, 2, 3, 4];
         if (targetYears.includes(currentYear)) {
+          yearScore = 10;
+        } else {
           yearScore = 5;
         }
 
         let deptScore = 0;
         const targetDepts = tpl.eligibility?.departments || [];
         if (targetDepts.length === 0 || targetDepts.includes(dept)) {
+          deptScore = 10;
+        } else {
           deptScore = 5;
         }
 
-        const matchScore = dreamRoleScore + skillsScore + cgpaScore + yearScore + deptScore;
+        let resumeProjectsScore = 0;
+        if (profile.resumeText || (profile.projects || []).length > 0) {
+          resumeProjectsScore = 5;
+        }
 
-        // Determine matchLevel classification using strict scoring brackets
+        const matchScore = dreamRoleScore + skillsScore + cgpaScore + yearScore + deptScore + resumeProjectsScore;
+
+        // Categorize using score:
         // 85-100 = High Match
         // 70-84 = Medium Match
-        // Below 70 = Stretch Opportunity
-        let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
+        // 50-69 = Stretch Opportunity
+        // Below 50 should not be shown.
+        let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" | "Below 50" = "Below 50";
         if (matchScore >= 85) {
           matchLevel = "High Match";
         } else if (matchScore >= 70) {
           matchLevel = "Medium Match";
+        } else if (matchScore >= 50) {
+          matchLevel = "Stretch Opportunity";
         }
 
         // 3. Identify Match Reasons
@@ -434,6 +452,87 @@ export async function POST(req: NextRequest) {
           }
         };
       });
+
+    // Sort and limit recommendations by Career DNA compatibility scores
+    const sortedOpportunities = opportunities.filter(o => o.matchLevel !== "Below 50").sort((a, b) => b.matchScore - a.matchScore);
+    const highMatches = sortedOpportunities.filter(o => o.matchLevel === "High Match").slice(0, 5);
+    const mediumMatches = sortedOpportunities.filter(o => o.matchLevel === "Medium Match").slice(0, 5);
+    const stretchMatches = sortedOpportunities.filter(o => o.matchLevel === "Stretch Opportunity").slice(0, 5);
+
+    const finalOpportunities = [...highMatches, ...mediumMatches, ...stretchMatches];
+
+    // Log exact matching and filtering statistics
+    console.log(`
+==========================
+FETCH STATS
+==========================
+
+Page 1:
+Fetched = ${runStats.fetchStats.page1}
+
+Page 2:
+Fetched = ${runStats.fetchStats.page2}
+
+Page 3:
+Fetched = ${runStats.fetchStats.page3}
+
+Page 4:
+Fetched = ${runStats.fetchStats.page4}
+
+Total fetched =
+${runStats.fetchStats.totalFetched}
+
+==========================
+FILTER STATS
+==========================
+
+Expired removed =
+${runStats.filterStats.expiredRemoved}
+
+Duplicate removed =
+${runStats.filterStats.duplicateRemoved}
+
+Invalid URL removed =
+${runStats.filterStats.invalidUrlRemoved}
+
+Remaining =
+${runStats.filterStats.remaining}
+
+==========================
+MATCHING STATS
+==========================
+
+High Match =
+${highMatches.length}
+
+Medium Match =
+${mediumMatches.length}
+
+Stretch =
+${stretchMatches.length}
+
+Rejected because of Dream Role =
+${rejectedDreamRoleCount}
+
+Rejected because of Skills =
+${rejectedSkillsCount}
+
+Rejected because of CGPA =
+0
+
+Rejected because of Year =
+0
+
+==========================
+FINAL
+==========================
+
+How many internships reached the UI?
+${finalOpportunities.length}
+
+Print the first 20 internship titles after filtering:
+${finalOpportunities.slice(0, 20).map((o, idx) => `${idx + 1}. ${o.role} at ${o.company}`).join("\n")}
+`);
 
     // B. AI CACHING & RATE LIMIT CONTROLLER (OPENROUTER SPAM PROTECTION)
     // ----------------------------------------------------
@@ -485,10 +584,11 @@ export async function POST(req: NextRequest) {
     // Return cached response if profile has not changed
     if (savedData && savedData.profileHash === profileHashStr && savedData.analysis) {
       console.log(`[Career DNA AI Cache] Profile unchanged. Returning cached analysis for: ${uid}`);
+      const { opportunities: _ignored, ...cleanAnalysis } = savedData.analysis;
       return NextResponse.json({
         readinessLevel,
-        opportunities,
-        ...savedData.analysis
+        opportunities: finalOpportunities,
+        ...cleanAnalysis
       });
     }
 
@@ -598,7 +698,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       readinessLevel,
-      opportunities,
+      opportunities: finalOpportunities,
       ...aiResponse
     });
   } catch (err: any) {
