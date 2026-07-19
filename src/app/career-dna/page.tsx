@@ -249,9 +249,94 @@ export default function CareerDnaPage() {
     }
   };
 
+  const validateForm = () => {
+    if (!formData.fullName.trim()) {
+      showToast("Full Name is required in Step 1", "error");
+      setActiveStep(1);
+      return false;
+    }
+    if (!formData.college.trim()) {
+      showToast("College Name is required in Step 1", "error");
+      setActiveStep(1);
+      return false;
+    }
+    if (!formData.department.trim()) {
+      showToast("Department is required in Step 1", "error");
+      setActiveStep(1);
+      return false;
+    }
+    if (!formData.dreamRole.trim()) {
+      showToast("Dream Role is required in Step 2", "error");
+      setActiveStep(2);
+      return false;
+    }
+    if (!formData.preferredLocation.trim()) {
+      showToast("Preferred Location is required in Step 2", "error");
+      setActiveStep(2);
+      return false;
+    }
+    if (formData.cgpa <= 0 || formData.cgpa > 10) {
+      showToast("Please enter a valid CGPA between 0 and 10 in Step 3", "error");
+      setActiveStep(3);
+      return false;
+    }
+    if (formData.tenthPercentage <= 0 || formData.tenthPercentage > 100) {
+      showToast("Please enter a valid 10th Percentage in Step 3", "error");
+      setActiveStep(3);
+      return false;
+    }
+    if (formData.twelfthPercentage <= 0 || formData.twelfthPercentage > 100) {
+      showToast("Please enter a valid 12th Percentage in Step 3", "error");
+      setActiveStep(3);
+      return false;
+    }
+    return true;
+  };
+
+  const handleContinue = () => {
+    if (activeStep === 1) {
+      if (!formData.fullName.trim()) {
+        showToast("Full Name is required", "error");
+        return;
+      }
+      if (!formData.college.trim()) {
+        showToast("College Name is required", "error");
+        return;
+      }
+      if (!formData.department.trim()) {
+        showToast("Department is required", "error");
+        return;
+      }
+    } else if (activeStep === 2) {
+      if (!formData.dreamRole.trim()) {
+        showToast("Dream Role is required", "error");
+        return;
+      }
+      if (!formData.preferredLocation.trim()) {
+        showToast("Preferred Location is required", "error");
+        return;
+      }
+    } else if (activeStep === 3) {
+      if (formData.cgpa <= 0 || formData.cgpa > 10) {
+        showToast("Please enter a valid CGPA between 0 and 10", "error");
+        return;
+      }
+      if (formData.tenthPercentage <= 0 || formData.tenthPercentage > 100) {
+        showToast("Please enter a valid 10th Percentage", "error");
+        return;
+      }
+      if (formData.twelfthPercentage <= 0 || formData.twelfthPercentage > 100) {
+        showToast("Please enter a valid 12th Percentage", "error");
+        return;
+      }
+    }
+    setActiveStep(prev => prev + 1);
+  };
+
   // Submit Profile Form
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!validateForm()) return;
     await triggerAnalysis();
   };
 
@@ -771,7 +856,7 @@ export default function CareerDnaPage() {
                   {activeStep < 4 ? (
                     <button
                       type="button"
-                      onClick={() => setActiveStep(prev => prev + 1)}
+                      onClick={handleContinue}
                       className="px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                     >
                       Continue <ArrowRight size={14} />
