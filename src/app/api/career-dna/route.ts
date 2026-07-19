@@ -274,32 +274,83 @@ export async function POST(req: NextRequest) {
 
         const isEligible = reasons.length === 0;
 
-        // 2. Identify match reasons
+        // 2. Compute Match Score out of 100
+        let dreamRoleScore = 0;
+        let isDreamRoleMatched = false;
+        if (dreamRole && tpl.title.toLowerCase().includes(dreamRole)) {
+          dreamRoleScore = 25;
+          isDreamRoleMatched = true;
+        } else if (dreamRole) {
+          const dreamWords = dreamRole.split(/\s+/);
+          const matchedWords = dreamWords.filter(w => tpl.title.toLowerCase().includes(w));
+          if (matchedWords.length > 0) {
+            dreamRoleScore = Math.floor((matchedWords.length / dreamWords.length) * 15);
+            isDreamRoleMatched = true;
+          }
+        }
+
+        const totalSkillsCount = tpl.skills?.length || 1;
+        const matchedSkillsCount = (tpl.skills || []).filter((sk: string) => userSkills.has(sk)).length;
+        const skillsScore = Math.floor((matchedSkillsCount / totalSkillsCount) * 25);
+
+        let locationScore = 0;
+        let isLocationMatched = false;
+        const prefLoc = String(profile.preferredLocation || "").toLowerCase().trim();
+        if (prefLoc && tpl.location.toLowerCase().includes(prefLoc)) {
+          locationScore = 15;
+          isLocationMatched = true;
+        } else if (prefLoc && prefLoc.includes("remote") && tpl.location.toLowerCase().includes("remote")) {
+          locationScore = 15;
+          isLocationMatched = true;
+        }
+
+        const cgpaScore = cgpa >= minCgpa ? 15 : Math.max(0, Math.floor((cgpa / minCgpa) * 10));
+        
+        let yearScore = 0;
+        const targetYears = tpl.eligibility?.targetYears || [1, 2, 3, 4];
+        if (targetYears.includes(currentYear)) {
+          yearScore = 10;
+        }
+
+        let deptScore = 0;
+        const targetDepts = tpl.eligibility?.departments || [];
+        if (targetDepts.length === 0 || targetDepts.includes(dept)) {
+          deptScore = 10;
+        }
+
+        const matchScore = dreamRoleScore + skillsScore + locationScore + cgpaScore + yearScore + deptScore;
+
+        // Determine matchLevel classification using strict scoring brackets
+        // 90-100 = High Match
+        // 70-89 = Medium Match
+        // Below 70 = Stretch Opportunity
+        let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
+        if (matchScore >= 90) {
+          matchLevel = "High Match";
+        } else if (matchScore >= 70) {
+          matchLevel = "Medium Match";
+        }
+
+        // 3. Identify Match Reasons
         const matchReasons: string[] = [];
         (tpl.skills || []).forEach((sk: string) => {
           if (userSkills.has(sk)) {
-            matchReasons.push(`✔ ${sk.charAt(0).toUpperCase() + sk.slice(1)} Skill Found`);
+            const formatted = sk.charAt(0).toUpperCase() + sk.slice(1);
+            matchReasons.push(`✔ ${formatted} required and student knows ${formatted}`);
           }
         });
+        if (currentYear >= 1) {
+          const suffix = currentYear === 2 ? "nd" : currentYear === 3 ? "rd" : "th";
+          matchReasons.push(`✔ Student is eligible for ${currentYear}${suffix} Year`);
+        }
+        if (isLocationMatched) {
+          matchReasons.push("✔ Location preference matches");
+        }
+        if (isDreamRoleMatched) {
+          matchReasons.push("✔ Dream role matches");
+        }
         if (cgpa >= minCgpa) {
           matchReasons.push("✔ CGPA Eligible");
-        }
-        if (currentYear >= 2) {
-          const suffix = currentYear === 2 ? "nd" : currentYear === 3 ? "rd" : "th";
-          matchReasons.push(`✔ ${currentYear}${suffix} Year Eligible`);
-        }
-
-        // Calculate match score
-        let matchScore = 50;
-        if (tpl.title.toLowerCase().includes(dreamRole)) matchScore += 30;
-        matchScore += Math.floor((1 - (missingSkills.length / Math.max(1, tpl.skills?.length || 1))) * 20);
-
-        // Determine classification category
-        let matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
-        if (isEligible && tpl.title.toLowerCase().includes(dreamRole) && missingSkills.length <= 1) {
-          matchLevel = "High Match";
-        } else if (isEligible && missingSkills.length <= 2) {
-          matchLevel = "Medium Match";
         }
 
         // Actionable advice to qualify
