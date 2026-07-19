@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import {
   GraduationCap, Briefcase, Award, Code, CheckCircle, AlertTriangle, HelpCircle,
   TrendingUp, RefreshCw, Layers, Sparkles, Send, Upload, Trash2, ArrowRight,
-  Shield, Bell, BrainCircuit, Globe, Edit2, CheckSquare, Square
+  Shield, Bell, BrainCircuit, Globe, Edit2, CheckSquare, Square, User, X
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { CareerDnaProfile, CareerOpportunity } from "@/types/careerDna";
@@ -28,6 +28,7 @@ export default function CareerDnaPage() {
   const [activeFilter, setActiveFilter] = useState<"All" | "High Match" | "Medium Match" | "Stretch Opportunity">("All");
   const [selectedEligibleMat, setSelectedEligibleMat] = useState<CareerOpportunity | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -113,9 +114,9 @@ export default function CareerDnaPage() {
   const progressMetrics = useMemo(() => {
     const checklist = [
       { label: "Resume Uploaded", checked: !!formData.resumeText, value: 20, missingMsg: "Upload a resume for better AI recommendations." },
-      { label: "LinkedIn Added", checked: !!formData.linkedin && formData.linkedin.includes("linkedin.com"), value: 15, missingMsg: "Improve your LinkedIn profile." },
-      { label: "GitHub Added", checked: !!formData.github && formData.github.includes("github.com"), value: 15, missingMsg: "Upload your GitHub profile." },
-      { label: "Portfolio Website Added", checked: !!formData.portfolio && (formData.portfolio.startsWith("http") || formData.portfolio.includes(".")), value: 15, missingMsg: "Build a portfolio website." },
+      { label: "LinkedIn Added", checked: !!formData.linkedin && formData.linkedin.startsWith("http"), value: 15, missingMsg: "Improve your LinkedIn profile." },
+      { label: "GitHub Added", checked: !!formData.github && formData.github.startsWith("http"), value: 15, missingMsg: "Upload your GitHub profile." },
+      { label: "Portfolio Website Added", checked: !!formData.portfolio && formData.portfolio.startsWith("http"), value: 15, missingMsg: "Build a portfolio website." },
       { label: "Skills Added", checked: (formData.languages.length + formData.frameworks.length + formData.tools.length) > 0, value: 15, missingMsg: "Add programming languages, frameworks, or tools." },
       { label: "Projects Added", checked: formData.projects.length > 0, value: 10, missingMsg: "Complete more technical projects." },
       { label: "Certifications Added", checked: formData.certifications.length > 0, value: 10, missingMsg: "Add professional certifications." },
@@ -287,8 +288,8 @@ export default function CareerDnaPage() {
 
       <header className="w-full mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10 border-b border-white/[0.06] pb-8">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-purple-300">
-            Career DNA <span className="text-sm font-semibold tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-full uppercase ml-3">AI Mentor</span>
+          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-purple-300 flex items-center gap-3">
+            Career DNA <span className="text-sm font-semibold tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-full uppercase">AI Mentor</span>
           </h1>
           <p className="text-gray-400 text-sm mt-1 max-w-xl">
             A premium career intelligence dashboard matching your technical profiles and academic goals.
@@ -297,6 +298,15 @@ export default function CareerDnaPage() {
 
         {profile && (
           <div className="flex items-center gap-3">
+            {!isEditing && (
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="px-4 py-2 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 hover:text-white hover:bg-purple-500/20 transition text-xs font-semibold cursor-pointer flex items-center gap-2 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+              >
+                <User size={12} />
+                View DNA Profile
+              </button>
+            )}
             <button
               onClick={() => {
                 setIsEditing(!isEditing);
@@ -305,7 +315,7 @@ export default function CareerDnaPage() {
               className="px-4 py-2 rounded-full border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition text-xs font-semibold cursor-pointer flex items-center gap-2"
             >
               <Edit2 size={12} />
-              {isEditing ? "View Profile" : "Edit Profile"}
+              {isEditing ? "View Matches" : "Edit Profile"}
             </button>
             {!isEditing && (
               <button
@@ -314,7 +324,7 @@ export default function CareerDnaPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 text-white transition text-xs font-semibold cursor-pointer"
               >
                 <RefreshCw size={12} className={analysing ? "animate-spin" : ""} />
-                {analysing ? "Syncing..." : "Sync AI DNA"}
+                {analysing ? "Sync AI" : "Sync AI"}
               </button>
             )}
           </div>
@@ -323,7 +333,7 @@ export default function CareerDnaPage() {
 
       <div className="w-full relative z-10">
         {(!profile || isEditing) ? (
-          // ONBOARDING & EDIT PROFILE FORM SCREEN (Live Updating)
+          // ONBOARDING & EDIT PROFILE FORM SCREEN
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
             
             {/* Form Editor column */}
@@ -334,7 +344,7 @@ export default function CareerDnaPage() {
                     <GraduationCap className="text-purple-400" />
                     {profile ? "Edit Career DNA Profile" : "Onboard Career DNA"}
                   </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Academic and career details.</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Fill out your profile details below.</p>
                 </div>
                 <div className="text-sm font-medium text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
                   Step {activeStep} of 4
@@ -521,7 +531,7 @@ export default function CareerDnaPage() {
 
                 {activeStep === 4 && (
                   <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">💻 Technical Profile & Skills</h3>
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">💻 Technical Profile & Links</h3>
                     
                     {/* Resume Upload parsing section */}
                     <div className="p-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
@@ -539,6 +549,40 @@ export default function CareerDnaPage() {
                           <CheckCircle size={10} /> Resume details successfully integrated!
                         </div>
                       )}
+                    </div>
+
+                    {/* GitHub, LinkedIn & Portfolio Profile Links - Displayed upfront */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1.5 font-semibold">GitHub Profile URL</label>
+                        <input
+                          type="url"
+                          value={formData.github}
+                          onChange={e => setFormData({ ...formData, github: e.target.value })}
+                          placeholder="e.g. https://github.com/username"
+                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1.5 font-semibold">LinkedIn Profile URL</label>
+                        <input
+                          type="url"
+                          value={formData.linkedin}
+                          onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
+                          placeholder="e.g. https://linkedin.com/in/username"
+                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-300 mb-1.5 font-semibold">Portfolio URL</label>
+                        <input
+                          type="url"
+                          value={formData.portfolio}
+                          onChange={e => setFormData({ ...formData, portfolio: e.target.value })}
+                          placeholder="e.g. https://myportfolio.com"
+                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-xs text-white"
+                        />
+                      </div>
                     </div>
 
                     {/* Languages Input */}
@@ -710,40 +754,6 @@ export default function CareerDnaPage() {
                         ))}
                       </div>
                     </div>
-
-                    {/* GitHub, LinkedIn & Portfolio Profile Links */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">GitHub Link</label>
-                        <input
-                          type="url"
-                          value={formData.github}
-                          onChange={e => setFormData({ ...formData, github: e.target.value })}
-                          placeholder="https://github.com/username"
-                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">LinkedIn Link</label>
-                        <input
-                          type="url"
-                          value={formData.linkedin}
-                          onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
-                          placeholder="https://linkedin.com/in/username"
-                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1.5 font-medium">Portfolio Link</label>
-                        <input
-                          type="url"
-                          value={formData.portfolio}
-                          onChange={e => setFormData({ ...formData, portfolio: e.target.value })}
-                          placeholder="https://portfolio.com"
-                          className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
-                        />
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -840,239 +850,28 @@ export default function CareerDnaPage() {
         ) : (
           // MAIN PREMIUM MENTOR DASHBOARD SCREEN
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
-            {/* LEFT 2 COLUMNS: Profile status and matches grid */}
+            {/* LEFT 2 COLUMNS: Progress Card and opportunities list (No sections here!) */}
             <div className="lg:col-span-2 space-y-6">
               
-              {/* 1. CAREER PROFILE SECTION */}
-              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4 relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[40px] pointer-events-none"></div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 1</span>
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <GraduationCap className="text-purple-400" />
-                      Career Profile
-                    </h3>
-                  </div>
-                  <div>
-                    {analysis?.readinessLevel === "High Ready" && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)] animate-pulse">
-                        🟢 High Ready
-                      </span>
-                    )}
-                    {analysis?.readinessLevel === "Medium Ready" && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-3 py-1 rounded-full font-bold shadow-[0_0_12px_rgba(234,179,8,0.3)]">
-                        🟡 Medium Ready
-                      </span>
-                    )}
-                    {analysis?.readinessLevel === "Beginner" && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1 rounded-full font-bold shadow-[0_0_12px_rgba(244,63,94,0.3)]">
-                        🔴 Beginner
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-light text-gray-300 pt-2">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Full Name</span>
-                    <span className="text-sm font-semibold text-white">{profile.fullName}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">College / Institute</span>
-                    <span className="text-sm font-semibold text-white">{profile.college}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Department / Major</span>
-                    <span className="text-sm font-semibold text-white">{profile.department}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Current Year</span>
-                      <span className="text-sm font-semibold text-white">Year {profile.currentYear}</span>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Graduation Year</span>
-                      <span className="text-sm font-semibold text-white">{profile.graduationYear}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. CAREER GOALS SECTION */}
-              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4">
-                <div>
-                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 2</span>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Briefcase className="text-purple-400" />
-                    Career Goals
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-light text-gray-300 pt-2">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Dream Role</span>
-                    <span className="text-sm font-semibold text-white">{profile.dreamRole}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Dream Company</span>
-                    <span className="text-sm font-semibold text-white">{profile.dreamCompany}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Core Goal</span>
-                    <span className="text-sm font-semibold text-white uppercase tracking-wider text-purple-300">
-                      {profile.goal?.replace("_", " ")}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Preferred Location</span>
-                    <span className="text-sm font-semibold text-white">{profile.preferredLocation}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. ACADEMIC INFORMATION SECTION */}
-              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4">
-                <div>
-                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 3</span>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Award className="text-purple-400" />
-                    Academic Information
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-light text-gray-300 pt-2">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Current CGPA</span>
-                    <span className="text-sm font-semibold text-white">{profile.cgpa.toFixed(2)}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">10th Grade / %</span>
-                    <span className="text-sm font-semibold text-white">{profile.tenthPercentage}%</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">12th Grade / %</span>
-                    <span className="text-sm font-semibold text-white">{profile.twelfthPercentage}%</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Active Backlogs</span>
-                    <span className={`text-sm font-semibold ${profile.activeBacklogs > 0 ? "text-rose-400" : "text-emerald-400"}`}>
-                      {profile.activeBacklogs}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. TECHNICAL PROFILE SECTION */}
-              <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-4">
-                <div>
-                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 4</span>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Code className="text-purple-400" />
-                    Technical Profile
-                  </h3>
-                </div>
-
-                <div className="space-y-3 pt-2 text-xs">
-                  {/* Languages */}
-                  {profile.languages?.length > 0 && (
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Languages:</span>
-                      {profile.languages.map((l, idx) => (
-                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-gray-300">{l}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Frameworks */}
-                  {profile.frameworks?.length > 0 && (
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Frameworks:</span>
-                      {profile.frameworks.map((f, idx) => (
-                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-gray-300">{f}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Tools */}
-                  {profile.tools?.length > 0 && (
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Tools & Infra:</span>
-                      {profile.tools.map((t, idx) => (
-                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-gray-300">{t}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Certifications */}
-                  {profile.certifications?.length > 0 && (
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Certificates:</span>
-                      {profile.certifications.map((c, idx) => (
-                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-purple-300">{c}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Projects */}
-                  {profile.projects?.length > 0 && (
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Completed Projects:</span>
-                      {profile.projects.map((p, idx) => (
-                        <div key={idx} className="bg-white/5 border border-white/10 p-2.5 rounded-xl text-xs text-white leading-normal">
-                          {p}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Profile Links & Resume Status */}
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 border-t border-white/[0.05]">
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">GitHub</span>
-                      {profile.github ? (
-                        <a href={profile.github} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">GitHub Profile</a>
-                      ) : (
-                        <span className="text-gray-600 italic block">Not provided</span>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">LinkedIn</span>
-                      {profile.linkedin ? (
-                        <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">LinkedIn Profile</a>
-                      ) : (
-                        <span className="text-gray-600 italic block">Not provided</span>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Portfolio</span>
-                      {profile.portfolio ? (
-                        <a href={profile.portfolio} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">Portfolio Website</a>
-                      ) : (
-                        <span className="text-gray-600 italic block">Not provided</span>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Resume Doc</span>
-                      {profile.resumeText ? (
-                        <span className="text-emerald-400 flex items-center gap-1 font-medium">✔ Integrated</span>
-                      ) : (
-                        <span className="text-gray-600 italic block">Missing</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 5. CAREER PROGRESS SECTION (NEW) */}
+              {/* CAREER PROGRESS SECTION (Placed right at the top of the feed) */}
               <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[40px] pointer-events-none"></div>
-                <div>
-                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">SECTION 5</span>
+                <div className="flex justify-between items-center">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <TrendingUp className="text-purple-400" />
                     Career Progress
                   </h3>
+                  {analysis?.readinessLevel && (
+                    <span className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full font-bold border ${
+                      analysis.readinessLevel === "High Ready" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                      analysis.readinessLevel === "Medium Ready" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" :
+                      "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                    }`}>
+                      {analysis.readinessLevel === "High Ready" ? "🟢 High Ready" :
+                       analysis.readinessLevel === "Medium Ready" ? "🟡 Medium Ready" :
+                       "🔴 Beginner"}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -1145,7 +944,7 @@ export default function CareerDnaPage() {
               </div>
 
               {/* Opportunities Feed */}
-              <div className="space-y-4 pt-4">
+              <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <Briefcase className="text-purple-400" />
@@ -1362,6 +1161,220 @@ export default function CareerDnaPage() {
             <div className="pt-4 flex justify-end">
               <button
                 onClick={() => setSelectedEligibleMat(null)}
+                className="px-5 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold transition animate-hover"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL DNA PROFILE DETAILS MODAL (Pop-up popover drawer) */}
+      {showProfileModal && profile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setShowProfileModal(false)}></div>
+          <div className="relative w-full max-w-3xl max-h-[85vh] bg-[#0c0916] border border-white/10 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl z-10 flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-6 border-b border-white/[0.05] pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <BrainCircuit className="text-purple-400" />
+                  Your Career DNA Profile
+                </h2>
+                <p className="text-xs text-gray-500">Comprehensive structured summary of your professional assets.</p>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Scrollable sections */}
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+              
+              {/* SECTION 1: Career Profile */}
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">1. Personal Profile</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Full Name</span>
+                    <span className="font-semibold text-white">{profile.fullName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">College / Institute</span>
+                    <span className="font-semibold text-white">{profile.college}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Department / Major</span>
+                    <span className="font-semibold text-white">{profile.department}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-gray-500 block mb-0.5">Current Year</span>
+                      <span className="font-semibold text-white">Year {profile.currentYear}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block mb-0.5">Graduation Year</span>
+                      <span className="font-semibold text-white">{profile.graduationYear}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: Career Goals */}
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">2. Career Goals</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Dream Role</span>
+                    <span className="font-semibold text-white">{profile.dreamRole}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Dream Company</span>
+                    <span className="font-semibold text-white">{profile.dreamCompany}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Career Goal</span>
+                    <span className="font-semibold text-purple-300 uppercase tracking-wider">{profile.goal?.replace("_", " ")}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Preferred Location</span>
+                    <span className="font-semibold text-white">{profile.preferredLocation}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: Academic Information */}
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">3. Academic Information</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Current CGPA</span>
+                    <span className="font-semibold text-white">{profile.cgpa.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">10th Score / %</span>
+                    <span className="font-semibold text-white">{profile.tenthPercentage}%</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">12th Score / %</span>
+                    <span className="font-semibold text-white">{profile.twelfthPercentage}%</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-0.5">Active Backlogs</span>
+                    <span className={`font-semibold ${profile.activeBacklogs > 0 ? "text-rose-400" : "text-emerald-400"}`}>{profile.activeBacklogs}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: Technical Profile */}
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">4. Technical Profile</h3>
+                
+                <div className="space-y-3 text-xs">
+                  {/* Skill Badges */}
+                  {profile.languages?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Languages:</span>
+                      {profile.languages.map((l, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-300 font-bold">{l}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {profile.frameworks?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Frameworks:</span>
+                      {profile.frameworks.map((f, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-300 font-bold">{f}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {profile.tools?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Tools & Infra:</span>
+                      {profile.tools.map((t, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-300 font-bold">{t}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {profile.certifications?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Certificates:</span>
+                      {profile.certifications.map((c, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-purple-300 font-bold">{c}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {profile.projects?.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Key Projects:</span>
+                      {profile.projects.map((p, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/10 p-2 rounded-xl text-xs text-white leading-normal">
+                          {p}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Links */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-3 border-t border-white/[0.05]">
+                    <div>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">GitHub</span>
+                      {profile.github ? (
+                        <a href={profile.github} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">GitHub Profile</a>
+                      ) : (
+                        <span className="text-gray-600 italic block">Not provided</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">LinkedIn</span>
+                      {profile.linkedin ? (
+                        <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">LinkedIn Profile</a>
+                      ) : (
+                        <span className="text-gray-600 italic block">Not provided</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Portfolio</span>
+                      {profile.portfolio ? (
+                        <a href={profile.portfolio} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline truncate block">Portfolio Website</a>
+                      ) : (
+                        <span className="text-gray-600 italic block">Not provided</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Resume</span>
+                      {profile.resumeText ? (
+                        <span className="text-emerald-400 font-semibold flex items-center gap-0.5">✔ Integrated</span>
+                      ) : (
+                        <span className="text-gray-600 italic block">Missing</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="pt-4 border-t border-white/[0.05] flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowProfileModal(false);
+                  setIsEditing(true);
+                  setActiveStep(1);
+                }}
+                className="px-5 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white transition cursor-pointer"
+              >
+                Edit Profile Settings
+              </button>
+              <button
+                onClick={() => setShowProfileModal(false)}
                 className="px-5 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold transition"
               >
                 Close
