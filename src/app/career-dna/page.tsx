@@ -63,6 +63,25 @@ export default function CareerDnaPage() {
 
   const [uploadingResume, setUploadingResume] = useState(false);
 
+  const [activeDropdown, setActiveDropdown] = useState<"languages" | "frameworks" | "tools" | "certifications" | null>(null);
+  const [langSearch, setLangSearch] = useState("");
+  const [frameworkSearch, setFrameworkSearch] = useState("");
+  const [toolSearch, setToolSearch] = useState("");
+  const [certSearch, setCertSearch] = useState("");
+
+  const PREDEFINED_LANGUAGES = [
+    "C", "C++", "Java", "Python", "JavaScript", "TypeScript", "Go", "Rust", "Swift", "Kotlin", "PHP", "Ruby", "R", "MATLAB", "Dart", "Scala", "Perl", "Lua", "Shell", "SQL", "NoSQL"
+  ];
+  const PREDEFINED_FRAMEWORKS = [
+    "React", "Next.js", "Vue.js", "Angular", "Svelte", "Node.js", "Express.js", "NestJS", "Django", "Flask", "FastAPI", "Spring Boot", "Laravel", "ASP.NET", "Flutter", "React Native", "TensorFlow", "PyTorch", "Bootstrap", "Tailwind CSS"
+  ];
+  const PREDEFINED_TOOLS = [
+    "Git", "GitHub", "GitLab", "Bitbucket", "Docker", "Kubernetes", "Firebase", "Supabase", "MongoDB", "MySQL", "PostgreSQL", "Redis", "Vercel", "Netlify", "Render", "AWS", "Azure", "Google Cloud", "Linux", "Postman", "VS Code", "Android Studio", "IntelliJ IDEA", "Figma", "Jira", "Notion", "NPM", "Yarn", "pnpm"
+  ];
+  const PREDEFINED_CERTS = [
+    "AWS Cloud Practitioner", "AWS Solutions Architect", "Microsoft Azure Fundamentals", "Google Cloud Associate", "Oracle Java", "Cisco CCNA", "Red Hat RHCSA", "Salesforce Administrator", "TensorFlow Developer"
+  ];
+
   const toProperCase = (str: string) => {
     if (!str) return "";
     return str
@@ -480,7 +499,7 @@ export default function CareerDnaPage() {
                   <p className="text-xs text-gray-500 mt-0.5">Fill out your profile details below.</p>
                 </div>
                 <div className="text-sm font-medium text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
-                  Step {formatSerial(activeStep)} of 04
+                  Step {formatSerial(activeStep)} of {formatSerial(4)}
                 </div>
               </div>
 
@@ -720,9 +739,18 @@ export default function CareerDnaPage() {
                           type="text"
                           value={langInput}
                           onChange={e => setLangInput(e.target.value)}
-                          placeholder="e.g. Java, Python"
+                          placeholder="Or type custom language..."
                           className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDropdown(activeDropdown === "languages" ? null : "languages");
+                          }}
+                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                        >
+                          Choose ▼
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -731,11 +759,50 @@ export default function CareerDnaPage() {
                               setLangInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
                         >
                           Add
                         </button>
                       </div>
+
+                      {/* Dropdown Panel */}
+                      {activeDropdown === "languages" && (
+                        <div className="p-3 bg-[#0a0712] border border-white/10 rounded-xl mb-3 space-y-2 max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-150">
+                          <input
+                            type="text"
+                            value={langSearch}
+                            onChange={e => setLangSearch(e.target.value)}
+                            placeholder="Search programming languages..."
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 focus:outline-none text-xs text-white mb-2"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {PREDEFINED_LANGUAGES.filter(item => item.toLowerCase().includes(langSearch.toLowerCase())).map((item, idx) => {
+                              const isSelected = formData.languages.includes(item);
+                              return (
+                                <button
+                                  type="button"
+                                  key={idx}
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setFormData(prev => ({ ...prev, languages: prev.languages.filter(l => l !== item) }));
+                                    } else {
+                                      setFormData(prev => ({ ...prev, languages: [...prev.languages, item] }));
+                                    }
+                                  }}
+                                  className={`text-[10px] px-2.5 py-1 rounded-lg border transition ${
+                                    isSelected
+                                      ? "bg-purple-600/30 border-purple-500 text-purple-300 font-semibold"
+                                      : "bg-white/5 border-white/5 text-gray-400 hover:text-white"
+                                  }`}
+                                >
+                                  {item} {isSelected ? "✓" : "+"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap gap-1">
                         {formData.languages.map((l, idx) => (
                           <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
@@ -754,9 +821,18 @@ export default function CareerDnaPage() {
                           type="text"
                           value={frameworkInput}
                           onChange={e => setFrameworkInput(e.target.value)}
-                          placeholder="e.g. React, Next.js"
+                          placeholder="Or type custom framework..."
                           className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDropdown(activeDropdown === "frameworks" ? null : "frameworks");
+                          }}
+                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                        >
+                          Choose ▼
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -765,11 +841,50 @@ export default function CareerDnaPage() {
                               setFrameworkInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
                         >
                           Add
                         </button>
                       </div>
+
+                      {/* Dropdown Panel */}
+                      {activeDropdown === "frameworks" && (
+                        <div className="p-3 bg-[#0a0712] border border-white/10 rounded-xl mb-3 space-y-2 max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-150">
+                          <input
+                            type="text"
+                            value={frameworkSearch}
+                            onChange={e => setFrameworkSearch(e.target.value)}
+                            placeholder="Search frameworks..."
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 focus:outline-none text-xs text-white mb-2"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {PREDEFINED_FRAMEWORKS.filter(item => item.toLowerCase().includes(frameworkSearch.toLowerCase())).map((item, idx) => {
+                              const isSelected = formData.frameworks.includes(item);
+                              return (
+                                <button
+                                  type="button"
+                                  key={idx}
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setFormData(prev => ({ ...prev, frameworks: prev.frameworks.filter(f => f !== item) }));
+                                    } else {
+                                      setFormData(prev => ({ ...prev, frameworks: [...prev.frameworks, item] }));
+                                    }
+                                  }}
+                                  className={`text-[10px] px-2.5 py-1 rounded-lg border transition ${
+                                    isSelected
+                                      ? "bg-purple-600/30 border-purple-500 text-purple-300 font-semibold"
+                                      : "bg-white/5 border-white/5 text-gray-400 hover:text-white"
+                                  }`}
+                                >
+                                  {item} {isSelected ? "✓" : "+"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap gap-1">
                         {formData.frameworks.map((f, idx) => (
                           <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
@@ -788,9 +903,18 @@ export default function CareerDnaPage() {
                           type="text"
                           value={toolInput}
                           onChange={e => setToolInput(e.target.value)}
-                          placeholder="e.g. Git, Docker"
+                          placeholder="Or type custom tool..."
                           className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDropdown(activeDropdown === "tools" ? null : "tools");
+                          }}
+                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                        >
+                          Choose ▼
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -799,11 +923,50 @@ export default function CareerDnaPage() {
                               setToolInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
                         >
                           Add
                         </button>
                       </div>
+
+                      {/* Dropdown Panel */}
+                      {activeDropdown === "tools" && (
+                        <div className="p-3 bg-[#0a0712] border border-white/10 rounded-xl mb-3 space-y-2 max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-150">
+                          <input
+                            type="text"
+                            value={toolSearch}
+                            onChange={e => setToolSearch(e.target.value)}
+                            placeholder="Search tools..."
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 focus:outline-none text-xs text-white mb-2"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {PREDEFINED_TOOLS.filter(item => item.toLowerCase().includes(toolSearch.toLowerCase())).map((item, idx) => {
+                              const isSelected = formData.tools.includes(item);
+                              return (
+                                <button
+                                  type="button"
+                                  key={idx}
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setFormData(prev => ({ ...prev, tools: prev.tools.filter(t => t !== item) }));
+                                    } else {
+                                      setFormData(prev => ({ ...prev, tools: [...prev.tools, item] }));
+                                    }
+                                  }}
+                                  className={`text-[10px] px-2.5 py-1 rounded-lg border transition ${
+                                    isSelected
+                                      ? "bg-purple-600/30 border-purple-500 text-purple-300 font-semibold"
+                                      : "bg-white/5 border-white/5 text-gray-400 hover:text-white"
+                                  }`}
+                                >
+                                  {item} {isSelected ? "✓" : "+"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap gap-1">
                         {formData.tools.map((t, idx) => (
                           <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
@@ -822,9 +985,18 @@ export default function CareerDnaPage() {
                           type="text"
                           value={certInput}
                           onChange={e => setCertInput(e.target.value)}
-                          placeholder="e.g. AWS Certified Solutions Architect"
+                          placeholder="Or type custom certification..."
                           className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDropdown(activeDropdown === "certifications" ? null : "certifications");
+                          }}
+                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                        >
+                          Choose ▼
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -833,11 +1005,50 @@ export default function CareerDnaPage() {
                               setCertInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
                         >
                           Add
                         </button>
                       </div>
+
+                      {/* Dropdown Panel */}
+                      {activeDropdown === "certifications" && (
+                        <div className="p-3 bg-[#0a0712] border border-white/10 rounded-xl mb-3 space-y-2 max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-150">
+                          <input
+                            type="text"
+                            value={certSearch}
+                            onChange={e => setCertSearch(e.target.value)}
+                            placeholder="Search certifications..."
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 focus:outline-none text-xs text-white mb-2"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {PREDEFINED_CERTS.filter(item => item.toLowerCase().includes(certSearch.toLowerCase())).map((item, idx) => {
+                              const isSelected = formData.certifications.includes(item);
+                              return (
+                                <button
+                                  type="button"
+                                  key={idx}
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setFormData(prev => ({ ...prev, certifications: prev.certifications.filter(c => c !== item) }));
+                                    } else {
+                                      setFormData(prev => ({ ...prev, certifications: [...prev.certifications, item] }));
+                                    }
+                                  }}
+                                  className={`text-[10px] px-2.5 py-1 rounded-lg border transition ${
+                                    isSelected
+                                      ? "bg-purple-600/30 border-purple-500 text-purple-300 font-semibold"
+                                      : "bg-white/5 border-white/5 text-gray-400 hover:text-white"
+                                  }`}
+                                >
+                                  {item} {isSelected ? "✓" : "+"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap gap-1">
                         {formData.certifications.map((c, idx) => (
                           <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
