@@ -170,6 +170,12 @@ export default function Navbar() {
                   >
                     <GraduationCap size={15} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Senior Insights
                   </Link>
+                  <Link
+                    href="/career-dna"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                  >
+                    <BrainCircuit size={15} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Career DNA
+                  </Link>
                 </div>
               )}
             </div>
@@ -427,6 +433,14 @@ export default function Navbar() {
                     >
                       <GraduationCap size={16} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] shrink-0" />
                       <span>Senior Insights</span>
+                    </Link>
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                      href="/career-dna" 
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <BrainCircuit size={16} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)] shrink-0" />
+                      <span>Career DNA</span>
                     </Link>
                   </div>
                 )}
