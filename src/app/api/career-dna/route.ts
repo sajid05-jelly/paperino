@@ -171,6 +171,24 @@ const PLACEMENT_TEMPLATES: OpportunityTemplate[] = [
 ];
 
 export async function POST(req: NextRequest) {
+  /* ── Security: Career DNA Maintenance Mode Check ── */
+  if (adminDb) {
+    try {
+      const configDoc = await adminDb.collection("platform_config").doc("features").get();
+      if (configDoc.exists) {
+        const config = configDoc.data();
+        if (config && config.careerDnaEnabled === false) {
+          return NextResponse.json(
+            { error: "Career DNA is currently under active development. Please check back soon." },
+            { status: 403 }
+          );
+        }
+      }
+    } catch (e) {
+      console.error("[Career DNA] Failed to check maintenance mode:", e);
+    }
+  }
+
   // 1. Security API Guard
   const guard = await runApiGuard(req);
   if (guard.blocked) return guard.response;

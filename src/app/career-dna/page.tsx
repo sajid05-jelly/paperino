@@ -23,6 +23,7 @@ export default function CareerDnaPage() {
   const [profile, setProfile] = useState<CareerDnaProfile | null>(null);
   const [analysis, setAnalysis] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [careerDnaEnabled, setCareerDnaEnabled] = useState(true);
   const [analysing, setAnalysing] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
   const [activeFilter, setActiveFilter] = useState<"All" | "High Match" | "Medium Match" | "Stretch Opportunity">("All");
@@ -108,6 +109,24 @@ export default function CareerDnaPage() {
     const s = String(val).trim();
     return s.toLowerCase() === "null" ? "" : s;
   };
+
+  // Check if Career DNA is enabled in feature flags
+  useEffect(() => {
+    const checkFeatureFlag = async () => {
+      try {
+        const configDoc = await getDoc(doc(db, "platform_config", "features"));
+        if (configDoc.exists()) {
+          const data = configDoc.data();
+          if (data.careerDnaEnabled !== undefined) {
+            setCareerDnaEnabled(data.careerDnaEnabled);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch features flag:", err);
+      }
+    };
+    checkFeatureFlag();
+  }, []);
 
   // Load user profile & saved analysis on mount
   useEffect(() => {
@@ -449,6 +468,55 @@ export default function CareerDnaPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#05030a] text-white">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
+
+  if (!careerDnaEnabled) {
+    return (
+      <div className="min-h-[85vh] flex flex-col items-center justify-center text-center p-6 bg-[#05030a] text-white relative">
+        <AmbientOrbs />
+        <div className="liquid-glass p-8 max-w-xl rounded-[2.5rem] border border-purple-500/20 bg-[#0f0a1a]/60 backdrop-blur-2xl relative z-10 shadow-2xl space-y-6">
+          <div className="relative inline-block">
+            <div className="absolute -inset-1 rounded-full bg-purple-500/30 blur-[20px] pointer-events-none"></div>
+            <BrainCircuit size={64} className="text-purple-400 mx-auto relative z-10 animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400">
+              🚀 Career DNA 2.0
+            </h2>
+            <p className="text-sm font-semibold text-purple-300">
+              We're building a smarter AI-powered career platform for students.
+            </p>
+          </div>
+          
+          <div className="text-left bg-white/[0.02] border border-white/5 p-5 rounded-2xl space-y-3">
+            <p className="text-xs text-gray-400">
+              Career DNA is currently under active development. We're improving:
+            </p>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-300">
+              <li className="flex items-center gap-2">🟢 AI Resume Analysis</li>
+              <li className="flex items-center gap-2">🟢 Internship Recommendations</li>
+              <li className="flex items-center gap-2">🟢 Career Readiness Scoring</li>
+              <li className="flex items-center gap-2">🟢 Skill Gap Detection</li>
+              <li className="flex items-center gap-2">🟢 Career Roadmaps</li>
+              <li className="flex items-center gap-2">🟢 AI Performance</li>
+              <li className="flex items-center gap-2">🟢 Recommendation Accuracy</li>
+            </ul>
+            <p className="text-xs text-gray-500 pt-1">
+              Please check back soon.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all text-sm font-medium"
+            >
+              ← Back to Paperino Labs
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

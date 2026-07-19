@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Upload, Settings, FileText, Activity, Bot, ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio } from "lucide-react";
+import { LayoutDashboard, Upload, Settings, FileText, Activity, Bot, ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, BrainCircuit } from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -58,10 +58,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Pending Reviews
             </Link>
             <div className="h-px w-full bg-white/10 my-2"></div>
-            <Link href="/admin/ats" className="flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors font-medium border border-emerald-500/20">
-              <Bot size={20} />
-              ATS Management
-            </Link>
+             <Link href="/admin/ats" className="flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors font-medium border border-emerald-500/20">
+               <Bot size={20} />
+               ATS Management
+             </Link>
+             <Link href="/admin/career-dna" className="flex items-center gap-3 px-4 py-3 rounded-lg text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors font-medium border border-purple-500/20">
+               <BrainCircuit size={20} />
+               Career DNA Admin
+             </Link>
             <Link href="/admin/team" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <ShieldCheck size={20} className="text-emerald-400" />
               Platform Analytics
