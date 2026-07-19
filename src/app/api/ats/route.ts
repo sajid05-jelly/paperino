@@ -265,6 +265,10 @@ async function handleDnaAnalysis(req: NextRequest, body: any, creditCheck: any) 
 Analyze the student resume text and extract/analyze ALL sections.
 Target Dream Role: "${dreamRole}".
 
+STRICT CLASSIFICATION RULE:
+- "languages" is strictly for TECHNICAL PROGRAMMING LANGUAGES (e.g. C, C++, Java, Python, JavaScript, TypeScript, SQL, Go, Rust, Kotlin, Swift, Dart, PHP, etc.).
+- "languagesKnown" is strictly for SPOKEN/WRITTEN HUMAN LANGUAGES (e.g. Tamil, English, Hindi, Arabic, French, German, Spanish, etc.). If the resume contains headings like "Languages", "Languages Known", "Spoken Languages", or "Communication Languages", parse those spoken tongues ONLY into "languagesKnown" and never mix them with technical/programming languages.
+
 Return STRICTLY JSON matching this schema:
 {
   "name": "string",
@@ -279,6 +283,7 @@ Return STRICTLY JSON matching this schema:
   "graduationYear": number,
   "cgpa": number,
   "languages": ["string"],
+  "languagesKnown": ["string"],
   "frameworks": ["string"],
   "tools": ["string"],
   "certifications": ["string"],

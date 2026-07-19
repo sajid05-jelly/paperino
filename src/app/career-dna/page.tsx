@@ -45,6 +45,7 @@ export default function CareerDnaPage() {
     twelfthPercentage: 90,
     activeBacklogs: 0,
     languages: [] as string[],
+    languagesKnown: [] as string[],
     frameworks: [] as string[],
     tools: [] as string[],
     certifications: [] as string[],
@@ -56,6 +57,7 @@ export default function CareerDnaPage() {
   });
 
   const [langInput, setLangInput] = useState("");
+  const [spokenInput, setSpokenInput] = useState("");
   const [frameworkInput, setFrameworkInput] = useState("");
   const [toolInput, setToolInput] = useState("");
   const [certInput, setCertInput] = useState("");
@@ -63,14 +65,18 @@ export default function CareerDnaPage() {
 
   const [uploadingResume, setUploadingResume] = useState(false);
 
-  const [activeDropdown, setActiveDropdown] = useState<"languages" | "frameworks" | "tools" | "certifications" | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<"languages" | "languagesKnown" | "frameworks" | "tools" | "certifications" | null>(null);
   const [langSearch, setLangSearch] = useState("");
+  const [spokenSearch, setSpokenSearch] = useState("");
   const [frameworkSearch, setFrameworkSearch] = useState("");
   const [toolSearch, setToolSearch] = useState("");
   const [certSearch, setCertSearch] = useState("");
 
   const PREDEFINED_LANGUAGES = [
     "C", "C++", "Java", "Python", "JavaScript", "TypeScript", "Go", "Rust", "Swift", "Kotlin", "PHP", "Ruby", "R", "MATLAB", "Dart", "Scala", "Perl", "Lua", "Shell", "SQL", "NoSQL"
+  ];
+  const PREDEFINED_SPOKEN_LANGUAGES = [
+    "English", "Tamil", "Hindi", "Arabic", "Telugu", "Malayalam", "Kannada", "French", "German", "Spanish", "Japanese", "Mandarin", "Russian", "Portuguese", "Korean", "Italian"
   ];
   const PREDEFINED_FRAMEWORKS = [
     "React", "Next.js", "Vue.js", "Angular", "Svelte", "Node.js", "Express.js", "NestJS", "Django", "Flask", "FastAPI", "Spring Boot", "Laravel", "ASP.NET", "Flutter", "React Native", "TensorFlow", "PyTorch", "Bootstrap", "Tailwind CSS"
@@ -128,6 +134,7 @@ export default function CareerDnaPage() {
             twelfthPercentage: Number(data.profile.twelfthPercentage) || 90,
             activeBacklogs: Number(data.profile.activeBacklogs) || 0,
             languages: data.profile.languages || [],
+            languagesKnown: data.profile.languagesKnown || [],
             frameworks: data.profile.frameworks || [],
             tools: data.profile.tools || [],
             certifications: data.profile.certifications || [],
@@ -274,6 +281,7 @@ export default function CareerDnaPage() {
         linkedin: aiData.linkedin && aiData.linkedin !== "string" && aiData.linkedin.startsWith("http") ? aiData.linkedin : prev.linkedin,
         portfolio: aiData.portfolio && aiData.portfolio !== "string" && aiData.portfolio.startsWith("http") ? aiData.portfolio : prev.portfolio,
         languages: Array.from(new Set([...prev.languages, ...(aiData.languages || []).map((s: string) => toProperCase(s))])),
+        languagesKnown: Array.from(new Set([...prev.languagesKnown, ...(aiData.languagesKnown || []).map((s: string) => toProperCase(s))])),
         frameworks: Array.from(new Set([...prev.frameworks, ...(aiData.frameworks || []).map((s: string) => toProperCase(s))])),
         tools: Array.from(new Set([...prev.tools, ...(aiData.tools || []).map((s: string) => toProperCase(s))])),
         certifications: Array.from(new Set([...prev.certifications, ...(aiData.certifications || []).map((s: string) => toProperCase(s))])),
@@ -857,6 +865,88 @@ export default function CareerDnaPage() {
                           <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
                             {l}
                             <button type="button" onClick={() => setFormData(prev => ({ ...prev, languages: prev.languages.filter(item => item !== l) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Languages Known Input (Spoken/Written Languages) */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1 font-medium">Languages Known (Spoken/Written)</label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={spokenInput}
+                          onChange={e => setSpokenInput(e.target.value)}
+                          placeholder="Or type custom spoken language..."
+                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDropdown(activeDropdown === "languagesKnown" ? null : "languagesKnown");
+                          }}
+                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                        >
+                          Choose ▼
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (spokenInput.trim()) {
+                              setFormData(prev => ({ ...prev, languagesKnown: Array.from(new Set([...prev.languagesKnown, spokenInput.trim()])) }));
+                              setSpokenInput("");
+                            }
+                          }}
+                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      </div>
+
+                      {/* Dropdown Panel */}
+                      {activeDropdown === "languagesKnown" && (
+                        <div className="p-3 bg-[#0a0712] border border-white/10 rounded-xl mb-3 space-y-2 max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-150">
+                          <input
+                            type="text"
+                            value={spokenSearch}
+                            onChange={e => setSpokenSearch(e.target.value)}
+                            placeholder="Search spoken languages..."
+                            className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 focus:outline-none text-xs text-white mb-2"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {PREDEFINED_SPOKEN_LANGUAGES.filter(item => item.toLowerCase().includes(spokenSearch.toLowerCase())).map((item, idx) => {
+                              const isSelected = formData.languagesKnown.includes(item);
+                              return (
+                                <button
+                                  type="button"
+                                  key={idx}
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      setFormData(prev => ({ ...prev, languagesKnown: prev.languagesKnown.filter(l => l !== item) }));
+                                    } else {
+                                      setFormData(prev => ({ ...prev, languagesKnown: [...prev.languagesKnown, item] }));
+                                    }
+                                  }}
+                                  className={`text-[10px] px-2.5 py-1 rounded-lg border transition ${
+                                    isSelected
+                                      ? "bg-purple-600/30 border-purple-500 text-purple-300 font-semibold"
+                                      : "bg-white/5 border-white/5 text-gray-400 hover:text-white"
+                                  }`}
+                                >
+                                  {item} {isSelected ? "✓" : "+"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-1">
+                        {formData.languagesKnown.map((l, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2 py-0.5 rounded">
+                            {l}
+                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, languagesKnown: prev.languagesKnown.filter(item => item !== l) }))} className="text-purple-400 hover:text-white font-bold ml-0.5">×</button>
                           </span>
                         ))}
                       </div>
@@ -1727,9 +1817,18 @@ export default function CareerDnaPage() {
                   {/* Skill Badges */}
                   {profile.languages?.length > 0 && (
                     <div className="flex gap-2 items-center flex-wrap">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Languages:</span>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Programming:</span>
                       {profile.languages.map((l, idx) => (
                         <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-300 font-bold">{l}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {profile.languagesKnown?.length > 0 && (
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24 shrink-0">Languages Known:</span>
+                      {profile.languagesKnown.map((lk, idx) => (
+                        <span key={idx} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-300 font-bold">{lk}</span>
                       ))}
                     </div>
                   )}

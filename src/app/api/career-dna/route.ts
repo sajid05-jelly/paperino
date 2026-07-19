@@ -446,6 +446,7 @@ export async function POST(req: NextRequest) {
     const profileHashStr = JSON.stringify({
       resumeText: profile.resumeText || "",
       languages: profile.languages || [],
+      languagesKnown: profile.languagesKnown || [],
       frameworks: profile.frameworks || [],
       tools: profile.tools || [],
       projects: profile.projects || [],

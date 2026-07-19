@@ -16,6 +16,7 @@ export interface CareerDnaProfile {
   activeBacklogs: number;
   
   languages: string[];
+  languagesKnown: string[];
   frameworks: string[];
   tools: string[];
   certifications: string[];
