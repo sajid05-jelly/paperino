@@ -1146,7 +1146,7 @@ export default function CareerDnaPage() {
                                 disabled
                                 className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-gray-500 text-[10px] font-semibold cursor-not-allowed"
                               >
-                                Application link not available.
+                                Official application link unavailable.
                               </button>
                             )}
                           </div>
