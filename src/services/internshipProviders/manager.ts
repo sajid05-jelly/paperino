@@ -6,6 +6,7 @@ import { UnstopProvider } from "./unstopProvider";
 // Strict Apply URL Verification Helper
 async function verifyApplyUrl(url: string): Promise<boolean> {
   if (!url || !url.startsWith("http")) return false;
+  if (!url.toLowerCase().includes("unstop.com")) return false;
   
   try {
     // Try HEAD first (faster, doesn't load body)
