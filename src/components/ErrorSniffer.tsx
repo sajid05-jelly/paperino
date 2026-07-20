@@ -25,7 +25,7 @@ export default function ErrorSniffer() {
         return String(arg);
       }).join(" ");
 
-      if (errorString.toLowerCase().includes("permission") || errorString.toLowerCase().includes("firebaseerror")) {
+      if ((errorString.toLowerCase().includes("permission") || errorString.toLowerCase().includes("firebaseerror")) && !errorString.toLowerCase().includes("quota")) {
         setErrorMsg(errorString);
       }
     };
@@ -34,7 +34,7 @@ export default function ErrorSniffer() {
     const handleRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
       const msg = reason instanceof Error ? `${reason.message}\n${reason.stack}` : String(reason);
-      if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("firebaseerror")) {
+      if ((msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("firebaseerror")) && !msg.toLowerCase().includes("quota")) {
         setErrorMsg(msg);
       }
     };

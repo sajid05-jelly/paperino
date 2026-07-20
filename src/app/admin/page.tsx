@@ -29,6 +29,7 @@ export default function AdminDashboard() {
     other: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Notification Management
@@ -165,9 +166,29 @@ export default function AdminDashboard() {
         setMaterialCounts({ pyqs, notes, manuals, syllabus, questions, other });
         
         console.log("[Analytics] Fetch complete.", { totalUsers, dailyActive, totalMaterials, atsUsage, mostVisited });
-      } catch (error) {
+      } catch (error: any) {
         console.error("[Analytics] Fatal error fetching admin stats:", error);
-        setError("A fatal error occurred while fetching analytics.");
+        const errorStr = String(error?.message || error);
+        if (errorStr.toLowerCase().includes("quota") || errorStr.toLowerCase().includes("exhausted")) {
+          setIsQuotaExceeded(true);
+          setStats({
+            totalMaterials: 24,
+            totalUsers: 85,
+            dailyActive: 12,
+            atsUsage: 43,
+            aiUsage: 120,
+            mostVisited: "Data Structures",
+            topDepartment: "CSE",
+            highestDownloadedFile: "Notes_Unit1.pdf",
+            totalDepts: 5,
+            pendingDepts: 0,
+            approvedDepts: 5,
+            totalSubjects: 14
+          });
+          setMaterialCounts({ pyqs: 12, notes: 8, manuals: 2, syllabus: 1, questions: 1, other: 0 });
+        } else {
+          setError("A fatal error occurred while fetching analytics.");
+        }
       } finally {
         setLoading(false);
       }
@@ -200,6 +221,15 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
+
+      {isQuotaExceeded && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.05)]">
+          <AlertCircle size={20} className="shrink-0" />
+          <div>
+            <span className="font-bold">Firestore Free Tier Quota Exceeded:</span> Daily free read limits reached. Offline placeholder analytics are displayed to keep dashboard interface active.
+          </div>
+        </div>
+      )}
 
       {/* Clear All Notifications Confirmation Modal */}
       {showClearModal && (
