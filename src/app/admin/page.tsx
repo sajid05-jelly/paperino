@@ -93,6 +93,14 @@ export default function AdminDashboard() {
           getCountFromServer(query(collection(db, "dynamic_subjects"), where("status", "==", "approved")))
         ]);
 
+        // Check if any promise rejected due to Quota limits to trigger the fallback catch block
+        const quotaError = results.find(
+          (r) => r.status === "rejected" && String(r.reason?.message || r.reason).toLowerCase().includes("quota")
+        );
+        if (quotaError && quotaError.status === "rejected") {
+          throw quotaError.reason;
+        }
+
         // Helper to extract data or log error
         const getResult = (res: any, name: string, defaultValue: any) => {
           if (res.status === "fulfilled") {
