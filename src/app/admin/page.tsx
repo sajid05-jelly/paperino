@@ -107,7 +107,12 @@ export default function AdminDashboard() {
             console.log(`[Analytics] Successfully fetched ${name}`);
             return res.value;
           } else {
-            console.error(`[Analytics] Error fetching ${name}:`, res.reason);
+            const isQuota = String(res.reason?.message || res.reason).toLowerCase().includes("quota");
+            if (isQuota) {
+              console.warn(`[Analytics] Service Notice (Quota): Failed to fetch ${name}`);
+            } else {
+              console.error(`[Analytics] Error fetching ${name}:`, res.reason);
+            }
             return defaultValue;
           }
         };
@@ -175,9 +180,9 @@ export default function AdminDashboard() {
         
         console.log("[Analytics] Fetch complete.", { totalUsers, dailyActive, totalMaterials, atsUsage, mostVisited });
       } catch (error: any) {
-        console.error("[Analytics] Fatal error fetching admin stats:", error);
         const errorStr = String(error?.message || error);
         if (errorStr.toLowerCase().includes("quota") || errorStr.toLowerCase().includes("exhausted")) {
+          console.warn("[Analytics] Service Notice: Firebase quota exceeded. Switching to offline mode.");
           setIsQuotaExceeded(true);
           setStats({
             totalMaterials: 24,
@@ -195,6 +200,7 @@ export default function AdminDashboard() {
           });
           setMaterialCounts({ pyqs: 12, notes: 8, manuals: 2, syllabus: 1, questions: 1, other: 0 });
         } else {
+          console.error("[Analytics] Fatal error fetching admin stats:", error);
           setError("A fatal error occurred while fetching analytics.");
         }
       } finally {
@@ -231,12 +237,18 @@ export default function AdminDashboard() {
       </div>
 
       {isQuotaExceeded && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.05)]">
-          <AlertCircle size={20} className="shrink-0" />
-          <div>
-            <span className="font-bold">Firestore Free Tier Quota Exceeded:</span> Daily free read limits reached. Offline placeholder analytics are displayed to keep dashboard interface active.
+        <>
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.05)]">
+            <AlertCircle size={20} className="shrink-0" />
+            <div>
+              Analytics are temporarily running in offline mode because today's Firebase free usage limit has been reached. Core Paperino features continue to work normally.
+            </div>
           </div>
-        </div>
+          <div className="fixed bottom-6 left-6 z-[9999] flex items-center gap-2 px-4 py-2 bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.15)] backdrop-blur-md animate-in slide-in-from-bottom-5">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            <span>Service Notice: Offline Mode</span>
+          </div>
+        </>
       )}
 
       {/* Clear All Notifications Confirmation Modal */}
