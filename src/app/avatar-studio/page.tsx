@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import UserAvatar from "@/components/UserAvatar";
+import UserAvatar, { AVATARS } from "@/components/UserAvatar";
 import { 
   FRAMES, 
   COMPANIONS, 
@@ -17,9 +17,10 @@ import Link from "next/link";
 import SafeBackButton from "@/components/SafeBackButton";
 
 export default function AvatarStudioPage() {
-  const { user, paperinoAvatar } = useAuth();
+  const { user, paperinoAvatar, setPaperinoAvatar } = useAuth();
   
   // Customization State
+  const [equippedAvatar, setEquippedAvatar] = useState(paperinoAvatar || "pen-paper");
   const [equippedFrame, setEquippedFrame] = useState("none");
   const [equippedCompanion, setEquippedCompanion] = useState("none");
   const [unlockedFrames, setUnlockedFrames] = useState<string[]>(["none", "classic", "minimal"]);
@@ -31,12 +32,13 @@ export default function AvatarStudioPage() {
   const [approvedUploads, setApprovedUploads] = useState(0);
   
   // Preview State
+  const [previewAvatar, setPreviewAvatar] = useState(paperinoAvatar || "pen-paper");
   const [previewFrame, setPreviewFrame] = useState("none");
   const [previewCompanion, setPreviewCompanion] = useState("none");
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"frames" | "companions" | "achievements">("frames");
+  const [activeTab, setActiveTab] = useState<"avatar" | "frames" | "companions" | "achievements">("avatar");
 
   useEffect(() => {
     if (!user) return;
@@ -48,6 +50,8 @@ export default function AvatarStudioPage() {
           const data = userDoc.data();
           
           // Load equipped items
+          setEquippedAvatar(data.paperinoAvatar || "pen-paper");
+          setPreviewAvatar(data.paperinoAvatar || "pen-paper");
           setEquippedFrame(data.avatarFrame || "none");
           setEquippedCompanion(data.avatarCompanion || "none");
           setPreviewFrame(data.avatarFrame || "none");
@@ -88,10 +92,15 @@ export default function AvatarStudioPage() {
     setSaving(true);
     try {
       await setDoc(doc(db, "users", user.uid), {
+        paperinoAvatar: previewAvatar,
         avatarFrame: previewFrame,
         avatarCompanion: previewCompanion
       }, { merge: true });
       
+      if (setPaperinoAvatar) {
+        await setPaperinoAvatar(previewAvatar);
+      }
+      setEquippedAvatar(previewAvatar);
       setEquippedFrame(previewFrame);
       setEquippedCompanion(previewCompanion);
       alert("Customizations equipped successfully!");
@@ -137,7 +146,7 @@ export default function AvatarStudioPage() {
           
           <div className="mb-6 relative">
             <UserAvatar 
-              avatarId={paperinoAvatar} 
+              avatarId={previewAvatar} 
               frameId={previewFrame} 
               companionId={previewCompanion} 
               size={48} 
@@ -176,7 +185,7 @@ export default function AvatarStudioPage() {
 
           <button
             onClick={handleEquip}
-            disabled={saving || (previewFrame === equippedFrame && previewCompanion === equippedCompanion)}
+            disabled={saving || (previewAvatar === equippedAvatar && previewFrame === equippedFrame && previewCompanion === equippedCompanion)}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold transition-all shadow-[0_0_30px_rgba(139,92,246,0.3)] disabled:opacity-50 disabled:shadow-none"
           >
             {saving ? "Equipping..." : "Equip Customizations"}
@@ -188,26 +197,67 @@ export default function AvatarStudioPage() {
           <div className="glass-panel p-6 rounded-[2.5rem] border border-white/10">
             
             {/* Tabs Selector */}
-            <div className="flex gap-2 p-1.5 bg-black/40 border border-white/5 rounded-2xl mb-8">
+            <div className="flex gap-2 p-1.5 bg-black/40 border border-white/5 rounded-2xl mb-8 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab("avatar")}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === "avatar" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
+              >
+                Avatar
+              </button>
               <button
                 onClick={() => setActiveTab("frames")}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === "frames" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === "frames" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
               >
                 Avatar Frames
               </button>
               <button
                 onClick={() => setActiveTab("companions")}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === "companions" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === "companions" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
               >
                 Paperino Companions
               </button>
               <button
                 onClick={() => setActiveTab("achievements")}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === "achievements" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === "achievements" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
               >
                 Achievements
               </button>
             </div>
+
+            {/* TAB CONTENT: AVATAR */}
+            {activeTab === "avatar" && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {AVATARS.map((avatar) => {
+                  const isPreviewed = previewAvatar === avatar.id;
+                  const isEquipped = equippedAvatar === avatar.id;
+                  const Icon = avatar.icon;
+
+                  return (
+                    <button
+                      key={avatar.id}
+                      onClick={() => setPreviewAvatar(avatar.id)}
+                      className={`relative flex flex-col items-center p-5 rounded-2xl border text-center transition-all ${
+                        isEquipped 
+                          ? "border-violet-500/50 bg-violet-500/5" 
+                          : isPreviewed 
+                            ? "border-white/40 bg-white/10" 
+                            : "border-white/5 bg-black/20 hover:border-white/10"
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${avatar.bg} border border-white/10`}>
+                        <Icon size={20} className={avatar.color} />
+                      </div>
+                      <span className="text-xs font-bold text-white mb-1">{avatar.name}</span>
+                      {isEquipped ? (
+                        <span className="text-[10px] text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded-full">Equipped</span>
+                      ) : (
+                        <span className="text-[10px] text-gray-400 font-semibold">Available</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* TAB CONTENT: FRAMES */}
             {activeTab === "frames" && (
