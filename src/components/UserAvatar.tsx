@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   PenTool, 
   BookOpen, 
@@ -12,6 +14,7 @@ import {
   Bird,
   User
 } from 'lucide-react';
+import { FRAMES, COMPANIONS } from '@/lib/gamification';
 
 export type AvatarId = 
   | 'pen-paper' 
@@ -27,6 +30,8 @@ export type AvatarId =
 
 interface UserAvatarProps {
   avatarId?: string | null;
+  frameId?: string | null;
+  companionId?: string | null;
   className?: string;
   size?: number;
 }
@@ -44,24 +49,103 @@ export const AVATARS = [
   { id: 'futuristic-owl', name: 'Futuristic Owl', icon: Bird, color: 'text-rose-400', bg: 'bg-rose-500/10' },
 ];
 
-export default function UserAvatar({ avatarId, className = "", size = 20 }: UserAvatarProps) {
-  const avatar = AVATARS.find(a => a.id === avatarId);
+export default function UserAvatar({ avatarId, frameId = "none", companionId = "none", className = "", size = 20 }: UserAvatarProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
-  if (!avatar) {
-    return (
-      <div className={`flex items-center justify-center rounded-full bg-white/10 ${className}`}>
-        <User size={size} className="text-gray-400" />
-      </div>
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.05 }
     );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const avatar = AVATARS.find(a => a.id === avatarId);
+  const frame = FRAMES.find(f => f.id === frameId);
+  const companion = COMPANIONS.find(c => c.id === companionId);
+
+  // Parse custom border colors
+  let frameBorderClass = "border border-white/5";
+  if (frame && frame.id !== "none") {
+    frameBorderClass = `border-2 ${frame.class}`;
   }
 
-  const Icon = avatar.icon;
+  // Width mapping for size parameter
+  const avatarWidthClass = size > 20 ? `w-20 h-20` : `w-12 h-12`;
+  const iconSize = size > 20 ? 32 : 20;
+
+  const renderIcon = () => {
+    if (!avatar) {
+      return <User size={iconSize} className="text-gray-400" />;
+    }
+    const Icon = avatar.icon;
+    return (
+      <div className={`w-full h-full flex items-center justify-center rounded-full ${avatar.bg} relative overflow-hidden`}>
+        <div className={`absolute inset-0 ${avatar.color.replace('text-', 'bg-')} opacity-20 blur-md rounded-full`}></div>
+        <Icon size={iconSize} className={`${avatar.color} relative z-10`} />
+      </div>
+    );
+  };
 
   return (
-    <div className={`flex items-center justify-center rounded-full ${avatar.bg} border border-white/5 shadow-inner relative overflow-hidden ${className}`}>
-      {/* Subtle glowing orb behind icon */}
-      <div className={`absolute inset-0 ${avatar.color.replace('text-', 'bg-')} opacity-20 blur-md rounded-full`}></div>
-      <Icon size={size} className={`${avatar.color} relative z-10`} />
+    <div 
+      ref={containerRef}
+      className={`relative inline-block ${isVisible ? 'active-anim' : ''} ${className}`}
+    >
+      {/* ── Outer Companion Sprites ── */}
+      {companion && companion.id !== "none" && (
+        <div className="absolute inset-0 pointer-events-none z-50">
+          {companion.id === "paper-duck" && (
+            <div className="companion-duck text-base">🦆</div>
+          )}
+          {companion.id === "floating-book" && (
+            <div className="companion-book text-base">📚</div>
+          )}
+          {companion.id === "lucky-star" && (
+            <div className="companion-orbit text-base">⭐</div>
+          )}
+          {companion.id === "butterfly" && (
+            <div className="companion-butterfly text-base">🦋</div>
+          )}
+          {companion.id === "purple-crystal" && (
+            <div className="companion-orbit text-base">💜</div>
+          )}
+          {companion.id === "electric-orb" && (
+            <div className="companion-electric text-base">⚡</div>
+          )}
+          {companion.id === "moon-spirit" && (
+            <div className="companion-orbit text-base">🌙</div>
+          )}
+          {companion.id === "mini-penguin" && (
+            <div className="companion-duck text-base">🐧</div>
+          )}
+          {companion.id === "graduation-cap" && (
+            <div className="companion-cap text-base">🎓</div>
+          )}
+        </div>
+      )}
+
+      {/* ── Gold Crown overlay for legendary frame ── */}
+      {frameId === "legendary" && (
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-lg z-50 drop-shadow-[0_2px_4px_rgba(250,204,21,0.6)]">
+          👑
+        </div>
+      )}
+
+      {/* ── Avatar Frame Wrapper ── */}
+      <div 
+        className={`avatar-frame-container ${frameBorderClass} ${avatarWidthClass} flex items-center justify-center`}
+      >
+        {renderIcon()}
+      </div>
     </div>
   );
 }
