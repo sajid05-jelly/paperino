@@ -262,7 +262,7 @@ export default function LeaderboardPage() {
                       </div>
                       <div className="absolute -inset-3 bg-yellow-400/30 rounded-full blur-xl group-hover:bg-yellow-400/50 transition-all"></div>
                       <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center relative z-10">
-                        {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} frameId={top3[0].avatarFrame || "legendary"} companionId={top3[0].avatarCompanion || "none"} size={24} className="scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white bg-white/5 rounded-full">{top3[0].displayName.charAt(0)}</div>}
+                        {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} frameId={top3[0].avatarFrame || "legendary"} companionId={top3[0].avatarCompanion || "none"} hideCrown={true} size={24} className="scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white bg-white/5 rounded-full">{top3[0].displayName.charAt(0)}</div>}
                       </div>
                       <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 text-sm font-black px-3 py-0.5 rounded-full z-20 border-2 border-white shadow-lg ${activeTab === 'season' ? 'bg-violet-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>#{formatSerial(1)}</div>
                     </div>

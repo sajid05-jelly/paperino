@@ -32,6 +32,7 @@ interface UserAvatarProps {
   avatarId?: string | null;
   frameId?: string | null;
   companionId?: string | null;
+  hideCrown?: boolean;
   className?: string;
   size?: number;
 }
@@ -49,7 +50,7 @@ export const AVATARS = [
   { id: 'futuristic-owl', name: 'Futuristic Owl', icon: Bird, color: 'text-rose-400', bg: 'bg-rose-500/10' },
 ];
 
-export default function UserAvatar({ avatarId, frameId = "none", companionId = "none", className = "", size = 20 }: UserAvatarProps) {
+export default function UserAvatar({ avatarId, frameId = "none", companionId = "none", hideCrown = false, className = "", size = 20 }: UserAvatarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -134,7 +135,7 @@ export default function UserAvatar({ avatarId, frameId = "none", companionId = "
       )}
 
       {/* ── Gold Crown overlay for legendary frame ── */}
-      {frameId === "legendary" && (
+      {frameId === "legendary" && !hideCrown && (
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-lg z-50 drop-shadow-[0_2px_4px_rgba(250,204,21,0.6)]">
           👑
         </div>
