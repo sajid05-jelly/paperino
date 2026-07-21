@@ -301,17 +301,17 @@ export default function Navbar() {
                 {/* Notification Bell */}
                 <NotificationBell />
 
-                <button 
-                  onClick={() => setIsChangingAvatar(true)} 
+                <Link 
+                  href="/avatar-studio" 
                   className="flex flex-shrink-0 items-center gap-2 group p-1 pr-3 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all cursor-pointer"
-                  title="Change Avatar"
-                  aria-label="Change Avatar"
+                  title="Avatar Studio"
+                  aria-label="Avatar Studio"
                 >
                   <UserAvatar avatarId={paperinoAvatar} size={16} className="w-8 h-8" />
                   <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors hidden sm:block max-w-[80px] xl:max-w-[100px] truncate">
                     {user.displayName?.split(' ')[0] || 'Student'}
                   </span>
-                </button>
+                </Link>
                 <div className="hidden md:flex items-center flex-shrink-0">
                   <button 
                     onClick={logout} 
