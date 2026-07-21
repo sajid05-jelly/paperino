@@ -62,7 +62,11 @@ export default function AvatarStudioPage() {
           setUploadsCount(data.uploadsCount || 0);
           setApprovedUploads(data.approvedUploads || 0);
 
-          // Calculate auto unlocks based on uploads
+          // Calculate auto unlocks based on uploads (Unlocked by default for launch)
+          setUnlockedFrames(FRAMES.map((f) => f.id));
+          setUnlockedCompanions(COMPANIONS.map((c) => c.id));
+          
+          /* Keep logic commented out for future updates
           const tempFrames = ["none", "classic", "minimal"];
           const tempCompanions = ["none"];
 
@@ -76,6 +80,7 @@ export default function AvatarStudioPage() {
 
           setUnlockedFrames(Array.from(new Set(tempFrames)));
           setUnlockedCompanions(Array.from(new Set(tempCompanions)));
+          */
         }
       } catch (err) {
         console.error("Failed to load avatar studio stats:", err);
@@ -158,15 +163,18 @@ export default function AvatarStudioPage() {
             <div className="text-xl font-extrabold text-white flex items-center justify-center gap-2">
               {user?.displayName || "Scholar"}
             </div>
+            {/* Temporarily disabled for launch
             <div className="text-xs text-violet-400 font-bold tracking-wider uppercase">
               Lv. {level} — {levelLabel}
             </div>
             <div className="text-xs text-gray-400">
               Community: <span className="text-cyan-400 font-semibold">{reputation.label}</span>
             </div>
+            */}
           </div>
 
-          {/* XP Progress Bar */}
+          {/* XP Progress Bar (Temporarily disabled for launch) */}
+          {/*
           <div className="w-full bg-black/40 border border-white/5 p-4 rounded-2xl mb-8 space-y-2">
             <div className="flex justify-between text-xs font-semibold">
               <span className="text-gray-400">Level Progress</span>
@@ -182,6 +190,7 @@ export default function AvatarStudioPage() {
               {nextLevelXpNeed} XP remaining to next level
             </div>
           </div>
+          */}
 
           <button
             onClick={handleEquip}
@@ -216,12 +225,14 @@ export default function AvatarStudioPage() {
               >
                 Paperino Companions
               </button>
+              {/* Temporarily disabled achievements tab for initial launch
               <button
                 onClick={() => setActiveTab("achievements")}
                 className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === "achievements" ? "bg-white/10 text-white shadow-inner" : "text-gray-400 hover:text-white"}`}
               >
                 Achievements
               </button>
+              */}
             </div>
 
             {/* TAB CONTENT: AVATAR */}
@@ -288,13 +299,11 @@ export default function AvatarStudioPage() {
                       />
                       <span className="text-xs font-bold text-white mb-1">{frame.name}</span>
                       
-                      {/* Equiped / Unlocked Tags */}
+                      {/* Equipped / Available Tags */}
                       {isEquipped ? (
                         <span className="text-[10px] text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded-full">Equipped</span>
-                      ) : !isUnlocked ? (
-                        <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1"><Lock size={8} /> Locked</span>
                       ) : (
-                        <span className="text-[10px] text-gray-400 font-semibold">Unlocked</span>
+                        <span className="text-[10px] text-gray-400 font-semibold">Available</span>
                       )}
                     </button>
                   );
@@ -330,10 +339,8 @@ export default function AvatarStudioPage() {
                       
                       {isEquipped ? (
                         <span className="text-[10px] text-fuchsia-400 font-bold bg-fuchsia-500/10 px-2 py-0.5 rounded-full">Equipped</span>
-                      ) : !isUnlocked ? (
-                        <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1"><Lock size={8} /> Locked</span>
                       ) : (
-                        <span className="text-[10px] text-gray-400 font-semibold">Unlocked</span>
+                        <span className="text-[10px] text-gray-400 font-semibold">Available</span>
                       )}
                     </button>
                   );
