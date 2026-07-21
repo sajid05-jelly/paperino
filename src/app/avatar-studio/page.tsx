@@ -127,7 +127,7 @@ export default function AvatarStudioPage() {
       
       {/* Header Back Button */}
       <div className="flex items-center gap-4">
-        <SafeBackButton fallbackUrl="/pulse" />
+        <SafeBackButton fallbackUrl="/" />
         <div>
           <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
             <Sparkles className="text-violet-400" /> Avatar Frame Studio
