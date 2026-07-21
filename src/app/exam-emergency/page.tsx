@@ -13,7 +13,7 @@ import {
   Award, 
   Flame, 
   Zap, 
-  ArrowLeft, 
+  ArrowLeft,
   CheckCircle,
   HelpCircle,
   Activity,

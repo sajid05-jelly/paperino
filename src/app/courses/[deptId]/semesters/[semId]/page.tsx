@@ -2,7 +2,8 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Book, ChevronRight, Loader2 } from "lucide-react";
+import { Book, ChevronRight, Loader2 } from "lucide-react";
+import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 
 export default function SemesterSubjectsPage({ params }: { params: Promise<{ deptId: string, semId: string }> }) {
@@ -42,9 +43,7 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <Link href={`/courses/${deptId}`} className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors">
-        <ArrowLeft size={16} className="mr-2" /> Back to Semesters
-      </Link>
+      <SafeBackButton fallbackUrl={`/courses/${deptId}`} label="Back to Semesters" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors gap-2" size={16} />
 
       <div className="mb-12">
         <h1 className="text-4xl font-bold text-white mb-2">{activeDept.name}</h1>

@@ -2,7 +2,8 @@
 
 import { useState, use } from "react";
 import Link from "next/link";
-import { BookOpen, Calendar, Search, ChevronRight, Loader2, ArrowLeft } from "lucide-react";
+import { BookOpen, Calendar, Search, ChevronRight, Loader2 } from "lucide-react";
+import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 
@@ -60,9 +61,7 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
       <AmbientOrbs />
       
       <div className="w-full relative z-10 mb-8 flex justify-start">
-        <Link href="/courses" className="inline-flex items-center text-gray-400 hover:text-white transition-colors">
-          <ArrowLeft size={16} className="mr-2" /> Back to Departments
-        </Link>
+        <SafeBackButton fallbackUrl="/courses" label="Back to Departments" className="inline-flex items-center text-gray-400 hover:text-white transition-colors gap-2" size={16} />
       </div>
 
       <div className="text-center mb-10 w-full relative z-10">

@@ -12,8 +12,9 @@ import {
   xpToLevel, 
   getCommunityReputation 
 } from "@/lib/gamification";
-import { Sparkles, Trophy, ShieldAlert, Award, ArrowLeft, Check, Lock } from "lucide-react";
+import { Sparkles, Trophy, ShieldAlert, Award, Check, Lock } from "lucide-react";
 import Link from "next/link";
+import SafeBackButton from "@/components/SafeBackButton";
 
 export default function AvatarStudioPage() {
   const { user, paperinoAvatar } = useAuth();
@@ -117,9 +118,7 @@ export default function AvatarStudioPage() {
       
       {/* Header Back Button */}
       <div className="flex items-center gap-4">
-        <Link href="/profile" className="p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all text-gray-300 hover:text-white">
-          <ArrowLeft size={18} />
-        </Link>
+        <SafeBackButton fallbackUrl="/pulse" />
         <div>
           <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
             <Sparkles className="text-violet-400" /> Avatar Frame Studio

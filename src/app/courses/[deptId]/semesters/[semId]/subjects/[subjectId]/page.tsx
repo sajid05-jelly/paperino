@@ -4,7 +4,8 @@ import { useState, useEffect, use } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc } from "firebase/firestore";
 import Link from "next/link";
-import { ArrowLeft, FileText, Loader2, Download, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
+import { FileText, Loader2, Download, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
+import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import QuickUploadModal from "@/components/QuickUploadModal";
@@ -250,12 +251,12 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         
         {/* Back Button */}
-        <Link 
-          href={`/courses/${deptId}/semesters/${semId}`} 
+        <SafeBackButton 
+          fallbackUrl={`/courses/${deptId}/semesters/${semId}`} 
+          label="Back to Semester"
           className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] mb-8 hover:-translate-x-0.5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)]"
-        >
-          <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" /> Back to Semester
-        </Link>
+          size={14}
+        />
 
         {/* Header with Premium Glow */}
         <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500 relative">
