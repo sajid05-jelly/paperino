@@ -22,7 +22,7 @@ const THEMES = [
 ] as const;
 
 export default function Navbar() {
-  const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar } = useAuth();
+  const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion } = useAuth();
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
@@ -303,11 +303,13 @@ export default function Navbar() {
 
                 <Link 
                   href="/avatar-studio" 
-                  className="flex flex-shrink-0 items-center gap-2 group p-1 pr-3 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all cursor-pointer"
+                  className="flex flex-shrink-0 items-center gap-2.5 group p-1 pr-3.5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all cursor-pointer overflow-hidden"
                   title="Avatar Studio"
                   aria-label="Avatar Studio"
                 >
-                  <UserAvatar avatarId={paperinoAvatar} size={16} className="w-8 h-8" />
+                  <div className="flex items-center justify-center flex-shrink-0 relative overflow-hidden rounded-full border border-white/10 w-8 h-8">
+                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={7} />
+                  </div>
                   <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors hidden sm:block max-w-[80px] xl:max-w-[100px] truncate">
                     {user.displayName?.split(' ')[0] || 'Student'}
                   </span>

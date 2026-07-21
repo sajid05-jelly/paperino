@@ -20,6 +20,8 @@ interface AuthContextType {
   premiumStartDate: any;
   loading: boolean;
   paperinoAvatar: string | null;
+  avatarFrame: string | null;
+  avatarCompanion: string | null;
   lastPulseReadAt: any; // Firestore Timestamp
   setPaperinoAvatar: (avatarId: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
@@ -40,6 +42,8 @@ const AuthContext = createContext<AuthContextType>({
   premiumStartDate: null,
   loading: true,
   paperinoAvatar: null,
+  avatarFrame: null,
+  avatarCompanion: null,
   lastPulseReadAt: null,
   setPaperinoAvatar: async () => {},
   loginWithGoogle: async () => {},
@@ -73,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [premiumEndDate, setPremiumEndDate] = useState<any>(null);
   const [premiumStartDate, setPremiumStartDate] = useState<any>(null);
   const [paperinoAvatar, setPaperinoAvatarState] = useState<string | null>(null);
+  const [avatarFrame, setAvatarFrame] = useState<string | null>(null);
+  const [avatarCompanion, setAvatarCompanion] = useState<string | null>(null);
   const [lastPulseReadAt, setLastPulseReadAt] = useState<any>(null);
 
   useEffect(() => {
@@ -160,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (snap.exists()) {
             const data = snap.data();
             setPaperinoAvatarState(data.paperinoAvatar || null);
+            setAvatarFrame(data.avatarFrame || null);
+            setAvatarCompanion(data.avatarCompanion || null);
             setLastPulseReadAt(data.lastPulseReadAt || new Date(0));
             
             const isBlockedUser = data.status === "blocked";
@@ -206,6 +214,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         setPaperinoAvatarState(null);
+        setAvatarFrame(null);
+        setAvatarCompanion(null);
         setLastPulseReadAt(null);
         setIsAdmin(false);
         setIsContributor(false);
@@ -291,6 +301,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       premiumStartDate,
       loading, 
       paperinoAvatar, 
+      avatarFrame,
+      avatarCompanion,
       lastPulseReadAt,
       setPaperinoAvatar: savePaperinoAvatar, 
       loginWithGoogle, 
