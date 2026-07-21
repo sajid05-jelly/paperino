@@ -232,7 +232,7 @@ export default function LeaderboardPage() {
                     <div className="relative mb-4 cursor-pointer group" onClick={() => setSelectedUser(top3[1])}>
                       <div className="absolute -inset-2 bg-slate-400/20 rounded-full blur-md group-hover:bg-slate-400/40 transition-all"></div>
                       <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center relative z-10">
-                        {top3[1].paperinoAvatar ? <UserAvatar avatarId={top3[1].paperinoAvatar} frameId={top3[1].avatarFrame || "silver"} companionId={top3[1].avatarCompanion || "none"} size={20} className="scale-110" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white bg-white/5 rounded-full">{top3[1].displayName.charAt(0)}</div>}
+                        {top3[1].paperinoAvatar ? <UserAvatar avatarId={top3[1].paperinoAvatar} frameId={top3[1].avatarFrame || "none"} companionId={top3[1].avatarCompanion || "none"} size={20} className="scale-110" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white bg-white/5 rounded-full">{top3[1].displayName.charAt(0)}</div>}
                       </div>
                       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-200 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#{formatSerial(2)}</div>
                     </div>
@@ -251,18 +251,9 @@ export default function LeaderboardPage() {
                 {top3[0] && (
                   <div className="flex flex-col items-center animate-in slide-in-from-bottom-12 duration-700 z-10 flex-1 max-w-[150px] md:max-w-[200px]">
                     <div className="relative mb-4 cursor-pointer group" onClick={() => setSelectedUser(top3[0])}>
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                        <div className="animate-crown-float">
-                          {activeTab === "allTime" ? (
-                            <Crown className="text-yellow-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]" size={28} />
-                          ) : (
-                            <Medal className="text-violet-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]" size={28} />
-                          )}
-                        </div>
-                      </div>
                       <div className="absolute -inset-3 bg-yellow-400/30 rounded-full blur-xl group-hover:bg-yellow-400/50 transition-all"></div>
                       <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center relative z-10">
-                        {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} frameId={top3[0].avatarFrame || "legendary"} companionId={top3[0].avatarCompanion || "none"} hideCrown={true} size={24} className="scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white bg-white/5 rounded-full">{top3[0].displayName.charAt(0)}</div>}
+                        {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} frameId={top3[0].avatarFrame || "none"} companionId={top3[0].avatarCompanion || "none"} size={24} className="scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white bg-white/5 rounded-full">{top3[0].displayName.charAt(0)}</div>}
                       </div>
                       <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 text-sm font-black px-3 py-0.5 rounded-full z-20 border-2 border-white shadow-lg ${activeTab === 'season' ? 'bg-violet-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>#{formatSerial(1)}</div>
                     </div>
@@ -285,7 +276,7 @@ export default function LeaderboardPage() {
                     <div className="relative mb-4 cursor-pointer group" onClick={() => setSelectedUser(top3[2])}>
                       <div className="absolute -inset-2 bg-amber-700/20 rounded-full blur-md group-hover:bg-amber-700/40 transition-all"></div>
                       <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center relative z-10">
-                        {top3[2].paperinoAvatar ? <UserAvatar avatarId={top3[2].paperinoAvatar} frameId={top3[2].avatarFrame || "bronze"} companionId={top3[2].avatarCompanion || "none"} size={20} className="scale-110" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white bg-white/5 rounded-full">{top3[2].displayName.charAt(0)}</div>}
+                        {top3[2].paperinoAvatar ? <UserAvatar avatarId={top3[2].paperinoAvatar} frameId={top3[2].avatarFrame || "none"} companionId={top3[2].avatarCompanion || "none"} size={20} className="scale-110" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white bg-white/5 rounded-full">{top3[2].displayName.charAt(0)}</div>}
                       </div>
                       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-800 text-amber-100 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#{formatSerial(3)}</div>
                     </div>
@@ -317,7 +308,7 @@ export default function LeaderboardPage() {
                       </div>
                       
                       <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
-                        {user.paperinoAvatar ? <UserAvatar avatarId={user.paperinoAvatar} frameId={user.avatarFrame || (index + 4 <= 10 ? "purple-glow" : "none")} companionId={user.avatarCompanion || "none"} size={12} /> : <div className="w-full h-full flex items-center justify-center font-bold bg-white/5 border border-white/10 rounded-full">{user.displayName.charAt(0)}</div>}
+                        {user.paperinoAvatar ? <UserAvatar avatarId={user.paperinoAvatar} frameId={user.avatarFrame || "none"} companionId={user.avatarCompanion || "none"} size={12} /> : <div className="w-full h-full flex items-center justify-center font-bold bg-white/5 border border-white/10 rounded-full">{user.displayName.charAt(0)}</div>}
                       </div>
 
                       <div className="flex-1 min-w-0">
