@@ -946,3 +946,18 @@ html, body {
   background-position: center;
 }
 
+/* Crown Floating Animation */
+@keyframes crownFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.02);
+  }
+}
+.animate-crown-float {
+  transform-origin: center bottom;
+  animation: crownFloat 2.2s ease-in-out infinite;
+}
+
+
