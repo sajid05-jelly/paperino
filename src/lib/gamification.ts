@@ -187,7 +187,9 @@ export const FRAMES = [
   { id: "diamond", name: "Diamond", class: "border-slate-100 shadow-[0_0_15px_rgba(255,255,255,0.7)]" },
   { id: "minimal", name: "Minimal", class: "border-white/20" },
   { id: "bronze", name: "Bronze", class: "border-amber-700 shadow-[0_0_8px_rgba(180,83,9,0.5)]" },
-  { id: "gold", name: "Gold", class: "border-yellow-500 shadow-[0_0_15px_#eab308]" }
+  { id: "silver", name: "Silver", class: "border-slate-300 shadow-[0_0_10px_rgba(203,213,225,0.6)]" },
+  { id: "gold", name: "Gold", class: "border-yellow-500 shadow-[0_0_15px_#eab308]" },
+  { id: "legendary", name: "Legendary Gold Crown", class: "border-yellow-400 shadow-[0_0_20px_#eab308]" }
 ];
 
 export const COMPANIONS = [

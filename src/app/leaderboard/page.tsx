@@ -12,6 +12,8 @@ interface ContributorStats {
   uid: string;
   displayName: string;
   paperinoAvatar: string | null;
+  avatarFrame?: string | null;
+  avatarCompanion?: string | null;
   joinedDate: Date | null;
   uploads: number;
   points: number; // stores contributionPoints
@@ -69,6 +71,8 @@ export default function LeaderboardPage() {
             uid: c.uid,
             displayName: c.displayName || "Anonymous Contributor",
             paperinoAvatar: c.paperinoAvatar || null,
+            avatarFrame: c.avatarFrame || null,
+            avatarCompanion: c.avatarCompanion || null,
             joinedDate,
             uploads: c.uploads || 0,
             points: c.contributionPoints || c.points || 0,
@@ -94,6 +98,8 @@ export default function LeaderboardPage() {
             uid: c.uid,
             displayName: c.displayName || "Anonymous Contributor",
             paperinoAvatar: c.paperinoAvatar || null,
+            avatarFrame: c.avatarFrame || null,
+            avatarCompanion: c.avatarCompanion || null,
             joinedDate,
             uploads: c.uploads || 0,
             points: c.contributionPoints || c.points || 0,
@@ -225,8 +231,8 @@ export default function LeaderboardPage() {
                   <div className="flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 delay-100 flex-1 max-w-[140px] md:max-w-[180px]">
                     <div className="relative mb-4 cursor-pointer group" onClick={() => setSelectedUser(top3[1])}>
                       <div className="absolute -inset-2 bg-slate-400/20 rounded-full blur-md group-hover:bg-slate-400/40 transition-all"></div>
-                      <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(1)}`}>
-                        {top3[1].paperinoAvatar ? <UserAvatar avatarId={top3[1].paperinoAvatar} size={12} className="w-full h-full scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white">{top3[1].displayName.charAt(0)}</div>}
+                      <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center relative z-10">
+                        {top3[1].paperinoAvatar ? <UserAvatar avatarId={top3[1].paperinoAvatar} frameId={top3[1].avatarFrame || "silver"} companionId={top3[1].avatarCompanion || "none"} size={20} className="scale-110" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white bg-white/5 rounded-full">{top3[1].displayName.charAt(0)}</div>}
                       </div>
                       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-200 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#{formatSerial(2)}</div>
                     </div>
@@ -251,8 +257,8 @@ export default function LeaderboardPage() {
                         <Medal className="absolute -top-8 left-1/2 -translate-x-1/2 text-violet-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)] animate-bounce" size={28} />
                       )}
                       <div className="absolute -inset-3 bg-yellow-400/30 rounded-full blur-xl group-hover:bg-yellow-400/50 transition-all"></div>
-                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(0)}`}>
-                        {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} size={20} className="w-full h-full scale-125 pt-4" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white">{top3[0].displayName.charAt(0)}</div>}
+                      <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center relative z-10">
+                        {top3[0].paperinoAvatar ? <UserAvatar avatarId={top3[0].paperinoAvatar} frameId={top3[0].avatarFrame || "legendary"} companionId={top3[0].avatarCompanion || "none"} size={24} className="scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-white bg-white/5 rounded-full">{top3[0].displayName.charAt(0)}</div>}
                       </div>
                       <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 text-sm font-black px-3 py-0.5 rounded-full z-20 border-2 border-white shadow-lg ${activeTab === 'season' ? 'bg-violet-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>#{formatSerial(1)}</div>
                     </div>
@@ -274,8 +280,8 @@ export default function LeaderboardPage() {
                   <div className="flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 delay-200 flex-1 max-w-[140px] md:max-w-[180px]">
                     <div className="relative mb-4 cursor-pointer group" onClick={() => setSelectedUser(top3[2])}>
                       <div className="absolute -inset-2 bg-amber-700/20 rounded-full blur-md group-hover:bg-amber-700/40 transition-all"></div>
-                      <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full border-4 bg-[#0a0714] overflow-hidden relative z-10 ${getAvatarBorder(2)}`}>
-                        {top3[2].paperinoAvatar ? <UserAvatar avatarId={top3[2].paperinoAvatar} size={12} className="w-full h-full scale-125 pt-2" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white">{top3[2].displayName.charAt(0)}</div>}
+                      <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center relative z-10">
+                        {top3[2].paperinoAvatar ? <UserAvatar avatarId={top3[2].paperinoAvatar} frameId={top3[2].avatarFrame || "bronze"} companionId={top3[2].avatarCompanion || "none"} size={20} className="scale-110" /> : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white bg-white/5 rounded-full">{top3[2].displayName.charAt(0)}</div>}
                       </div>
                       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-800 text-amber-100 text-xs font-bold px-2.5 py-0.5 rounded-full z-20 border border-white shadow-md">#{formatSerial(3)}</div>
                     </div>
@@ -306,8 +312,8 @@ export default function LeaderboardPage() {
                         {formatSerial(index + 4)}
                       </div>
                       
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">
-                        {user.paperinoAvatar ? <UserAvatar avatarId={user.paperinoAvatar} size={12} className="w-full h-full scale-125 pt-1" /> : <div className="w-full h-full flex items-center justify-center font-bold">{user.displayName.charAt(0)}</div>}
+                      <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
+                        {user.paperinoAvatar ? <UserAvatar avatarId={user.paperinoAvatar} frameId={user.avatarFrame || (index + 4 <= 10 ? "purple-glow" : "none")} companionId={user.avatarCompanion || "none"} size={12} /> : <div className="w-full h-full flex items-center justify-center font-bold bg-white/5 border border-white/10 rounded-full">{user.displayName.charAt(0)}</div>}
                       </div>
 
                       <div className="flex-1 min-w-0">
@@ -415,8 +421,8 @@ export default function LeaderboardPage() {
             
             {/* Avatar */}
             <div className="absolute top-16 left-1/2 -translate-x-1/2">
-              <div className="w-24 h-24 rounded-full border-4 border-[#0a0714] bg-[#0a0714] overflow-hidden shadow-xl relative z-10">
-                {selectedUser.paperinoAvatar ? <UserAvatar avatarId={selectedUser.paperinoAvatar} size={24} className="w-full h-full scale-125 pt-3" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-white bg-white/5">{selectedUser.displayName.charAt(0)}</div>}
+              <div className="w-24 h-24 flex items-center justify-center relative z-10">
+                {selectedUser.paperinoAvatar ? <UserAvatar avatarId={selectedUser.paperinoAvatar} frameId={selectedUser.avatarFrame || "none"} companionId={selectedUser.avatarCompanion || "none"} size={24} className="scale-125 pt-1" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-white bg-white/5 rounded-full">{selectedUser.displayName.charAt(0)}</div>}
               </div>
             </div>
 
