@@ -10,7 +10,8 @@ import {
   Bell, Trash2, Info, Plus, Upload 
 } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
-import { getDownloadHref } from "@/lib/driveUtils";
+import { getDownloadHref, triggerSecureDownload } from "@/lib/driveUtils";
+import { useToast } from "@/components/Toast";
 
 interface Material {
   id: string;
@@ -34,6 +35,7 @@ export default function ContributorDashboardPage() {
     isPremiumActive, 
     premiumEndDate 
   } = useAuth();
+  const { showToast } = useToast();
   
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -385,9 +387,9 @@ export default function ContributorDashboardPage() {
                         {copiedId === mat.id ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
                         {copiedId === mat.id ? "Copied" : "Copy"}
                       </button>
-                      <a href={getDownloadHref(mat)} download className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20">
+                      <button onClick={() => triggerSecureDownload(mat, showToast)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20 cursor-pointer">
                         Download <Download size={14} />
-                      </a>
+                      </button>
                     </div>
                   </div>
                 ))}

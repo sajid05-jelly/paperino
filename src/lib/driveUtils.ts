@@ -64,7 +64,7 @@ export async function triggerSecureDownload(
   try {
     const user = auth.currentUser;
     if (!user) {
-      showToast?.("Please log in to download materials", "error");
+      showToast?.("Please sign in to download this material.", "error");
       return;
     }
 
@@ -81,8 +81,7 @@ export async function triggerSecureDownload(
     });
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Download failed: Status ${res.status}`);
+      throw new Error("This material is temporarily unavailable.");
     }
 
     const blob = await res.blob();
