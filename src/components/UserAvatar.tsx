@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { FRAMES, COMPANIONS } from '@/lib/gamification';
 import CompanionVisual from './CompanionVisual';
+import AvatarFrameVisual from './AvatarFrameVisual';
 
 export type AvatarId = 
   | 'pen-paper' 
@@ -135,18 +136,13 @@ export default function UserAvatar({ avatarId, frameId = "none", companionId = "
         </div>
       )}
 
-      {/* ── Gold Crown overlay for legendary frame ── */}
-      {frameId === "legendary" && !hideCrown && (
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-lg z-50 drop-shadow-[0_2px_4px_rgba(250,204,21,0.6)]">
-          👑
-        </div>
-      )}
-
       {/* ── Avatar Frame Wrapper ── */}
       <div 
-        className={`avatar-frame-container ${frameBorderClass} ${avatarWidthClass} flex items-center justify-center`}
+        className={`avatar-frame-container ${avatarWidthClass} flex items-center justify-center`}
       >
-        {renderIcon()}
+        <AvatarFrameVisual frameId={frameId || "none"} size={size}>
+          {renderIcon()}
+        </AvatarFrameVisual>
       </div>
     </div>
   );
