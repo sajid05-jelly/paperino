@@ -31,16 +31,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="glass-panel p-6 rounded-2xl md:sticky top-24">
           <h2 className="text-xl font-bold text-white mb-6">Admin Panel</h2>
           <nav className="flex flex-col gap-2">
+            <Link href="/admin/upload" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
+              <Upload size={20} />
+              Upload Material
+            </Link>
+
             <Link href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <Activity size={20} className="text-violet-400" />
               Analytics Dashboard
             </Link>
 
             <div className="h-px w-full bg-white/10 my-2"></div>
-            <Link href="/admin/upload" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-              <Upload size={20} />
-              Upload Material
-            </Link>
             <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors w-full text-left">
               <Plus size={20} className="text-fuchsia-400" />
               Create New Course
