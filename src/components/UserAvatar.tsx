@@ -15,6 +15,7 @@ import {
   User
 } from 'lucide-react';
 import { FRAMES, COMPANIONS } from '@/lib/gamification';
+import CompanionVisual from './CompanionVisual';
 
 export type AvatarId = 
   | 'pen-paper' 
@@ -105,31 +106,31 @@ export default function UserAvatar({ avatarId, frameId = "none", companionId = "
       {companion && companion.id !== "none" && (
         <div className="absolute inset-0 pointer-events-none z-50">
           {companion.id === "paper-duck" && (
-            <div className="companion-duck text-base">🦆</div>
+            <div className="companion-duck w-5 h-5 flex items-center justify-center"><CompanionVisual id="paper-duck" className="w-full h-full" /></div>
           )}
           {companion.id === "floating-book" && (
-            <div className="companion-book text-base">📚</div>
+            <div className="companion-book w-5 h-5 flex items-center justify-center"><CompanionVisual id="floating-book" className="w-full h-full" /></div>
           )}
           {companion.id === "lucky-star" && (
-            <div className="companion-orbit text-base">⭐</div>
+            <div className="companion-orbit w-5 h-5 flex items-center justify-center"><CompanionVisual id="lucky-star" className="w-full h-full" /></div>
           )}
           {companion.id === "butterfly" && (
-            <div className="companion-butterfly text-base">🦋</div>
+            <div className="companion-butterfly w-5 h-5 flex items-center justify-center"><CompanionVisual id="butterfly" className="w-full h-full" /></div>
           )}
           {companion.id === "purple-crystal" && (
-            <div className="companion-orbit text-base">💜</div>
+            <div className="companion-orbit w-5 h-5 flex items-center justify-center"><CompanionVisual id="purple-crystal" className="w-full h-full" /></div>
           )}
           {companion.id === "electric-orb" && (
-            <div className="companion-electric text-base">⚡</div>
+            <div className="companion-electric w-5 h-5 flex items-center justify-center"><CompanionVisual id="electric-orb" className="w-full h-full" /></div>
           )}
           {companion.id === "moon-spirit" && (
-            <div className="companion-orbit text-base">🌙</div>
+            <div className="companion-orbit w-5 h-5 flex items-center justify-center"><CompanionVisual id="moon-spirit" className="w-full h-full" /></div>
           )}
           {companion.id === "mini-penguin" && (
-            <div className="companion-duck text-base">🐧</div>
+            <div className="companion-duck w-5 h-5 flex items-center justify-center"><CompanionVisual id="mini-penguin" className="w-full h-full" /></div>
           )}
           {companion.id === "graduation-cap" && (
-            <div className="companion-cap text-base">🎓</div>
+            <div className="companion-cap w-5 h-5 flex items-center justify-center"><CompanionVisual id="graduation-cap" className="w-full h-full" /></div>
           )}
         </div>
       )}

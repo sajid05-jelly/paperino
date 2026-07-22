@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import UserAvatar, { AVATARS } from "@/components/UserAvatar";
+import CompanionVisual from "@/components/CompanionVisual";
 import { 
   FRAMES, 
   COMPANIONS, 
@@ -332,8 +333,12 @@ export default function AvatarStudioPage() {
                             : "border-white/5 bg-black/20 hover:border-white/10"
                       } ${!isUnlocked ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
-                      <div className="text-3xl mb-4 h-12 flex items-center justify-center">
-                        {comp.emoji || "🚫"}
+                      <div className="mb-4 h-12 flex items-center justify-center">
+                        {comp.id === "none" ? (
+                          <span className="text-gray-500 font-semibold text-xs border border-white/10 rounded-full w-10 h-10 flex items-center justify-center">None</span>
+                        ) : (
+                          <CompanionVisual id={comp.id} className="w-12 h-12" />
+                        )}
                       </div>
                       <span className="text-xs font-bold text-white mb-1">{comp.name}</span>
                       

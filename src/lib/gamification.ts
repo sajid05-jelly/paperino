@@ -99,7 +99,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     category: "upload",
     unlockType: "companion",
     unlockId: "floating-book",
-    unlockName: "📚 Floating Book",
+    unlockName: "Floating Book",
     check: (s) => (s.uploadsCount || 0) >= 25
   },
   {
@@ -119,7 +119,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     category: "upload",
     unlockType: "companion",
     unlockId: "electric-orb",
-    unlockName: "⚡ Electric Orb",
+    unlockName: "Electric Orb",
     check: (s) => (s.uploadsCount || 0) >= 100
   },
   {
@@ -159,7 +159,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     category: "other",
     unlockType: "companion",
     unlockId: "purple-crystal",
-    unlockName: "💜 Purple Crystal",
+    unlockName: "Purple Crystal",
     check: (s) => !!s.atsResumeUploaded
   },
   {
@@ -194,15 +194,15 @@ export const FRAMES = [
 
 export const COMPANIONS = [
   { id: "none", name: "None", emoji: "" },
-  { id: "paper-duck", name: "🦆 Paper Duck", emoji: "🦆" },
-  { id: "floating-book", name: "📚 Floating Book", emoji: "📚" },
-  { id: "lucky-star", name: "⭐ Lucky Star", emoji: "⭐" },
-  { id: "butterfly", name: "🦋 Butterfly", emoji: "🦋" },
-  { id: "purple-crystal", name: "💜 Purple Crystal", emoji: "💜" },
-  { id: "electric-orb", name: "⚡ Electric Orb", emoji: "⚡" },
-  { id: "moon-spirit", name: "🌙 Moon Spirit", emoji: "🌙" },
-  { id: "mini-penguin", name: "🐧 Mini Penguin", emoji: "🐧" },
-  { id: "graduation-cap", name: "🎓 Graduation Cap", emoji: "🎓" }
+  { id: "paper-duck", name: "Paper Duck", emoji: "" },
+  { id: "floating-book", name: "Floating Book", emoji: "" },
+  { id: "lucky-star", name: "Lucky Star", emoji: "" },
+  { id: "butterfly", name: "Butterfly", emoji: "" },
+  { id: "purple-crystal", name: "Purple Crystal", emoji: "" },
+  { id: "electric-orb", name: "Electric Orb", emoji: "" },
+  { id: "moon-spirit", name: "Moon Spirit", emoji: "" },
+  { id: "mini-penguin", name: "Mini Penguin", emoji: "" },
+  { id: "graduation-cap", name: "Graduation Cap", emoji: "" }
 ];
 
 export const BACKGROUNDS = [
