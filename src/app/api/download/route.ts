@@ -4,8 +4,8 @@
  * Secure download proxy for Paperino study materials.
  *
  * We verify the Firebase Auth ID Token (Bearer) on the server,
- * enforce rate limits, increment metrics, and stream the file directly
- * from Google Drive using OAuth credentials.
+ * and stream the file directly from Google Drive using OAuth credentials.
+ * Zero Firestore reads are performed during the download process.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -20,11 +20,18 @@ export const dynamic = "force-dynamic";
 const VALID_FILE_ID = /^[a-zA-Z0-9_-]{10,60}$/;
 
 export async function GET(req: NextRequest) {
+  const fileId = req.nextUrl.searchParams.get("fileId");
+  const matId = req.nextUrl.searchParams.get("matId");
+  const matName = req.nextUrl.searchParams.get("matName");
+
+  console.log("[Download API] Request received:", { fileId, matId, matName });
+
   // 1. Verify Authentication via Bearer Header
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.error("[Download API] Missing or invalid Authorization header");
     return NextResponse.json(
-      { error: "Access Denied", message: "You found the door... but forgot the key 🔑" },
+      { error: "Access Denied", message: "Missing authorization header" },
       { status: 401 }
     );
   }
@@ -34,66 +41,29 @@ export async function GET(req: NextRequest) {
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
     uid = decodedToken.uid;
-  } catch (err) {
-    console.error("Auth verification failed:", err);
+    console.log("[Download API] Authentication successful for uid:", uid);
+  } catch (err: any) {
+    console.error("[Download API] Auth token verification failed:", err);
     return NextResponse.json(
-      { error: "Access Denied", message: "You found the door... but forgot the key 🔑" },
+      { error: "Access Denied", message: err.message || "Invalid token" },
       { status: 401 }
     );
   }
 
-  const fileId = req.nextUrl.searchParams.get("fileId");
-  const matId = req.nextUrl.searchParams.get("matId");
-  const matName = req.nextUrl.searchParams.get("matName");
-
   // Validate fileId — reject anything that doesn't look like a real Drive ID
   if (!fileId || !VALID_FILE_ID.test(fileId)) {
+    console.error("[Download API] Invalid fileId format received:", fileId);
     return NextResponse.json(
       { error: "Invalid or missing fileId" },
       { status: 400 }
     );
   }
 
-  if (!adminDb) {
-    return NextResponse.json({ error: "Database service unavailable" }, { status: 503 });
-  }
-
-  // 2. Rate Limiting (Max 10 requests / minute per user)
-  try {
-    const userRef = adminDb.collection("users").doc(uid);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
-    }
-
-    const userData = userDoc.data() || {};
-    const now = Date.now();
-    const rateLimit = userData.downloadRateLimit || { count: 0, resetTime: 0 };
-
-    if (now > rateLimit.resetTime) {
-      rateLimit.count = 1;
-      rateLimit.resetTime = now + 60000; // Reset in 60s
-    } else {
-      rateLimit.count += 1;
-    }
-
-    if (rateLimit.count > 10) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded: Max 10 downloads per minute." },
-        { status: 429 }
-      );
-    }
-
-    await userRef.update({ downloadRateLimit: rateLimit });
-  } catch (err) {
-    console.error("Rate limit verification error:", err);
-    return NextResponse.json({ error: "Internal security authorization check failed" }, { status: 500 });
-  }
-
-  // 3. Track and Increment Download Count on Server Side
-  if (matId) {
+  // 2. Track and Increment Download Count on Server Side (Firestore Writes Only - No Reads)
+  if (matId && adminDb) {
     try {
-      // Increment stats collection
+      console.log("[Download API] Registering download stats in Firestore for matId:", matId);
+      // Increment stats collection (Firestore Write)
       const statsRef = adminDb.collection("platform_stats").doc("materials").collection("downloads").doc(matId);
       await statsRef.set({
         name: matName || matId,
@@ -101,25 +71,28 @@ export async function GET(req: NextRequest) {
         lastDownloaded: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      // Increment materials collection document
+      // Increment materials collection document (Firestore Write)
       const materialRef = adminDb.collection("materials").doc(matId);
       await materialRef.update({
         downloads: admin.firestore.FieldValue.increment(1)
       });
-    } catch (err) {
-      console.error("Tracking background error:", err);
+      console.log("[Download API] Firestore download stats incremented successfully");
+    } catch (err: any) {
+      console.error("[Download API] Firestore tracking error (Ignored to prevent download blockage):", err);
     }
   }
 
-  // 4. Stream File directly from Google Drive using authenticated OAuth credentials
+  // 3. Stream File directly from Google Drive using authenticated OAuth credentials (0 Firestore Reads)
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
+    console.log("[Download API] Google Drive authentication method: OAuth2 Client configuration check...");
     if (!clientId || !clientSecret || !refreshToken) {
-      console.error("Download API error: Google Drive OAuth credentials not configured");
-      return NextResponse.json({ error: "Google Drive OAuth credentials not configured" }, { status: 500 });
+      const errorMsg = "Download API error: Google Drive OAuth credentials not configured";
+      console.error("[Download API]", errorMsg, { clientId: !!clientId, clientSecret: !!clientSecret, refreshToken: !!refreshToken });
+      return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 
     const oauth2Client = new google.auth.OAuth2(
@@ -134,15 +107,22 @@ export async function GET(req: NextRequest) {
 
     const drive = google.drive({ version: "v3", auth: oauth2Client });
 
+    console.log("[Download API] Fetching file stream from Google Drive for fileId:", fileId);
+    
     // Fetch the file as stream from Drive
     const driveRes = await drive.files.get(
       { fileId: fileId, alt: "media" },
       { responseType: "stream" }
     );
 
+    console.log("[Download API] Google Drive API response status:", driveRes.status);
     if (!driveRes || driveRes.status !== 200) {
-      console.error("Failed to retrieve file from Drive:", driveRes);
-      return NextResponse.json({ error: "Failed to retrieve storage file from Drive" }, { status: 500 });
+      console.error("[Download API] Failed response from Google Drive:", driveRes);
+      return NextResponse.json({ 
+        error: "Failed to retrieve storage file from Drive",
+        status: driveRes.status,
+        headers: driveRes.headers
+      }, { status: 500 });
     }
 
     // Pass the Drive response stream directly back to the client
@@ -153,6 +133,7 @@ export async function GET(req: NextRequest) {
     headers.set("Pragma", "no-cache");
     headers.set("Expires", "0");
 
+    console.log("[Download API] Converting Node stream to Web Stream and starting download response...");
     const webStream = Readable.toWeb(driveRes.data as Readable);
 
     return new NextResponse(webStream as any, {
@@ -160,10 +141,14 @@ export async function GET(req: NextRequest) {
       headers
     });
   } catch (err: any) {
-    console.error("Streaming file error from Google Drive API:", err);
+    console.error("[Download API] Critical exception caught during file streaming:", err);
+    if (err.stack) {
+      console.error(err.stack);
+    }
     return NextResponse.json({ 
       error: "Failed to download file from storage service",
-      details: err.message || String(err)
+      exception: err.message || String(err),
+      stack: err.stack
     }, { status: 500 });
   }
 }
