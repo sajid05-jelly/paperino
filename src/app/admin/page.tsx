@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle, GraduationCap, Bell, Trash2, Loader2, X, CheckCircle2 } from "lucide-react";
-import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs, writeBatch } from "firebase/firestore";
+import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs, writeBatch, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function AdminDashboard() {
@@ -36,6 +36,42 @@ export default function AdminDashboard() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearingNotifs, setClearingNotifs] = useState(false);
   const [clearResult, setClearResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Dynamic Tagline Message System
+  const [headerMessage, setHeaderMessage] = useState("");
+  const [savingHeader, setSavingHeader] = useState(false);
+  const [saveHeaderSuccess, setSaveHeaderSuccess] = useState(false);
+
+  useEffect(() => {
+    const fetchHeaderMessage = async () => {
+      try {
+        const snap = await getDoc(doc(db, "settings", "headerMessage"));
+        if (snap.exists()) {
+          setHeaderMessage(snap.data().message || "");
+        }
+      } catch (err) {
+        console.error("[Admin] Failed to fetch header message:", err);
+      }
+    };
+    fetchHeaderMessage();
+  }, []);
+
+  const handleSaveHeaderMessage = async () => {
+    setSavingHeader(true);
+    setSaveHeaderSuccess(false);
+    try {
+      await setDoc(doc(db, "settings", "headerMessage"), {
+        message: headerMessage,
+        updatedAt: new Date()
+      }, { merge: true });
+      setSaveHeaderSuccess(true);
+      setTimeout(() => setSaveHeaderSuccess(false), 3000);
+    } catch (err) {
+      console.error("[Admin] Failed to save header message:", err);
+    } finally {
+      setSavingHeader(false);
+    }
+  };
 
   const handleClearAllNotifications = useCallback(async () => {
     setClearingNotifs(true);
@@ -486,6 +522,42 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Paperino Header Message Customizer */}
+            <div className="glass-panel p-8 rounded-3xl border border-white/5 space-y-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Sparkles className="text-violet-400" size={20}/> Paperino Header Message
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Change the dynamic tagline shown directly below the "Paperino" brand title across the website.
+              </p>
+              
+              <div className="flex gap-4">
+                <input
+                  type="text"
+                  value={headerMessage}
+                  onChange={(e) => setHeaderMessage(e.target.value)}
+                  placeholder="The Universe of Study Materials"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-colors"
+                />
+                <button
+                  onClick={handleSaveHeaderMessage}
+                  disabled={savingHeader}
+                  className="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-violet-900/20"
+                >
+                  {savingHeader ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <span>Save</span>
+                  )}
+                </button>
+              </div>
+              {saveHeaderSuccess && (
+                <p className="text-emerald-400 text-xs font-semibold flex items-center gap-1 animate-in fade-in duration-300">
+                  <CheckCircle2 size={12} /> Tagline updated instantly!
+                </p>
+              )}
             </div>
 
           </div>

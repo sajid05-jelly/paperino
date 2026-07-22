@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { onSnapshot, doc } from "firebase/firestore";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
@@ -32,6 +34,21 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isLabsOpen, setIsLabsOpen] = useState(false);
   const [isLabsMobileOpen, setIsLabsMobileOpen] = useState(false);
+  const [tagline, setTagline] = useState("The Universe of Study Materials");
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, "settings", "headerMessage"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setTagline(data.message || "The Universe of Study Materials");
+      } else {
+        setTagline("The Universe of Study Materials");
+      }
+    }, (err) => {
+      console.warn("Tagline read error:", err);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -104,11 +121,14 @@ export default function Navbar() {
     <>
       <nav className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled ? 'bg-black/20 backdrop-blur-[40px] saturate-150 border-b border-white/10 shadow-[0_10px_30px_rgba(var(--primary-rgb),0.1)]' : 'bg-transparent border-b border-transparent'}`}>
         <div className={`mx-auto flex max-w-[1600px] w-full items-center justify-between px-3 sm:px-4 lg:px-6 transition-all duration-300 gap-2 lg:gap-4 ${isScrolled ? 'py-2 lg:py-2.5 xl:py-3' : 'py-3 lg:py-4 xl:py-5'}`}>
-          <Link href="/" className="flex items-center gap-1.5 group flex-shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
             <div className="h-9 w-9 sm:h-10 sm:w-10 relative overflow-hidden rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(167,139,250,0.5)] group-hover:shadow-[0_0_30px_rgba(167,139,250,0.8)] transition-all duration-500 bg-black border border-white/5">
               <Logo className="w-full h-full object-cover scale-[1.3] group-hover:scale-[1.4] transition-transform duration-500" aria-hidden="true" />
             </div>
-            <span className="text-lg sm:text-xl font-bold tracking-tight text-white hidden sm:block group-hover:text-glow transition-all duration-300">Paperino</span>
+            <div className="hidden sm:flex flex-col select-none items-start">
+              <span className="text-lg sm:text-xl font-bold tracking-tight text-white group-hover:text-glow transition-all duration-300 leading-none">Paperino</span>
+              <span className="text-[9px] text-gray-400 font-bold tracking-wider uppercase opacity-80 mt-0.5 max-w-[160px] truncate transition-opacity duration-500 hover:opacity-100" title={tagline}>{tagline}</span>
+            </div>
           </Link>
           
             <div className="hidden xl:flex flex-1 items-center justify-center gap-1 xl:gap-2 font-medium min-w-0"
