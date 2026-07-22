@@ -395,6 +395,7 @@ export default function PulsePage() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [expandedInternships, setExpandedInternships] = useState<Record<string, boolean>>({});
   const { showToast } = useToast();
 
   const handleDelete = async (id: string) => {
@@ -612,11 +613,17 @@ export default function PulsePage() {
               // 1. INTERNSHIPS (Large Premium Card)
               if (update.category === "Internships") {
                 const parsed = parseInternshipDetails(update);
+                const isExpanded = expandedInternships[update.id] || false;
+                const toggleExpand = (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  setExpandedInternships(prev => ({ ...prev, [update.id]: !prev[update.id] }));
+                };
+
                 return (
                   <div 
                     key={update.id} 
                     onClick={() => isLoggedOut && router.push("/login")}
-                    className={`group relative p-6 md:p-8 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both flex flex-col justify-between ${isLoggedOut ? "cursor-pointer" : ""} ${
+                    className={`group relative p-6 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both flex flex-col justify-between ${isLoggedOut ? "cursor-pointer" : ""} ${
                       update.isPinned 
                       ? 'bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]' 
                       : 'bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 hover:shadow-xl hover:-translate-y-1'
@@ -669,10 +676,24 @@ export default function PulsePage() {
                           {parsed.role}
                         </h2>
 
-                        {/* Full 5-10 lines description */}
-                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
-                          {parsed.summary}
-                        </p>
+                        {/* Overview (Short Professional Overview + Read More) */}
+                        <div className="text-sm text-gray-400 leading-relaxed mb-5">
+                          {isExpanded ? (
+                            <p className="whitespace-pre-line">{parsed.summary}</p>
+                          ) : (
+                            <p className="line-clamp-3 whitespace-pre-line">
+                              {parsed.summary}
+                            </p>
+                          )}
+                          {parsed.summary && parsed.summary.length > 120 && (
+                            <button 
+                              onClick={toggleExpand}
+                              className="text-violet-400 hover:text-violet-300 font-semibold text-xs mt-1.5 focus:outline-none transition-colors cursor-pointer"
+                            >
+                              {isExpanded ? "Show Less" : "... Read More"}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
@@ -696,36 +717,28 @@ export default function PulsePage() {
                             </div>
                           </div>
 
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
-                            <span className="text-lg">🎓</span>
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
+                            <span className="text-lg">📍</span>
                             <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Eligibility</div>
-                              <div className="text-xs text-white font-medium truncate">{parsed.eligibility}</div>
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Location</div>
+                              <div className="text-xs text-white font-medium truncate">{update.location || "Remote / On-site"}</div>
                             </div>
                           </div>
 
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
                             <span className="text-lg">⏰</span>
                             <div className="min-w-0">
                               <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Deadline</div>
                               <div className="text-xs text-red-400 font-bold truncate">{parsed.deadline}</div>
                             </div>
                           </div>
-                        </div>
 
-                        <hr className="border-white/5 mb-6" />
-
-                        {/* Key Skills & Benefits */}
-                        <div className="mb-6">
-                          <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                            <span>✨</span> Key Skills & Benefits
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {parsed.skills.map((skill, i) => (
-                              <span key={i} className="px-2.5 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-semibold border border-white/5">
-                                {skill}
-                              </span>
-                            ))}
+                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
+                            <span className="text-lg">🎓</span>
+                            <div className="min-w-0">
+                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Eligibility</div>
+                              <div className="text-xs text-white font-medium truncate">{parsed.eligibility}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
