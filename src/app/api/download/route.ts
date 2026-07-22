@@ -5,12 +5,14 @@
  *
  * We verify the Firebase Auth ID Token (Bearer) on the server,
  * enforce rate limits, increment metrics, and stream the file directly
- * to hide Google Drive links and block unauthorized downloads.
+ * from Google Drive using OAuth credentials.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
+import { google } from "googleapis";
+import { Readable } from "stream";
 
 export const dynamic = "force-dynamic";
 
@@ -109,29 +111,59 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 4. Stream File directly from Google Drive
+  // 4. Stream File directly from Google Drive using authenticated OAuth credentials
   try {
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
-    const driveRes = await fetch(downloadUrl);
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
-    if (!driveRes.ok) {
-      return NextResponse.json({ error: "Failed to retrieve storage file" }, { status: 500 });
+    if (!clientId || !clientSecret || !refreshToken) {
+      console.error("Download API error: Google Drive OAuth credentials not configured");
+      return NextResponse.json({ error: "Google Drive OAuth credentials not configured" }, { status: 500 });
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      "https://developers.google.com/oauthplayground"
+    );
+
+    oauth2Client.setCredentials({
+      refresh_token: refreshToken
+    });
+
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+    // Fetch the file as stream from Drive
+    const driveRes = await drive.files.get(
+      { fileId: fileId, alt: "media" },
+      { responseType: "stream" }
+    );
+
+    if (!driveRes || driveRes.status !== 200) {
+      console.error("Failed to retrieve file from Drive:", driveRes);
+      return NextResponse.json({ error: "Failed to retrieve storage file from Drive" }, { status: 500 });
     }
 
     // Pass the Drive response stream directly back to the client
     const headers = new Headers();
-    headers.set("Content-Type", driveRes.headers.get("Content-Type") || "application/octet-stream");
+    headers.set("Content-Type", (driveRes.headers["content-type"] as string) || "application/octet-stream");
     headers.set("Content-Disposition", `attachment; filename="${matName || 'material'}"`);
     headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
     headers.set("Pragma", "no-cache");
     headers.set("Expires", "0");
 
-    return new NextResponse(driveRes.body, {
+    const webStream = Readable.toWeb(driveRes.data as Readable);
+
+    return new NextResponse(webStream as any, {
       status: 200,
       headers
     });
-  } catch (err) {
-    console.error("Streaming file error:", err);
-    return NextResponse.json({ error: "Failed to download file from storage service" }, { status: 500 });
+  } catch (err: any) {
+    console.error("Streaming file error from Google Drive API:", err);
+    return NextResponse.json({ 
+      error: "Failed to download file from storage service",
+      details: err.message || String(err)
+    }, { status: 500 });
   }
 }
