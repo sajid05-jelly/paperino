@@ -12,6 +12,9 @@ import QuickUploadModal from "@/components/QuickUploadModal";
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 
+const contributorCache: Record<string, string> = {};
+const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[] }> = {};
+
 export default function SubjectPage({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }) {
   const resolvedParams = use(params);
   const { deptId, semId, subjectId } = resolvedParams;
@@ -25,6 +28,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
   const [previewMat, setPreviewMat] = useState<any | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const semesterSubjects = dynamicSubjects[deptId]?.[semId] || [];
   const subject = semesterSubjects.find(s => s.id === subjectId);
@@ -46,7 +50,20 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
     }
   }
 
-  const fetchMaterials = async () => {
+  const fetchMaterials = async (forceRefetch = false) => {
+    const cacheKey = `${deptId}_${semId}_${subjectId}`;
+    if (forceRefetch) {
+      delete subjectDataCache[cacheKey];
+    }
+
+    if (!forceRefetch && subjectDataCache[cacheKey]) {
+      setMaterials(subjectDataCache[cacheKey].materials);
+      setSurvivalNotes(subjectDataCache[cacheKey].survivalNotes);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       // 1. Fetch Subject Materials
       const qMaterials = query(
@@ -72,7 +89,6 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
       });
       
       matList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
-      setMaterials(matList);
 
       // 2. Fetch Approved Survival Advice (Senior Insights)
       const qSurvival = query(
@@ -92,23 +108,32 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
       });
 
       const userLevels: Record<string, string> = {};
-      if (contributorIds.size > 0) {
-        const uids = Array.from(contributorIds);
-        const userPromises = uids.map(uid => getDoc(doc(db, "users", uid)));
+      const uidsToFetch: string[] = [];
+      contributorIds.forEach(uid => {
+        if (contributorCache[uid]) {
+          userLevels[uid] = contributorCache[uid];
+        } else {
+          uidsToFetch.push(uid);
+        }
+      });
+
+      if (uidsToFetch.length > 0) {
+        const userPromises = uidsToFetch.map(uid => getDoc(doc(db, "users", uid)));
         const userSnaps = await Promise.all(userPromises);
         userSnaps.forEach(us => {
           if (us.exists()) {
             const udata = us.data();
             const urole = udata.role || "student";
+            let level = "STUDENT";
             if (urole === "admin") {
-              userLevels[us.id] = "👑 PAPERINO ADMIN";
+              level = "👑 PAPERINO ADMIN";
             } else if (urole === "moderator") {
-              userLevels[us.id] = "MODERATOR";
+              level = "MODERATOR";
             } else if (urole === "contributor") {
-              userLevels[us.id] = "CONTRIBUTOR";
-            } else {
-              userLevels[us.id] = "STUDENT";
+              level = "CONTRIBUTOR";
             }
+            contributorCache[us.id] = level;
+            userLevels[us.id] = level;
           }
         });
       }
@@ -128,6 +153,14 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
         const scoreB = (b.helpfulCount || 0) - (b.notHelpfulCount || 0);
         return scoreB - scoreA;
       });
+
+      // Save to cache
+      subjectDataCache[cacheKey] = {
+        materials: matList,
+        survivalNotes: list
+      };
+
+      setMaterials(matList);
       setSurvivalNotes(list);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -182,7 +215,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
           });
         }
       }
-      fetchMaterials(); // Reload lists to refresh UI immediately
+      fetchMaterials(true); // Reload lists to refresh UI immediately and invalidate cache
     } catch (err) {
       console.error("Voting failed:", err);
     }
@@ -193,6 +226,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
     if (!confirm("Are you sure you want to permanently delete this Senior Insight?")) return;
     try {
       await deleteDoc(doc(db, "survival_notes", noteId));
+      delete subjectDataCache[`${deptId}_${semId}_${subjectId}`];
       setSurvivalNotes(prev => prev.filter(n => n.id !== noteId));
     } catch (err) {
       console.error("Delete insight failed:", err);
@@ -200,7 +234,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
   };
 
   useEffect(() => {
-    fetchMaterials();
+    fetchMaterials(false);
   }, [deptId, semId, subjectId, user, isAdmin]);
 
   // Analytics tracking for Most Visited Subject
@@ -295,7 +329,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                 {pyqs.length === 0 ? (
                   <div className="py-12 text-center text-gray-500">
                     <FileText className="mx-auto mb-2 opacity-30" size={36} />
-                    <p className="text-sm">No PYQs uploaded yet.</p>
+                    <p className="text-sm">Help Build the PYQ Library</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -312,8 +346,18 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                           <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title="Preview">
                             <Eye size={14} />
                           </button>
-                          <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
-                            <Download size={14} />
+                          <button 
+                            disabled={downloadingId === mat.id}
+                            onClick={() => {
+                              setDownloadingId(mat.id);
+                              triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
+                                if (!loading) setDownloadingId(null);
+                              });
+                            }} 
+                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                            title={downloadingId === mat.id ? "Downloading..." : "Download"}
+                          >
+                            {downloadingId === mat.id ? <Loader2 size={14} className="text-purple-400 animate-spin" /> : <Download size={14} />}
                           </button>
                         </div>
                       </div>
@@ -340,7 +384,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                 {notes.length === 0 ? (
                   <div className="py-12 text-center text-gray-500">
                     <FileText className="mx-auto mb-2 opacity-30" size={36} />
-                    <p className="text-sm">No notes uploaded yet.</p>
+                    <p className="text-sm">Expand the Notes Library</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -357,8 +401,18 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                           <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title="Preview">
                             <Eye size={14} />
                           </button>
-                          <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
-                            <Download size={14} />
+                          <button 
+                            disabled={downloadingId === mat.id}
+                            onClick={() => {
+                              setDownloadingId(mat.id);
+                              triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
+                                if (!loading) setDownloadingId(null);
+                              });
+                            }} 
+                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                            title={downloadingId === mat.id ? "Downloading..." : "Download"}
+                          >
+                            {downloadingId === mat.id ? <Loader2 size={14} className="text-purple-400 animate-spin" /> : <Download size={14} />}
                           </button>
                         </div>
                       </div>
@@ -385,7 +439,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                 {questions.length === 0 ? (
                   <div className="py-12 text-center text-gray-500">
                     <FileText className="mx-auto mb-2 opacity-30" size={36} />
-                    <p className="text-sm">No materials uploaded yet.</p>
+                    <p className="text-sm">Build the Exam Guide</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -402,8 +456,18 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                           <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title="Preview">
                             <Eye size={14} />
                           </button>
-                          <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
-                            <Download size={14} />
+                          <button 
+                            disabled={downloadingId === mat.id}
+                            onClick={() => {
+                              setDownloadingId(mat.id);
+                              triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
+                                if (!loading) setDownloadingId(null);
+                              });
+                            }} 
+                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                            title={downloadingId === mat.id ? "Downloading..." : "Download"}
+                          >
+                            {downloadingId === mat.id ? <Loader2 size={14} className="text-purple-400 animate-spin" /> : <Download size={14} />}
                           </button>
                         </div>
                       </div>
@@ -537,8 +601,18 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                 <p className="text-[10px] text-gray-500 font-semibold truncate mt-0.5">{previewMat.fileName}</p>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => triggerSecureDownload(previewMat, showToast, dismissToast)} className="p-2 text-gray-400 hover:text-purple-400 transition-colors cursor-pointer" title="Download File">
-                  <Download size={16} />
+                <button 
+                  disabled={downloadingId === previewMat.id}
+                  onClick={() => {
+                    setDownloadingId(previewMat.id);
+                    triggerSecureDownload(previewMat, showToast, dismissToast, (loading) => {
+                      if (!loading) setDownloadingId(null);
+                    });
+                  }} 
+                  className="p-2 text-gray-400 hover:text-purple-400 transition-colors cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                  title={downloadingId === previewMat.id ? "Downloading..." : "Download File"}
+                >
+                  {downloadingId === previewMat.id ? <Loader2 size={16} className="text-purple-400 animate-spin" /> : <Download size={16} />}
                 </button>
                 <button onClick={() => setPreviewMat(null)} className="p-2 text-gray-400 hover:text-white transition-colors" title="Close Preview">
                   <X size={18} />
@@ -564,7 +638,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
         <QuickUploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
-          onSuccess={fetchMaterials}
+          onSuccess={() => fetchMaterials(true)}
           departmentId={deptId}
           semesterId={semId}
           subjectId={subjectId}

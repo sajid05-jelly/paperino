@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, doc, getDocs, setDoc } from "firebase/firestore";
+import { collection, query, where, doc, getDocs, setDoc, getCountFromServer, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { recalculateLeaderboards } from "@/lib/leaderboard";
 import { 
@@ -42,45 +42,36 @@ export default function AdminTeamPage() {
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Users stats
-      const usersSnap = await getDocs(collection(db, "users"));
-      let contribCount = 0;
-      let premCount = 0;
+      // 1. Query Top 5 Contributors (ordered by points)
+      const topContribQ = query(
+        collection(db, "users"),
+        orderBy("contributionPoints", "desc"),
+        limit(5)
+      );
+      const topContribSnap = await getDocs(topContribQ);
       const usersList: ContributorInfo[] = [];
-      
-      usersSnap.forEach(d => {
+      topContribSnap.forEach(d => {
         const u = d.data();
-        const uploads = u.uploads || 0;
-        if (uploads > 0) contribCount++;
-        
-        // Premium check
-        const isPremium = u.isPremiumActive || false;
-        if (isPremium) premCount++;
-        
         usersList.push({
           id: d.id,
           displayName: u.displayName || u.email || "Explorer",
           email: u.email,
           contributionPoints: u.contributionPoints || 0,
-          uploads: uploads
+          uploads: u.uploads || 0
         });
       });
-      
-      // Sort top contributors
-      usersList.sort((a, b) => b.contributionPoints - a.contributionPoints);
-      setTopContributors(usersList.slice(0, 5));
+      setTopContributors(usersList);
 
-      // 2. Fetch Materials stats
-      const matsSnap = await getDocs(collection(db, "materials"));
-      let approved = 0;
-      let pending = 0;
+      // 2. Query Recent 5 Contributions (ordered by createdAt desc)
+      const recentMatsQ = query(
+        collection(db, "materials"),
+        orderBy("createdAt", "desc"),
+        limit(5)
+      );
+      const recentMatsSnap = await getDocs(recentMatsQ);
       const matsList: RecentMat[] = [];
-      
-      matsSnap.forEach(d => {
+      recentMatsSnap.forEach(d => {
         const m = d.data();
-        if (m.status === "approved") approved++;
-        else if (!m.status || m.status === "pending") pending++;
-        
         matsList.push({
           id: d.id,
           title: m.title || "Untitled",
@@ -91,18 +82,31 @@ export default function AdminTeamPage() {
           status: m.status || "pending"
         });
       });
-      
-      // Sort recent contributions
-      matsList.sort((a, b) => b.createdAt - a.createdAt);
-      setRecentContributions(matsList.slice(0, 5));
-      
+      setRecentContributions(matsList);
+
+      // 3. Fetch counts in parallel via getCountFromServer
+      const matsColl = collection(db, "materials");
+      const usersColl = collection(db, "users");
+
+      const [
+        totalContribSnap,
+        totalPremSnap,
+        approvedMatsSnap,
+        pendingMatsSnap
+      ] = await Promise.all([
+        getCountFromServer(query(usersColl, where("uploads", ">", 0))),
+        getCountFromServer(query(usersColl, where("isPremiumActive", "==", true))),
+        getCountFromServer(query(matsColl, where("status", "==", "approved"))),
+        getCountFromServer(query(matsColl, where("status", "==", "pending")))
+      ]);
+
       setStats({
-        totalContributors: contribCount,
-        totalApproved: approved,
-        totalPending: pending,
-        totalPremium: premCount
+        totalContributors: totalContribSnap.data().count,
+        totalApproved: approvedMatsSnap.data().count,
+        totalPending: pendingMatsSnap.data().count,
+        totalPremium: totalPremSnap.data().count
       });
-      
+
     } catch (err) {
       console.error("Error loading admin stats:", err);
     }

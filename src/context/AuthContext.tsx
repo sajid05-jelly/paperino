@@ -6,6 +6,12 @@ import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from "firebase/fires
 import { auth, db, googleProvider } from "@/lib/firebase";
 
 
+interface UserCredits {
+  pyqUsed: number;
+  atsUsed: number;
+  lastResetDate: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
@@ -23,6 +29,7 @@ interface AuthContextType {
   avatarFrame: string | null;
   avatarCompanion: string | null;
   lastPulseReadAt: any; // Firestore Timestamp
+  userCredits: UserCredits | null;
   setPaperinoAvatar: (avatarId: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -45,6 +52,7 @@ const AuthContext = createContext<AuthContextType>({
   avatarFrame: null,
   avatarCompanion: null,
   lastPulseReadAt: null,
+  userCredits: null,
   setPaperinoAvatar: async () => {},
   loginWithGoogle: async () => {},
   logout: async () => {},
@@ -80,9 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [avatarFrame, setAvatarFrame] = useState<string | null>(null);
   const [avatarCompanion, setAvatarCompanion] = useState<string | null>(null);
   const [lastPulseReadAt, setLastPulseReadAt] = useState<any>(null);
+  const [userCredits, setUserCredits] = useState<UserCredits | null>(null);
 
   useEffect(() => {
     let unsubUserDoc: (() => void) | null = null;
+    let unsubCreditsDoc: (() => void) | null = null;
 
     // Handle redirect result from mobile Google Sign In
     getRedirectResult(auth).then(async (result) => {
@@ -95,10 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      // Clean up previous document listener
+      // Clean up previous document listeners
       if (unsubUserDoc) {
         unsubUserDoc();
         unsubUserDoc = null;
+      }
+      if (unsubCreditsDoc) {
+        unsubCreditsDoc();
+        unsubCreditsDoc = null;
       }
 
       setLoading(true);
@@ -212,11 +226,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("User doc snapshot error:", err);
           setLoading(false);
         });
+
+        // Subscribe to real-time user credits
+        const creditsRef = doc(db, "user_credits", currentUser.uid);
+        unsubCreditsDoc = onSnapshot(creditsRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            setUserCredits({
+              pyqUsed: data.pyqUsed || 0,
+              atsUsed: data.atsUsed || 0,
+              lastResetDate: data.lastResetDate || "",
+            });
+          } else {
+            setUserCredits({ pyqUsed: 0, atsUsed: 0, lastResetDate: "" });
+          }
+        }, (err) => {
+          console.warn("[AuthContext] Credits listener error:", err);
+        });
+
       } else {
         setPaperinoAvatarState(null);
         setAvatarFrame(null);
         setAvatarCompanion(null);
         setLastPulseReadAt(null);
+        setUserCredits(null);
         setIsAdmin(false);
         setIsContributor(false);
         setIsBlocked(false);
@@ -234,6 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubscribeAuth();
       if (unsubUserDoc) unsubUserDoc();
+      if (unsubCreditsDoc) unsubCreditsDoc();
     };
   }, []);
 
@@ -304,6 +338,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       avatarFrame,
       avatarCompanion,
       lastPulseReadAt,
+      userCredits,
       setPaperinoAvatar: savePaperinoAvatar, 
       loginWithGoogle, 
       logout 

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
-import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight, Lock, ShieldCheck, Clock } from "lucide-react";
+import { collection, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc } from "firebase/firestore";
+import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight, Lock, ShieldCheck, Clock, Trash2 } from "lucide-react";
+import { useToast } from "@/components/Toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -388,11 +389,24 @@ const CATEGORIES = [
 ];
 
 export default function PulsePage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const [updates, setUpdates] = useState<PulseUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const { showToast } = useToast();
+
+  const handleDelete = async (id: string) => {
+    setDeleteConfirmId(null);
+    try {
+      await deleteDoc(doc(db, "pulse_updates", id));
+      showToast("Post deleted successfully.", "success");
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      showToast("Failed to delete post.", "error");
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
@@ -614,10 +628,23 @@ export default function PulsePage() {
                       <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/0 to-cyan-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
                     )}
 
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(update.id);
+                        }}
+                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
+                        title="Delete post"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+
                     <div className="relative z-10 flex-1 flex flex-col justify-between">
                       <div>
                         {/* Header Badges */}
-                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <div className={`flex flex-wrap items-center gap-2 mb-4 ${isAdmin ? "pr-10" : ""}`}>
                           {isNew(update.createdAt) && (
                             <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
                               NEW
@@ -730,10 +757,23 @@ export default function PulsePage() {
                     className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(update.id);
+                        }}
+                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
+                        title="Delete post"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+
                     <div className="relative z-10 flex-1 flex flex-col justify-between">
                       <div>
                         {/* Header Badge & Date */}
-                        <div className="flex items-center justify-between mb-4">
+                        <div className={`flex items-center justify-between mb-4 ${isAdmin ? "pr-10" : ""}`}>
                           <div className="flex items-center gap-2">
                             {isNew(update.createdAt) && (
                               <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
@@ -791,9 +831,22 @@ export default function PulsePage() {
                     className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between h-fit"
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(update.id);
+                        }}
+                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
+                        title="Delete post"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+
                     <div className="relative z-10 flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="flex items-center justify-between mb-4">
+                        <div className={`flex items-center justify-between mb-4 ${isAdmin ? "pr-10" : ""}`}>
                           <div className="flex items-center gap-2">
                             {isNew(update.createdAt) && (
                               <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
@@ -845,10 +898,23 @@ export default function PulsePage() {
                     className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(update.id);
+                        }}
+                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
+                        title="Delete post"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+
                     <div className="relative z-10 flex-1 flex flex-col justify-between">
                       <div>
                         {/* Header Badge */}
-                        <div className="flex items-center gap-2 mb-4">
+                        <div className={`flex items-center gap-2 mb-4 ${isAdmin ? "pr-10" : ""}`}>
                           {isNew(update.createdAt) && (
                             <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
                               NEW
@@ -958,10 +1024,23 @@ export default function PulsePage() {
                     <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/0 to-cyan-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
                   )}
 
+                  {isAdmin && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteConfirmId(update.id);
+                      }}
+                      className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
+                      title="Delete post"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+
                   <div className="relative z-10 flex-1 flex flex-col justify-between">
                     <div>
                       {/* Badges */}
-                      <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <div className={`flex flex-wrap items-center gap-2 mb-4 ${isAdmin ? "pr-10" : ""}`}>
                         {isNew(update.createdAt) && !update.isPinned && (
                           <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse">
                             NEW
@@ -1108,6 +1187,32 @@ export default function PulsePage() {
           )}
         </div>
       </div>
+
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)}>
+          <div 
+            className="bg-[#160d21]/95 backdrop-blur-xl border border-red-500/30 rounded-2xl p-6 max-w-md w-full mx-4 shadow-[0_0_40px_rgba(239,68,68,0.2)] animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-white mb-2">Delete Announcement</h3>
+            <p className="text-gray-400 text-sm mb-6">Are you sure you want to permanently delete this post?</p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold transition-all border border-white/5 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)] cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

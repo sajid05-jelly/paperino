@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Loader2 } from "lucide-react";
 
 import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
@@ -14,11 +14,13 @@ interface Material {
   category: string;
   fileId?: string;
   fileUrl?: string;
+  fileName?: string;
 }
 
 export default function MaterialsList({ departmentId, semesterId, subjectId }: { departmentId: string, semesterId: string, subjectId: string }) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { showToast, dismissToast } = useToast();
 
   useEffect(() => {
@@ -56,14 +58,24 @@ export default function MaterialsList({ departmentId, semesterId, subjectId }: {
       {materials.map((mat) => (
         <button
           key={mat.id}
-          onClick={() => triggerSecureDownload(mat, showToast, dismissToast)}
-          className="w-full flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group text-left"
+          disabled={downloadingId === mat.id}
+          onClick={() => {
+            setDownloadingId(mat.id);
+            triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
+              if (!loading) setDownloadingId(null);
+            });
+          }}
+          className="w-full flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group text-left disabled:opacity-75 disabled:cursor-not-allowed"
         >
           <div className="flex items-center gap-3">
             <FileText className={getIconColor(mat.category)} size={18} />
             <span className="text-sm text-gray-200">{mat.title}</span>
           </div>
-          <Download size={16} className="text-gray-500 group-hover:text-white" />
+          {downloadingId === mat.id ? (
+            <Loader2 size={16} className="text-purple-400 animate-spin" />
+          ) : (
+            <Download size={16} className="text-gray-500 group-hover:text-white" />
+          )}
         </button>
       ))}
     </div>

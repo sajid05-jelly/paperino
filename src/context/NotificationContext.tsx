@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
@@ -14,6 +14,10 @@ export interface PulseUpdate {
   category: string;
   priority: "normal" | "important" | "pinned";
   createdAt: Timestamp;
+  isPinned?: boolean;
+  location?: string;
+  state?: string;
+  mode?: string;
 }
 
 interface NotificationContextType {
@@ -32,19 +36,51 @@ export const usePulseNotifications = () => useContext(NotificationContext);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user, lastPulseReadAt } = useAuth();
-  const [unreadUpdates, setUnreadUpdates] = useState<PulseUpdate[]>([]);
+  const [updates, setUpdates] = useState<PulseUpdate[]>([]);
   const [latestToast, setLatestToast] = useState<PulseUpdate | null>(null);
   const [localReadTime, setLocalReadTime] = useState<number>(0);
   const router = useRouter();
 
-  // Firestore listener
+  // Firestore listener - stable on user mount
   useEffect(() => {
     if (!user) {
-      setUnreadUpdates([]);
+      setUpdates([]);
       return;
     }
 
-    // Default to far past if null
+    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
+      setUpdates(fetched);
+
+      // Check for newly added documents to trigger toast
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const update = { id: change.doc.id, ...change.doc.data() } as PulseUpdate;
+          if (update.createdAt) {
+            const createdDate = (update.createdAt && typeof update.createdAt.toDate === "function") 
+              ? update.createdAt.toDate() 
+              : new Date(update.createdAt as any);
+            const now = new Date();
+            const diffMs = now.getTime() - createdDate.getTime();
+            if (diffMs < 5 * 60 * 1000) {
+              setLatestToast(update);
+              setTimeout(() => setLatestToast(null), 8000); // Auto dismiss after 8s
+            }
+          }
+        }
+      });
+    }, (error) => {
+      console.warn("[NotificationContext] Pulse updates error:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Compute unreadUpdates in-memory
+  const unreadUpdates = useMemo(() => {
+    if (!user) return [];
+
     const firebaseLastRead = lastPulseReadAt 
       ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate() : new Date(lastPulseReadAt))
       : new Date(0);
@@ -54,37 +90,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const lastRead = firebaseLastRead > localLastRead ? firebaseLastRead : localLastRead;
 
-    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const updates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
-      
-      const unread = updates.filter(u => {
-        if (!u.createdAt) return false;
-        return u.createdAt.toDate() > lastRead;
-      });
-
-      setUnreadUpdates(unread);
-
-      // Check for newly added documents to trigger toast
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const update = { id: change.doc.id, ...change.doc.data() } as PulseUpdate;
-          if (update.createdAt && update.createdAt.toDate() > lastRead) {
-            // Only show toast if it was created within the last 5 minutes (truly 'real-time')
-            // Otherwise, initial load will toast everything
-            const now = new Date();
-            const diffMs = now.getTime() - update.createdAt.toDate().getTime();
-            if (diffMs < 5 * 60 * 1000) {
-              setLatestToast(update);
-              setTimeout(() => setLatestToast(null), 8000); // Auto dismiss after 8s
-            }
-          }
-        }
-      });
+    return updates.filter(u => {
+      if (!u.createdAt) return false;
+      const createdDate = (u.createdAt && typeof u.createdAt.toDate === "function") 
+        ? u.createdAt.toDate() 
+        : new Date(u.createdAt as any);
+      return createdDate > lastRead;
     });
-
-    return () => unsubscribe();
-  }, [user, lastPulseReadAt, localReadTime]);
+  }, [updates, lastPulseReadAt, localReadTime, user]);
 
   const markAllAsRead = async () => {
     if (!user) return;
@@ -94,7 +107,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(`paperino_last_pulse_read_at_${user.uid}`, now.toString());
       }
       setLocalReadTime(now);
-      setUnreadUpdates([]);
       
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {

@@ -2,15 +2,19 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { Book, ChevronRight, Loader2 } from "lucide-react";
+import { Book, ChevronRight, Loader2, Plus } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
+import CreateCourseModal from "@/components/CreateCourseModal";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SemesterSubjectsPage({ params }: { params: Promise<{ deptId: string, semId: string }> }) {
   const resolvedParams = use(params);
   const { deptId, semId } = resolvedParams;
   
   const { departments, subjects, loading } = useSubjects();
+  const { user } = useAuth();
+  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
 
   // Find active department
   const activeDept = departments.find(d => d.id === deptId);
@@ -52,10 +56,18 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
       </div>
 
       {deptSubjects.length === 0 ? (
-        <div className="glass-panel p-12 text-center rounded-2xl border border-white/5">
-          <Book className="mx-auto text-gray-600 mb-4" size={48} />
+        <div className="glass-panel p-12 text-center rounded-2xl border border-white/5 flex flex-col items-center">
+          <Book className="text-gray-600 mb-4" size={48} />
           <h3 className="text-xl font-medium text-white mb-2">No Subjects Configured</h3>
-          <p className="text-gray-400">There are no subjects available for this semester yet.</p>
+          <p className="text-gray-400 mb-6">There are no subjects available for this semester yet.</p>
+          {user && (
+            <button 
+              onClick={() => setIsSuggestModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:shadow-[0_0_25px_rgba(147,51,234,0.5)] cursor-pointer"
+            >
+              <Plus size={16} /> Suggest Course
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -78,6 +90,13 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
           ))}
         </div>
       )}
+
+      <CreateCourseModal
+        isOpen={isSuggestModalOpen}
+        onClose={() => setIsSuggestModalOpen(false)}
+        initialDeptId={deptId}
+        initialSemester={semId}
+      />
     </div>
   );
 }

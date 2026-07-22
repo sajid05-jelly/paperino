@@ -51,7 +51,8 @@ export async function triggerSecureDownload(
     fileUrl?: string | null;
   },
   showToast?: (msg: string, type: "success" | "error" | "info" | "warning") => string | void,
-  dismissToast?: (id: string) => void
+  dismissToast?: (id: string) => void,
+  onLoadingChange?: (loading: boolean) => void
 ): Promise<void> {
   if (!mat.fileId) {
     if (mat.fileUrl) {
@@ -62,8 +63,6 @@ export async function triggerSecureDownload(
     return;
   }
 
-  let toastId: string | undefined;
-
   try {
     const user = auth.currentUser;
     if (!user) {
@@ -71,13 +70,10 @@ export async function triggerSecureDownload(
       return;
     }
 
-    const token = await user.getIdToken();
-    const downloadUrl = `/api/download?fileId=${encodeURIComponent(mat.fileId)}&matId=${encodeURIComponent(mat.id || "")}&matName=${encodeURIComponent(mat.title || mat.fileName || "material")}`;
+    onLoadingChange?.(true);
 
-    const t = showToast?.("Preparing secure download...", "info");
-    if (typeof t === "string") {
-      toastId = t;
-    }
+    const token = await user.getIdToken();
+    const downloadUrl = `/api/download?fileId=${encodeURIComponent(mat.fileId)}&matId=${encodeURIComponent(mat.id || "")}&matName=${encodeURIComponent(mat.fileName || mat.title || "material")}`;
 
     const res = await fetch(downloadUrl, {
       method: "GET",
@@ -85,6 +81,8 @@ export async function triggerSecureDownload(
         "Authorization": `Bearer ${token}`
       }
     });
+
+    onLoadingChange?.(false);
 
     if (!res.ok) {
       throw new Error("This material is temporarily unavailable.");
@@ -95,21 +93,16 @@ export async function triggerSecureDownload(
     
     const tempLink = document.createElement("a");
     tempLink.href = blobUrl;
-    tempLink.setAttribute("download", mat.title || mat.fileName || "material");
+    tempLink.setAttribute("download", mat.fileName || mat.title || "material");
     document.body.appendChild(tempLink);
     tempLink.click();
     document.body.removeChild(tempLink);
     window.URL.revokeObjectURL(blobUrl);
 
-    if (toastId && dismissToast) {
-      dismissToast(toastId);
-    }
     showToast?.("Download started successfully", "success");
   } catch (err: any) {
     console.error("Secure download failed:", err);
-    if (toastId && dismissToast) {
-      dismissToast(toastId);
-    }
+    onLoadingChange?.(false);
     showToast?.(err.message || "Failed to trigger download", "error");
   }
 }

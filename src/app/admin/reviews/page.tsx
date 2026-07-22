@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment, writeBatch, serverTimestamp, getDoc, where } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment, writeBatch, serverTimestamp, getDoc, where, startAfter, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   CheckCircle2, Trash2, Ban, Loader2, ShieldAlert, FileText,
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
-import { recalculateLeaderboards } from "@/lib/leaderboard";
+import { recalculateLeaderboards, updateLeaderboardForUser } from "@/lib/leaderboard";
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { notifyUser } from "@/lib/notifications";
 import UserAvatar from "@/components/UserAvatar";
@@ -136,6 +136,11 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [previewMat, setPreviewMat] = useState<Material | null>(null);
+
+  // Pagination State for Materials
+  const [lastVisibleMat, setLastVisibleMat] = useState<any>(null);
+  const [hasMoreMats, setHasMoreMats] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   
   // Permanent Delete Modal State
   const [deleteConfirmMat, setDeleteConfirmMat] = useState<Material | null>(null);
@@ -143,15 +148,43 @@ export default function AdminReviewsPage() {
   const { showToast } = useToast();
 
   useEffect(() => {
-    fetchMaterials();
-    fetchPendingInsights();
-  }, []);
+    if (activeTab === "insights") {
+      fetchPendingInsights();
+    } else {
+      fetchMaterials(true);
+    }
+  }, [activeTab]);
 
-  const fetchMaterials = async () => {
-    setLoading(true);
+  const fetchMaterials = async (reset = false) => {
+    if (reset) {
+      setLoading(true);
+      setMaterials([]);
+      setLastVisibleMat(null);
+      setHasMoreMats(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
-      // 1. Fetch All Materials in reviews
-      const q = query(collection(db, "materials"));
+      const targetStatus = activeTab === "rejected" ? "rejected" : "pending";
+      
+      let q = query(
+        collection(db, "materials"),
+        where("status", "==", targetStatus),
+        orderBy("createdAt", "desc"),
+        limit(15)
+      );
+
+      if (!reset && lastVisibleMat) {
+        q = query(
+          collection(db, "materials"),
+          where("status", "==", targetStatus),
+          orderBy("createdAt", "desc"),
+          startAfter(lastVisibleMat),
+          limit(15)
+        );
+      }
+
       const snap = await getDocs(q);
       const mats: Material[] = [];
       const now = Date.now();
@@ -193,13 +226,19 @@ export default function AdminReviewsPage() {
         await Promise.all(deletePromises);
       }
 
-      // Sort by newest
-      mats.sort((a, b) => b.createdAt - a.createdAt);
-      setMaterials(mats);
+      if (snap.docs.length < 15) {
+        setHasMoreMats(false);
+      } else {
+        setLastVisibleMat(snap.docs[snap.docs.length - 1]);
+      }
+
+      setMaterials(prev => reset ? mats : [...prev, ...mats]);
     } catch (err) {
       console.error("Error fetching materials:", err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
-    setLoading(false);
   };
 
   const fetchPendingInsights = async () => {
@@ -478,10 +517,7 @@ export default function AdminReviewsPage() {
 
   const closePreview = useCallback(() => setPreviewMat(null), []);
 
-  const filteredMaterials = materials.filter(m => {
-    if (activeTab === "pending") return !m.status || m.status === "pending";
-    return m.status === "rejected";
-  });
+  const filteredMaterials = materials;
 
   return (
     <>
@@ -749,6 +785,18 @@ export default function AdminReviewsPage() {
                       </div>
                     </div>
                   ))}
+                  {hasMoreMats && (
+                    <div className="flex justify-center mt-6">
+                      <button
+                        onClick={() => fetchMaterials(false)}
+                        disabled={loadingMore}
+                        className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all text-xs font-semibold flex items-center gap-2 border border-white/5 cursor-pointer"
+                      >
+                        {loadingMore ? <Loader2 size={12} className="animate-spin" /> : null}
+                        Load More Materials
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             )}

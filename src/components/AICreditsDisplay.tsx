@@ -11,42 +11,22 @@ interface AICreditsDisplayProps {
 }
 
 export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
-  const { user, isContributor, isAdmin, isPremiumActive } = useAuth();
-  const [used, setUsed] = useState(0);
+  const { user, isContributor, isAdmin, isPremiumActive, userCredits } = useAuth();
 
   // Premium / Admins get 1000 credits/day, contributors get 9, students get 3
   const limit = isAdmin || isPremiumActive ? 1000 : isContributor ? 9 : 3;
 
-  useEffect(() => {
-    if (!user) return;
+  let used = 0;
+  if (userCredits) {
+    const date = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(date.getTime() + istOffset);
+    const todayIST = istDate.toISOString().split("T")[0];
 
-    const creditsRef = doc(db, "user_credits", user.uid);
-    const unsubscribe = onSnapshot(
-      creditsRef,
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          const date = new Date();
-          const istOffset = 5.5 * 60 * 60 * 1000;
-          const istDate = new Date(date.getTime() + istOffset);
-          const todayIST = istDate.toISOString().split("T")[0];
-
-          if (data.lastResetDate === todayIST) {
-            setUsed(tool === "pyq" ? (data.pyqUsed || 0) : (data.atsUsed || 0));
-          } else {
-            setUsed(0);
-          }
-        } else {
-          setUsed(0);
-        }
-      },
-      (error) => {
-        console.warn("[AICreditsDisplay] Firestore snapshot error:", error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user, tool]);
+    if (userCredits.lastResetDate === todayIST) {
+      used = tool === "pyq" ? (userCredits.pyqUsed || 0) : (userCredits.atsUsed || 0);
+    }
+  }
 
   if (!user) return null;
 

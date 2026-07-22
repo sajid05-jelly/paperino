@@ -11,9 +11,11 @@ import { db } from "@/lib/firebase";
 interface CreateCourseModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialDeptId?: string;
+  initialSemester?: string;
 }
 
-export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModalProps) {
+export default function CreateCourseModal({ isOpen, onClose, initialDeptId, initialSemester }: CreateCourseModalProps) {
   const { departments, createDepartment, createSubject } = useSubjects();
   const { playSuccess } = useSound();
   const { user, isContributor, isAdmin } = useAuth();
@@ -41,15 +43,15 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
   useEffect(() => {
     if (isOpen) {
       setDeptMode("select");
-      // Set default selected department to the first one available
-      const firstDept = visibleDepartments[0]?.id || "";
+      // Set default selected department to the prefilled one or first available
+      const firstDept = initialDeptId || visibleDepartments[0]?.id || "";
       setSelectedDeptId(firstDept);
       
       setNewDeptName("");
       setNewDeptCode("");
       setNewDeptSemesters("8");
       
-      setSemester("1");
+      setSemester(initialSemester || "1");
       setSubjectName("");
       setSubjectCode("");
       
@@ -57,14 +59,18 @@ export default function CreateCourseModal({ isOpen, onClose }: CreateCourseModal
       setSuccess(false);
       setLoading(false);
     }
-  }, [isOpen, departments]);
+  }, [isOpen, departments, initialDeptId, initialSemester]);
 
   // Update semester options when department changes
   useEffect(() => {
     if (deptMode === "select" && selectedDeptId) {
-      setSemester("1");
+      if (selectedDeptId === initialDeptId && initialSemester) {
+        setSemester(initialSemester);
+      } else {
+        setSemester("1");
+      }
     }
-  }, [selectedDeptId, deptMode]);
+  }, [selectedDeptId, deptMode, initialDeptId, initialSemester]);
 
   if (!isOpen) return null;
 

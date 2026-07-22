@@ -124,3 +124,108 @@ export async function recalculateLeaderboards(db: any) {
     throw error;
   }
 }
+
+export async function updateLeaderboardForUser(
+  db: any,
+  userId: string
+) {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return;
+    const userData = userSnap.data();
+
+    if (userData.status === "blocked") {
+      await removeUserFromLeaderboards(db, userId);
+      return;
+    }
+
+    const joinedDateStr = userData.createdAt
+      ? (typeof userData.createdAt.toDate === "function"
+          ? userData.createdAt.toDate().toISOString()
+          : new Date(userData.createdAt).toISOString())
+      : null;
+
+    const getBadgeTitle = (uploads: number) => {
+      if (uploads >= 20) return "Elite Contributor";
+      if (uploads >= 5) return "Active Contributor";
+      if (uploads >= 1) return "Contributor";
+      return "Explorer";
+    };
+
+    const updateBoard = async (boardId: string, isSeason: boolean) => {
+      const boardRef = doc(db, "leaderboards", boardId);
+      const boardSnap = await getDoc(boardRef);
+      let contributors: any[] = [];
+      let seasonStartDate = new Date(0);
+
+      if (boardSnap.exists()) {
+        const boardData = boardSnap.data();
+        contributors = boardData.contributors || [];
+        if (isSeason && boardData.seasonStartDate) {
+          seasonStartDate = new Date(boardData.seasonStartDate);
+        }
+      }
+
+      // Check if user is active in this season (if it's season board)
+      const isSeasonEligible = !isSeason || (userData.createdAt && new Date(userData.createdAt) >= seasonStartDate);
+
+      // Remove existing entry
+      contributors = contributors.filter((c: any) => c.uid !== userId);
+
+      if (isSeasonEligible) {
+        const uploads = isSeason ? (userData.seasonUploads || 0) : (userData.uploads || 0);
+        const contributionPoints = isSeason ? (userData.seasonPoints || 0) : (userData.contributionPoints || 0);
+        const downloads = userData.downloads || 0;
+
+        contributors.push({
+          uid: userId,
+          displayName: userData.displayName || "Anonymous Contributor",
+          paperinoAvatar: userData.paperinoAvatar || null,
+          joinedDate: joinedDateStr,
+          uploads,
+          downloads,
+          contributionPoints,
+          contributorLevel: userData.contributorLevel || "",
+          rankTitle: getBadgeTitle(userData.uploads || 0)
+        });
+      }
+
+      // Re-sort
+      contributors.sort((a, b) => {
+        if (b.contributionPoints !== a.contributionPoints) {
+          return b.contributionPoints - a.contributionPoints;
+        }
+        if (b.uploads !== a.uploads) {
+          return b.uploads - a.uploads;
+        }
+        return b.downloads - a.downloads;
+      });
+
+      await setDoc(boardRef, {
+        updatedAt: Date.now(),
+        ...(isSeason ? { seasonStartDate: seasonStartDate.toISOString() } : {}),
+        contributors
+      }, { merge: true });
+    };
+
+    await updateBoard("currentSeason", true);
+    await updateBoard("hallOfFame", false);
+
+  } catch (err) {
+    console.error("Error incrementally updating leaderboard:", err);
+  }
+}
+
+async function removeUserFromLeaderboards(db: any, userId: string) {
+  const boards = ["currentSeason", "hallOfFame"];
+  for (const boardId of boards) {
+    const boardRef = doc(db, "leaderboards", boardId);
+    const boardSnap = await getDoc(boardRef);
+    if (boardSnap.exists()) {
+      const contributors = boardSnap.data().contributors || [];
+      const updated = contributors.filter((c: any) => c.uid !== userId);
+      await setDoc(boardRef, { contributors: updated }, { merge: true });
+    }
+  }
+}
