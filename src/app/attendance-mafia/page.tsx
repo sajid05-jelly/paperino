@@ -154,7 +154,11 @@ export default function AttendanceShieldPage() {
                 type="number" 
                 min={0}
                 value={totalClasses} 
-                onChange={(e) => setTotalClasses(Math.max(0, parseInt(e.target.value) || 0))}
+                onChange={(e) => {
+                  const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                  e.target.value = clean;
+                  setTotalClasses(Math.max(0, parseInt(clean) || 0));
+                }}
                 className="w-full bg-black/50 border border-white/[0.1] focus:border-violet-500/40 rounded-xl p-3.5 text-white outline-none focus:shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)] transition-all font-medium"
               />
             </div>
@@ -167,7 +171,11 @@ export default function AttendanceShieldPage() {
                 min={0}
                 max={totalClasses}
                 value={attendedClasses} 
-                onChange={(e) => setAttendedClasses(Math.min(totalClasses, Math.max(0, parseInt(e.target.value) || 0)))}
+                onChange={(e) => {
+                  const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                  e.target.value = clean;
+                  setAttendedClasses(Math.min(totalClasses, Math.max(0, parseInt(clean) || 0)));
+                }}
                 className="w-full bg-black/50 border border-white/[0.1] focus:border-violet-500/40 rounded-xl p-3.5 text-white outline-none focus:shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)] transition-all font-medium"
               />
             </div>

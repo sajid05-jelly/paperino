@@ -421,7 +421,11 @@ export default function AdminCoursesPage() {
                         <input 
                           type="number" 
                           value={editSemesters}
-                          onChange={(e) => setEditSemesters(parseInt(e.target.value) || 8)}
+                          onChange={(e) => {
+                            const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                            e.target.value = clean;
+                            setEditSemesters(parseInt(clean) || 8);
+                          }}
                           min="1"
                           max="12"
                           className="w-20 bg-black/50 border border-white/10 rounded-xl p-2.5 text-sm text-white"

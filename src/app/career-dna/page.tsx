@@ -673,7 +673,11 @@ export default function CareerDnaPage() {
                           type="number"
                           required
                           value={formData.graduationYear}
-                          onChange={e => setFormData({ ...formData, graduationYear: Number(e.target.value) })}
+                          onChange={e => {
+                            const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                            e.target.value = clean;
+                            setFormData({ ...formData, graduationYear: Number(clean) || 0 });
+                          }}
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                         />
                       </div>
@@ -731,7 +735,11 @@ export default function CareerDnaPage() {
                           required
                           id="cgpa"
                           value={formData.cgpa}
-                          onChange={e => setFormData({ ...formData, cgpa: Number(e.target.value) })}
+                          onChange={e => {
+                            const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                            e.target.value = clean;
+                            setFormData({ ...formData, cgpa: Number(clean) || 0 });
+                          }}
                           placeholder="e.g. 8.5"
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                         />
@@ -742,7 +750,11 @@ export default function CareerDnaPage() {
                           type="number"
                           required
                           value={formData.activeBacklogs}
-                          onChange={e => setFormData({ ...formData, activeBacklogs: Number(e.target.value) })}
+                          onChange={e => {
+                            const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                            e.target.value = clean;
+                            setFormData({ ...formData, activeBacklogs: Number(clean) || 0 });
+                          }}
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                         />
                       </div>
@@ -758,16 +770,9 @@ export default function CareerDnaPage() {
                           required
                           value={formData.tenthPercentage}
                           onChange={e => {
-                            const val = e.target.value;
-                            if (val === "") {
-                              setFormData({ ...formData, tenthPercentage: 0 });
-                              return;
-                            }
-                            const cleanVal = val.replace(/^0+(?=\d)/, "");
-                            const num = parseFloat(cleanVal);
-                            if (!isNaN(num) && num <= 100) {
-                              setFormData({ ...formData, tenthPercentage: num });
-                            }
+                            const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                            e.target.value = clean;
+                            setFormData({ ...formData, tenthPercentage: Number(clean) || 0 });
                           }}
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                         />
@@ -782,16 +787,9 @@ export default function CareerDnaPage() {
                           required
                           value={formData.twelfthPercentage}
                           onChange={e => {
-                            const val = e.target.value;
-                            if (val === "") {
-                              setFormData({ ...formData, twelfthPercentage: 0 });
-                              return;
-                            }
-                            const cleanVal = val.replace(/^0+(?=\d)/, "");
-                            const num = parseFloat(cleanVal);
-                            if (!isNaN(num) && num <= 100) {
-                              setFormData({ ...formData, twelfthPercentage: num });
-                            }
+                            const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                            e.target.value = clean;
+                            setFormData({ ...formData, twelfthPercentage: Number(clean) || 0 });
                           }}
                           className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none text-sm text-white"
                         />

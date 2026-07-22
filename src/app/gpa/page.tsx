@@ -213,7 +213,11 @@ export default function GPACalculatorPage() {
                       type="number" 
                       min="1" max="10"
                       value={sub.credits}
-                      onChange={(e) => updateSubject(sub.id, "credits", Number(e.target.value))}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                        e.target.value = clean;
+                        updateSubject(sub.id, "credits", Number(clean) || 0);
+                      }}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-cyan-400"
                     />
                   </div>
@@ -333,7 +337,11 @@ export default function GPACalculatorPage() {
                         type="number" 
                         step="0.01" min="0" max="10"
                         value={sem.gpa}
-                        onChange={(e) => updateSemester(sem.id, "gpa", Number(e.target.value))}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                          e.target.value = clean;
+                          updateSemester(sem.id, "gpa", Number(clean) || 0);
+                        }}
                         className="w-full bg-white/5 border border-white/10 rounded-lg pl-12 pr-3 py-2 text-white outline-none focus:border-purple-400 font-semibold"
                       />
                     </div>
@@ -416,7 +424,11 @@ export default function GPACalculatorPage() {
                     min="0"
                     max="60"
                     value={internal}
-                    onChange={(e) => setInternal(e.target.value)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                      e.target.value = clean;
+                      setInternal(clean);
+                    }}
                     placeholder="e.g. 45"
                     className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors text-lg"
                   />
@@ -435,7 +447,11 @@ export default function GPACalculatorPage() {
                     min="0"
                     max="75"
                     value={semesterMark}
-                    onChange={(e) => setSemesterMark(e.target.value)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                      e.target.value = clean;
+                      setSemesterMark(clean);
+                    }}
                     placeholder="e.g. 65"
                     className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors text-lg"
                   />

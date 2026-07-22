@@ -252,7 +252,11 @@ export default function CreateCourseModal({ isOpen, onClose, initialDeptId, init
                         min="1"
                         max="12"
                         value={newDeptSemesters}
-                        onChange={(e) => setNewDeptSemesters(e.target.value)}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                          e.target.value = clean;
+                          setNewDeptSemesters(clean);
+                        }}
                         required
                         disabled={loading}
                         className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors"
