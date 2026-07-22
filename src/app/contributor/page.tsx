@@ -35,7 +35,7 @@ export default function ContributorDashboardPage() {
     isPremiumActive, 
     premiumEndDate 
   } = useAuth();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
   
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -387,7 +387,7 @@ export default function ContributorDashboardPage() {
                         {copiedId === mat.id ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
                         {copiedId === mat.id ? "Copied" : "Copy"}
                       </button>
-                      <button onClick={() => triggerSecureDownload(mat, showToast)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20 cursor-pointer">
+                      <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-medium text-cyan-400 transition-colors border border-cyan-500/20 cursor-pointer">
                         Download <Download size={14} />
                       </button>
                     </div>

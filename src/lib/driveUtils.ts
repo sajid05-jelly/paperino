@@ -50,7 +50,8 @@ export async function triggerSecureDownload(
     fileId?: string | null;
     fileUrl?: string | null;
   },
-  showToast?: (msg: string, type: "success" | "error" | "info" | "warning") => void
+  showToast?: (msg: string, type: "success" | "error" | "info" | "warning") => string | void,
+  dismissToast?: (id: string) => void
 ): Promise<void> {
   if (!mat.fileId) {
     if (mat.fileUrl) {
@@ -60,6 +61,8 @@ export async function triggerSecureDownload(
     showToast?.("No file available for download", "error");
     return;
   }
+
+  let toastId: string | undefined;
 
   try {
     const user = auth.currentUser;
@@ -71,7 +74,10 @@ export async function triggerSecureDownload(
     const token = await user.getIdToken();
     const downloadUrl = `/api/download?fileId=${encodeURIComponent(mat.fileId)}&matId=${encodeURIComponent(mat.id || "")}&matName=${encodeURIComponent(mat.title || mat.fileName || "material")}`;
 
-    showToast?.("Preparing secure download...", "info");
+    const t = showToast?.("Preparing secure download...", "info");
+    if (typeof t === "string") {
+      toastId = t;
+    }
 
     const res = await fetch(downloadUrl, {
       method: "GET",
@@ -95,9 +101,15 @@ export async function triggerSecureDownload(
     document.body.removeChild(tempLink);
     window.URL.revokeObjectURL(blobUrl);
 
+    if (toastId && dismissToast) {
+      dismissToast(toastId);
+    }
     showToast?.("Download started successfully", "success");
   } catch (err: any) {
     console.error("Secure download failed:", err);
+    if (toastId && dismissToast) {
+      dismissToast(toastId);
+    }
     showToast?.(err.message || "Failed to trigger download", "error");
   }
 }

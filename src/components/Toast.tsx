@@ -24,7 +24,8 @@ interface Toast {
 }
 
 interface ToastContextValue {
-  showToast: (message: string, type: ToastType, title?: string) => void;
+  showToast: (message: string, type: ToastType, title?: string) => string;
+  dismissToast: (id: string) => void;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -189,6 +190,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         startExit(id);
       }, 4000);
       timers.current.set(id, timer);
+      return id;
     },
     [startExit]
   );
@@ -203,7 +205,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, dismissToast: dismiss }}>
       {children}
 
       {/* Toast container */}

@@ -41,7 +41,7 @@ export default function ManageMaterialsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const { departments, subjects: dynamicSubjects } = useSubjects();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
 
   useEffect(() => {
     fetchMaterials();
@@ -194,7 +194,7 @@ export default function ManageMaterialsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <button onClick={() => triggerSecureDownload(mat, showToast)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Download">
+                <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Download">
                   <Download size={16} />
                 </button>
                 <button onClick={() => setEditingMat(mat)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5" title="Edit">

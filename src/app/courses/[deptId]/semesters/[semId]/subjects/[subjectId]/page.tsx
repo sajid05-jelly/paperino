@@ -16,7 +16,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
   const resolvedParams = use(params);
   const { deptId, semId, subjectId } = resolvedParams;
   const { user, isAdmin, isContributor, loading: authLoading } = useAuth();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
   const { subjects: dynamicSubjects } = useSubjects();
   
   const [materials, setMaterials] = useState<any[]>([]);
@@ -312,7 +312,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                           <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title="Preview">
                             <Eye size={14} />
                           </button>
-                          <button onClick={() => triggerSecureDownload(mat, showToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
+                          <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
                             <Download size={14} />
                           </button>
                         </div>
@@ -357,7 +357,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                           <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title="Preview">
                             <Eye size={14} />
                           </button>
-                          <button onClick={() => triggerSecureDownload(mat, showToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
+                          <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
                             <Download size={14} />
                           </button>
                         </div>
@@ -402,7 +402,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                           <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title="Preview">
                             <Eye size={14} />
                           </button>
-                          <button onClick={() => triggerSecureDownload(mat, showToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
+                          <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" title="Download">
                             <Download size={14} />
                           </button>
                         </div>
@@ -537,7 +537,7 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
                 <p className="text-[10px] text-gray-500 font-semibold truncate mt-0.5">{previewMat.fileName}</p>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => triggerSecureDownload(previewMat, showToast)} className="p-2 text-gray-400 hover:text-purple-400 transition-colors cursor-pointer" title="Download File">
+                <button onClick={() => triggerSecureDownload(previewMat, showToast, dismissToast)} className="p-2 text-gray-400 hover:text-purple-400 transition-colors cursor-pointer" title="Download File">
                   <Download size={16} />
                 </button>
                 <button onClick={() => setPreviewMat(null)} className="p-2 text-gray-400 hover:text-white transition-colors" title="Close Preview">

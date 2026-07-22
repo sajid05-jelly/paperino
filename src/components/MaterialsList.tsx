@@ -19,7 +19,7 @@ interface Material {
 export default function MaterialsList({ departmentId, semesterId, subjectId }: { departmentId: string, semesterId: string, subjectId: string }) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
 
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -56,7 +56,7 @@ export default function MaterialsList({ departmentId, semesterId, subjectId }: {
       {materials.map((mat) => (
         <button
           key={mat.id}
-          onClick={() => triggerSecureDownload(mat, showToast)}
+          onClick={() => triggerSecureDownload(mat, showToast, dismissToast)}
           className="w-full flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group text-left"
         >
           <div className="flex items-center gap-3">

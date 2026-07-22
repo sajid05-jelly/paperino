@@ -41,7 +41,7 @@ interface PreviewModalProps {
 function PreviewModal({ mat, onClose }: PreviewModalProps) {
   const fileName = mat.fileName || mat.title || "File";
   const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(fileName);
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
   const downloadHref = getDownloadHref(mat);
 
   const previewUrl: string | null = (() => {
@@ -80,7 +80,7 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
           </div>
 
           <button
-            onClick={() => triggerSecureDownload(mat, showToast)}
+            onClick={() => triggerSecureDownload(mat, showToast, dismissToast)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer"
           >
             <Download size={13} /> Download
@@ -100,7 +100,7 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
               <FileIcon size={40} className="opacity-30" />
               <p className="text-sm">No preview available.</p>
-              <button onClick={() => triggerSecureDownload(mat, showToast)} className="text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer">
+              <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer">
                 Download to view
               </button>
             </div>
