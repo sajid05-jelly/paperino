@@ -206,9 +206,10 @@ export default function SystemControlPage() {
                   onChange={(e) => setGame(e.target.value)}
                   className="w-full bg-[#110f1c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500/50 cursor-pointer"
                 >
-                  <option value="paperCatch">Paper Catch (Catch falling books)</option>
-                  <option value="memoryFlip">Memory Flip (Card matching pair)</option>
-                  <option value="paperPlane">Paper Plane (Avoid obstacle flyby)</option>
+                  <option value="bookStack">Book Stack Challenge 📚</option>
+                  <option value="memoryMatch">Memory Match 🧠</option>
+                  <option value="quickQuiz">Quick Quiz Blitz ⚡</option>
+                  <option value="colorTap">Color Tap Challenge 🎯</option>
                   <option value="none">None (Hide game console)</option>
                 </select>
               </div>

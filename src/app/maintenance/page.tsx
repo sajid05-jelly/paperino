@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { Wrench, Trophy, Sparkles, RefreshCw, Star, AlertTriangle, ArrowRight, Play } from "lucide-react";
+import { Wrench, Trophy, Sparkles, RefreshCw, Star, AlertTriangle, ArrowRight, Play, Check, Flame } from "lucide-react";
 import Logo from "@/components/Logo";
 
 // Motivational tips to display
@@ -24,7 +24,7 @@ export default function VisitorMaintenancePage() {
     message: "We are currently performing critical system upgrades. Please check back soon!",
     estimatedReturn: "A few hours",
     showProgress: true,
-    game: "paperCatch"
+    game: "bookStack"
   });
 
   const [activeTipIndex, setActiveTipIndex] = useState(0);
@@ -58,7 +58,7 @@ export default function VisitorMaintenancePage() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-between p-6 md:p-12 relative text-white bg-[#07050d] overflow-y-auto">
+    <div className="min-h-screen w-full flex flex-col justify-between p-6 md:p-12 relative text-white bg-[#07050d] overflow-y-auto">
       {/* Background Gradient Blurs */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-[120px] pointer-events-none"></div>
@@ -77,7 +77,7 @@ export default function VisitorMaintenancePage() {
       </div>
 
       {/* Main Container */}
-      <div className="w-full max-w-4xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-12 py-10 z-10">
+      <div className="w-full max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-12 py-10 z-10">
         
         {/* Left Side: Status / Details */}
         <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 max-w-xl">
@@ -167,16 +167,18 @@ function GameConsole({ game }: { game: string }) {
   };
 
   const getGameTitle = () => {
-    if (game === "paperCatch") return "Paper Catch";
-    if (game === "memoryFlip") return "Memory Flip";
-    if (game === "paperPlane") return "Paper Plane";
+    if (game === "bookStack") return "Book Stack Challenge 📚";
+    if (game === "memoryMatch") return "Memory Match 🧠";
+    if (game === "quickQuiz") return "Quick Quiz Blitz ⚡";
+    if (game === "colorTap") return "Color Tap Challenge 🎯";
     return "Mini Game";
   };
 
   const getGameInstructions = () => {
-    if (game === "paperCatch") return "Use Mouse, Keyboard Left/Right, or Swipe to catch books & stars. Avoid rocks!";
-    if (game === "memoryFlip") return "Click cards to flip them. Match pairs in the fewest moves possible!";
-    if (game === "paperPlane") return "Click or press Spacebar to fly the paper plane through obstacle gaps!";
+    if (game === "bookStack") return "Tap/Click or press Spacebar to drop the sliding book onto the stack. Keep alignment perfect!";
+    if (game === "memoryMatch") return "Flip study cards to match pairs under time & move limits!";
+    if (game === "quickQuiz") return "Answer as many fun SRM & general questions as possible in 30 seconds!";
+    if (game === "colorTap") return "Tap the matching colored circle before the progress timer runs out!";
     return "";
   };
 
@@ -185,19 +187,19 @@ function GameConsole({ game }: { game: string }) {
       {/* Game Header */}
       <div className="flex justify-between items-center pb-4 border-b border-white/5">
         <div>
-          <h3 className="font-bold text-lg text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <h3 className="font-bold text-sm text-white flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
             {getGameTitle()}
           </h3>
-          <p className="text-[10px] text-gray-400 font-light">Bunk study and pass time!</p>
+          <p className="text-[9px] text-gray-400 font-light">Play to pass time!</p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-1 rounded-full font-bold">
-          <Trophy size={12} /> High: {highScore}
+        <div className="flex items-center gap-1 text-[10px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-0.5 rounded-full font-bold">
+          <Trophy size={10} /> High: {highScore}
         </div>
       </div>
 
       {/* Game Area */}
-      <div className="flex-1 my-4 bg-black/60 border border-white/5 rounded-2xl overflow-hidden relative min-h-[220px] flex items-center justify-center">
+      <div className="flex-1 my-4 bg-black/60 border border-white/5 rounded-2xl overflow-hidden relative min-h-[240px] flex items-center justify-center">
         {isPlaying ? (
           <ActiveGameEngine game={game} onGameOver={updateHighScore} />
         ) : (
@@ -206,7 +208,7 @@ function GameConsole({ game }: { game: string }) {
               <Play size={24} className="ml-1" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Press Play to Start</p>
+              <p className="text-sm font-semibold text-white">Start microgame</p>
               <p className="text-xs text-gray-500 leading-relaxed mt-1 max-w-[280px]">
                 {getGameInstructions()}
               </p>
@@ -234,276 +236,256 @@ function GameConsole({ game }: { game: string }) {
   );
 }
 
-/* ── GAME ENGINE RENDERING ──────────────────────────────── */
-
 function ActiveGameEngine({ game, onGameOver }: { game: string; onGameOver: (score: number) => void }) {
-  if (game === "paperCatch") return <PaperCatchGame onGameOver={onGameOver} />;
-  if (game === "memoryFlip") return <MemoryFlipGame onGameOver={onGameOver} />;
-  if (game === "paperPlane") return <PaperPlaneGame onGameOver={onGameOver} />;
+  if (game === "bookStack") return <BookStackGame onGameOver={onGameOver} />;
+  if (game === "memoryMatch") return <MemoryMatchGame onGameOver={onGameOver} />;
+  if (game === "quickQuiz") return <QuickQuizGame onGameOver={onGameOver} />;
+  if (game === "colorTap") return <ColorTapGame onGameOver={onGameOver} />;
   return null;
 }
 
-/* ── 🎮 GAME 1: PAPER CATCH ──────────────────────────────── */
+/* ── 🎮 GAME 1: BOOK STACK CHALLENGE ─────────────────────── */
 
-function PaperCatchGame({ onGameOver }: { onGameOver: (score: number) => void }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+function BookStackGame({ onGameOver }: { onGameOver: (score: number) => void }) {
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
   const [isGameOver, setIsGameOver] = useState(false);
-  const [basketX, setBasketX] = useState(150); // Basket horizontal position (0 to 300)
-
-  const [items, setItems] = useState<Array<{ id: number; x: number; y: number; type: "good" | "bad"; label: string }>>([]);
-
+  
+  // Stacking coordinates (visual scaling)
+  const [stack, setStack] = useState<Array<{ id: number; x: number; width: number; color: string }>>([
+    { id: 0, x: 75, width: 150, color: "bg-purple-600 border-purple-400" }
+  ]);
+  
+  const [currentBlock, setCurrentBlock] = useState({ x: 0, width: 150, dir: 1, speed: 2 });
   const gameLoopRef = useRef<any>(null);
-  const itemIdCounter = useRef(0);
 
-  // Mouse / Touch movement inside container
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current || isGameOver) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const relativeX = e.clientX - rect.left;
-    setBasketX(Math.max(0, Math.min(270, relativeX - 30)));
-  };
+  // Dropping action
+  const handleDrop = useCallback(() => {
+    if (isGameOver) return;
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!containerRef.current || isGameOver) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const relativeX = touch.clientX - rect.left;
-    setBasketX(Math.max(0, Math.min(270, relativeX - 30)));
-  };
+    setStack((prevStack) => {
+      const topBlock = prevStack[prevStack.length - 1];
+      const left = currentBlock.x;
+      const right = currentBlock.x + currentBlock.width;
+      
+      const overlapMin = Math.max(left, topBlock.x);
+      const overlapMax = Math.min(right, topBlock.x + topBlock.width);
+      const overlapWidth = overlapMax - overlapMin;
 
-  // Keyboard navigation
+      if (overlapWidth <= 0) {
+        setIsGameOver(true);
+        onGameOver(score);
+        return prevStack;
+      }
+
+      // Success drop
+      const newScore = score + 1;
+      setScore(newScore);
+
+      const colors = [
+        "bg-purple-600 border-purple-400",
+        "bg-violet-600 border-violet-400",
+        "bg-fuchsia-600 border-fuchsia-400",
+        "bg-indigo-600 border-indigo-400",
+        "bg-pink-600 border-pink-400"
+      ];
+      const randomColor = colors[newScore % colors.length];
+
+      // Spawn next block
+      setCurrentBlock({
+        x: 0,
+        width: overlapWidth,
+        dir: 1,
+        speed: Math.min(6, 2 + newScore * 0.25)
+      });
+
+      return [
+        ...prevStack,
+        { id: newScore, x: overlapMin, width: overlapWidth, color: randomColor }
+      ];
+    });
+  }, [currentBlock, score, isGameOver, onGameOver]);
+
+  // Handle keys/clicks
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isGameOver) return;
-      if (e.key === "ArrowLeft") {
-        setBasketX(prev => Math.max(0, prev - 25));
-      } else if (e.key === "ArrowRight") {
-        setBasketX(prev => Math.min(270, prev + 25));
+      if (e.key === " " || e.key === "ArrowDown" || e.key === "Enter") {
+        e.preventDefault();
+        handleDrop();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isGameOver]);
+  }, [handleDrop]);
 
-  // Main game tick (updates falling items)
+  // Sliding loop
   useEffect(() => {
     if (isGameOver) return;
 
-    const gameTick = () => {
-      setItems((prevItems) => {
-        // 1. Move items down
-        const updated = prevItems
-          .map(item => ({ ...item, y: item.y + 4 }))
-          .filter(item => {
-            // Check if reached basket (Y = 230ish)
-            if (item.y >= 210 && item.y <= 235) {
-              const itemCenterX = item.x + 10;
-              const basketCenterX = basketX + 30;
-              
-              if (Math.abs(itemCenterX - basketCenterX) < 40) {
-                // Collided!
-                if (item.type === "good") {
-                  setScore(s => s + 1);
-                } else {
-                  setLives(l => {
-                    const nextLives = l - 1;
-                    if (nextLives <= 0) {
-                      setIsGameOver(true);
-                      onGameOver(score);
-                    }
-                    return nextLives;
-                  });
-                }
-                return false; // Remove item
-              }
-            }
-
-            // Missed basket and hit bottom
-            if (item.y > 250) {
-              if (item.type === "good") {
-                setLives(l => {
-                  const nextLives = l - 1;
-                  if (nextLives <= 0) {
-                    setIsGameOver(true);
-                    onGameOver(score);
-                  }
-                  return nextLives;
-                });
-              }
-              return false;
-            }
-            return true;
-          });
-
-        // 2. Randomly spawn new items (about 2% chance per frame)
-        if (Math.random() < 0.025 && updated.length < 5) {
-          const type = Math.random() < 0.25 ? "bad" : "good";
-          const labels = type === "good" ? ["📚", "📝", "⭐️", "🎓"] : ["💣", "🪨"];
-          const label = labels[Math.floor(Math.random() * labels.length)];
-          itemIdCounter.current += 1;
-          updated.push({
-            id: itemIdCounter.current,
-            x: Math.random() * 260 + 10,
-            y: 0,
-            type,
-            label
-          });
+    const tick = () => {
+      setCurrentBlock((prev) => {
+        let nextX = prev.x + prev.dir * prev.speed;
+        let nextDir = prev.dir;
+        
+        const limit = 300 - prev.width;
+        if (nextX >= limit) {
+          nextX = limit;
+          nextDir = -1;
+        } else if (nextX <= 0) {
+          nextX = 0;
+          nextDir = 1;
         }
 
-        return updated;
+        return { ...prev, x: nextX, dir: nextDir };
       });
-
-      gameLoopRef.current = requestAnimationFrame(gameTick);
+      gameLoopRef.current = requestAnimationFrame(tick);
     };
 
-    gameLoopRef.current = requestAnimationFrame(gameTick);
+    gameLoopRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(gameLoopRef.current);
-  }, [isGameOver, basketX, score, onGameOver]);
+  }, [isGameOver]);
 
   const handleRestart = () => {
     setScore(0);
-    setLives(3);
     setIsGameOver(false);
-    setItems([]);
+    setStack([{ id: 0, x: 75, width: 150, color: "bg-purple-600 border-purple-400" }]);
+    setCurrentBlock({ x: 0, width: 150, dir: 1, speed: 2 });
   };
 
   return (
     <div 
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onTouchMove={handleTouchMove}
-      className="w-full h-full flex flex-col justify-between select-none touch-none relative p-3 bg-gradient-to-b from-[#090812] to-[#121021]"
+      onClick={handleDrop}
+      className="w-full h-full flex flex-col justify-between p-3 select-none touch-none bg-gradient-to-b from-[#090812] to-[#121021] cursor-pointer"
     >
-      {/* Top dashboard */}
-      <div className="flex justify-between items-center text-xs text-gray-400 font-bold z-20">
+      <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
         <span>Score: <span className="text-purple-400">{score}</span></span>
-        <span className="flex gap-1">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <span key={i} className={`text-sm ${i < lives ? "opacity-100" : "opacity-20"}`}>❤️</span>
-          ))}
-        </span>
+        <span className="text-[9px] text-gray-500">Tap / Space to drop book</span>
       </div>
 
-      {/* Screen Area */}
-      <div className="flex-1 w-full relative mt-2 mb-2 overflow-hidden border border-white/5 rounded-xl bg-black/40">
+      <div className="flex-1 w-full relative bg-black/50 border border-white/5 rounded-xl overflow-hidden min-h-[220px]">
         {isGameOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 z-30 bg-black/80">
-            <h4 className="text-lg font-black text-rose-500">Game Over</h4>
-            <p className="text-xs text-gray-400">You caught {score} materials!</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-30">
+            <h4 className="text-lg font-black text-rose-500 animate-bounce">Stack collapsed!</h4>
+            <p className="text-xs text-gray-400">Total books stacked: {score}</p>
             <button
-              onClick={handleRestart}
+              onClick={(e) => { e.stopPropagation(); handleRestart(); }}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer"
             >
-              Play Again
+              Stack Again
             </button>
           </div>
         ) : (
-          <>
-            {/* Falling items */}
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="absolute text-xl leading-none animate-in fade-in duration-100"
-                style={{ left: item.x, top: item.y }}
-              >
-                {item.label}
-              </div>
-            ))}
-
-            {/* Basket */}
-            <div
-              className="absolute bottom-1 w-[60px] h-4 bg-purple-600 rounded-full border border-purple-400 flex items-center justify-center shadow-lg"
-              style={{ left: basketX }}
+          <div className="absolute inset-0 flex flex-col justify-end p-2">
+            {/* Sliding target block */}
+            <div 
+              className="absolute top-4 h-6 rounded-md bg-cyan-500 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)] flex items-center justify-center text-xs text-black font-extrabold transition-all duration-75"
+              style={{ left: `${currentBlock.x}px`, width: `${currentBlock.width}px` }}
             >
-              <div className="w-10 h-1 bg-white/50 rounded-full"></div>
+              📖
             </div>
-          </>
+
+            {/* Stack elements */}
+            <div className="space-y-1 relative w-full flex flex-col items-start max-h-[160px] overflow-hidden justify-end">
+              {stack.slice(-5).map((block) => (
+                <div
+                  key={block.id}
+                  className={`h-5 rounded-md border flex items-center justify-center text-[10px] text-white font-bold shadow-md transition-all duration-300 ${block.color}`}
+                  style={{ marginLeft: `${block.x}px`, width: `${block.width}px` }}
+                >
+                  {block.id === 0 ? "BASE" : `📚 Stack ${block.id}`}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-/* ── 🎮 GAME 2: MEMORY FLIP ──────────────────────────────── */
+/* ── 🎮 GAME 2: MEMORY MATCH ─────────────────────────────── */
 
-function MemoryFlipGame({ onGameOver }: { onGameOver: (score: number) => void }) {
-  const ICONS = ["🚀", "🪐", "📚", "🔮", "👽", "🧬"];
+function MemoryMatchGame({ onGameOver }: { onGameOver: (score: number) => void }) {
+  const ICONS = ["📚", "🪐", "💡", "🎓", "👽", "🧬"];
   
   const [cards, setCards] = useState<Array<{ id: number; icon: string; flipped: boolean; matched: boolean }>>([]);
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
-  const [matchedPairs, setMatchedPairs] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(45);
   const [isWon, setIsWon] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
 
   const initGame = () => {
-    // Duplicate icons to create pairs
     const list = [...ICONS, ...ICONS]
-      .map((icon, index) => ({
-        id: index,
-        icon,
-        flipped: false,
-        matched: false
-      }))
-      // Shuffle list
+      .map((icon, index) => ({ id: index, icon, flipped: false, matched: false }))
       .sort(() => Math.random() - 0.5);
     
     setCards(list);
     setFlippedIds([]);
     setMoves(0);
-    setMatchedPairs(0);
+    setTimeRemaining(45);
     setIsWon(false);
+    setIsGameOver(false);
   };
 
   useEffect(() => {
     initGame();
   }, []);
 
-  const handleCardClick = (id: number) => {
-    if (flippedIds.length >= 2 || cards[id].flipped || cards[id].matched) return;
+  // Timer loop
+  useEffect(() => {
+    if (isWon || isGameOver) return;
+    
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          setIsGameOver(true);
+          onGameOver(0);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-    // Flip card
-    const updatedCards = [...cards];
-    updatedCards[id].flipped = true;
-    setCards(updatedCards);
+    return () => clearInterval(interval);
+  }, [isWon, isGameOver]);
 
-    const nextFlipped = [...flippedIds, id];
+  const handleCardClick = (index: number) => {
+    if (flippedIds.length >= 2 || cards[index].flipped || cards[index].matched || isGameOver) return;
+
+    const updated = [...cards];
+    updated[index].flipped = true;
+    setCards(updated);
+
+    const nextFlipped = [...flippedIds, index];
     setFlippedIds(nextFlipped);
 
-    // If two cards flipped, check match
     if (nextFlipped.length === 2) {
       setMoves(m => m + 1);
-      const [firstId, secondId] = nextFlipped;
-      
-      if (cards[firstId].icon === cards[secondId].icon) {
-        // Matched!
+      const [first, second] = nextFlipped;
+
+      if (cards[first].icon === cards[second].icon) {
         setTimeout(() => {
           setCards(prev => {
             const copy = [...prev];
-            copy[firstId].matched = true;
-            copy[secondId].matched = true;
+            copy[first].matched = true;
+            copy[second].matched = true;
+            
+            // Check win condition
+            if (copy.every(c => c.matched)) {
+              setIsWon(true);
+              const score = Math.max(10, timeRemaining * 10 - moves * 2);
+              onGameOver(score);
+            }
             return copy;
           });
-          setMatchedPairs(p => {
-            const nextPairs = p + 1;
-            if (nextPairs === ICONS.length) {
-              setIsWon(true);
-              // Score is inversely proportional to moves, e.g. Max score 100
-              const finalScore = Math.max(10, 100 - (moves * 3));
-              onGameOver(finalScore);
-            }
-            return nextPairs;
-          });
           setFlippedIds([]);
-        }, 600);
+        }, 500);
       } else {
-        // Not a match - flip back
         setTimeout(() => {
           setCards(prev => {
             const copy = [...prev];
-            copy[firstId].flipped = false;
-            copy[secondId].flipped = false;
+            copy[first].flipped = false;
+            copy[second].flipped = false;
             return copy;
           });
           setFlippedIds([]);
@@ -516,20 +498,22 @@ function MemoryFlipGame({ onGameOver }: { onGameOver: (score: number) => void })
     <div className="w-full h-full flex flex-col justify-between p-3 select-none bg-gradient-to-b from-[#090812] to-[#121021]">
       <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
         <span>Moves: <span className="text-purple-400">{moves}</span></span>
-        <span>Matched: <span className="text-emerald-400">{matchedPairs}/{ICONS.length}</span></span>
+        <span className={timeRemaining < 10 ? "text-rose-400 font-black animate-pulse" : "text-gray-400"}>
+          Time: {timeRemaining}s
+        </span>
       </div>
 
       <div className="flex-1 w-full grid grid-cols-4 gap-2 relative bg-black/40 p-2 rounded-xl border border-white/5 min-h-[200px]">
         {isWon ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
-            <h4 className="text-lg font-black text-emerald-400">✨ You Won! ✨</h4>
-            <p className="text-xs text-gray-400">Matched all cards in {moves} moves.</p>
-            <button
-              onClick={initGame}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer"
-            >
-              Play Again
-            </button>
+            <h4 className="text-lg font-black text-emerald-400">Matched!</h4>
+            <p className="text-xs text-gray-400">Matched in {moves} moves with {timeRemaining}s left.</p>
+            <button onClick={initGame} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Play Again</button>
+          </div>
+        ) : isGameOver ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
+            <h4 className="text-lg font-black text-rose-400">Time Out!</h4>
+            <button onClick={initGame} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Try Again</button>
           </div>
         ) : (
           cards.map((card, index) => (
@@ -551,161 +535,228 @@ function MemoryFlipGame({ onGameOver }: { onGameOver: (score: number) => void })
   );
 }
 
-/* ── 🎮 GAME 3: PAPER PLANE ──────────────────────────────── */
+/* ── 🎮 GAME 3: QUICK QUIZ BLITZ ─────────────────────────── */
 
-function PaperPlaneGame({ onGameOver }: { onGameOver: (score: number) => void }) {
+const QUIZ_QUESTIONS = [
+  { q: "What does SRM stand for?", a: ["Sri Ramasamy Memorial", "Sri Ramanuja Mission", "Srinivasa Ramanujan Memorial", "Sri Rama Mandir"], c: 0 },
+  { q: "Which department is known for coding?", a: ["CSE", "ECE", "MECH", "CIVIL"], c: 0 },
+  { q: "What is the passing grade limit point at SRM?", a: ["10", "9", "5", "0"], c: 2 },
+  { q: "In programming, what represents a true/false value?", a: ["Integer", "String", "Boolean", "Float"], c: 2 },
+  { q: "What is the capital city of India?", a: ["Mumbai", "Chennai", "New Delhi", "Kolkata"], c: 2 },
+  { q: "Which language is used for web structure?", a: ["Python", "HTML", "C++", "VBA"], c: 1 },
+  { q: "What is the hexadecimal representation of 10?", a: ["A", "B", "F", "X"], c: 0 },
+  { q: "What does GPU stand for?", a: ["General Power Unit", "Graphics Processing Unit", "Gear Processing Unit", "Gigabit Port Utility"], c: 1 }
+];
+
+function QuickQuizGame({ onGameOver }: { onGameOver: (score: number) => void }) {
   const [score, setScore] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(30);
   const [isGameOver, setIsGameOver] = useState(false);
-  const [planeY, setPlaneY] = useState(100);
-  const [velocity, setVelocity] = useState(0);
 
-  // Obstacle coordinates
-  const [obstacle, setObstacle] = useState({ x: 300, gapTop: 60, gapBottom: 150, width: 30 });
-
-  const gameLoopRef = useRef<any>(null);
-  const scoreIntervalRef = useRef<any>(null);
-
-  // Spacebar or Click flap
-  const handleFlap = () => {
-    if (isGameOver) return;
-    setVelocity(-4.5); // Lift the plane up
+  // Shuffle and set current question index
+  const nextQuestion = () => {
+    setCurrentIdx((prev) => (prev + 1) % QUIZ_QUESTIONS.length);
   };
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === " " || e.key === "ArrowUp") {
-        e.preventDefault();
-        handleFlap();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isGameOver]);
+    setTimeRemaining(30);
+    setScore(0);
+    setCurrentIdx(Math.floor(Math.random() * QUIZ_QUESTIONS.length));
+    setIsGameOver(false);
+  }, []);
 
-  // Main game ticks
+  // Timer loop
   useEffect(() => {
     if (isGameOver) return;
-
-    const gameTick = () => {
-      // 1. Gravity update
-      setPlaneY((y) => {
-        const nextY = y + velocity;
-        // Collision with roof or floor
-        if (nextY <= 0 || nextY >= 210) {
+    
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
           setIsGameOver(true);
           onGameOver(score);
+          return 0;
         }
-        return nextY;
+        return prev - 1;
       });
-      setVelocity((v) => v + 0.25); // Gravity acceleration
+    }, 1000);
 
-      // 2. Move obstacles left
-      setObstacle((prev) => {
-        const nextX = prev.x - 3;
-        
-        // Re-spawn obstacle on reaching left side
-        if (nextX < -prev.width) {
-          const gapSize = 80;
-          const gapTop = Math.random() * 80 + 30; // Random height between 30 and 110
-          return {
-            x: 300,
-            gapTop,
-            gapBottom: gapTop + gapSize,
-            width: 30
-          };
-        }
+    return () => clearInterval(interval);
+  }, [isGameOver, score]);
 
-        // Collision Check: plane is at X = 50, Y = planeY (height ~ 15px)
-        const planeX = 50;
-        const planeHeight = 15;
-        const planeWidth = 20;
-
-        if (planeX + planeWidth > nextX && planeX < nextX + prev.width) {
-          // Horizontal intersection exists. Check vertical gap bounds
-          if (planeY < prev.gapTop || planeY + planeHeight > prev.gapBottom) {
-            setIsGameOver(true);
-            onGameOver(score);
-          }
-        }
-
-        return { ...prev, x: nextX };
-      });
-
-      gameLoopRef.current = requestAnimationFrame(gameTick);
-    };
-
-    gameLoopRef.current = requestAnimationFrame(gameTick);
-    return () => cancelAnimationFrame(gameLoopRef.current);
-  }, [isGameOver, velocity, planeY, score, onGameOver]);
-
-  // Score counter (increases with time survived)
-  useEffect(() => {
+  const handleOptionClick = (optionIdx: number) => {
     if (isGameOver) return;
 
-    scoreIntervalRef.current = setInterval(() => {
-      setScore(s => s + 1);
-    }, 200);
-
-    return () => clearInterval(scoreIntervalRef.current);
-  }, [isGameOver]);
+    if (optionIdx === QUIZ_QUESTIONS[currentIdx].c) {
+      setScore(s => s + 10);
+    }
+    nextQuestion();
+  };
 
   const handleRestart = () => {
     setScore(0);
+    setTimeRemaining(30);
+    setCurrentIdx(Math.floor(Math.random() * QUIZ_QUESTIONS.length));
     setIsGameOver(false);
-    setPlaneY(100);
-    setVelocity(0);
-    setObstacle({ x: 300, gapTop: 60, gapBottom: 140, width: 30 });
   };
 
   return (
-    <div 
-      onClick={handleFlap}
-      className="w-full h-full flex flex-col justify-between select-none touch-none p-3 bg-gradient-to-b from-[#090812] to-[#121021] relative cursor-pointer"
-    >
-      {/* Top dashboard */}
-      <div className="flex justify-between items-center text-xs text-gray-400 font-bold z-20">
-        <span>Score: <span className="text-cyan-400">{score}</span></span>
-        <span className="text-[10px] text-gray-500">Tap / Spacebar to Fly</span>
+    <div className="w-full h-full flex flex-col justify-between p-3 select-none bg-gradient-to-b from-[#090812] to-[#121021]">
+      <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
+        <span>Score: <span className="text-purple-400">{score}</span></span>
+        <span className={timeRemaining < 10 ? "text-rose-400 font-black animate-pulse" : "text-gray-400"}>
+          Timer: {timeRemaining}s
+        </span>
       </div>
 
-      {/* Screen Area */}
-      <div className="flex-1 w-full relative mt-2 border border-white/5 rounded-xl bg-black/40 overflow-hidden min-h-[220px]">
+      <div className="flex-1 w-full flex flex-col justify-center items-stretch relative bg-black/40 p-4 rounded-xl border border-white/5 min-h-[220px]">
         {isGameOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-30">
-            <h4 className="text-lg font-black text-rose-500">Plane Crashed</h4>
-            <p className="text-xs text-gray-400">Score: {score}</p>
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Avoid triggering flap on play again click
-                handleRestart();
-              }}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer"
-            >
-              Play Again
-            </button>
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
+            <h4 className="text-lg font-black text-emerald-400">Quiz Finished!</h4>
+            <p className="text-xs text-gray-400">You scored {score} points.</p>
+            <button onClick={handleRestart} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Restart Blitz</button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm font-semibold text-white text-center leading-relaxed">
+              {QUIZ_QUESTIONS[currentIdx].q}
+            </p>
+            
+            <div className="grid grid-cols-2 gap-2">
+              {QUIZ_QUESTIONS[currentIdx].a.map((option, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleOptionClick(idx)}
+                  className="px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-xs text-left text-gray-300 hover:bg-purple-600/20 hover:border-purple-500/40 hover:text-white transition-all cursor-pointer truncate"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── 🎮 GAME 4: COLOR TAP CHALLENGE ──────────────────────── */
+
+const COLORS = [
+  { name: "Purple", hex: "bg-purple-500" },
+  { name: "Cyan", hex: "bg-cyan-500" },
+  { name: "Emerald", hex: "bg-emerald-500" },
+  { name: "Rose", hex: "bg-rose-500" }
+];
+
+function ColorTapGame({ onGameOver }: { onGameOver: (score: number) => void }) {
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(1);
+  const [targetColorIdx, setTargetColorIdx] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(1.5); // seconds per tap
+  const [isGameOver, setIsGameOver] = useState(false);
+  const maxTimeRef = useRef(1.5);
+
+  const gameLoopRef = useRef<any>(null);
+
+  const loadNextColor = () => {
+    setTargetColorIdx(Math.floor(Math.random() * COLORS.length));
+    maxTimeRef.current = Math.max(0.6, 1.5 - score * 0.05); // Speed up
+    setTimeLeft(maxTimeRef.current);
+  };
+
+  useEffect(() => {
+    setScore(0);
+    setCombo(1);
+    setIsGameOver(false);
+    loadNextColor();
+  }, []);
+
+  // Frame tick for progress bar
+  useEffect(() => {
+    if (isGameOver) return;
+
+    const tick = () => {
+      setTimeLeft((prev) => {
+        if (prev <= 0.016) {
+          setIsGameOver(true);
+          onGameOver(score);
+          return 0;
+        }
+        return prev - 0.016;
+      });
+      gameLoopRef.current = requestAnimationFrame(tick);
+    };
+
+    gameLoopRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(gameLoopRef.current);
+  }, [isGameOver, score]);
+
+  const handleCircleClick = (colorIdx: number) => {
+    if (isGameOver) return;
+
+    if (colorIdx === targetColorIdx) {
+      const nextScore = score + 10 * combo;
+      setScore(nextScore);
+      setCombo(c => Math.min(5, c + 1));
+      loadNextColor();
+    } else {
+      setIsGameOver(true);
+      onGameOver(score);
+    }
+  };
+
+  const handleRestart = () => {
+    setScore(0);
+    setCombo(1);
+    setIsGameOver(false);
+    loadNextColor();
+  };
+
+  return (
+    <div className="w-full h-full flex flex-col justify-between p-3 select-none bg-gradient-to-b from-[#090812] to-[#121021]">
+      <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
+        <span>Score: <span className="text-purple-400">{score}</span></span>
+        <span className="flex items-center gap-1 text-orange-400 font-bold">
+          <Flame size={12} /> x{combo} Combo
+        </span>
+      </div>
+
+      <div className="flex-1 w-full flex flex-col justify-between items-center relative bg-black/40 p-4 rounded-xl border border-white/5 min-h-[220px]">
+        {isGameOver ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
+            <h4 className="text-lg font-black text-rose-500">Tap Failed!</h4>
+            <p className="text-xs text-gray-400">Final score: {score}</p>
+            <button onClick={handleRestart} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Play Again</button>
           </div>
         ) : (
           <>
-            {/* Paper Plane */}
-            <div
-              className="absolute left-[50px] text-lg leading-none transform rotate-[-5deg]"
-              style={{ top: planeY }}
-            >
-              ✈️
+            {/* Target Display */}
+            <div className="text-center py-2">
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Tap this color</span>
+              <p className="text-lg font-bold text-white mt-1 animate-pulse">
+                {COLORS[targetColorIdx].name}
+              </p>
             </div>
 
-            {/* Obstacles */}
-            {/* Top obstacle block */}
-            <div
-              className="absolute bg-gradient-to-b from-purple-900 to-purple-700/60 border-l border-r border-purple-500/20 w-[30px] top-0"
-              style={{ left: obstacle.x, height: obstacle.gapTop }}
-            ></div>
+            {/* Time progress bar */}
+            <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all"
+                style={{ width: `${(timeLeft / maxTimeRef.current) * 100}%` }}
+              ></div>
+            </div>
 
-            {/* Bottom obstacle block */}
-            <div
-              className="absolute bg-gradient-to-t from-purple-900 to-purple-700/60 border-l border-r border-purple-500/20 w-[30px] bottom-0"
-              style={{ left: obstacle.x, top: obstacle.gapBottom }}
-            ></div>
+            {/* Color circles */}
+            <div className="grid grid-cols-2 gap-4 w-full pt-4">
+              {COLORS.map((color, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleCircleClick(idx)}
+                  className={`w-full h-10 rounded-xl transition-all cursor-pointer transform hover:scale-105 active:scale-95 ${color.hex} border border-white/10 shadow-lg`}
+                ></button>
+              ))}
+            </div>
           </>
         )}
       </div>
