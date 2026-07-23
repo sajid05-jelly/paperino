@@ -87,10 +87,11 @@ export default function CareerDnaManagement() {
             </h2>
             
             {/* Status Toggle */}
-            <div className="flex items-center justify-between p-6 rounded-2xl bg-black/40 border border-white/5 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-white/5 mb-8">
               <div>
-                <h3 className="text-lg font-medium text-white mb-1 flex items-center gap-2">
-                  Career DNA Platform Status: {careerDnaEnabled ? "🟢 Enabled" : "🔴 Under Development"}
+                <h3 className="text-lg font-medium text-white mb-1 flex flex-wrap items-center gap-2">
+                  <span>Career DNA Platform Status:</span>
+                  <span className="whitespace-nowrap">{careerDnaEnabled ? "🟢 Enabled" : "🔴 Under Development"}</span>
                 </h3>
                 <p className="text-sm text-gray-400">
                   {careerDnaEnabled 
@@ -98,12 +99,14 @@ export default function CareerDnaManagement() {
                     : "Currently UNDER DEVELOPMENT. Showing professional maintenance screen."}
                 </p>
               </div>
-              <button 
-                onClick={() => setCareerDnaEnabled(!careerDnaEnabled)}
-                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${careerDnaEnabled ? 'bg-purple-500' : 'bg-red-600'}`}
-              >
-                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${careerDnaEnabled ? 'translate-x-9' : 'translate-x-1'}`} />
-              </button>
+              <div className="flex justify-end w-full sm:w-auto shrink-0">
+                <button 
+                  onClick={() => setCareerDnaEnabled(!careerDnaEnabled)}
+                  className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${careerDnaEnabled ? 'bg-purple-500' : 'bg-red-600'}`}
+                >
+                  <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${careerDnaEnabled ? 'translate-x-9' : 'translate-x-1'}`} />
+                </button>
+              </div>
             </div>
 
             {error && <p className="text-red-400 mt-4 text-sm">{error}</p>}

@@ -105,35 +105,37 @@ export default function MaintenanceAdminPage() {
       <div className="glass-panel rounded-2xl p-6 space-y-6">
 
         {/* Active toggle */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-white font-semibold text-sm">Enable Maintenance Banner</p>
             <p className="text-gray-400 text-xs mt-0.5">
               Shows a dismissible banner at the top of every page for all visitors.
             </p>
           </div>
-
+ 
           {/* Styled toggle switch */}
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-            />
-            <div
-              className={`w-11 h-6 rounded-full transition-colors duration-300 border ${
-                isActive
-                  ? 'bg-amber-500/80 border-amber-400/60'
-                  : 'bg-white/10 border-white/20'
-              } peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-400/40`}
-            />
-            <div
-              className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${
-                isActive ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </label>
+          <div className="flex justify-end w-full sm:w-auto shrink-0">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+              />
+              <div
+                className={`w-11 h-6 rounded-full transition-colors duration-300 border ${
+                  isActive
+                    ? 'bg-amber-500/80 border-amber-400/60'
+                    : 'bg-white/10 border-white/20'
+                } peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-400/40`}
+              />
+              <div
+                className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${
+                  isActive ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </label>
+          </div>
         </div>
 
         {/* Divider */}

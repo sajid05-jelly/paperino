@@ -102,7 +102,7 @@ export default function ATSManagement() {
             </h2>
             
             {/* Status Toggle */}
-            <div className="flex items-center justify-between p-6 rounded-2xl bg-black/40 border border-white/5 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-white/5 mb-8">
               <div>
                 <h3 className="text-lg font-medium text-white mb-1">ATS Analyzer Mode</h3>
                 <p className="text-sm text-gray-400">
@@ -111,12 +111,14 @@ export default function ATSManagement() {
                     : "Currently DISABLED. Showing maintenance screen."}
                 </p>
               </div>
-              <button 
-                onClick={() => setAtsEnabled(!atsEnabled)}
-                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${atsEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}
-              >
-                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${atsEnabled ? 'translate-x-9' : 'translate-x-1'}`} />
-              </button>
+              <div className="flex justify-end w-full sm:w-auto shrink-0">
+                <button 
+                  onClick={() => setAtsEnabled(!atsEnabled)}
+                  className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${atsEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${atsEnabled ? 'translate-x-9' : 'translate-x-1'}`} />
+                </button>
+              </div>
             </div>
 
             {/* Maintenance Settings */}
