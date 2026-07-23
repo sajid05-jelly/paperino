@@ -1,17 +1,25 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Download, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
+import { sortDepartments } from "@/lib/courseSorting";
 
 const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: false });
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function Home() {
-  const { departments, loading } = useSubjects();
+  const { departments, deptsWithMaterials, listenToDeptsWithMaterials, loading } = useSubjects();
+  
+  useEffect(() => {
+    const unsub = listenToDeptsWithMaterials();
+    return () => unsub();
+  }, [listenToDeptsWithMaterials]);
+
   const approvedDepts = departments.filter(d => d.status === "approved");
-  const sortedDepts = approvedDepts;
+  const sortedDepts = sortDepartments(approvedDepts, deptsWithMaterials);
 
   return (
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">

@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { GraduationCap, Calendar, Search, ChevronRight, Loader2, Plus } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 import CreateCourseModal from "@/components/CreateCourseModal";
 import { useAuth } from "@/context/AuthContext";
+import { sortDepartments } from "@/lib/courseSorting";
 
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { departments, loading } = useSubjects();
+  const { departments, deptsWithMaterials, listenToDeptsWithMaterials, loading } = useSubjects();
   const { user } = useAuth();
+
+  useEffect(() => {
+    const unsub = listenToDeptsWithMaterials();
+    return () => unsub();
+  }, [listenToDeptsWithMaterials]);
 
   // Filter approved departments only for public display
   const approvedDepts = departments.filter(d => d.status === "approved");
@@ -22,7 +28,7 @@ export default function CoursesPage() {
     d.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const sortedDepts = filteredDepts;
+  const sortedDepts = sortDepartments(filteredDepts, deptsWithMaterials);
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 relative min-h-[80vh]">

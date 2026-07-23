@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import { collection, getDocs, serverTimestamp, setDoc, doc, query, where } from "firebase/firestore";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
@@ -32,6 +32,7 @@ interface SubjectsContextType {
   departments: Department[];
   subjects: Record<string, Record<string, Subject[]>>; // deptId -> semId -> subjects
   allSubjectsList: Subject[]; // flat list of all subjects
+  deptsWithMaterials: Set<string>;
   loading: boolean;
   createDepartment: (
     name: string,
@@ -52,6 +53,7 @@ interface SubjectsContextType {
   ) => Promise<string>;
   refreshSubjects: () => Promise<void>;
   lazyLoadSubjects: (deptId: string, semId: string) => Promise<void>;
+  listenToDeptsWithMaterials: () => () => void;
 }
 
 // Convert STATIC_SUBJECTS (Record<string, {id, name}[]>) to our new Subject[] format for B.Tech
@@ -78,11 +80,13 @@ const SubjectsContext = createContext<SubjectsContextType>({
   departments: [],
   subjects: {},
   allSubjectsList: [],
+  deptsWithMaterials: new Set(),
   loading: true,
   createDepartment: async () => "",
   createSubject: async () => "",
   refreshSubjects: async () => {},
-  lazyLoadSubjects: async () => {}
+  lazyLoadSubjects: async () => {},
+  listenToDeptsWithMaterials: () => () => {}
 });
 
 export const useSubjects = () => useContext(SubjectsContext);
@@ -91,9 +95,24 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subjects, setSubjects] = useState<Record<string, Record<string, Subject[]>>>({});
   const [allSubjectsList, setAllSubjectsList] = useState<Subject[]>([]);
+  const [deptsWithMaterials, setDeptsWithMaterials] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const loadedSemestersRef = useRef<Record<string, boolean>>({});
   const initialFetchDone = useRef(false);
+
+  const listenToDeptsWithMaterials = useCallback(() => {
+    const q = query(collection(db, "materials"), where("status", "==", "approved"));
+    return onSnapshot(q, (snap) => {
+      const depts = new Set<string>();
+      snap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.departmentId) {
+          depts.add(data.departmentId);
+        }
+      });
+      setDeptsWithMaterials(depts);
+    });
+  }, []);
 
   const refreshSubjects = async () => {
     try {
@@ -306,11 +325,13 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         departments,
         subjects,
         allSubjectsList,
+        deptsWithMaterials,
         loading,
         createDepartment,
         createSubject,
         refreshSubjects,
-        lazyLoadSubjects
+        lazyLoadSubjects,
+        listenToDeptsWithMaterials
       }}
     >
       {children}
