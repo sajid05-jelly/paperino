@@ -15,13 +15,13 @@ const GRADE_POINTS: Record<string, number> = {
 };
 
 const GRADE_RANGES: Record<string, string> = {
-  "O": "91–100%",
-  "A+": "81–90%",
-  "A": "71–80%",
-  "B+": "61–70%",
-  "B": "56–60%",
-  "C": "50–55%",
-  "F": "Below 50%",
+  "O": "91 & Above",
+  "A+": "81 & Above",
+  "A": "71 & Above",
+  "B+": "61 & Above",
+  "B": "56 & Above",
+  "C": "50 & Above",
+  "F": "Below 50",
 };
 
 type Subject = {

@@ -2,17 +2,17 @@ import React from "react";
 
 export default function GradesPage() {
   const gradesData = [
-    { grade: "O", min: "91.00", max: "100.00", result: "PASS" },
-    { grade: "A+", min: "81.00", max: "90.00", result: "PASS" },
-    { grade: "A", min: "71.00", max: "80.00", result: "PASS" },
-    { grade: "B+", min: "61.00", max: "70.00", result: "PASS" },
-    { grade: "B", min: "56.00", max: "60.00", result: "PASS" },
-    { grade: "C", min: "50.00", max: "55.00", result: "PASS" },
+    { grade: "O", min: "91.00", max: "Above", result: "PASS" },
+    { grade: "A+", min: "81.00", max: "Above", result: "PASS" },
+    { grade: "A", min: "71.00", max: "Above", result: "PASS" },
+    { grade: "B+", min: "61.00", max: "Above", result: "PASS" },
+    { grade: "B", min: "56.00", max: "Above", result: "PASS" },
+    { grade: "C", min: "50.00", max: "Above", result: "PASS" },
     { grade: "Ab", min: "0.00", max: "100.00", result: "INCOMPLETE" },
     { grade: "*", min: "0.00", max: "100.00", result: "WITHHELD" },
     { grade: "I", min: "0.00", max: "100.00", result: "FAIL" },
     { grade: "W", min: "0.00", max: "100.00", result: "FAIL" },
-    { grade: "F", min: "0.00", max: "49.00", result: "FAIL" },
+    { grade: "F", min: "0.00", max: "Below 50", result: "FAIL" },
   ];
 
   return (
