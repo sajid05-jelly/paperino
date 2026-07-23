@@ -34,15 +34,28 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isLabsOpen, setIsLabsOpen] = useState(false);
   const [isLabsMobileOpen, setIsLabsMobileOpen] = useState(false);
-  const [tagline, setTagline] = useState("The Universe of Study Materials");
+  const [tagline, setTagline] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("paperino_header_tagline") || "The Universe of Study Materials";
+    }
+    return "The Universe of Study Materials";
+  });
 
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, "settings", "headerMessage"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setTagline(data.message || "The Universe of Study Materials");
+        const msg = data.message || "The Universe of Study Materials";
+        setTagline(msg);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("paperino_header_tagline", msg);
+        }
       } else {
-        setTagline("The Universe of Study Materials");
+        const defaultMsg = "The Universe of Study Materials";
+        setTagline(defaultMsg);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("paperino_header_tagline", defaultMsg);
+        }
       }
     }, (err) => {
       console.warn("Tagline read error:", err);
