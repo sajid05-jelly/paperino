@@ -12,6 +12,7 @@ import RouteTracker from "@/components/RouteTracker";
 import { ToastProvider } from "@/components/Toast";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
 import ErrorSniffer from "@/components/ErrorSniffer";
+import MaintenanceGuard from "@/components/MaintenanceGuard";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 
@@ -127,17 +128,19 @@ export default function RootLayout({
                   {/* Maintenance banner — sits above navbar, reads from Firestore */}
                   <MaintenanceBanner />
 
-                  <Navbar />
-                  <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
-                    {children}
-                  </main>
-                  <Footer />
+                  <MaintenanceGuard>
+                    <Navbar />
+                    <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
+                      {children}
+                    </main>
+                    <Footer />
 
-                  {/* Floating global elements */}
-                  <FloatingFeedback />
-                  <ThemeSelector />
-                  <AvatarProvider />
-                  <BackToTop />
+                    {/* Floating global elements */}
+                    <FloatingFeedback />
+                    <ThemeSelector />
+                    <AvatarProvider />
+                    <BackToTop />
+                  </MaintenanceGuard>
 
                 </SubjectsProvider>
               </NotificationProvider>
