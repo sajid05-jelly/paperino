@@ -41,7 +41,7 @@ const TYPE_META: Record<
 
 export default function NotificationBell() {
   const { notifications: standardNotifications, unreadCount: standardUnread, markRead: markStandardRead, markAllRead: markAllStandardRead, clearMyNotifications } = useNotifications();
-  const { unreadUpdates: pulseUpdates, unreadCount: pulseUnread, markAllAsRead: markAllPulseRead } = usePulseNotifications();
+  const { updates: pulseUpdates, unreadCount: pulseUnread, markAllAsRead: markAllPulseRead, lastPulseReadAt } = usePulseNotifications();
   const router = useRouter();
 
   const unreadCount = standardUnread + pulseUnread;
@@ -175,33 +175,52 @@ export default function NotificationBell() {
               </div>
             ) : (
               <div className="divide-y divide-white/[0.04]">
-                {pulseUpdates.map((p) => (
-                  <button
-                    key={`pulse-${p.id}`}
-                    onClick={() => {
-                      markAllPulseRead();
-                      setOpen(false);
-                      router.push("/pulse");
-                    }}
-                    className={`w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] bg-cyan-500/[0.04]`}
-                  >
-                    <div className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-base bg-white/5 border border-white/5 mt-0.5 text-cyan-400">
-                      📻
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">New Update</span>
+                {pulseUpdates.map((p) => {
+                  const firebaseLastRead = lastPulseReadAt 
+                    ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate() : new Date(lastPulseReadAt))
+                    : new Date(0);
+                  
+                  const localLastReadStr = typeof window !== "undefined" ? localStorage.getItem(`paperino_last_pulse_read_at_${p.id}`) : null;
+                  const localLastRead = localLastReadStr ? new Date(parseInt(localLastReadStr)) : new Date(0);
+                  const lastRead = firebaseLastRead > localLastRead ? firebaseLastRead : localLastRead;
+
+                  const createdDate = (p.createdAt && typeof p.createdAt.toDate === "function") 
+                    ? p.createdAt.toDate() 
+                    : new Date(p.createdAt as any);
+                  const isUnread = createdDate > lastRead;
+
+                  return (
+                    <button
+                      key={`pulse-${p.id}`}
+                      onClick={() => {
+                        markAllPulseRead();
+                        setOpen(false);
+                        router.push("/pulse");
+                      }}
+                      className={`w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] ${
+                        isUnread ? "bg-cyan-500/[0.04]" : ""
+                      }`}
+                    >
+                      <div className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-base bg-white/5 border border-white/5 mt-0.5 text-cyan-400">
+                        📻
                       </div>
-                      <p className="text-sm leading-snug mb-0.5 text-white font-semibold">
-                        {p.title}
-                      </p>
-                      <p className="text-[10px] text-gray-600 mt-1.5">
-                        {p.createdAt ? timeAgo(p.createdAt.toDate().getTime()) : "just now"}
-                      </p>
-                    </div>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 bg-cyan-400 shadow-[0_0_6px_currentColor]" />
-                  </button>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">New Update</span>
+                        </div>
+                        <p className={`text-sm leading-snug mb-0.5 ${isUnread ? "text-white font-semibold" : "text-gray-300 font-medium"}`}>
+                          {p.title}
+                        </p>
+                        <p className="text-[10px] text-gray-600 mt-1.5">
+                          {p.createdAt ? timeAgo(p.createdAt.toDate().getTime()) : "just now"}
+                        </p>
+                      </div>
+                      {isUnread && (
+                        <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 bg-cyan-400 shadow-[0_0_6px_currentColor]" />
+                      )}
+                    </button>
+                  );
+                })}
                 {standardNotifications.map((n) => {
                   const meta = TYPE_META[n.type] ?? {
                     dot: "bg-gray-400",

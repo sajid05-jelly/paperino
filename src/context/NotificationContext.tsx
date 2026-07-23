@@ -23,6 +23,8 @@ export interface PulseUpdate {
 
 interface NotificationContextType {
   unreadUpdates: PulseUpdate[];
+  updates: PulseUpdate[];
+  lastPulseReadAt: any;
   unreadCount: number;
   markAllAsRead: () => Promise<void>;
   
@@ -37,6 +39,8 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType>({
   unreadUpdates: [],
+  updates: [],
+  lastPulseReadAt: null,
   unreadCount: 0,
   markAllAsRead: async () => {},
   notifications: [],
@@ -223,6 +227,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     <NotificationContext.Provider 
       value={{ 
         unreadUpdates, 
+        updates,
+        lastPulseReadAt,
         unreadCount: unreadUpdates.length, 
         markAllAsRead,
         notifications,
