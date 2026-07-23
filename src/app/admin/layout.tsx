@@ -36,7 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Upload Material
             </Link>
 
-            <Link href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
+            <Link href="/admin/analytics" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <Activity size={20} className="text-violet-400" />
               Analytics Dashboard
             </Link>
