@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { collection, getDocs, addDoc, serverTimestamp, setDoc, doc, query, where } from "firebase/firestore";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { collection, getDocs, serverTimestamp, setDoc, doc, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
@@ -51,6 +51,7 @@ interface SubjectsContextType {
     contributorName?: string
   ) => Promise<string>;
   refreshSubjects: () => Promise<void>;
+  lazyLoadSubjects: (deptId: string, semId: string) => Promise<void>;
 }
 
 // Convert STATIC_SUBJECTS (Record<string, {id, name}[]>) to our new Subject[] format for B.Tech
@@ -80,7 +81,8 @@ const SubjectsContext = createContext<SubjectsContextType>({
   loading: true,
   createDepartment: async () => "",
   createSubject: async () => "",
-  refreshSubjects: async () => {}
+  refreshSubjects: async () => {},
+  lazyLoadSubjects: async () => {}
 });
 
 export const useSubjects = () => useContext(SubjectsContext);
@@ -90,10 +92,12 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
   const [subjects, setSubjects] = useState<Record<string, Record<string, Subject[]>>>({});
   const [allSubjectsList, setAllSubjectsList] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const loadedSemestersRef = useRef<Record<string, boolean>>({});
+  const initialFetchDone = useRef(false);
 
   const refreshSubjects = async () => {
     try {
-      // 1. Fetch Departments
+      // 1. Fetch Departments (0 Materials Collection Sweeps)
       const deptSnapshot = await getDocs(collection(db, "departments"));
       let deptList: Department[] = [];
       deptSnapshot.forEach((docSnap) => {
@@ -125,64 +129,16 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         deptList = [defaultBTech];
       }
 
-      // 1.5 Fetch approved materials count per department
-      try {
-        const matsSnap = await getDocs(
-          query(collection(db, "materials"), where("status", "==", "approved"))
-        );
-        const counts: Record<string, number> = {};
-        matsSnap.forEach((mSnap) => {
-          const mdata = mSnap.data();
-          const dId = mdata.departmentId || "btech";
-          counts[dId] = (counts[dId] || 0) + 1;
-        });
-
-        // Sort departments descending by material count
-        deptList.sort((a, b) => {
-          const countA = counts[a.id] || 0;
-          const countB = counts[b.id] || 0;
-          return countB - countA;
-        });
-      } catch (countsErr) {
-        console.error("Error computing department material counts:", countsErr);
-      }
-
+      // Sort alphabetically by Code to bypass heavy materials count sweep on startup
+      deptList.sort((a, b) => a.code.localeCompare(b.code));
       setDepartments(deptList);
 
-      // 2. Fetch Subjects
-      const subSnapshot = await getDocs(collection(db, "dynamic_subjects"));
-      const mergedList: Subject[] = [...getStaticBTechSubjects()];
+      // 2. Pre-populate B.Tech subjects from static definition so they load instantly
+      const staticBTech = getStaticBTechSubjects();
+      setAllSubjectsList(staticBTech);
 
-      subSnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        // Handle backwards compatibility (older records might not have departmentId)
-        const departmentId = data.departmentId || "btech";
-        
-        // Avoid duplicate matches
-        const exists = mergedList.find(
-          s => s.id === data.subjectId && s.departmentId === departmentId && s.semesterId === data.semesterId
-        );
-        
-        if (!exists) {
-          mergedList.push({
-            id: data.subjectId,
-            name: data.name,
-            code: data.code || "",
-            departmentId,
-            semesterId: data.semesterId,
-            status: data.status || "approved",
-            contributorId: data.contributorId || null,
-            contributorName: data.contributorName || null,
-            createdAt: data.createdAt
-          });
-        }
-      });
-
-      setAllSubjectsList(mergedList);
-
-      // 3. Group subjects by departmentId -> semesterId for O(1) reads
       const grouped: Record<string, Record<string, Subject[]>> = {};
-      mergedList.forEach((sub) => {
+      staticBTech.forEach((sub) => {
         if (!grouped[sub.departmentId]) {
           grouped[sub.departmentId] = {};
         }
@@ -194,14 +150,84 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
 
       setSubjects(grouped);
     } catch (error) {
-      console.error("Error fetching dynamic subjects & departments:", error);
+      console.error("Error fetching departments:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  const lazyLoadSubjects = async (deptId: string, semId: string) => {
+    const cacheKey = `${deptId}_${semId}`;
+    if (loadedSemestersRef.current[cacheKey]) {
+      return; // Cache Hit - Already loaded in this browser session
+    }
+
+    try {
+      console.log(`[SubjectsContext] Lazy loading dynamic subjects for: ${deptId} Sem ${semId}...`);
+      const q = query(
+        collection(db, "dynamic_subjects"),
+        where("departmentId", "==", deptId),
+        where("semesterId", "==", semId)
+      );
+      
+      const subSnapshot = await getDocs(q);
+      const newSubjects: Subject[] = [];
+
+      subSnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        newSubjects.push({
+          id: data.subjectId,
+          name: data.name,
+          code: data.code || "",
+          departmentId: deptId,
+          semesterId: semId,
+          status: data.status || "approved",
+          contributorId: data.contributorId || null,
+          contributorName: data.contributorName || null,
+          createdAt: data.createdAt
+        });
+      });
+
+      // Update state in-memory
+      setSubjects(prev => {
+        const copy = { ...prev };
+        if (!copy[deptId]) copy[deptId] = {};
+        
+        // Retain static entries
+        const staticSubs = getStaticBTechSubjects().filter(s => s.departmentId === deptId && s.semesterId === semId);
+        const combined = [...staticSubs];
+        
+        newSubjects.forEach(newSub => {
+          if (!combined.some(s => s.id === newSub.id)) {
+            combined.push(newSub);
+          }
+        });
+        
+        copy[deptId][semId] = combined;
+        return copy;
+      });
+
+      setAllSubjectsList(prev => {
+        const copy = [...prev];
+        newSubjects.forEach(newSub => {
+          if (!copy.some(s => s.id === newSub.id && s.departmentId === deptId && s.semesterId === semId)) {
+            copy.push(newSub);
+          }
+        });
+        return copy;
+      });
+
+      loadedSemestersRef.current[cacheKey] = true;
+    } catch (err) {
+      console.error("[SubjectsContext] Failed to lazy load subjects:", err);
+    }
+  };
+
   useEffect(() => {
-    refreshSubjects();
+    if (!initialFetchDone.current) {
+      initialFetchDone.current = true;
+      refreshSubjects();
+    }
   }, []);
 
   const createDepartment = async (
@@ -248,22 +274,29 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     
     // Check duplicates inside the specific department and semester
     if (subjects[deptId]?.[semId]?.find(s => s.id === generatedId)) {
-      throw new Error("A subject with this ID/Code already exists in this semester.");
+      throw new Error("A subject with this code or name already exists in this semester.");
     }
 
-    await addDoc(collection(db, "dynamic_subjects"), {
-      departmentId: deptId,
-      semesterId: semId,
+    const docId = `${deptId}_sem${semId}_${generatedId}`;
+
+    await setDoc(doc(db, "dynamic_subjects", docId), {
       subjectId: generatedId,
       name: name.trim(),
       code: code ? code.trim() : "",
-      status: isContributor ? "pending" : "approved",
+      departmentId: deptId,
+      semesterId: semId,
+      createdBy: contributorId || "system",
       contributorId: contributorId || null,
       contributorName: contributorName || null,
+      status: isContributor ? "pending" : "approved",
       createdAt: serverTimestamp()
     });
 
-    await refreshSubjects();
+    // Reset local cache so it gets refetched
+    const cacheKey = `${deptId}_${semId}`;
+    delete loadedSemestersRef.current[cacheKey];
+    await lazyLoadSubjects(deptId, semId);
+
     return generatedId;
   };
 
@@ -276,7 +309,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         loading,
         createDepartment,
         createSubject,
-        refreshSubjects
+        refreshSubjects,
+        lazyLoadSubjects
       }}
     >
       {children}

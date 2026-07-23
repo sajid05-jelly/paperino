@@ -17,6 +17,9 @@ interface Material {
   fileName?: string;
 }
 
+// In-Memory Materials Cache by session
+const materialsCache = new Map<string, Material[]>();
+
 export default function MaterialsList({ departmentId, semesterId, subjectId }: { departmentId: string, semesterId: string, subjectId: string }) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,15 +28,25 @@ export default function MaterialsList({ departmentId, semesterId, subjectId }: {
 
   useEffect(() => {
     const fetchMaterials = async () => {
+      const cacheKey = `${departmentId}_${semesterId}_${subjectId}`;
+      if (materialsCache.has(cacheKey)) {
+        setMaterials(materialsCache.get(cacheKey) || []);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
       try {
         const q = query(
           collection(db, "materials"),
           where("departmentId", "==", departmentId),
           where("semesterId", "==", semesterId),
-          where("subjectId", "==", subjectId)
+          where("subjectId", "==", subjectId),
+          where("status", "==", "approved") // Added explicit approval filter to narrow down scans
         );
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Material));
+        materialsCache.set(cacheKey, data);
         setMaterials(data);
       } catch (error) {
         console.error("Error fetching materials:", error);

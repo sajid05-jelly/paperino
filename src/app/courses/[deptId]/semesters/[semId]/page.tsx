@@ -12,9 +12,17 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
   const resolvedParams = use(params);
   const { deptId, semId } = resolvedParams;
   
-  const { departments, subjects, loading } = useSubjects();
+  const { departments, subjects, loading, lazyLoadSubjects } = useSubjects();
   const { user } = useAuth();
   const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+  const [lazyLoading, setLazyLoading] = useState(false);
+
+  useEffect(() => {
+    if (deptId && semId && lazyLoadSubjects) {
+      setLazyLoading(true);
+      lazyLoadSubjects(deptId, semId).finally(() => setLazyLoading(false));
+    }
+  }, [deptId, semId, lazyLoadSubjects]);
 
   // Find active department
   const activeDept = departments.find(d => d.id === deptId);
@@ -22,7 +30,7 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
   // Filter out pending subjects for public users
   const deptSubjects = (subjects[deptId]?.[semId] || []).filter(sub => sub.status !== "pending");
 
-  if (loading) {
+  if (loading || lazyLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[85vh] w-full">
         <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />

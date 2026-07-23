@@ -20,7 +20,13 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
   const { deptId, semId, subjectId } = resolvedParams;
   const { user, isAdmin, isContributor, loading: authLoading } = useAuth();
   const { showToast, dismissToast } = useToast();
-  const { subjects: dynamicSubjects } = useSubjects();
+  const { subjects: dynamicSubjects, lazyLoadSubjects } = useSubjects();
+
+  useEffect(() => {
+    if (deptId && semId && lazyLoadSubjects) {
+      lazyLoadSubjects(deptId, semId);
+    }
+  }, [deptId, semId, lazyLoadSubjects]);
   
   const [materials, setMaterials] = useState<any[]>([]);
   const [survivalNotes, setSurvivalNotes] = useState<any[]>([]);

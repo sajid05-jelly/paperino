@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, Timestamp, where, writeBatch, getDocs } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
 import { Radio, X, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { PaperinoNotification } from "@/lib/notifications";
 
 export interface PulseUpdate {
   id: string;
@@ -24,12 +25,26 @@ interface NotificationContextType {
   unreadUpdates: PulseUpdate[];
   unreadCount: number;
   markAllAsRead: () => Promise<void>;
+  
+  // Unified Realtime User Notifications
+  notifications: PaperinoNotification[];
+  notificationsUnreadCount: number;
+  loadingNotifications: boolean;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
   unreadUpdates: [],
   unreadCount: 0,
   markAllAsRead: async () => {},
+  notifications: [],
+  notificationsUnreadCount: 0,
+  loadingNotifications: true,
+  markNotificationRead: async () => {},
+  markAllNotificationsRead: async () => {},
+  clearAllNotifications: async () => {},
 });
 
 export const usePulseNotifications = () => useContext(NotificationContext);
@@ -41,14 +56,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [localReadTime, setLocalReadTime] = useState<number>(0);
   const router = useRouter();
 
-  // Firestore listener - stable on user mount
+  // User Notifications States
+  const [notifications, setNotifications] = useState<PaperinoNotification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
+
+  // 1. Single Global listener for Pulse Updates (Limit 10 to avoid full sweep)
   useEffect(() => {
     if (!user) {
       setUpdates([]);
       return;
     }
 
-    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(db, "pulse_updates"), 
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
       setUpdates(fetched);
@@ -72,6 +96,36 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       });
     }, (error) => {
       console.warn("[NotificationContext] Pulse updates error:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // 2. Single Global listener for User Notifications (Bypasses multiple custom hook hooks)
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setLoadingNotifications(false);
+      return;
+    }
+
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const notifs: PaperinoNotification[] = [];
+      snap.forEach((d) =>
+        notifs.push({ id: d.id, ...d.data() } as PaperinoNotification)
+      );
+      // Sort newest first on the client to avoid composite index requirements
+      notifs.sort((a, b) => b.createdAt - a.createdAt);
+      setNotifications(notifs);
+      setLoadingNotifications(false);
+    }, (err) => {
+      console.error("[NotificationContext] notifications snapshot error:", err);
+      setLoadingNotifications(false);
     });
 
     return () => unsubscribe();
@@ -117,8 +171,68 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const notificationsUnreadCount = useMemo(() => {
+    return notifications.filter((n) => !n.read).length;
+  }, [notifications]);
+
+  const markNotificationRead = useCallback(async (id: string) => {
+    try {
+      await updateDoc(doc(db, "notifications", id), { read: true });
+    } catch (err) {
+      console.error("[NotificationContext] markNotificationRead error:", err);
+    }
+  }, []);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    if (!user) return;
+    try {
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", user.uid),
+        where("read", "==", false)
+      );
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.update(d.ref, { read: true }));
+      await batch.commit();
+    } catch (err) {
+      console.error("[NotificationContext] markAllNotificationsRead error:", err);
+    }
+  }, [user]);
+
+  const clearAllNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", user.uid)
+      );
+      const snap = await getDocs(q);
+      const batchSize = 500;
+      for (let i = 0; i < snap.docs.length; i += batchSize) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + batchSize).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (err) {
+      console.error("[NotificationContext] clearAllNotifications error:", err);
+    }
+  }, [user]);
+
   return (
-    <NotificationContext.Provider value={{ unreadUpdates, unreadCount: unreadUpdates.length, markAllAsRead }}>
+    <NotificationContext.Provider 
+      value={{ 
+        unreadUpdates, 
+        unreadCount: unreadUpdates.length, 
+        markAllAsRead,
+        notifications,
+        notificationsUnreadCount,
+        loadingNotifications,
+        markNotificationRead,
+        markAllNotificationsRead,
+        clearAllNotifications
+      }}
+    >
       {children}
       
       {/* Custom Real-Time Toast for Pulse Updates */}

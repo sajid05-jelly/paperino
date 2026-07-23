@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle, GraduationCap, Bell, Trash2, Loader2, X, CheckCircle2 } from "lucide-react";
+import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle, GraduationCap, Bell, Trash2, Loader2, X, CheckCircle2, RefreshCw } from "lucide-react";
 import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs, writeBatch, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+
+// Module-level cache for Platform Analytics statistics to prevent repeated getCountFromServer calls on dashboard re-mounts
+let cachedStats: any = null;
+let cachedMaterialCounts: any = null;
+let cachedQuotaExceeded = false;
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -101,151 +106,175 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        console.log("[Analytics] Starting data fetch...");
-        setError(null);
-        const matsColl = collection(db, "materials");
-        const usersColl = collection(db, "users");
+  const fetchStats = useCallback(async (forceRefetch = false) => {
+    if (!forceRefetch && cachedStats && cachedMaterialCounts) {
+      console.log("[Analytics] Serving dashboard statistics from session cache");
+      setStats(cachedStats);
+      setMaterialCounts(cachedMaterialCounts);
+      setIsQuotaExceeded(cachedQuotaExceeded);
+      setLoading(false);
+      return;
+    }
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+    setLoading(true);
+    try {
+      console.log("[Analytics] Starting statistics database fetch...");
+      setError(null);
+      const matsColl = collection(db, "materials");
+      const usersColl = collection(db, "users");
 
-        // Fetch using allSettled to prevent one failing collection from bringing down the entire dashboard
-        const results = await Promise.allSettled([
-          getCountFromServer(matsColl),
-          getCountFromServer(usersColl),
-          getCountFromServer(query(usersColl, where("lastLogin", ">=", today))),
-          getCountFromServer(query(matsColl, where("category", "==", "pyq"))),
-          getCountFromServer(query(matsColl, where("category", "==", "notes"))),
-          getCountFromServer(query(matsColl, where("category", "==", "questions"))),
-          getDoc(doc(db, "platform_stats", "global")),
-          getDocs(query(collection(db, "platform_stats", "subjects", "visits"), orderBy("visits", "desc"), limit(1))),
-          getDocs(query(collection(db, "platform_stats", "materials", "downloads"), orderBy("downloads", "desc"), limit(1))),
-          getCountFromServer(collection(db, "departments")),
-          getCountFromServer(query(collection(db, "departments"), where("status", "==", "pending"))),
-          getCountFromServer(query(collection(db, "departments"), where("status", "==", "approved"))),
-          getCountFromServer(query(collection(db, "dynamic_subjects"), where("status", "==", "approved")))
-        ]);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-        // Check if any promise rejected due to Quota limits to trigger the fallback catch block
-        const quotaError = results.find(
-          (r) => r.status === "rejected" && String(r.reason?.message || r.reason).toLowerCase().includes("quota")
-        );
-        if (quotaError && quotaError.status === "rejected") {
-          throw quotaError.reason;
-        }
+      // Fetch using allSettled to prevent one failing collection from bringing down the entire dashboard
+      const results = await Promise.allSettled([
+        getCountFromServer(matsColl),
+        getCountFromServer(usersColl),
+        getCountFromServer(query(usersColl, where("lastLogin", ">=", today))),
+        getCountFromServer(query(matsColl, where("category", "==", "pyq"))),
+        getCountFromServer(query(matsColl, where("category", "==", "notes"))),
+        getCountFromServer(query(matsColl, where("category", "==", "questions"))),
+        getDoc(doc(db, "platform_stats", "global")),
+        getDocs(query(collection(db, "platform_stats", "subjects", "visits"), orderBy("visits", "desc"), limit(1))),
+        getDocs(query(collection(db, "platform_stats", "materials", "downloads"), orderBy("downloads", "desc"), limit(1))),
+        getCountFromServer(collection(db, "departments")),
+        getCountFromServer(query(collection(db, "departments"), where("status", "==", "pending"))),
+        getCountFromServer(query(collection(db, "departments"), where("status", "==", "approved"))),
+        getCountFromServer(query(collection(db, "dynamic_subjects"), where("status", "==", "approved")))
+      ]);
 
-        // Helper to extract data or log error
-        const getResult = (res: any, name: string, defaultValue: any) => {
-          if (res.status === "fulfilled") {
-            console.log(`[Analytics] Successfully fetched ${name}`);
-            return res.value;
-          } else {
-            const isQuota = String(res.reason?.message || res.reason).toLowerCase().includes("quota");
-            if (isQuota) {
-              console.warn(`[Analytics] Service Notice (Quota): Failed to fetch ${name}`);
-            } else {
-              console.error(`[Analytics] Error fetching ${name}:`, res.reason);
-            }
-            return defaultValue;
-          }
-        };
-
-        const totalMatsSnap = getResult(results[0], "Total Materials", { data: () => ({ count: 0 }) });
-        const totalUsersSnap = getResult(results[1], "Total Users", { data: () => ({ count: 0 }) });
-        const dailyUsersSnap = getResult(results[2], "Daily Users", { data: () => ({ count: 0 }) });
-        const pyqsSnap = getResult(results[3], "PYQs", { data: () => ({ count: 0 }) });
-        const notesSnap = getResult(results[4], "Notes", { data: () => ({ count: 0 }) });
-        const questionsSnap = getResult(results[5], "Questions", { data: () => ({ count: 0 }) });
-        const globalStatsSnap = getResult(results[6], "Global Stats", { exists: () => false, data: () => ({ atsUsage: 0, aiUsage: 0 }) });
-        const topSubjectSnap = getResult(results[7], "Top Subject", { empty: true, docs: [] });
-        const topDownloadSnap = getResult(results[8], "Top Download", { empty: true, docs: [] });
-        const totalDeptsSnap = getResult(results[9], "Total Depts", { data: () => ({ count: 0 }) });
-        const pendingDeptsSnap = getResult(results[10], "Pending Depts", { data: () => ({ count: 0 }) });
-        const approvedDeptsSnap = getResult(results[11], "Approved Depts", { data: () => ({ count: 0 }) });
-        const totalSubjectsSnap = getResult(results[12], "Total Subjects", { data: () => ({ count: 0 }) });
-
-        const totalMaterials = totalMatsSnap.data().count;
-        const totalUsers = totalUsersSnap.data().count;
-        const dailyActive = dailyUsersSnap.data().count;
-
-        const pyqs = pyqsSnap.data().count;
-        const notes = notesSnap.data().count;
-        const questions = questionsSnap.data().count;
-
-        const totalDepts = totalDeptsSnap.data().count;
-        const pendingDepts = pendingDeptsSnap.data().count;
-        const approvedDepts = approvedDeptsSnap.data().count;
-        const totalSubjects = totalSubjectsSnap.data().count;
-
-        const manuals = 0; 
-        const syllabus = 0;
-        const other = Math.max(0, totalMaterials - (pyqs + notes + questions));
-
-        const globalData = globalStatsSnap.exists() ? globalStatsSnap.data() : { atsUsage: 0, aiUsage: 0 };
-        const atsUsage = globalData?.atsUsage || 0;
-        const aiUsage = globalData?.aiUsage || 0;
-
-        let mostVisited = "N/A";
-        if (!topSubjectSnap.empty && topSubjectSnap.docs.length > 0) {
-          mostVisited = topSubjectSnap.docs[0].data().name || topSubjectSnap.docs[0].id;
-        }
-
-        let highestDownloadedFile = "N/A";
-        if (!topDownloadSnap.empty && topDownloadSnap.docs.length > 0) {
-          highestDownloadedFile = topDownloadSnap.docs[0].data().name || topDownloadSnap.docs[0].id;
-        }
-
-        setStats({
-          totalMaterials,
-          totalUsers,
-          dailyActive,
-          atsUsage,
-          aiUsage,
-          mostVisited,
-          topDepartment: "Pending Update", // Static for now based on original code
-          highestDownloadedFile,
-          totalDepts,
-          pendingDepts,
-          approvedDepts,
-          totalSubjects
-        });
-        setMaterialCounts({ pyqs, notes, manuals, syllabus, questions, other });
-        
-        console.log("[Analytics] Fetch complete.", { totalUsers, dailyActive, totalMaterials, atsUsage, mostVisited });
-      } catch (error: any) {
-        const errorStr = String(error?.message || error);
-        if (errorStr.toLowerCase().includes("quota") || errorStr.toLowerCase().includes("exhausted")) {
-          console.warn("[Analytics] Service Notice: Firebase quota exceeded. Switching to offline mode.");
-          setIsQuotaExceeded(true);
-          setStats({
-            totalMaterials: 24,
-            totalUsers: 85,
-            dailyActive: 12,
-            atsUsage: 43,
-            aiUsage: 120,
-            mostVisited: "Data Structures",
-            topDepartment: "CSE",
-            highestDownloadedFile: "Notes_Unit1.pdf",
-            totalDepts: 5,
-            pendingDepts: 0,
-            approvedDepts: 5,
-            totalSubjects: 14
-          });
-          setMaterialCounts({ pyqs: 12, notes: 8, manuals: 2, syllabus: 1, questions: 1, other: 0 });
-        } else {
-          console.error("[Analytics] Fatal error fetching admin stats:", error);
-          setError("A fatal error occurred while fetching analytics.");
-        }
-      } finally {
-        setLoading(false);
+      // Check if any promise rejected due to Quota limits to trigger the fallback catch block
+      const quotaError = results.find(
+        (r) => r.status === "rejected" && String(r.reason?.message || r.reason).toLowerCase().includes("quota")
+      );
+      if (quotaError && quotaError.status === "rejected") {
+        throw quotaError.reason;
       }
-    };
 
-    fetchStats();
+      // Helper to extract data or log error
+      const getResult = (res: any, name: string, defaultValue: any) => {
+        if (res.status === "fulfilled") {
+          console.log(`[Analytics] Successfully fetched ${name}`);
+          return res.value;
+        } else {
+          const isQuota = String(res.reason?.message || res.reason).toLowerCase().includes("quota");
+          if (isQuota) {
+            console.warn(`[Analytics] Service Notice (Quota): Failed to fetch ${name}`);
+          } else {
+            console.error(`[Analytics] Error fetching ${name}:`, res.reason);
+          }
+          return defaultValue;
+        }
+      };
+
+      const totalMatsSnap = getResult(results[0], "Total Materials", { data: () => ({ count: 0 }) });
+      const totalUsersSnap = getResult(results[1], "Total Users", { data: () => ({ count: 0 }) });
+      const dailyUsersSnap = getResult(results[2], "Daily Users", { data: () => ({ count: 0 }) });
+      const pyqsSnap = getResult(results[3], "PYQs", { data: () => ({ count: 0 }) });
+      const notesSnap = getResult(results[4], "Notes", { data: () => ({ count: 0 }) });
+      const questionsSnap = getResult(results[5], "Questions", { data: () => ({ count: 0 }) });
+      const globalStatsSnap = getResult(results[6], "Global Stats", { exists: () => false, data: () => ({ atsUsage: 0, aiUsage: 0 }) });
+      const topSubjectSnap = getResult(results[7], "Top Subject", { empty: true, docs: [] });
+      const topDownloadSnap = getResult(results[8], "Top Download", { empty: true, docs: [] });
+      const totalDeptsSnap = getResult(results[9], "Total Depts", { data: () => ({ count: 0 }) });
+      const pendingDeptsSnap = getResult(results[10], "Pending Depts", { data: () => ({ count: 0 }) });
+      const approvedDeptsSnap = getResult(results[11], "Approved Depts", { data: () => ({ count: 0 }) });
+      const totalSubjectsSnap = getResult(results[12], "Total Subjects", { data: () => ({ count: 0 }) });
+
+      const totalMaterials = totalMatsSnap.data().count;
+      const totalUsers = totalUsersSnap.data().count;
+      const dailyActive = dailyUsersSnap.data().count;
+
+      const pyqs = pyqsSnap.data().count;
+      const notes = notesSnap.data().count;
+      const questions = questionsSnap.data().count;
+
+      const totalDepts = totalDeptsSnap.data().count;
+      const pendingDepts = pendingDeptsSnap.data().count;
+      const approvedDepts = approvedDeptsSnap.data().count;
+      const totalSubjects = totalSubjectsSnap.data().count;
+
+      const manuals = 0; 
+      const syllabus = 0;
+      const other = Math.max(0, totalMaterials - (pyqs + notes + questions));
+
+      const globalData = globalStatsSnap.exists() ? globalStatsSnap.data() : { atsUsage: 0, aiUsage: 0 };
+      const atsUsage = globalData?.atsUsage || 0;
+      const aiUsage = globalData?.aiUsage || 0;
+
+      let mostVisited = "N/A";
+      if (!topSubjectSnap.empty && topSubjectSnap.docs.length > 0) {
+        mostVisited = topSubjectSnap.docs[0].data().name || topSubjectSnap.docs[0].id;
+      }
+
+      let highestDownloadedFile = "N/A";
+      if (!topDownloadSnap.empty && topDownloadSnap.docs.length > 0) {
+        highestDownloadedFile = topDownloadSnap.docs[0].data().name || topDownloadSnap.docs[0].id;
+      }
+
+      const newStats = {
+        totalMaterials,
+        totalUsers,
+        dailyActive,
+        atsUsage,
+        aiUsage,
+        mostVisited,
+        topDepartment: "Pending Update", 
+        highestDownloadedFile,
+        totalDepts,
+        pendingDepts,
+        approvedDepts,
+        totalSubjects
+      };
+
+      const newCounts = { pyqs, notes, manuals, syllabus, questions, other };
+
+      setStats(newStats);
+      setMaterialCounts(newCounts);
+
+      // Save to cache
+      cachedStats = newStats;
+      cachedMaterialCounts = newCounts;
+      cachedQuotaExceeded = false;
+
+      console.log("[Analytics] Fetch complete.", { totalUsers, dailyActive, totalMaterials, atsUsage, mostVisited });
+    } catch (error: any) {
+      const errorStr = String(error?.message || error);
+      if (errorStr.toLowerCase().includes("quota") || errorStr.toLowerCase().includes("exhausted")) {
+        console.warn("[Analytics] Service Notice: Firebase quota exceeded. Switching to offline mode.");
+        setIsQuotaExceeded(true);
+        cachedQuotaExceeded = true;
+        const fallbackStats = {
+          totalMaterials: 24,
+          totalUsers: 85,
+          dailyActive: 12,
+          atsUsage: 43,
+          aiUsage: 120,
+          mostVisited: "Data Structures",
+          topDepartment: "CSE",
+          highestDownloadedFile: "Notes_Unit1.pdf",
+          totalDepts: 5,
+          pendingDepts: 0,
+          approvedDepts: 5,
+          totalSubjects: 14
+        };
+        const fallbackCounts = { pyqs: 12, notes: 8, manuals: 2, syllabus: 1, questions: 1, other: 0 };
+        setStats(fallbackStats);
+        setMaterialCounts(fallbackCounts);
+        cachedStats = fallbackStats;
+        cachedMaterialCounts = fallbackCounts;
+      } else {
+        console.error("[Analytics] Fatal error fetching admin stats:", error);
+        setError("A fatal error occurred while fetching analytics.");
+      }
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStats(false);
+  }, [fetchStats]);
 
   return (
     <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
@@ -262,13 +291,21 @@ export default function AdminDashboard() {
               Real-time metrics tracking student engagement, AI usage, and material distribution across the Paperino platform.
             </p>
           </div>
-          <button
-            onClick={() => setShowClearModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all text-sm font-bold shrink-0 group"
-          >
-            <Bell size={16} className="group-hover:animate-pulse" />
-            Clear All Notifications
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchStats(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all text-sm font-bold shrink-0 flex items-center gap-1.5"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+            </button>
+            <button
+              onClick={() => setShowClearModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all text-sm font-bold shrink-0 group"
+            >
+              <Bell size={16} className="group-hover:animate-pulse" />
+              Clear All Notifications
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -18,6 +18,13 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+if (typeof window !== "undefined") {
+  enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    console.warn("Firestore multi-tab persistence failed:", err);
+  });
+}
+
 const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
