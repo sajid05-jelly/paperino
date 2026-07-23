@@ -6,6 +6,7 @@ import { Book, ChevronRight, Loader2, Plus } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 import CreateCourseModal from "@/components/CreateCourseModal";
+import SuggestSubjectModal from "@/components/SuggestSubjectModal";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SemesterSubjectsPage({ params }: { params: Promise<{ deptId: string, semId: string }> }) {
@@ -15,6 +16,7 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
   const { departments, subjects, loading, lazyLoadSubjects } = useSubjects();
   const { user } = useAuth();
   const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [lazyLoading, setLazyLoading] = useState(false);
 
   useEffect(() => {
@@ -57,10 +59,18 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
     <div className="max-w-7xl mx-auto px-6 py-12">
       <SafeBackButton fallbackUrl={`/courses/${deptId}`} label="Back to Semesters" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors gap-2" size={16} />
 
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold text-white mb-2">{activeDept.name}</h1>
-        <h2 className="text-xl text-purple-400 mb-4 font-semibold">Semester {semId}</h2>
-        <p className="text-gray-400 text-lg">Select a subject to view its study materials.</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-12">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold text-white mb-2">{activeDept.name}</h1>
+          <h2 className="text-xl text-purple-400 font-semibold">Semester {semId}</h2>
+          <p className="text-gray-400 text-lg">Select a subject to view its study materials.</p>
+        </div>
+        <button 
+          onClick={() => setIsSubjectModalOpen(true)}
+          className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 text-white font-bold transition-all cursor-pointer select-none"
+        >
+          <Plus size={16} /> Suggest Subject
+        </button>
       </div>
 
       {deptSubjects.length === 0 ? (
@@ -104,6 +114,14 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
         onClose={() => setIsSuggestModalOpen(false)}
         initialDeptId={deptId}
         initialSemester={semId}
+      />
+
+      <SuggestSubjectModal
+        isOpen={isSubjectModalOpen}
+        onClose={() => setIsSubjectModalOpen(false)}
+        departmentId={deptId}
+        departmentName={activeDept.name}
+        semesterId={semId}
       />
     </div>
   );
