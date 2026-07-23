@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Bell, CheckCheck, Inbox, X, Trash2, Loader2 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
-import { usePulseNotifications } from "@/context/NotificationContext";
+import { usePulseNotifications, PulseUpdate } from "@/context/NotificationContext";
+import { useAuth } from "@/context/AuthContext";
 import type { PaperinoNotification } from "@/lib/notifications";
 import { useRouter } from "next/navigation";
 
@@ -40,9 +41,34 @@ const TYPE_META: Record<
 /* ── Component ────────────────────────────────────────── */
 
 export default function NotificationBell() {
+  const { user } = useAuth();
   const { notifications: standardNotifications, unreadCount: standardUnread, markRead: markStandardRead, markAllRead: markAllStandardRead, clearMyNotifications } = useNotifications();
   const { updates: pulseUpdates, unreadCount: pulseUnread, markAllAsRead: markAllPulseRead, lastPulseReadAt } = usePulseNotifications();
   const router = useRouter();
+
+  const [pulseClearedTime, setPulseClearedTime] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (user && typeof window !== "undefined") {
+      const val = localStorage.getItem(`paperino_pulse_cleared_at_${user.uid}`);
+      setPulseClearedTime(val ? parseInt(val) : 0);
+    }
+  }, [user, open]);
+
+  // Filter pulse updates to show only those created after the clear timestamp
+  const visiblePulseUpdates = useMemo(() => {
+    return pulseUpdates.filter((p: PulseUpdate) => {
+      const createdDate = (p.createdAt && typeof p.createdAt.toDate === "function") 
+        ? p.createdAt.toDate().getTime() 
+        : new Date(p.createdAt as any).getTime();
+      return createdDate > pulseClearedTime;
+    });
+  }, [pulseUpdates, pulseClearedTime]);
 
   const unreadCount = standardUnread + pulseUnread;
 
@@ -50,12 +76,6 @@ export default function NotificationBell() {
     await markAllStandardRead();
     await markAllPulseRead();
   }, [markAllStandardRead, markAllPulseRead]);
-
-  const [open, setOpen] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [clearing, setClearing] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const bellRef = useRef<HTMLButtonElement>(null);
 
   // Close on outside click
   useEffect(() => {
@@ -97,15 +117,20 @@ export default function NotificationBell() {
     try {
       await clearMyNotifications();
       await markAllPulseRead();
+      if (user && typeof window !== "undefined") {
+        const now = Date.now();
+        localStorage.setItem(`paperino_pulse_cleared_at_${user.uid}`, now.toString());
+        setPulseClearedTime(now);
+      }
       setConfirmClear(false);
     } catch {
       // Error already logged in hook
     } finally {
       setClearing(false);
     }
-  }, [clearMyNotifications, markAllPulseRead]);
+  }, [clearMyNotifications, markAllPulseRead, user]);
 
-  const totalCount = standardNotifications.length + pulseUpdates.length;
+  const totalCount = standardNotifications.length + visiblePulseUpdates.length;
 
   return (
     <div className="relative flex-shrink-0">
@@ -168,14 +193,14 @@ export default function NotificationBell() {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {standardNotifications.length === 0 && pulseUpdates.length === 0 ? (
+            {standardNotifications.length === 0 && visiblePulseUpdates.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-600">
                 <Inbox size={32} className="opacity-40" />
                 <p className="text-sm">No notifications yet</p>
               </div>
             ) : (
               <div className="divide-y divide-white/[0.04]">
-                {pulseUpdates.map((p) => {
+                {visiblePulseUpdates.map((p: PulseUpdate) => {
                   const firebaseLastRead = lastPulseReadAt 
                     ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate() : new Date(lastPulseReadAt))
                     : new Date(0);
