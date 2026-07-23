@@ -11,7 +11,7 @@ const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: f
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function Home() {
-  const { departments, deptsWithMaterials, listenToDeptsWithMaterials, loading } = useSubjects();
+  const { departments, deptMaterialCounts, listenToDeptsWithMaterials, loading } = useSubjects();
   
   useEffect(() => {
     const unsub = listenToDeptsWithMaterials();
@@ -19,7 +19,7 @@ export default function Home() {
   }, [listenToDeptsWithMaterials]);
 
   const approvedDepts = departments.filter(d => d.status === "approved");
-  const sortedDepts = sortDepartments(approvedDepts, deptsWithMaterials);
+  const sortedDepts = sortDepartments(approvedDepts, deptMaterialCounts);
 
   return (
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">

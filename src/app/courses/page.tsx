@@ -12,7 +12,7 @@ import { sortDepartments } from "@/lib/courseSorting";
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { departments, deptsWithMaterials, listenToDeptsWithMaterials, loading } = useSubjects();
+  const { departments, deptMaterialCounts, listenToDeptsWithMaterials, loading } = useSubjects();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function CoursesPage() {
     d.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const sortedDepts = sortDepartments(filteredDepts, deptsWithMaterials);
+  const sortedDepts = sortDepartments(filteredDepts, deptMaterialCounts);
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 relative min-h-[80vh]">

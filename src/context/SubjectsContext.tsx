@@ -32,7 +32,7 @@ interface SubjectsContextType {
   departments: Department[];
   subjects: Record<string, Record<string, Subject[]>>; // deptId -> semId -> subjects
   allSubjectsList: Subject[]; // flat list of all subjects
-  deptsWithMaterials: Set<string>;
+  deptMaterialCounts: Record<string, number>;
   loading: boolean;
   createDepartment: (
     name: string,
@@ -80,7 +80,7 @@ const SubjectsContext = createContext<SubjectsContextType>({
   departments: [],
   subjects: {},
   allSubjectsList: [],
-  deptsWithMaterials: new Set(),
+  deptMaterialCounts: {},
   loading: true,
   createDepartment: async () => "",
   createSubject: async () => "",
@@ -95,7 +95,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subjects, setSubjects] = useState<Record<string, Record<string, Subject[]>>>({});
   const [allSubjectsList, setAllSubjectsList] = useState<Subject[]>([]);
-  const [deptsWithMaterials, setDeptsWithMaterials] = useState<Set<string>>(new Set());
+  const [deptsWithMaterials, setDeptsWithMaterials] = useState<Set<string>>(new Set()); // Kept for backwards compatibility if needed, but not populated
+  const [deptMaterialCounts, setDeptMaterialCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const loadedSemestersRef = useRef<Record<string, boolean>>({});
   const initialFetchDone = useRef(false);
@@ -103,14 +104,14 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
   const listenToDeptsWithMaterials = useCallback(() => {
     const q = query(collection(db, "materials"), where("status", "==", "approved"));
     return onSnapshot(q, (snap) => {
-      const depts = new Set<string>();
+      const counts: Record<string, number> = {};
       snap.docs.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.departmentId) {
-          depts.add(data.departmentId);
+          counts[data.departmentId] = (counts[data.departmentId] || 0) + 1;
         }
       });
-      setDeptsWithMaterials(depts);
+      setDeptMaterialCounts(counts);
     });
   }, []);
 
@@ -325,7 +326,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         departments,
         subjects,
         allSubjectsList,
-        deptsWithMaterials,
+        deptMaterialCounts,
         loading,
         createDepartment,
         createSubject,
