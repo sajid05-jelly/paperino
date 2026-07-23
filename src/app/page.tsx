@@ -107,18 +107,18 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full perspective-[1000px] place-items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full perspective-[1000px]">
           {/* PYQ Predictor Card */}
           <Link href="/pyq" className="w-full flex">
             <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
               <div className="flex flex-col h-full relative z-10">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 transition-all duration-500 shadow-sm md:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] hardware-accelerated">
-                  <BrainCircuit size={28} aria-hidden="true" />
+                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 transition-all duration-500 shadow-sm md:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] hardware-accelerated">
+                  <BrainCircuit size={26} aria-hidden="true" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">PYQ Predictor</h3>
-                <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Upload multiple Previous Year Question papers and let our AI cross-reference them to predict the most important concepts for your next exam.</p>
-                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-sm group-hover:text-violet-300 transition-colors uppercase tracking-wider">
-                  Try Predictor <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300 hardware-accelerated" aria-hidden="true" />
+                <h3 className="text-xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">PYQ Predictor</h3>
+                <p className="text-gray-400 flex-grow leading-relaxed font-light text-xs md:text-sm">Upload multiple Previous Year Question papers and let our AI cross-reference them to predict the most important concepts for your next exam.</p>
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-xs group-hover:text-violet-300 transition-colors uppercase tracking-wider">
+                  Try Predictor <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300 hardware-accelerated" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -128,13 +128,77 @@ export default function Home() {
           <Link href="/ats" className="w-full flex">
             <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
               <div className="flex flex-col h-full relative z-10">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
-                  <FileSearch size={28} aria-hidden="true" />
+                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
+                  <FileSearch size={26} aria-hidden="true" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">ATS Analyzer</h3>
-                <p className="text-gray-400 flex-grow leading-relaxed font-light text-sm md:text-base">Ensure your resume beats the bots. Get a granular AI breakdown of your formatting, missing skills, and perfect keyword optimization.</p>
-                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-sm group-hover:text-violet-300 transition-colors uppercase tracking-wider">
-                  Analyze Resume <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
+                <h3 className="text-xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">ATS Analyzer</h3>
+                <p className="text-gray-400 flex-grow leading-relaxed font-light text-xs md:text-sm">Ensure your resume beats the bots. Get a granular AI breakdown of your formatting, missing skills, and perfect keyword optimization.</p>
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-xs group-hover:text-violet-300 transition-colors uppercase tracking-wider">
+                  Analyze Resume <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Career DNA Card */}
+          <Link href="/career-dna" className="w-full flex">
+            <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
+              <div className="flex flex-col h-full relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
+                  <Bot size={26} aria-hidden="true" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">Career DNA</h3>
+                <p className="text-gray-400 flex-grow leading-relaxed font-light text-xs md:text-sm">Build your professional identity. Map your academic parameters to placement analytics and unlock custom career pathways.</p>
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-xs group-hover:text-violet-300 transition-colors uppercase tracking-wider">
+                  Build Career DNA <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Attendance Shield Card */}
+          <Link href="/attendance-mafia" className="w-full flex">
+            <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
+              <div className="flex flex-col h-full relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
+                  <Calculator size={26} aria-hidden="true" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">Attendance Shield</h3>
+                <p className="text-gray-400 flex-grow leading-relaxed font-light text-xs md:text-sm">Manage class targets seamlessly. Calculate how many classes you can skip or need to attend to stay safely above the 75% line.</p>
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-xs group-hover:text-violet-300 transition-colors uppercase tracking-wider">
+                  Configure Shield <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Exam Emergency Card */}
+          <Link href="/exam-emergency" className="w-full flex">
+            <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
+              <div className="flex flex-col h-full relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
+                  <GraduationCap size={26} aria-hidden="true" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">Exam Emergency</h3>
+                <p className="text-gray-400 flex-grow leading-relaxed font-light text-xs md:text-sm">Panic mode activated? Get instant access to essential study packets, crash course notes, and last-minute preparation materials.</p>
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-xs group-hover:text-violet-300 transition-colors uppercase tracking-wider">
+                  Open Emergency <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* Senior Insights Card */}
+          <Link href="/survival-notes" className="w-full flex">
+            <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
+              <div className="flex flex-col h-full relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
+                  <BookOpen size={26} aria-hidden="true" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">Senior Insights</h3>
+                <p className="text-gray-400 flex-grow leading-relaxed font-light text-xs md:text-sm">Access syllabus reviews, subject ratings, and survival guides compiled directly by top-scoring seniors who survived the course.</p>
+                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-xs group-hover:text-violet-300 transition-colors uppercase tracking-wider">
+                  Read Insights <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
                 </div>
               </div>
             </div>
