@@ -14,7 +14,7 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
   const { deptId, semId } = resolvedParams;
   
   const { departments, subjects, loading, lazyLoadSubjects } = useSubjects();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [lazyLoading, setLazyLoading] = useState(false);
@@ -65,12 +65,21 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
           <h2 className="text-xl text-purple-400 font-semibold">Semester {semId}</h2>
           <p className="text-gray-400 text-lg">Select a subject to view its study materials.</p>
         </div>
-        <button 
-          onClick={() => setIsSubjectModalOpen(true)}
-          className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 text-white font-bold transition-all cursor-pointer select-none"
-        >
-          <Plus size={16} /> Suggest Subject
-        </button>
+        {isAdmin ? (
+          <button 
+            onClick={() => setIsSuggestModalOpen(true)}
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:shadow-[0_0_25px_rgba(147,51,234,0.5)] cursor-pointer select-none"
+          >
+            <Plus size={16} /> Add Subject
+          </button>
+        ) : (
+          <button 
+            onClick={() => setIsSubjectModalOpen(true)}
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 text-white font-bold transition-all cursor-pointer select-none"
+          >
+            <Plus size={16} /> Suggest Subject
+          </button>
+        )}
       </div>
 
       {deptSubjects.length === 0 ? (
