@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2 } from "lucide-react";
+import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useToast } from "@/components/Toast";
@@ -62,6 +62,18 @@ export default function ManageMaterialsPage() {
       showToast("Failed to fetch materials.", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteMaterial = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this study material?")) return;
+    try {
+      await deleteDoc(doc(db, "materials", id));
+      setMaterials(prev => prev.filter(m => m.id !== id));
+      showToast("Material deleted successfully.", "success");
+    } catch (err) {
+      console.error("Error deleting material:", err);
+      showToast("Failed to delete material.", "error");
     }
   };
 
@@ -197,9 +209,14 @@ export default function ManageMaterialsPage() {
                 <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Download">
                   <Download size={16} />
                 </button>
-                <button onClick={() => setEditingMat(mat)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5" title="Edit">
+                <button onClick={() => setEditingMat(mat)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Edit">
                   <Edit2 size={16} />
                 </button>
+                {user?.email === "mohamedsajid.sa@gmail.com" && (
+                  <button onClick={() => handleDeleteMaterial(mat.id)} className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 cursor-pointer" title="Delete">
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
