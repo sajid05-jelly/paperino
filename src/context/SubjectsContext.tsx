@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
-import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, onSnapshot, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
@@ -100,19 +100,46 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
   const [loading, setLoading] = useState(true);
   const loadedSemestersRef = useRef<Record<string, boolean>>({});
   const initialFetchDone = useRef(false);
+  const countsLoadedRef = useRef(false);
 
   const listenToDeptsWithMaterials = useCallback(() => {
-    const q = query(collection(db, "materials"), where("status", "==", "approved"));
-    return onSnapshot(q, (snap) => {
-      const counts: Record<string, number> = {};
-      snap.docs.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (data.departmentId) {
-          counts[data.departmentId] = (counts[data.departmentId] || 0) + 1;
+    const dummyUnsub = () => {};
+
+    if (countsLoadedRef.current) {
+      return dummyUnsub;
+    }
+
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem("paperino_dept_material_counts");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setDeptMaterialCounts(parsed);
+          countsLoadedRef.current = true;
+          return dummyUnsub;
+        } catch (e) {
+          console.error("Failed to parse cached material counts:", e);
         }
+      }
+    }
+
+    getDoc(doc(db, "platform_stats", "materialCounts"))
+      .then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const counts = data.departments || {};
+          setDeptMaterialCounts(counts);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("paperino_dept_material_counts", JSON.stringify(counts));
+          }
+        }
+        countsLoadedRef.current = true;
+      })
+      .catch((err) => {
+        console.error("Failed to fetch material counts:", err);
       });
-      setDeptMaterialCounts(counts);
-    });
+
+    return dummyUnsub;
   }, []);
 
   const refreshSubjects = async () => {
