@@ -118,6 +118,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setUser(currentUser);
       
+      // Safety timeout: Clear the loading screen if sync takes longer than 5 seconds
+      const safetyTimeout = setTimeout(() => {
+        setLoading(curr => {
+          if (curr) {
+            console.warn("[AuthContext] Auth loading state forced to false by safety timeout.");
+            return false;
+          }
+          return curr;
+        });
+      }, 5000);
+      
       const allowedAdmins = [
         "mohamedsajid.sa@gmail.com",
         "sudharajsekar2005@gmail.com",
@@ -173,6 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.error("Error checking/creating user profile:", error);
+          clearTimeout(safetyTimeout);
+          setLoading(false);
         }
 
         // Subscribe to real-time updates for user profile
@@ -196,8 +209,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             setContributorLevel(level);
-            setContributionPoints(data.contributionPoints || 0);
-            setUploads(data.uploads || 0);
+            setContributionPoints(Math.max(0, data.contributionPoints || 0));
+            setUploads(Math.max(0, data.uploads || 0));
             setPremiumStartDate(data.premiumStartDate || null);
             setPremiumEndDate(data.premiumEndDate || null);
 
@@ -221,9 +234,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(null);
             }
           }
+          clearTimeout(safetyTimeout);
           setLoading(false);
         }, (err) => {
           console.error("User doc snapshot error:", err);
+          clearTimeout(safetyTimeout);
           setLoading(false);
         });
 
@@ -245,6 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
       } else {
+        clearTimeout(safetyTimeout);
         setPaperinoAvatarState(null);
         setAvatarFrame(null);
         setAvatarCompanion(null);
@@ -271,6 +287,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+
+  useEffect(() => {
+    if (!user) {
+      setShowTimeoutWarning(false);
+      return;
+    }
+
+    let inactivityTimeout: NodeJS.Timeout;
+
+    const resetInactivityTimer = () => {
+      if (showTimeoutWarning) return;
+      clearTimeout(inactivityTimeout);
+      
+      inactivityTimeout = setTimeout(() => {
+        const hasActiveUploads = typeof window !== "undefined" && (window as any).__activeUploads;
+        const hasActiveDownloads = typeof window !== "undefined" && (window as any).__activeDownloads;
+        
+        if (hasActiveUploads || hasActiveDownloads) {
+          resetInactivityTimer();
+        } else {
+          setShowTimeoutWarning(true);
+          setCountdown(60);
+        }
+      }, 15 * 60 * 1000);
+    };
+
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    const handleEvent = () => resetInactivityTimer();
+    
+    events.forEach(event => {
+      window.addEventListener(event, handleEvent);
+    });
+
+    resetInactivityTimer();
+
+    return () => {
+      clearTimeout(inactivityTimeout);
+      events.forEach(event => {
+        window.removeEventListener(event, handleEvent);
+      });
+    };
+  }, [user, showTimeoutWarning]);
+
+  useEffect(() => {
+    if (!showTimeoutWarning) return;
+
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          logout();
+          setShowTimeoutWarning(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [showTimeoutWarning]);
+
   const savePaperinoAvatar = async (avatarId: string) => {
     if (!user) return;
     try {
@@ -289,13 +368,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     try {
-      // Use popup directly — iOS Safari allows popups when triggered immediately
-      // from a user tap. DO NOT call await signOut() first — it breaks the
-      // "user gesture" chain and causes Safari to block the popup.
-      // The googleProvider already has prompt: "select_account" for account picker.
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
-      // If popup was blocked by the browser, fall back to redirect
       if (
         error?.code === 'auth/popup-blocked' ||
         error?.code === 'auth/popup-closed-by-user' ||
@@ -318,6 +392,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error logging out:", error);
     }
+  };
+
+  const handleContinueSession = () => {
+    setShowTimeoutWarning(false);
+    setCountdown(60);
   };
 
   return (
@@ -344,6 +423,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout 
     }}>
       {children}
+      {showTimeoutWarning && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="relative w-full max-w-md bg-[#0a0714] border border-purple-500/20 rounded-[2rem] p-8 text-center shadow-[0_0_50px_rgba(139,92,246,0.2)]">
+            <div className="w-16 h-16 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-purple-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-bounce"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Session Expiring Soon</h3>
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+              For your security, your session will automatically log out in <span className="text-purple-400 font-bold">{countdown} seconds</span> due to inactivity.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button 
+                onClick={handleContinueSession}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] cursor-pointer"
+              >
+                Continue Session
+              </button>
+              <button 
+                onClick={() => { logout(); setShowTimeoutWarning(false); }}
+                className="flex-1 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold py-3 px-4 rounded-xl transition-all cursor-pointer"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

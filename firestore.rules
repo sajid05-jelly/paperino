@@ -37,13 +37,22 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         (request.auth.uid == userId && (
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'contributorLevel', 'premiumStartDate', 'premiumEndDate', 'uploads', 'contributionPoints'])) ||
-          (request.resource.data.role == "admin" && request.resource.data.email in [
-            "mohamedsajid.sa@gmail.com",
-            "sudharajsekar2005@gmail.com",
-            "admin.paperinoirfan27@gmail.com",
-            "admin.paperinosam14@gmail.com",
-            "gameplayitlifeitis@gmail.com"
-          ])
+          (request.resource.data.role == "admin" && (
+            (request.resource.data.hasAny(['email']) && request.resource.data.email in [
+              "mohamedsajid.sa@gmail.com",
+              "sudharajsekar2005@gmail.com",
+              "admin.paperinoirfan27@gmail.com",
+              "admin.paperinosam14@gmail.com",
+              "gameplayitlifeitis@gmail.com"
+            ]) || 
+            resource.data.email in [
+              "mohamedsajid.sa@gmail.com",
+              "sudharajsekar2005@gmail.com",
+              "admin.paperinoirfan27@gmail.com",
+              "admin.paperinosam14@gmail.com",
+              "gameplayitlifeitis@gmail.com"
+            ]
+          ))
         )) || isAdmin()
       );
       
@@ -123,6 +132,9 @@ service cloud.firestore {
     }
 
     // ── Platform Stats ────────────────────────────────────────────────────────
+    match /platform_stats/materialCounts {
+      allow read: if true;
+    }
     match /platform_stats/{document=**} {
       allow read: if isAdmin();
     }
@@ -214,6 +226,34 @@ service cloud.firestore {
     // ── Career DNA ──────────────────────────────────────────────────────────
     match /career_dna/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ── Internships & Unstop Cache ──────────────────────────────────────────
+    match /internships/{internshipId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /unstop_cache/{cacheId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Download Logs ───────────────────────────────────────────────────────
+    match /download_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ── Download Tokens ─────────────────────────────────────────────────────
+    match /download_tokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    // ── Admin Logs ──────────────────────────────────────────────────────────
+    match /admin_logs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
     }
 
     // ── Deny all other paths by default ─────────────────────────────────────

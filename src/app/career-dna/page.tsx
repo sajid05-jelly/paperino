@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import {
   GraduationCap, Briefcase, Award, Code, CheckCircle, AlertTriangle, HelpCircle,
   TrendingUp, RefreshCw, Layers, Sparkles, Send, Upload, Trash2, ArrowRight,
-  Shield, Bell, BrainCircuit, Globe, Edit2, CheckSquare, Square, User, X
+  Shield, Bell, BrainCircuit, Globe, Edit2, CheckSquare, Square, User, X, ExternalLink
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { CareerDnaProfile, CareerOpportunity } from "@/types/careerDna";
@@ -317,8 +317,10 @@ export default function CareerDnaPage() {
     }
   };
 
+  const [visibleCount, setVisibleCount] = useState(6);
+
   // AI analysis fetcher
-  const triggerAnalysis = async (profileData = formData) => {
+  const triggerAnalysis = async (profileData = formData, forceSync = false) => {
     setAnalysing(true);
     try {
       const idToken = await auth.currentUser?.getIdToken();
@@ -330,7 +332,7 @@ export default function CareerDnaPage() {
           "Authorization": `Bearer ${idToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ profile: profileData })
+        body: JSON.stringify({ profile: profileData, forceSync })
       });
 
       const data = await res.json();
@@ -339,7 +341,8 @@ export default function CareerDnaPage() {
       setProfile(profileData as CareerDnaProfile);
       setAnalysis(data);
       setIsEditing(false);
-      showToast("AI Career Analysis updated successfully!", "success");
+      setVisibleCount(6);
+      showToast("AI Career Analysis & Opportunities updated!", "success");
     } catch (err: any) {
       console.error(err);
       showToast(err.message || "AI Analysis failed", "error");
@@ -581,12 +584,12 @@ export default function CareerDnaPage() {
             </button>
             {!isEditing && (
               <button
-                onClick={() => triggerAnalysis()}
+                onClick={() => triggerAnalysis(formData, true)}
                 disabled={analysing}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 text-white transition text-xs font-semibold cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 text-white transition text-xs font-semibold cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.2)]"
               >
                 <RefreshCw size={12} className={analysing ? "animate-spin" : ""} />
-                {analysing ? "Sync AI" : "Sync AI"}
+                {analysing ? "Syncing..." : "Sync AI"}
               </button>
             )}
           </div>
@@ -1525,56 +1528,73 @@ export default function CareerDnaPage() {
                         : "No matching opportunities found for the selected filter."}
                     </div>
                   ) : (
-                    filteredOpportunities.map((opp: CareerOpportunity) => (
-                      <div
-                        key={opp.id}
-                        className="p-6 rounded-[2rem] border border-white/5 bg-[#0f0a1a]/30 hover:bg-[#0f0a1a]/50 transition-colors flex flex-col justify-between gap-4"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-purple-300 font-bold uppercase tracking-wider">
-                                {opp.type}
-                              </span>
-                              {opp.matchLevel === "High Match" && (
-                                <span className="text-[10px] font-bold text-emerald-400">⭐⭐⭐⭐⭐ High Match</span>
-                              )}
-                              {opp.matchLevel === "Medium Match" && (
-                                <span className="text-[10px] font-bold text-yellow-400">⭐⭐⭐⭐ Medium Match</span>
-                              )}
-                              {opp.matchLevel === "Stretch Opportunity" && (
-                                <span className="text-[10px] font-bold text-rose-400">⭐⭐ Stretch Opportunity</span>
+                    <>
+                      {filteredOpportunities.slice(0, visibleCount).map((opp: CareerOpportunity) => (
+                        <div
+                          key={opp.id}
+                          className="p-6 rounded-[2rem] border border-white/5 bg-[#0f0a1a]/30 hover:bg-[#0f0a1a]/50 transition-all flex flex-col justify-between gap-4 relative overflow-hidden"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <span className="px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-extrabold tracking-wider">
+                                  {opp.matchScore || 85}% MATCH
+                                </span>
+                                <span className="px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-extrabold flex items-center gap-1 shadow-[0_0_10px_rgba(59,130,246,0.15)]">
+                                  🌐 Source: Unstop
+                                </span>
+                                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-300 font-bold uppercase tracking-wider">
+                                  {opp.type || "Internship"}
+                                </span>
+                                {opp.stipend && (
+                                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-300 font-bold">
+                                    💰 {opp.stipend}
+                                  </span>
+                                )}
+                                {opp.duration && (
+                                  <span className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-300 font-bold">
+                                    ⏱️ {opp.duration}
+                                  </span>
+                                )}
+                                {opp.workType && (
+                                  <span className="px-2 py-0.5 rounded bg-fuchsia-500/10 border border-fuchsia-500/20 text-[10px] text-fuchsia-300 font-bold">
+                                    🌐 {opp.workType}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                                {opp.role}
+                                {opp.verified !== false && <span className="text-emerald-400 text-xs" title="Verified Unstop Opportunity">✓</span>}
+                              </h4>
+                              <p className="text-xs text-gray-400">{opp.company} · {opp.location}</p>
+                            </div>
+                            <div className="flex gap-2 flex-wrap sm:flex-nowrap items-center">
+                              <button
+                                onClick={() => setSelectedEligibleMat(opp)}
+                                className="px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 text-gray-300 hover:text-white text-[10px] font-semibold cursor-pointer"
+                              >
+                                Match Details
+                              </button>
+                              {opp.applyLink && opp.applyLink.trim() ? (
+                                <a
+                                  href={opp.applyLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all cursor-pointer text-center inline-flex items-center gap-1.5"
+                                >
+                                  <span>Apply on Unstop</span>
+                                  <ExternalLink size={12} />
+                                </a>
+                              ) : (
+                                <button
+                                  disabled
+                                  className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-gray-500 text-[10px] font-semibold cursor-not-allowed"
+                                >
+                                  Application Closed
+                                </button>
                               )}
                             </div>
-                            <h4 className="text-lg font-bold text-white">{opp.role}</h4>
-                            <p className="text-xs text-gray-400">{opp.company} · {opp.location}</p>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setSelectedEligibleMat(opp)}
-                              className="px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 text-gray-300 hover:text-white text-[10px] font-semibold cursor-pointer"
-                            >
-                              Why am I not eligible?
-                            </button>
-                            {opp.applyLink && opp.applyLink.trim() && opp.applyLink.toLowerCase().includes("unstop.com") ? (
-                               <a
-                                 href={opp.applyLink}
-                                 target="_blank"
-                                 rel="noopener noreferrer"
-                                 className="px-4 py-1.5 rounded-full bg-purple-600/80 hover:bg-purple-600 text-white text-[10px] font-semibold cursor-pointer text-center inline-block"
-                               >
-                                 Apply Now
-                               </a>
-                             ) : (
-                               <button
-                                 disabled
-                                 className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-gray-500 text-[10px] font-semibold cursor-not-allowed"
-                               >
-                                 Official Unstop application page unavailable.
-                               </button>
-                             )}
-                          </div>
-                        </div>
 
                         {opp.matchReasons && opp.matchReasons.length > 0 && (
                           <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3">
@@ -1599,8 +1619,23 @@ export default function CareerDnaPage() {
                             ))}
                           </div>
                         )}
-                      </div>
-                    ))
+                        </div>
+                      ))}
+                      {visibleCount < filteredOpportunities.length && (
+                        <div className="flex flex-col items-center justify-center pt-6 pb-2">
+                          <button
+                            onClick={() => setVisibleCount(prev => prev + 6)}
+                            className="px-6 py-3 rounded-full border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(168,85,247,0.15)]"
+                          >
+                            <Layers size={14} />
+                            Load More Opportunities ({filteredOpportunities.length - visibleCount} remaining)
+                          </button>
+                          <p className="text-[11px] text-gray-500 mt-2 font-medium">
+                            Showing {Math.min(visibleCount, filteredOpportunities.length)} of {filteredOpportunities.length} matched opportunities
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

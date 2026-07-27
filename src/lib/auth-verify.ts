@@ -81,7 +81,8 @@ export async function verifyServerAuth(authHeader: string | null): Promise<Verif
       "mohamedsajid.sa@gmail.com",
       "sudharajsekar2005@gmail.com",
       "admin.paperinoirfan27@gmail.com",
-      "admin.paperinosam14@gmail.com"
+      "admin.paperinosam14@gmail.com",
+      "gameplayitlifeitis@gmail.com"
     ];
     if (allowedAdmins.includes(email.toLowerCase())) {
       role = "admin";

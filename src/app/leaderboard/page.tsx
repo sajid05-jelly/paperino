@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Trophy, Medal, Star, Calendar, Loader2, Sparkles, Crown, Award, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Trophy, Medal, Loader2, Sparkles, Crown, Award, ChevronRight, CheckCircle2, Calendar } from "lucide-react";
 import Image from "next/image";
 import UserAvatar from "@/components/UserAvatar";
 import { useSound } from "@/hooks/useSound";
@@ -11,6 +11,8 @@ import { useSound } from "@/hooks/useSound";
 interface ContributorStats {
   uid: string;
   displayName: string;
+  email?: string;
+  role?: string;
   paperinoAvatar: string | null;
   avatarFrame?: string | null;
   avatarCompanion?: string | null;
@@ -20,6 +22,35 @@ interface ContributorStats {
   downloads: number;
   contributorLevel: string;
   rankTitle: string;
+}
+
+const allowedAdmins = [
+  "mohamedsajid.sa@gmail.com",
+  "sudharajsekar2005@gmail.com",
+  "admin.paperinoirfan27@gmail.com",
+  "admin.paperinosam14@gmail.com",
+  "gameplayitlifeitis@gmail.com"
+];
+
+const adminNames = [
+  "mohamedsajid",
+  "mohamed sajid",
+  "sajid",
+  "sudhar",
+  "irfan",
+  "sam",
+  "admin"
+];
+
+function isItemAdmin(c: any): boolean {
+  if (!c) return false;
+  if (c.role === "admin") return true;
+  if (c.email && allowedAdmins.includes(c.email.toLowerCase())) return true;
+  if (c.displayName) {
+    const nameLower = c.displayName.toLowerCase();
+    if (adminNames.some(adminName => nameLower.includes(adminName))) return true;
+  }
+  return false;
 }
 
 export default function LeaderboardPage() {
@@ -63,22 +94,29 @@ export default function LeaderboardPage() {
       if (seasonSnap.exists() && seasonSnap.data().contributors) {
         const list = seasonSnap.data().contributors;
         list.forEach((c: any) => {
+          if (isItemAdmin(c)) return; // Exclude admins!
           let joinedDate: Date | null = null;
           if (c.joinedDate) {
             joinedDate = new Date(c.joinedDate);
           }
+          const uploads = Math.max(0, c.uploads || 0);
+          const points = Math.max(0, c.contributionPoints || c.points || 0);
+          const downloads = Math.max(0, c.downloads || 0);
+
           seasonList.push({
             uid: c.uid,
             displayName: c.displayName || "Anonymous Contributor",
+            email: c.email || "",
+            role: c.role || "student",
             paperinoAvatar: c.paperinoAvatar || null,
             avatarFrame: c.avatarFrame || null,
             avatarCompanion: c.avatarCompanion || null,
             joinedDate,
-            uploads: c.uploads || 0,
-            points: c.contributionPoints || c.points || 0,
-            downloads: c.downloads || 0,
+            uploads,
+            points,
+            downloads,
             contributorLevel: c.contributorLevel || "",
-            rankTitle: c.rankTitle || getRankTitle(c.uploads || 0)
+            rankTitle: c.rankTitle || getRankTitle(uploads)
           });
         });
       }
@@ -90,22 +128,29 @@ export default function LeaderboardPage() {
       if (allTimeSnap.exists() && allTimeSnap.data().contributors) {
         const list = allTimeSnap.data().contributors;
         list.forEach((c: any) => {
+          if (isItemAdmin(c)) return; // Exclude admins!
           let joinedDate: Date | null = null;
           if (c.joinedDate) {
             joinedDate = new Date(c.joinedDate);
           }
+          const uploads = Math.max(0, c.uploads || 0);
+          const points = Math.max(0, c.contributionPoints || c.points || 0);
+          const downloads = Math.max(0, c.downloads || 0);
+
           allTimeList.push({
             uid: c.uid,
             displayName: c.displayName || "Anonymous Contributor",
+            email: c.email || "",
+            role: c.role || "student",
             paperinoAvatar: c.paperinoAvatar || null,
             avatarFrame: c.avatarFrame || null,
             avatarCompanion: c.avatarCompanion || null,
             joinedDate,
-            uploads: c.uploads || 0,
-            points: c.contributionPoints || c.points || 0,
-            downloads: c.downloads || 0,
+            uploads,
+            points,
+            downloads,
             contributorLevel: c.contributorLevel || "",
-            rankTitle: c.rankTitle || getRankTitle(c.uploads || 0)
+            rankTitle: c.rankTitle || getRankTitle(uploads)
           });
         });
       }
@@ -116,7 +161,6 @@ export default function LeaderboardPage() {
     }
     setLoading(false);
   };
-
 
   const currentBoard = activeTab === "season" ? seasonBoard : allTimeBoard;
   const top3 = currentBoard.slice(0, 3);
@@ -142,18 +186,6 @@ export default function LeaderboardPage() {
     if (index === 0) return "h-28 md:h-36";
     if (index === 1) return "h-20 md:h-28";
     return "h-16 md:h-20";
-  };
-
-  const getAvatarBorder = (index: number) => {
-    if (activeTab === "season") {
-      if (index === 0) return "border-violet-400 shadow-[0_0_25px_rgba(168,85,247,0.8)]";
-      if (index === 1) return "border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.5)]";
-      return "border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)]";
-    } else {
-      if (index === 0) return "border-yellow-400 shadow-[0_0_25px_rgba(251,191,36,0.8)]";
-      if (index === 1) return "border-slate-300 shadow-[0_0_15px_rgba(203,213,225,0.5)]";
-      return "border-amber-700 shadow-[0_0_15px_rgba(180,83,9,0.5)]";
-    }
   };
 
   const getPointsColor = (index: number) => {
@@ -182,8 +214,6 @@ export default function LeaderboardPage() {
         
         {/* Header */}
         <div className="text-center mb-12 animate-in fade-in slide-in-from-top-5 duration-700 relative">
-          
-          {/* Spotlight behind title */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.28)_0%,transparent_60%)] -z-10 pointer-events-none blur-[70px]" />
 
           <div className="inline-flex items-center justify-center p-3 bg-purple-500/10 border border-purple-500/20 rounded-full mb-4 shadow-[0_0_20px_rgba(var(--primary-rgb),0.25)]">
@@ -218,7 +248,7 @@ export default function LeaderboardPage() {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-purple-500" size={48} /></div>
         ) : currentBoard.length === 0 ? (
-          <div className="text-center py-20 vision-glass  rounded-3xl">
+          <div className="text-center py-20 vision-glass rounded-3xl">
             <p className="text-gray-400">No approved contributions yet in this category.</p>
           </div>
         ) : (
@@ -238,7 +268,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div className="text-center mb-4 truncate w-full px-2 flex flex-col items-center">
                       <h3 className="text-white font-bold text-sm md:text-base truncate w-full">{top3[1].displayName}</h3>
-                      <p className={`font-bold text-xs md:text-sm ${getPointsColor(1)}`}>{top3[1].points} pts</p>
+                      <p className={`font-bold text-xs md:text-sm ${getPointsColor(1)}`}>{Math.max(0, top3[1].points)} pts</p>
                     </div>
                     <div className={`w-full rounded-t-2xl bg-gradient-to-t ${getPodiumColor(1)} ${getPodiumHeight(1)} border-t border-x relative overflow-hidden flex justify-center pt-4`}>
                       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.2)_0%,transparent_100%)]"></div>
@@ -259,7 +289,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div className="text-center mb-4 truncate w-full px-2 flex flex-col items-center">
                       <h3 className="text-white font-black text-base md:text-lg truncate drop-shadow-[0_0_5px_rgba(255,255,255,0.3)] w-full">{top3[0].displayName}</h3>
-                      <p className={`font-black text-sm md:text-base ${getPointsColor(0)}`}>{top3[0].points} pts</p>
+                      <p className={`font-black text-sm md:text-base ${getPointsColor(0)}`}>{Math.max(0, top3[0].points)} pts</p>
                     </div>
                     <div className={`w-full rounded-t-3xl bg-gradient-to-t ${getPodiumColor(0)} ${getPodiumHeight(0)} border-t-2 border-x relative overflow-hidden flex justify-center pt-4`}>
                       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.3)_0%,transparent_100%)]"></div>
@@ -282,7 +312,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div className="text-center mb-4 truncate w-full px-2 flex flex-col items-center">
                       <h3 className="text-white font-bold text-sm md:text-base truncate w-full">{top3[2].displayName}</h3>
-                      <p className={`font-bold text-xs md:text-sm ${getPointsColor(2)}`}>{top3[2].points} pts</p>
+                      <p className={`font-bold text-xs md:text-sm ${getPointsColor(2)}`}>{Math.max(0, top3[2].points)} pts</p>
                     </div>
                     <div className={`w-full rounded-t-2xl bg-gradient-to-t ${getPodiumColor(2)} ${getPodiumHeight(2)} border-t border-x relative overflow-hidden flex justify-center pt-4`}>
                       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.15)_0%,transparent_100%)]"></div>
@@ -293,9 +323,9 @@ export default function LeaderboardPage() {
               </div>
             )}
 
-            {/* Rest of Leaderboard (Only for Season) */}
-            {activeTab === "season" && runnersUp.length > 0 && (
-              <div className="vision-glass p-2 md:p-6 rounded-[2rem] ">
+            {/* Rest of Leaderboard */}
+            {runnersUp.length > 0 && (
+              <div className="vision-glass p-2 md:p-6 rounded-[2rem]">
                 <div className="space-y-3">
                   {runnersUp.map((user, index) => (
                     <div 
@@ -325,9 +355,9 @@ export default function LeaderboardPage() {
 
                       <div className="text-right">
                         <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-500">
-                          {user.points} <span className="text-xs text-amber-500/80 font-bold uppercase tracking-wider font-mono">pts</span>
+                          {Math.max(0, user.points)} <span className="text-xs text-amber-500/80 font-bold uppercase tracking-wider font-mono">pts</span>
                         </div>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{user.uploads} U · {user.downloads || 0} D</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">{Math.max(0, user.uploads)} U · {Math.max(0, user.downloads)} D</p>
                       </div>
                       
                       <div className="hidden sm:flex text-gray-600 group-hover:text-amber-500 transition-colors pr-2">
@@ -346,7 +376,6 @@ export default function LeaderboardPage() {
           <div className="relative w-full rounded-[2.5rem] p-[1px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/10 to-transparent group ">
             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
             <div className="relative vision-glass rounded-[2.5rem] p-8 md:p-12 overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.8)]">
-              {/* Decorative background elements */}
               <div className="absolute top-0 right-0 w-80 h-80 bg-violet-500/10 rounded-full mix-blend-screen blur-[80px] -translate-y-1/2 translate-x-1/3"></div>
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-fuchsia-500/10 rounded-full mix-blend-screen blur-[60px] translate-y-1/2 -translate-x-1/4"></div>
               
@@ -392,8 +421,6 @@ export default function LeaderboardPage() {
                   <div className="absolute inset-0 bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 blur-2xl rounded-[2rem] group-hover:opacity-100 opacity-60 transition-opacity duration-700"></div>
                   <div className="relative rounded-[2rem] overflow-hidden border-2 border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] transform transition-transform duration-700 group-hover:scale-[1.03] group-hover:-rotate-1 group-hover:border-violet-500/30">
                     <Image src="/certificate.jpg" alt="Paperino Certificate Preview" width={1000} height={707} className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-105" priority />
-                    
-                    {/* Glossy Reflection Effect */}
                     <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-in-out"></div>
                   </div>
                 </div>
@@ -408,20 +435,17 @@ export default function LeaderboardPage() {
       {selectedUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#05030a]/60 backdrop-blur-3xl" onClick={() => setSelectedUser(null)}></div>
-          <div className="relative w-full max-w-sm modal-glass  rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300">
-            {/* Header BG */}
+          <div className="relative w-full max-w-sm modal-glass rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="h-32 bg-gradient-to-br from-amber-500/20 via-orange-500/20 to-purple-500/20 relative">
               <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay"></div>
             </div>
             
-            {/* Avatar */}
             <div className="absolute top-16 left-1/2 -translate-x-1/2">
               <div className="w-24 h-24 flex items-center justify-center relative z-10">
                 {selectedUser.paperinoAvatar ? <UserAvatar avatarId={selectedUser.paperinoAvatar} frameId={selectedUser.avatarFrame || "none"} companionId={selectedUser.avatarCompanion || "none"} size={24} className="scale-125 pt-1" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-white bg-white/5 rounded-full">{selectedUser.displayName.charAt(0)}</div>}
               </div>
             </div>
 
-            {/* Info */}
             <div className="pt-14 pb-8 px-8 text-center bg-[#0a0714]">
               <h2 className="text-2xl font-bold text-white mb-1">{selectedUser.displayName}</h2>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs font-bold text-amber-400 mb-6">
@@ -430,15 +454,15 @@ export default function LeaderboardPage() {
 
               <div className="grid grid-cols-3 gap-2.5 mb-6">
                 <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                  <p className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-600 mb-1">{selectedUser.points}</p>
+                  <p className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-600 mb-1">{Math.max(0, selectedUser.points)}</p>
                   <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Points</p>
                 </div>
                 <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                  <p className="text-xl font-black text-white mb-1">{selectedUser.uploads}</p>
+                  <p className="text-xl font-black text-white mb-1">{Math.max(0, selectedUser.uploads)}</p>
                   <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Uploads</p>
                 </div>
                 <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                  <p className="text-xl font-black text-cyan-400 mb-1">{selectedUser.downloads || 0}</p>
+                  <p className="text-xl font-black text-cyan-400 mb-1">{Math.max(0, selectedUser.downloads)}</p>
                   <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Downloads</p>
                 </div>
               </div>
@@ -447,14 +471,9 @@ export default function LeaderboardPage() {
                 <Calendar size={14} /> Joined {selectedUser.joinedDate ? selectedUser.joinedDate.toLocaleDateString() : "Early Supporter"}
               </div>
             </div>
-            
-            <button onClick={() => setSelectedUser(null)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
-              ✕
-            </button>
           </div>
         </div>
       )}
-
     </div>
   );
 }

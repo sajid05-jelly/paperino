@@ -56,8 +56,8 @@ export default function AdminTeamPage() {
           id: d.id,
           displayName: u.displayName || u.email || "Explorer",
           email: u.email,
-          contributionPoints: u.contributionPoints || 0,
-          uploads: u.uploads || 0
+          contributionPoints: Math.max(0, u.contributionPoints || 0),
+          uploads: Math.max(0, u.uploads || 0)
         });
       });
       setTopContributors(usersList);

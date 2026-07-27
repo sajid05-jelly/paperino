@@ -75,6 +75,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <BookOpen size={20} />
                 Subject Requests
               </Link>
+              <Link href="/admin/security" className="flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors font-medium border border-emerald-500/20">
+                <ShieldCheck size={20} />
+                Security Center
+              </Link>
             <Link href="/admin/team" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <ShieldCheck size={20} className="text-emerald-400" />
               Platform Analytics

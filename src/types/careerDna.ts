@@ -34,13 +34,21 @@ export interface CareerOpportunity {
   id: string;
   role: string;
   company: string;
+  companyLogo?: string;
   location: string;
-  type: "Internship" | "Placement" | "Higher Studies";
+  workType?: "Remote" | "Hybrid" | "Onsite";
+  type: string;
+  stipend?: string;
+  duration?: string;
   matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity";
-  matchScore: number; // 0-100 hidden readiness indicator
+  matchScore: number; // 0-100 match percentage
   matchReasons: string[];
   missingSkills: string[];
   applyLink: string;
+  postedDate?: number;
+  deadline?: number;
+  verified?: boolean;
+  source?: string;
   eligibilityBreakdown: {
     isEligible: boolean;
     reasons: string[];
@@ -49,7 +57,8 @@ export interface CareerOpportunity {
 }
 
 export interface CareerAnalysisResult {
-  readinessLevel: "High Ready" | "Medium Ready" | "Beginner";
+  readinessLevel: number;
   suggestions: string[];
   opportunities: CareerOpportunity[];
+  lastSyncedAt?: number;
 }

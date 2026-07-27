@@ -8,10 +8,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
 import { uploadToDriveDirect } from "@/lib/driveUpload";
 import { notifyAdmins } from "@/lib/notifications";
+import { sendEmailVerification } from "firebase/auth";
+import { useToast } from "@/components/Toast";
 import CreateCourseModal from "@/components/CreateCourseModal";
 
 export default function ContributorUploadPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { departments, subjects: dynamicSubjects, loading: contextLoading } = useSubjects();
 
   const [loading, setLoading] = useState(false);
@@ -62,6 +65,17 @@ export default function ContributorUploadPage() {
       return;
     }
     
+    if (user && !user.emailVerified && user.providerData.some(p => p.providerId === "password")) {
+      setMessage("Please verify your email address before uploading materials. We are resending a verification link to your email.");
+      try {
+        await sendEmailVerification(user);
+        showToast("Verification email sent! Please check your inbox.", "info");
+      } catch (err) {
+        console.error("Failed to send verification email:", err);
+      }
+      return;
+    }
+
     setLoading(true);
     setMessage("");
     

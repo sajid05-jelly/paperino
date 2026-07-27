@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/components/Toast";
 import { useSound } from "@/hooks/useSound";
+import { sendEmailVerification } from "firebase/auth";
 
 interface SuggestSubjectModalProps {
   isOpen: boolean;
@@ -51,6 +52,17 @@ export default function SuggestSubjectModal({
     e.preventDefault();
     if (!subjectName.trim()) {
       setError("Subject Name is required.");
+      return;
+    }
+
+    if (user && !user.emailVerified && user.providerData.some(p => p.providerId === "password")) {
+      setError("Please verify your email to suggest a subject. We are resending a verification link to your email.");
+      try {
+        await sendEmailVerification(user);
+        showToast("Verification email sent! Please check your inbox.", "info");
+      } catch (err) {
+        console.error("Failed to send verification email:", err);
+      }
       return;
     }
 

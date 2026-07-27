@@ -8,6 +8,8 @@ import { useSound } from "@/hooks/useSound";
 import { useAuth } from "@/context/AuthContext";
 import { uploadToDriveDirect } from "@/lib/driveUpload";
 import { notifyAdmins } from "@/lib/notifications";
+import { sendEmailVerification } from "firebase/auth";
+import { useToast } from "@/components/Toast";
 
 
 interface QuickUploadModalProps {
@@ -34,6 +36,7 @@ export default function QuickUploadModal({
   onSuccess
 }: QuickUploadModalProps) {
   const { user, isAdmin } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -125,6 +128,17 @@ export default function QuickUploadModal({
       return;
     }
     
+    if (user && !user.emailVerified && user.providerData.some(p => p.providerId === "password")) {
+      setError("Please verify your email address before uploading materials. We are resending a verification link to your email.");
+      try {
+        await sendEmailVerification(user);
+        showToast("Verification email sent! Please check your inbox.", "info");
+      } catch (err) {
+        console.error("Failed to send verification email:", err);
+      }
+      return;
+    }
+
     setLoading(true);
     setError("");
     

@@ -235,11 +235,11 @@ export default function ContributorDashboardPage() {
         </div>
         <div className="glass-panel p-5 rounded-2xl border border-white/5">
           <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Downloads</p>
-          <p className="text-2xl font-bold text-cyan-400">{downloadsCount}</p>
+          <p className="text-2xl font-bold text-cyan-400">{Math.max(0, downloadsCount || 0)}</p>
         </div>
         <div className="glass-panel p-5 rounded-2xl border border-white/5 col-span-2 md:col-span-1 bg-fuchsia-500/5 border-fuchsia-500/10">
           <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Points</p>
-          <p className="text-2xl font-bold text-fuchsia-400">{contributionPoints}</p>
+          <p className="text-2xl font-bold text-fuchsia-400">{Math.max(0, contributionPoints || 0)}</p>
         </div>
       </div>
 

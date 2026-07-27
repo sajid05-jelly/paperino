@@ -14,6 +14,7 @@ import { recalculateLeaderboards, updateLeaderboardForUser } from "@/lib/leaderb
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { notifyUser } from "@/lib/notifications";
 import UserAvatar from "@/components/UserAvatar";
+import { logAdminAction } from "@/lib/admin-logger";
 
 interface Material {
   id: string;
@@ -306,6 +307,7 @@ export default function AdminReviewsPage() {
       }
       setPendingInsights(prev => prev.filter(n => n.id !== note.id));
       showToast("Senior Insight approved successfully!", "success");
+      logAdminAction(user?.email || "unknown", "APPROVE_INSIGHT", note.id, `Approved insight: ${note.title || "Untitled"}`);
     } catch (err) {
       console.error("Approve insight error:", err);
       showToast("Failed to approve insight", "error");
@@ -336,70 +338,83 @@ export default function AdminReviewsPage() {
 
       // 1. Approve material status
       await updateDoc(doc(db, "materials", id), { status: "approved" });
+      logAdminAction(user?.email || "unknown", "APPROVE_MATERIAL", id, `Approved material: ${mat.title || mat.fileName}`);
 
       if (mat.uploaderId) {
         const userRef = doc(db, "users", mat.uploaderId);
         const udoc = await getDoc(userRef);
         const udata = udoc.data() || {};
-        
-        // Increment approved contribution count & points (+10 contribution points)
-        const currentUploads = (udata.uploads || 0) + 1;
-        const currentPoints = (udata.contributionPoints || 0) + 10;
-        
-        const updates: Record<string, any> = {
-          uploads: currentUploads,
-          points: increment(10), // legacy backwards compatibility
-          seasonUploads: increment(1),
-          seasonPoints: increment(10),
-          contributionPoints: currentPoints
-        };
 
-        // Determine badge tier
-        let badgeLevel: "contributor" | "active" | "elite" | "" = "contributor";
-        if (currentUploads >= 20) {
-          badgeLevel = "elite";
-        } else if (currentUploads >= 5) {
-          badgeLevel = "active";
-        }
-        updates.contributorLevel = badgeLevel;
+        const allowedAdminsList = [
+          "mohamedsajid.sa@gmail.com",
+          "sudharajsekar2005@gmail.com",
+          "admin.paperinoirfan27@gmail.com",
+          "admin.paperinosam14@gmail.com",
+          "gameplayitlifeitis@gmail.com"
+        ];
+        const isUploaderAdmin = udata.role === "admin" || (udata.email && allowedAdminsList.includes(udata.email.toLowerCase()));
 
-        // Premium Rewarding Stacking Rules
-        let premiumDurationDays = 0;
-        if (currentUploads === 5) premiumDurationDays = 10;
-        else if (currentUploads === 10) premiumDurationDays = 10;
-        else if (currentUploads === 15) premiumDurationDays = 10;
-        else if (currentUploads === 20) premiumDurationDays = 30; // 30 Days bonus
-
-        if (premiumDurationDays > 0) {
-          const now = new Date();
-          let currentPremiumEnd = udata.premiumEndDate?.toDate ? udata.premiumEndDate.toDate() : (udata.premiumEndDate ? new Date(udata.premiumEndDate) : null);
+        if (!isUploaderAdmin) {
+          // Increment approved contribution count & points (+10 contribution points) for non-admins
+          const currentUploads = Math.max(0, (udata.uploads || 0) + 1);
+          const currentPoints = Math.max(0, (udata.contributionPoints || 0) + 10);
           
-          let premiumStartDate = now;
-          let premiumEndDate = new Date();
+          const updates: Record<string, any> = {
+            uploads: currentUploads,
+            points: increment(10), // legacy backwards compatibility
+            seasonUploads: increment(1),
+            seasonPoints: increment(10),
+            contributionPoints: currentPoints
+          };
 
-          if (currentPremiumEnd && currentPremiumEnd > now) {
-            // Stack premium if already active
-            premiumStartDate = udata.premiumStartDate?.toDate ? udata.premiumStartDate.toDate() : new Date(udata.premiumStartDate);
-            premiumEndDate = new Date(currentPremiumEnd.getTime() + (premiumDurationDays * 24 * 60 * 60 * 1000));
-          } else {
-            // Start fresh premium
-            premiumEndDate = new Date(now.getTime() + (premiumDurationDays * 24 * 60 * 60 * 1000));
+          // Determine badge tier
+          let badgeLevel: "contributor" | "active" | "elite" | "" = "contributor";
+          if (currentUploads >= 20) {
+            badgeLevel = "elite";
+          } else if (currentUploads >= 5) {
+            badgeLevel = "active";
+          }
+          updates.contributorLevel = badgeLevel;
+
+          // Premium Rewarding Stacking Rules
+          let premiumDurationDays = 0;
+          if (currentUploads === 5) premiumDurationDays = 10;
+          else if (currentUploads === 10) premiumDurationDays = 10;
+          else if (currentUploads === 15) premiumDurationDays = 10;
+          else if (currentUploads === 20) premiumDurationDays = 30; // 30 Days bonus
+
+          if (premiumDurationDays > 0) {
+            const now = new Date();
+            let currentPremiumEnd = udata.premiumEndDate?.toDate ? udata.premiumEndDate.toDate() : (udata.premiumEndDate ? new Date(udata.premiumEndDate) : null);
+            
+            let premiumStartDate = now;
+            let premiumEndDate = new Date();
+
+            if (currentPremiumEnd && currentPremiumEnd > now) {
+              // Stack premium if already active
+              premiumStartDate = udata.premiumStartDate?.toDate ? udata.premiumStartDate.toDate() : new Date(udata.premiumStartDate);
+              premiumEndDate = new Date(currentPremiumEnd.getTime() + (premiumDurationDays * 24 * 60 * 60 * 1000));
+            } else {
+              // Start fresh premium
+              premiumEndDate = new Date(now.getTime() + (premiumDurationDays * 24 * 60 * 60 * 1000));
+            }
+
+            updates.premiumStartDate = premiumStartDate;
+            updates.premiumEndDate = premiumEndDate;
+
+            // Notify user about Premium
+            await notifyUser(
+              db,
+              mat.uploaderId,
+              "Premium Unlocked! 🚀",
+              `Congrats! Your ${currentUploads}th approved upload unlocked +${premiumDurationDays} Days of Premium benefits!`,
+              "premium_unlocked"
+            );
           }
 
-          updates.premiumStartDate = premiumStartDate;
-          updates.premiumEndDate = premiumEndDate;
-
-          // Notify user about Premium
-          await notifyUser(
-            db,
-            mat.uploaderId,
-            "Premium Unlocked! 🚀",
-            `Congrats! Your ${currentUploads}th approved upload unlocked +${premiumDurationDays} Days of Premium benefits!`,
-            "premium_unlocked"
-          );
+          await updateDoc(userRef, updates);
         }
 
-        await updateDoc(userRef, updates);
         await recalculateLeaderboards(db);
 
         // Notify the uploader
@@ -432,6 +447,7 @@ export default function AdminReviewsPage() {
         status: "rejected",
         rejectedAt: Date.now()
       });
+      logAdminAction(user?.email || "unknown", "REJECT_MATERIAL", id, `Rejected material: ${mat.title || mat.fileName}`);
 
       // Update local state item status
       setMaterials(prev => prev.map(m => m.id === id ? { ...m, status: "rejected", rejectedAt: Date.now() } : m));
@@ -514,6 +530,7 @@ export default function AdminReviewsPage() {
     if (!confirm("Are you sure you want to block this user from Paperino?")) return;
     try {
       await updateDoc(doc(db, "users", uid), { status: "blocked", role: "student" });
+      logAdminAction(user?.email || "unknown", "BLOCK_USER", uid, `Blocked user ID: ${uid}`);
       alert("User blocked successfully. They can no longer login.");
     } catch (err) {
       console.error("Block user error:", err);

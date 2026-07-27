@@ -13,10 +13,8 @@ import { auth } from "@/lib/firebase";
  * The proxy streams the file through our own server so users never touch Drive.
  */
 export function getProxyDownloadUrl(fileId: string, matId?: string, matName?: string): string {
-  let url = `/api/download?fileId=${encodeURIComponent(fileId)}`;
-  if (matId) url += `&matId=${encodeURIComponent(matId)}`;
-  if (matName) url += `&matName=${encodeURIComponent(matName)}`;
-  return url;
+  if (matId) return `/api/download?matId=${encodeURIComponent(matId)}`;
+  return `/api/download?fileId=${encodeURIComponent(fileId)}`;
 }
 
 /**
@@ -31,6 +29,7 @@ export function getDownloadHref(mat: {
   fileId?: string | null;
   fileUrl?: string | null;
 }): string {
+  if (mat.id) return `/api/download?matId=${encodeURIComponent(mat.id)}`;
   if (mat.fileId) return getProxyDownloadUrl(mat.fileId, mat.id, mat.title || mat.fileName);
   if (mat.fileUrl) return mat.fileUrl; // legacy fallback
   return "#";
@@ -54,7 +53,7 @@ export async function triggerSecureDownload(
   dismissToast?: (id: string) => void,
   onLoadingChange?: (loading: boolean) => void
 ): Promise<void> {
-  if (!mat.fileId) {
+  if (!mat.id && !mat.fileId) {
     if (mat.fileUrl) {
       window.open(mat.fileUrl, "_blank");
       return;
@@ -71,9 +70,29 @@ export async function triggerSecureDownload(
     }
 
     onLoadingChange?.(true);
+    if (typeof window !== "undefined") {
+      (window as any).__activeDownloads = true;
+    }
 
     const token = await user.getIdToken();
-    const downloadUrl = `/api/download?fileId=${encodeURIComponent(mat.fileId)}&matId=${encodeURIComponent(mat.id || "")}&matName=${encodeURIComponent(mat.fileName || mat.title || "material")}`;
+
+    // 1. Fetch secure temporary download token
+    const tokenRes = await fetch("/api/download/token", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    if (!tokenRes.ok) {
+      const tokenErr = await tokenRes.json().catch(() => ({}));
+      throw new Error(tokenErr.message || "Failed to establish a secure download session.");
+    }
+
+    const { token: downloadToken } = await tokenRes.json();
+
+    // 2. Fetch the actual material download stream
+    const downloadUrl = `/api/download?matId=${encodeURIComponent(mat.id || "")}&token=${encodeURIComponent(downloadToken)}`;
 
     const res = await fetch(downloadUrl, {
       method: "GET",
@@ -82,10 +101,14 @@ export async function triggerSecureDownload(
       }
     });
 
+    if (typeof window !== "undefined") {
+      (window as any).__activeDownloads = false;
+    }
     onLoadingChange?.(false);
 
     if (!res.ok) {
-      throw new Error("This material is temporarily unavailable.");
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || "This material is temporarily unavailable.");
     }
 
     const blob = await res.blob();
@@ -101,9 +124,12 @@ export async function triggerSecureDownload(
 
     showToast?.("Download started successfully", "success");
   } catch (err: any) {
-    console.error("Secure download failed:", err);
+    if (typeof window !== "undefined") {
+      (window as any).__activeDownloads = false;
+    }
     onLoadingChange?.(false);
-    showToast?.(err.message || "Failed to trigger download", "error");
+    console.error("Secure download failed:", err);
+    showToast?.(err.message || "Failed to download material.", "error");
   }
 }
 

@@ -178,7 +178,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
                 strokeWidth="1.5"
                 strokeDasharray="20 70"
                 className="animate-spin"
-                style={{ animationDuration: "3s" }}
+                style={{ animationDuration: "3s", transformOrigin: "32px 32px" }}
                 opacity="0.9"
               />
             </>
@@ -199,7 +199,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
                 strokeWidth="2.5"
                 strokeDasharray="6 80"
                 className="animate-spin"
-                style={{ animationDuration: "2s" }}
+                style={{ animationDuration: "2s", transformOrigin: "32px 32px" }}
                 filter="url(#intenseBloom)"
               />
               <circle
@@ -210,7 +210,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
                 strokeWidth="2.5"
                 strokeDasharray="6 80"
                 className="animate-spin"
-                style={{ animationDuration: "3.5s", animationDirection: "reverse" }}
+                style={{ animationDuration: "3.5s", animationDirection: "reverse", transformOrigin: "32px 32px" }}
                 filter="url(#intenseBloom)"
               />
             </>
@@ -221,7 +221,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
               {/* Base Runes Ring */}
               <circle cx="32" cy="32" r="29" stroke="url(#aaaScholar)" strokeWidth="4.5" />
               {/* Glowing Rune Symbols Rotating */}
-              <g className="animate-spin" style={{ animationDuration: "12s" }} filter="url(#aaaBloom)">
+              <g className="animate-spin" style={{ animationDuration: "12s", transformOrigin: "32px 32px" }} filter="url(#aaaBloom)">
                 {/* Mystic Glyphs at angles */}
                 <polygon points="32,4 34,7 32,10 30,7" fill="#a5b4fc" />
                 <polygon points="32,54 34,57 32,60 30,57" fill="#a5b4fc" />
@@ -245,7 +245,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
               {/* Floating stars & cosmic dust */}
               <circle cx="32" cy="32" r="31" stroke="#ffffff" strokeWidth="0.5" strokeDasharray="2 12" opacity="0.8" />
               {/* Tiny orbiting planets */}
-              <g className="animate-spin" style={{ animationDuration: "8s" }}>
+              <g className="animate-spin" style={{ animationDuration: "8s", transformOrigin: "32px 32px" }}>
                 {/* Planet 1 with ring */}
                 <circle cx="14" cy="18" r="2.5" fill="#f472b6" filter="url(#aaaBloom)" />
                 <ellipse cx="14" cy="18" rx="4" ry="1.2" stroke="#ffffff" strokeWidth="0.5" opacity="0.8" transform="rotate(-15 14 18)" />
@@ -313,7 +313,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
                 stroke="url(#aaaShine)"
                 strokeWidth="5"
                 className="animate-spin"
-                style={{ animationDuration: "4s" }}
+                style={{ animationDuration: "4s", transformOrigin: "32px 32px" }}
               />
             </>
           )}
@@ -379,7 +379,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
                 stroke="url(#aaaShine)"
                 strokeWidth="5.5"
                 className="animate-spin"
-                style={{ animationDuration: "3.5s" }}
+                style={{ animationDuration: "3.5s", transformOrigin: "32px 32px" }}
               />
             </>
           )}
@@ -396,7 +396,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
                 stroke="url(#aaaShine)"
                 strokeWidth="5.5"
                 className="animate-spin"
-                style={{ animationDuration: "2.8s" }}
+                style={{ animationDuration: "2.8s", transformOrigin: "32px 32px" }}
               />
             </>
           )}
@@ -414,7 +414,7 @@ export default function AvatarFrameVisual({ frameId, size, children }: AvatarFra
                 stroke="url(#aaaShine)"
                 strokeWidth="5.5"
                 className="animate-spin"
-                style={{ animationDuration: "2.5s" }}
+                style={{ animationDuration: "2.5s", transformOrigin: "32px 32px" }}
               />
 
               {/* Large royal golden crown sitting on top */}

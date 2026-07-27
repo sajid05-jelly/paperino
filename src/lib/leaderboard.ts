@@ -1,8 +1,38 @@
 import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
 
+const allowedAdmins = [
+  "mohamedsajid.sa@gmail.com",
+  "sudharajsekar2005@gmail.com",
+  "admin.paperinoirfan27@gmail.com",
+  "admin.paperinosam14@gmail.com",
+  "gameplayitlifeitis@gmail.com"
+];
+
+const adminNames = [
+  "mohamedsajid",
+  "mohamed sajid",
+  "sajid",
+  "sudhar",
+  "irfan",
+  "sam",
+  "admin"
+];
+
+export function isUserAdmin(user: any): boolean {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  if (user.email && allowedAdmins.includes(user.email.toLowerCase())) return true;
+  if (user.displayName) {
+    const nameLower = user.displayName.toLowerCase();
+    if (adminNames.some(adminName => nameLower.includes(adminName))) return true;
+  }
+  return false;
+}
+
 /**
  * Recalculates both the Current Season and All-Time (Hall of Fame) leaderboards
  * and saves the pre-aggregated results into Firestore.
+ * Excludes all admin accounts and clamps points, uploads, and downloads to a minimum of 0.
  * 
  * @param db The Firestore database instance
  */
@@ -24,12 +54,14 @@ export async function recalculateLeaderboards(db: any) {
       }
     }
 
-    // 2. Fetch Users
+    // 2. Fetch Users (Exclude blocked status and admin accounts)
     const usersSnap = await getDocs(collection(db, "users"));
     const usersMap = new Map();
     usersSnap.forEach(d => {
-      if (d.data().status !== "blocked") {
-        usersMap.set(d.id, d.data());
+      const data = d.data();
+      const isAdmin = isUserAdmin(data);
+      if (data.status !== "blocked" && !isAdmin) {
+        usersMap.set(d.id, data);
       }
     });
 
@@ -65,9 +97,15 @@ export async function recalculateLeaderboards(db: any) {
       return Object.keys(counts)
         .map((uid) => {
           const user = usersMap.get(uid);
-          const uploads = useSeason ? (user.seasonUploads || 0) : (user.uploads || 0);
-          const contributionPoints = useSeason ? (user.seasonPoints || 0) : (user.contributionPoints || 0);
-          const downloads = user.downloads || 0;
+          if (!user || isUserAdmin(user)) return null;
+
+          const rawUploads = useSeason ? (user.seasonUploads || 0) : (user.uploads || 0);
+          const rawPoints = useSeason ? (user.seasonPoints || 0) : (user.contributionPoints || 0);
+          const rawDownloads = user.downloads || 0;
+
+          const uploads = Math.max(0, rawUploads);
+          const contributionPoints = Math.max(0, rawPoints);
+          const downloads = Math.max(0, rawDownloads);
           
           let joinedDateStr = null;
           if (user.createdAt) {
@@ -83,16 +121,19 @@ export async function recalculateLeaderboards(db: any) {
           return {
             uid,
             displayName: user.displayName || "Anonymous Contributor",
+            email: user.email || "",
+            role: user.role || "student",
             paperinoAvatar: user.paperinoAvatar || null,
             joinedDate: joinedDateStr,
             uploads,
             downloads,
             contributionPoints,
             contributorLevel: user.contributorLevel || "",
-            rankTitle: getBadgeTitle(user.uploads || 0)
+            rankTitle: getBadgeTitle(uploads)
           };
         })
-        .sort((a, b) => {
+        .filter(Boolean)
+        .sort((a: any, b: any) => {
           if (b.contributionPoints !== a.contributionPoints) {
             return b.contributionPoints - a.contributionPoints;
           }
@@ -135,7 +176,8 @@ export async function updateLeaderboardForUser(
     if (!userSnap.exists()) return;
     const userData = userSnap.data();
 
-    if (userData.status === "blocked") {
+    const isAdmin = isUserAdmin(userData);
+    if (userData.status === "blocked" || isAdmin) {
       await removeUserFromLeaderboards(db, userId);
       return;
     }
@@ -170,24 +212,30 @@ export async function updateLeaderboardForUser(
       // Check if user is active in this season (if it's season board)
       const isSeasonEligible = !isSeason || (userData.createdAt && new Date(userData.createdAt) >= seasonStartDate);
 
-      // Remove existing entry
-      contributors = contributors.filter((c: any) => c.uid !== userId);
+      // Remove existing entry or any admin entries
+      contributors = contributors.filter((c: any) => c.uid !== userId && !isUserAdmin(c));
 
       if (isSeasonEligible) {
-        const uploads = isSeason ? (userData.seasonUploads || 0) : (userData.uploads || 0);
-        const contributionPoints = isSeason ? (userData.seasonPoints || 0) : (userData.contributionPoints || 0);
-        const downloads = userData.downloads || 0;
+        const rawUploads = isSeason ? (userData.seasonUploads || 0) : (userData.uploads || 0);
+        const rawPoints = isSeason ? (userData.seasonPoints || 0) : (userData.contributionPoints || 0);
+        const rawDownloads = userData.downloads || 0;
+
+        const uploads = Math.max(0, rawUploads);
+        const contributionPoints = Math.max(0, rawPoints);
+        const downloads = Math.max(0, rawDownloads);
 
         contributors.push({
           uid: userId,
           displayName: userData.displayName || "Anonymous Contributor",
+          email: userData.email || "",
+          role: userData.role || "student",
           paperinoAvatar: userData.paperinoAvatar || null,
           joinedDate: joinedDateStr,
           uploads,
           downloads,
           contributionPoints,
           contributorLevel: userData.contributorLevel || "",
-          rankTitle: getBadgeTitle(userData.uploads || 0)
+          rankTitle: getBadgeTitle(uploads)
         });
       }
 
@@ -224,7 +272,7 @@ async function removeUserFromLeaderboards(db: any, userId: string) {
     const boardSnap = await getDoc(boardRef);
     if (boardSnap.exists()) {
       const contributors = boardSnap.data().contributors || [];
-      const updated = contributors.filter((c: any) => c.uid !== userId);
+      const updated = contributors.filter((c: any) => c.uid !== userId && !isUserAdmin(c));
       await setDoc(boardRef, { contributors: updated }, { merge: true });
     }
   }
