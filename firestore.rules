@@ -205,6 +205,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Subject Requests ────────────────────────────────────────────────────
+    match /subject_requests/{requestId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
     // ── Career DNA ──────────────────────────────────────────────────────────
     match /career_dna/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;

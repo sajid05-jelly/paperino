@@ -171,7 +171,6 @@ export default function AdminReviewsPage() {
       let q = query(
         collection(db, "materials"),
         where("status", "==", targetStatus),
-        orderBy("createdAt", "desc"),
         limit(15)
       );
 
@@ -179,7 +178,6 @@ export default function AdminReviewsPage() {
         q = query(
           collection(db, "materials"),
           where("status", "==", targetStatus),
-          orderBy("createdAt", "desc"),
           startAfter(lastVisibleMat),
           limit(15)
         );
@@ -226,13 +224,21 @@ export default function AdminReviewsPage() {
         await Promise.all(deletePromises);
       }
 
+      // Sort chronologically descending client-side
+      mats.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
       if (snap.docs.length < 15) {
         setHasMoreMats(false);
       } else {
         setLastVisibleMat(snap.docs[snap.docs.length - 1]);
       }
 
-      setMaterials(prev => reset ? mats : [...prev, ...mats]);
+      setMaterials(prev => {
+        const combined = reset ? mats : [...prev, ...mats];
+        // Sort final list chronologically
+        combined.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        return combined;
+      });
     } catch (err) {
       console.error("Error fetching materials:", err);
     } finally {
