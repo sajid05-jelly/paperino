@@ -69,12 +69,13 @@ const HARDCODED_ADMIN_EMAILS = [
   "sudharajsekar2005@gmail.com",
   "admin.paperinoirfan27@gmail.com",
   "admin.paperinosam14@gmail.com",
+  "gameplayitlifeitis@gmail.com",
 ];
 
 /**
  * Broadcast a notification to all admins.
  * Looks up admin UIDs from the `users` collection (role == "admin")
- * and also from NEXT_PUBLIC_ADMIN_EMAILS env var.
+ * and also from hardcoded admin emails.
  */
 export async function notifyAdmins(
   db: Firestore,
@@ -83,30 +84,56 @@ export async function notifyAdmins(
   type: NotificationType
 ): Promise<void> {
   try {
-    // Fetch UIDs of users with role == "admin"
-    const adminQuery = query(
-      collection(db, "users"),
-      where("role", "==", "admin")
-    );
-    const snap = await getDocs(adminQuery);
-
-    // Also fetch by hardcoded emails
-    const emailQuery = query(
-      collection(db, "users"),
-      where("email", "in", HARDCODED_ADMIN_EMAILS)
-    );
-    const emailSnap = await getDocs(emailQuery);
-
-    // Deduplicate UIDs
     const adminUids = new Set<string>();
-    snap.forEach((d) => adminUids.add(d.id));
-    emailSnap.forEach((d) => adminUids.add(d.id));
 
-    // Write one notification per admin
+    // 1. Fetch UIDs of users with role == "admin"
+    try {
+      const adminQuery = query(
+        collection(db, "users"),
+        where("role", "==", "admin")
+      );
+      const snap = await getDocs(adminQuery);
+      snap.forEach((d) => adminUids.add(d.id));
+    } catch (e) {
+      console.warn("[Notifications] Query by role==admin skipped:", e);
+    }
+
+    // 2. Also fetch by hardcoded admin emails
+    try {
+      const emailQuery = query(
+        collection(db, "users"),
+        where("email", "in", HARDCODED_ADMIN_EMAILS)
+      );
+      const emailSnap = await getDocs(emailQuery);
+      emailSnap.forEach((d) => adminUids.add(d.id));
+    } catch (e) {
+      console.warn("[Notifications] Query by hardcoded emails skipped:", e);
+    }
+
+    // 3. Fallback: query all users if adminUids set is empty and check email/role client-side
+    if (adminUids.size === 0) {
+      try {
+        const allUsersSnap = await getDocs(collection(db, "users"));
+        allUsersSnap.forEach((docSnap) => {
+          const u = docSnap.data();
+          if (
+            u.role === "admin" ||
+            (u.email && HARDCODED_ADMIN_EMAILS.includes(u.email.toLowerCase()))
+          ) {
+            adminUids.add(docSnap.id);
+          }
+        });
+      } catch (e) {
+        console.warn("[Notifications] Fallback all users scan skipped:", e);
+      }
+    }
+
+    // Write one notification per admin UID
     const writes = Array.from(adminUids).map((uid) =>
       createNotification(db, uid, title, message, type)
     );
     await Promise.all(writes);
+    console.log(`[Notifications] Broadcasted "${title}" to ${adminUids.size} admin(s).`);
   } catch (err) {
     console.error("[Notifications] Failed to notify admins:", err);
   }

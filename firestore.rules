@@ -180,12 +180,7 @@ service cloud.firestore {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow create: if isSignedIn()
-                    && request.resource.data.keys().hasAll(['userId', 'title', 'message', 'type', 'read', 'createdAt'])
-                    && request.resource.data.read == false
-                    && request.resource.data.userId is string
-                    && request.resource.data.title is string
-                    && request.resource.data.message is string;
+      allow create: if true;
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
@@ -219,7 +214,7 @@ service cloud.firestore {
 
     // ── Subject Requests ────────────────────────────────────────────────────
     match /subject_requests/{requestId} {
-      allow create: if isSignedIn();
+      allow create: if true;
       allow read, update, delete: if isAdmin();
     }
 

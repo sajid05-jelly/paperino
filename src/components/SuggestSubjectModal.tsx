@@ -8,6 +8,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/components/Toast";
 import { useSound } from "@/hooks/useSound";
 import { sendEmailVerification } from "firebase/auth";
+import { notifyAdmins } from "@/lib/notifications";
 
 interface SuggestSubjectModalProps {
   isOpen: boolean;
@@ -84,6 +85,14 @@ export default function SuggestSubjectModal({
         createdAt: serverTimestamp(),
         status: "pending"
       });
+
+      // 🔔 Broadcast real-time notification to all admins
+      await notifyAdmins(
+        db,
+        "📚 New Subject Requested",
+        `${user?.displayName || user?.email || "A student"} requested subject "${subjectName.trim()}" (${subjectCode.trim() || 'No Code'}) for ${departmentName} - Semester ${semesterId}.`,
+        "subject_suggested"
+      );
 
       setSuccess(true);
       if (playSuccess) playSuccess();
