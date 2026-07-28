@@ -1,10 +1,10 @@
 /**
  * /api/download/route.ts
  *
- * Secure download proxy for Paperino study materials.
+ * Secure download & preview proxy for Paperino study materials.
  * Verifies Firebase Auth ID Token, fetches configurations from platform_config/security,
- * enforces download rate-limiting, writes log entries to download_logs,
- * retrieves Drive File ID privately, and overlays dynamic PDF watermarks.
+ * enforces rate-limiting, writes log entries, retrieves Drive File ID privately,
+ * overlays dynamic PDF watermarks, and streams inline/attachment binary responses.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -20,11 +20,32 @@ export const dynamic = "force-dynamic";
 /** Strict Google Drive file ID pattern: alphanumeric + dash + underscore, 10-60 chars */
 const VALID_FILE_ID = /^[a-zA-Z0-9_-]{10,60}$/;
 
+function getMimeTypeByFilename(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  switch (ext) {
+    case "pdf": return "application/pdf";
+    case "png": return "image/png";
+    case "jpg":
+    case "jpeg": return "image/jpeg";
+    case "webp": return "image/webp";
+    case "gif": return "image/gif";
+    case "svg": return "image/svg+xml";
+    case "doc": return "application/msword";
+    case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case "ppt": return "application/vnd.ms-powerpoint";
+    case "pptx": return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    case "xls": return "application/vnd.ms-excel";
+    case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    case "zip": return "application/zip";
+    default: return "application/octet-stream";
+  }
+}
+
 export async function GET(req: NextRequest) {
   let matId = req.nextUrl.searchParams.get("matId");
-  let fileId = req.nextUrl.searchParams.get("fileId"); // Legacy fallback
+  let fileId = req.nextUrl.searchParams.get("fileId");
 
-  console.log("[Download API] Secure request received:", { matId, fileId });
+  console.log("[Download API] Request received:", { matId, fileId });
 
   // 1. Verify Authentication via Bearer Header
   const authHeader = req.headers.get("Authorization");
@@ -48,7 +69,6 @@ export async function GET(req: NextRequest) {
     userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Student";
     userEmail = decodedToken.email || "";
     
-    // Check admin database flag
     if (adminDb) {
       const userSnap = await adminDb.collection("users").doc(uid).get();
       if (userSnap.exists && userSnap.data()?.role === "admin") {
@@ -56,7 +76,6 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // Developer fallback email lists
     const allowedAdmins = [
       "mohamedsajid.sa@gmail.com",
       "sudharajsekar2005@gmail.com",
@@ -79,7 +98,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
   }
 
-  // 1.5 Verify Single-Use Download Token
+  // 1.5 Verify Single-Use Session Token
   const dToken = req.nextUrl.searchParams.get("token");
   if (!dToken) {
     return NextResponse.json({ error: "Access Denied", message: "Missing download session token" }, { status: 403 });
@@ -93,24 +112,20 @@ export async function GET(req: NextRequest) {
 
     const tokenData = tokenSnap.data() || {};
     
-    // Check if used
     if (tokenData.used) {
       return NextResponse.json({ error: "Access Denied", message: "Download token has already been used" }, { status: 403 });
     }
 
-    // Check uid ownership
     if (tokenData.uid !== uid) {
       return NextResponse.json({ error: "Access Denied", message: "Token ownership mismatch" }, { status: 403 });
     }
 
-    // Check expiry (e.g. 5 minutes)
     const tokenCreatedAt = tokenData.createdAt?.toDate ? tokenData.createdAt.toDate().getTime() : Date.now();
     const tokenAge = Date.now() - tokenCreatedAt;
     if (tokenAge > 5 * 60 * 1000) {
       return NextResponse.json({ error: "Access Denied", message: "Download token has expired" }, { status: 403 });
     }
 
-    // Mark as used immediately to prevent replay attacks
     await adminDb.collection("download_tokens").doc(dToken).update({ used: true });
   } catch (tokenErr: any) {
     console.error("[Download API] Token validation exception:", tokenErr);
@@ -131,50 +146,49 @@ export async function GET(req: NextRequest) {
         downloadLogging = configData.downloadLogging !== false;
         downloadRateLimit = typeof configData.downloadRateLimit === "number" ? configData.downloadRateLimit : 50;
       }
-    } else {
-      // Create default config if it doesn't exist
-      await adminDb.collection("platform_config").doc("security").set({
-        watermarkEnabled: true,
-        downloadLogging: true,
-        downloadRateLimit: 50,
-        downloadTokenExpiry: 300,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
     }
   } catch (err) {
     console.warn("[Download API] Failed to fetch security configurations, using defaults:", err);
   }
 
-  // 3. Resolve fileId and metadata privately from Firestore
+  // 3. Resolve fileId and metadata from Firestore
   let finalFileId = "";
   let matName = "material";
-  let mimeType = "application/octet-stream";
 
-  if (matId) {
+  if (matId && matId !== "null" && matId !== "undefined") {
     try {
       const matSnap = await adminDb.collection("materials").doc(matId).get();
-      if (!matSnap.exists) {
-        return NextResponse.json({ error: "Material not found" }, { status: 404 });
+      if (matSnap.exists) {
+        const matData = matSnap.data() || {};
+        if (matData.status !== "approved" && matData.uploaderId !== uid && !isAdmin) {
+          return NextResponse.json({ error: "Access Denied", message: "This material is pending review." }, { status: 403 });
+        }
+        finalFileId = matData.fileId || "";
+        matName = matData.fileName || matData.title || "material";
       }
-      const matData = matSnap.data() || {};
-      
-      // Permission check: if material is not approved, only uploader or admin can download
-      if (matData.status !== "approved" && matData.uploaderId !== uid && !isAdmin) {
-        return NextResponse.json({ error: "Access Denied", message: "This material is pending review." }, { status: 403 });
-      }
-
-      finalFileId = matData.fileId || "";
-      matName = matData.fileName || matData.title || "material";
     } catch (err: any) {
       console.error("[Download API] Error resolving material document:", err);
-      return NextResponse.json({ error: "Failed to resolve material details" }, { status: 500 });
     }
-  } else if (fileId && VALID_FILE_ID.test(fileId)) {
-    // Legacy fallback
+  }
+
+  if (!finalFileId && fileId && VALID_FILE_ID.test(fileId)) {
+    try {
+      const snap = await adminDb.collection("materials").where("fileId", "==", fileId).limit(1).get();
+      if (!snap.empty) {
+        const matData = snap.docs[0].data();
+        if (matData.status !== "approved" && matData.uploaderId !== uid && !isAdmin) {
+          return NextResponse.json({ error: "Access Denied", message: "This material is pending review." }, { status: 403 });
+        }
+        matName = matData.fileName || matData.title || "material";
+      }
+    } catch (e) {
+      console.warn("[Download API] Material query by fileId skipped:", e);
+    }
     finalFileId = fileId;
   }
 
   if (!finalFileId || !VALID_FILE_ID.test(finalFileId)) {
+    console.error("[Download API] Invalid or missing fileId:", { matId, fileId, finalFileId });
     return NextResponse.json({ error: "Invalid or missing file association" }, { status: 400 });
   }
 
@@ -199,14 +213,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Generate unique download credentials
   const downloadId = randomUUID();
   const shortDownloadId = `DL-${downloadId.substring(0, 8).toUpperCase()}`;
   const shortUid = `USR-${uid.substring(0, 8).toUpperCase()}`;
 
-  // 5. Stream from Google Drive
+  // 5. Stream binary file from Google Drive Storage
   let fileBuffer: Buffer;
-  let fileHeaders: any;
+  let mimeType = getMimeTypeByFilename(matName);
 
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -222,33 +235,33 @@ export async function GET(req: NextRequest) {
       clientSecret,
       "https://developers.google.com/oauthplayground"
     );
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
 
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
     const drive = google.drive({ version: "v3", auth: oauth2Client });
-    
-    // Fetch file stream/data
+
+    console.log(`[Download API Stage 2] Fetching file stream from Google Drive for fileId: ${finalFileId}...`);
     const driveRes = await drive.files.get(
       { fileId: finalFileId, alt: "media" },
       { responseType: "arraybuffer" }
     );
 
-    if (!driveRes || driveRes.status !== 200) {
-      return NextResponse.json({ error: "Failed to stream file payload from Drive" }, { status: 500 });
-    }
-
     fileBuffer = Buffer.from(driveRes.data as ArrayBuffer);
-    fileHeaders = driveRes.headers;
-    mimeType = (fileHeaders["content-type"] as string) || mimeType;
+    const driveMime = (driveRes.headers["content-type"] as string) || "";
+    if (driveMime && driveMime !== "application/octet-stream") {
+      mimeType = driveMime;
+    }
+    console.log(`[Download API Stage 3] Stream received successfully. Size: ${fileBuffer.length} bytes, Mime: ${mimeType}`);
 
   } catch (err: any) {
-    console.error("[Download API] Drive streaming error:", err);
-    return NextResponse.json({ error: "Failed to download file from storage service" }, { status: 500 });
+    console.error("[Download API Stage 3 Error] Drive streaming failed:", err);
+    return NextResponse.json({ error: "Failed to fetch document stream from storage service: " + err.message }, { status: 500 });
   }
 
   // 6. Dynamic Watermarking for PDFs
   const isPdf = mimeType.includes("pdf") || matName.toLowerCase().endsWith(".pdf");
   if (isPdf && watermarkEnabled) {
     try {
+      console.log(`[Download API Stage 4] Overlaying Paperino dynamic watermark on PDF...`);
       const pdfDoc = await PDFDocument.load(fileBuffer);
       const pages = pdfDoc.getPages();
       const font = await pdfDoc.embedFont("Helvetica");
@@ -262,7 +275,7 @@ export async function GET(req: NextRequest) {
           y: height * 0.15,
           size: Math.max(8, Math.min(11, width / 45)),
           font: font,
-          color: rgb(0.55, 0.35, 0.9), // Purple branding
+          color: rgb(0.55, 0.35, 0.9),
           opacity: 0.15,
           rotate: degrees(30),
         });
@@ -271,8 +284,9 @@ export async function GET(req: NextRequest) {
       const modifiedPdfBytes = await pdfDoc.save();
       fileBuffer = Buffer.from(modifiedPdfBytes);
       mimeType = "application/pdf";
+      console.log(`[Download API Stage 4] Watermarking complete.`);
     } catch (pdfErr) {
-      console.error("[Download API] Failed to overlay watermark. Serving original PDF instead.", pdfErr);
+      console.error("[Download API Stage 4 Warning] Failed to overlay watermark. Serving original PDF instead:", pdfErr);
     }
   }
 
@@ -287,36 +301,25 @@ export async function GET(req: NextRequest) {
       else if (userAgent.includes("Edg")) browser = "Edge";
 
       let device = "Desktop";
-      if (/mobile|android|iphone|ipad/i.test(userAgent)) {
-        device = "Mobile";
-      }
+      if (/mobile|android|iphone|ipad/i.test(userAgent)) device = "Mobile";
 
       const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "Local/Proxy";
 
-      await adminDb.collection("download_logs").doc(downloadId).set({
+      adminDb.collection("download_logs").doc(downloadId).set({
         uid,
-        materialId: matId || "legacy_file",
+        materialId: matId || finalFileId,
         downloadId,
         downloadTime: admin.firestore.FieldValue.serverTimestamp(),
         browser,
         device,
         ipAddress,
         userAgent
-      });
+      }).catch(e => console.warn("[Download API Log Warning]:", e));
 
-      // Increment totals
       if (matId) {
-        const statsRef = adminDb.collection("platform_stats").doc("materials").collection("downloads").doc(matId);
-        await statsRef.set({
-          name: matName || matId,
-          downloads: admin.firestore.FieldValue.increment(1),
-          lastDownloaded: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        const materialRef = adminDb.collection("materials").doc(matId);
-        await materialRef.update({
+        adminDb.collection("materials").doc(matId).update({
           downloads: admin.firestore.FieldValue.increment(1)
-        });
+        }).catch(e => console.warn("[Download API Stat Warning]:", e));
       }
     } catch (logErr) {
       console.error("[Download API] Failed to write download audit logs:", logErr);
@@ -329,10 +332,13 @@ export async function GET(req: NextRequest) {
 
   const responseHeaders = new Headers();
   responseHeaders.set("Content-Type", mimeType);
-  responseHeaders.set("Content-Disposition", `${dispositionType}; filename="${matName}"`);
+  responseHeaders.set("Content-Length", fileBuffer.length.toString());
+  responseHeaders.set("Content-Disposition", `${dispositionType}; filename="${encodeURIComponent(matName)}"`);
   responseHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate");
   responseHeaders.set("Pragma", "no-cache");
   responseHeaders.set("Expires", "0");
+
+  console.log(`[Download API Stage 5] Serving binary response (${fileBuffer.length} bytes, mime=${mimeType}, disposition=${dispositionType})`);
 
   return new NextResponse(new Uint8Array(fileBuffer), {
     status: 200,

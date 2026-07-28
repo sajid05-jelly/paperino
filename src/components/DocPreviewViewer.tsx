@@ -26,25 +26,48 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [streamMimeType, setStreamMimeType] = useState<string>("");
 
   const title = mat.fileName || mat.title || "Study Material";
   const extension = title.split(".").pop()?.toLowerCase() || "";
-  const isImage = ["png", "jpg", "jpeg", "webp", "gif", "svg", "bmp"].includes(extension);
-  const isPdf = extension === "pdf" || (!extension && mat.title?.toLowerCase().includes("pdf"));
+  
+  const isOfficeFormat = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(extension);
 
   useEffect(() => {
     let isMounted = true;
     let createdUrl: string | null = null;
 
+    // 10-second hard rendering timeout controller
+    const abortController = new AbortController();
+    const hardTimeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        abortController.abort();
+        setLoading(false);
+        const timeoutErrorMsg = `Preview generation timed out (10s limit) for document: "${title}".`;
+        setError(timeoutErrorMsg);
+        console.error("[Paperino Native Viewer Stage 5 Failure] ⏱️", timeoutErrorMsg);
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("paperino:permission_error", {
+              detail: { message: `Native Paperino Viewer Error: ${timeoutErrorMsg}` }
+            })
+          );
+        }
+      }
+    }, 10000);
+
     const fetchPaperinoNativeStream = async () => {
+      console.log(`[Paperino Native Viewer Stage 1 [FETCH]] Initiating preview session for: "${title}" (id=${mat.id}, fileId=${mat.fileId})...`);
       setLoading(true);
       setError(null);
 
-      // Office files (DOC, DOCX, PPT, PPTX, XLS, XLSX) cannot be rendered natively in blob object tags
-      const officeExtensions = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"];
-      if (officeExtensions.includes(extension)) {
+      // Office files (DOC, DOCX, PPT, PPTX, XLS, XLSX) cannot be rendered directly via blob object tags without server conversion
+      if (isOfficeFormat) {
         if (isMounted) {
-          setError("Office document format — preview unavailable.");
+          clearTimeout(hardTimeoutId);
+          console.log(`[Paperino Native Viewer Stage 5 [RENDERER]] Office format detected (${extension.toUpperCase()}). Showing Paperino Download Card.`);
+          setError(`Office document format (${extension.toUpperCase()}) — direct preview unavailable.`);
           setLoading(false);
         }
         return;
@@ -54,6 +77,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
         const user = auth.currentUser;
         if (!user) {
           if (isMounted) {
+            clearTimeout(hardTimeoutId);
             setError("Authentication required to preview this document.");
             setLoading(false);
           }
@@ -62,12 +86,14 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
 
         const token = await user.getIdToken();
 
-        // 1. Fetch single-use download session token
+        // Stage 1: Fetch single-use session token
+        console.log(`[Paperino Native Viewer Stage 1 [FETCH]] Requesting single-use download session token...`);
         const tokenRes = await fetch("/api/download/token", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`
-          }
+          },
+          signal: abortController.signal
         });
 
         if (!tokenRes.ok) {
@@ -76,37 +102,59 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
         }
 
         const { token: sessionToken } = await tokenRes.json();
+        console.log(`[Paperino Native Viewer Stage 2 [API]] Session token obtained successfully.`);
 
-        // 2. Stream native binary from Paperino secure backend
-        const downloadUrl = `/api/download?matId=${encodeURIComponent(mat.id || "")}&token=${encodeURIComponent(sessionToken)}&inline=true`;
-        
+        // Stage 2: Build stream URL with fallback between matId & fileId
+        const identifierParam = mat.id ? `matId=${encodeURIComponent(mat.id)}` : `fileId=${encodeURIComponent(mat.fileId || "")}`;
+        const downloadUrl = `/api/download?${identifierParam}&token=${encodeURIComponent(sessionToken)}&inline=true`;
+
+        console.log(`[Paperino Native Viewer Stage 2 [API]] Fetching binary stream via ${downloadUrl}...`);
         const streamRes = await fetch(downloadUrl, {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`
-          }
+          },
+          signal: abortController.signal
         });
 
         if (!streamRes.ok) {
           const errData = await streamRes.json().catch(() => ({}));
-          throw new Error(errData.error || "This document cannot be previewed right now.");
+          throw new Error(errData.error || errData.message || `HTTP ${streamRes.status}: Document stream failed.`);
         }
 
+        const mime = streamRes.headers.get("Content-Type") || "";
+        const size = streamRes.headers.get("Content-Length") || "unknown";
+        console.log(`[Paperino Native Viewer Stage 3 [STREAM]] Binary stream received. Content-Type: "${mime}", Size: ${size} bytes.`);
+
+        if (isMounted) {
+          setStreamMimeType(mime);
+        }
+
+        // Stage 4: Create Blob and Object URL
+        console.log(`[Paperino Native Viewer Stage 4 [BLOB]] Constructing Blob from arrayBuffer...`);
         const blob = await streamRes.blob();
+
         if (isMounted) {
           createdUrl = URL.createObjectURL(blob);
           setBlobUrl(createdUrl);
+          clearTimeout(hardTimeoutId);
           setLoading(false);
+          console.log(`[Paperino Native Viewer Stage 5 [RENDERER]] Object URL created (${createdUrl}). Mounting Paperino Native Renderer...`);
+          console.log(`[Paperino Native Viewer Stage 6 [SUCCESS]] Document preview rendered successfully!`);
         }
       } catch (err: any) {
-        console.error("[Paperino Native Viewer Stream Error]:", err);
+        if (err.name === "AbortError") return; // Handled by 10s timeout
+        console.error("[Paperino Native Viewer Stage 5 [FAILURE]]:", err);
         if (isMounted) {
-          setError(err.message || "Failed to load document stream.");
+          clearTimeout(hardTimeoutId);
+          const errorMsg = err.message || "Failed to load document stream.";
+          setError(errorMsg);
           setLoading(false);
+
           if (typeof window !== "undefined") {
             window.dispatchEvent(
               new CustomEvent("paperino:permission_error", {
-                detail: { message: `Native Paperino Viewer Error: ${err.message}` }
+                detail: { message: `Native Paperino Viewer Failure: ${errorMsg}` }
               })
             );
           }
@@ -118,11 +166,12 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
 
     return () => {
       isMounted = false;
+      clearTimeout(hardTimeoutId);
       if (createdUrl) {
         URL.revokeObjectURL(createdUrl);
       }
     };
-  }, [mat.id, extension, mat.title]);
+  }, [mat.id, mat.fileId, extension, title, isOfficeFormat]);
 
   const handleDownload = () => {
     if (onDownload) {
@@ -132,6 +181,9 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
     setDownloading(true);
     triggerSecureDownload(mat, showToast, dismissToast, (l) => setDownloading(l));
   };
+
+  const isImageMime = streamMimeType.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif", "svg", "bmp"].includes(extension);
+  const isPdfMime = streamMimeType.includes("pdf") || extension === "pdf" || (!extension && title.toLowerCase().includes("pdf"));
 
   return (
     <div className={`relative flex flex-col w-full h-full bg-[#050308] overflow-hidden ${className}`}>
@@ -171,14 +223,14 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
 
       {!loading && !error && blobUrl && (
         <div className="relative flex-1 w-full h-full bg-[#050308]">
-          {isImage ? (
+          {isImageMime ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={blobUrl}
               alt={title}
               className="w-full h-full object-contain mx-auto block p-4 select-none"
             />
-          ) : isPdf ? (
+          ) : isPdfMime ? (
             <object
               data={blobUrl}
               type="application/pdf"
