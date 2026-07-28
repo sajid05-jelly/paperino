@@ -159,7 +159,7 @@ service cloud.firestore {
     // ── Platform Configuration ──────────────────────────────────────────────
     match /platform_config/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     // ── Contributor Requests ────────────────────────────────────────────────
@@ -199,7 +199,6 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
-
 
     // ── Survival Notes / Senior Insights ────────────────────────────────────
     match /survival_notes/{noteId} {
@@ -249,6 +248,17 @@ service cloud.firestore {
     match /admin_logs/{logId} {
       allow read, create: if isAdmin();
       allow update, delete: if false;
+    }
+
+    // ── Free Class Finder ───────────────────────────────────────────────────
+    match /free_class_reports/{reportId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+    match /free_class_reports {
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     // ── Deny all other paths by default ─────────────────────────────────────

@@ -576,7 +576,11 @@ export default function AdminReviewsPage() {
 
   const closePreview = useCallback(() => setPreviewMat(null), []);
 
-  const filteredMaterials = materials;
+  const filteredMaterials = materials.filter(m => {
+    if (activeTab === "pending") return !m.status || m.status === "pending";
+    if (activeTab === "rejected") return m.status === "rejected";
+    return true;
+  });
 
   return (
     <>

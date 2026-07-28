@@ -9,7 +9,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap } from "lucide-react";
+import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2 } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 import { useSound } from "@/hooks/useSound";
@@ -208,6 +208,12 @@ export default function Navbar() {
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <BrainCircuit size={15} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Career DNA
+                  </Link>
+                  <Link
+                    href="/free-class-finder"
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                  >
+                    <Building2 size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Free Class Finder
                   </Link>
                 </div>
               )}
@@ -476,6 +482,14 @@ export default function Navbar() {
                     >
                       <BrainCircuit size={16} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)] shrink-0" />
                       <span>Career DNA</span>
+                    </Link>
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                      href="/free-class-finder" 
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <Building2 size={16} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
+                      <span>Free Class Finder</span>
                     </Link>
                   </div>
                 )}

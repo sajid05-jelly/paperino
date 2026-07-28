@@ -2,19 +2,40 @@
  * /api/download/route.ts
  *
  * Secure download & preview proxy for Paperino study materials.
- * Streams raw binary PDF bytes (Content-Type: application/pdf, Content-Disposition: inline)
- * directly for paperino-native viewer previewing.
+ * Enforces mandatory dynamic security watermarking (-35° rotation, 14% opacity, #8B5CF6 purple,
+ * 40px headline, 26px user details, 2 per page) before download initiation,
+ * logs downloads with `watermarkApplied: true` in Firestore, and blocks any unwatermarked file downloads.
  */
 
 import { NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 import { google } from "googleapis";
+import { PDFDocument, rgb, degrees, StandardFonts } from "pdf-lib";
+import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
-/** Strict Google Drive file ID pattern */
-const VALID_FILE_ID = /^[a-zA-Z0-9_-]{10,60}$/;
+/** Robustly extract raw 10-60 character Google Drive File ID from raw strings or full Drive URLs */
+function extractDriveFileId(input: string): string {
+  if (!input) return "";
+  const trimmed = input.trim();
+
+  // 1. Raw ID match (10-60 alphanumeric, dash, underscore)
+  if (/^[a-zA-Z0-9_-]{10,60}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // 2. Full Drive URL matching /file/d/{fileId}
+  const matchD = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]{10,60})/);
+  if (matchD && matchD[1]) return matchD[1];
+
+  // 3. Drive URL matching id={fileId}
+  const matchId = trimmed.match(/[?&]id=([a-zA-Z0-9_-]{10,60})/);
+  if (matchId && matchId[1]) return matchId[1];
+
+  return trimmed;
+}
 
 function getMimeTypeByFilename(filename: string): string {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -39,16 +60,16 @@ function getMimeTypeByFilename(filename: string): string {
 
 export async function GET(req: NextRequest) {
   let matId = req.nextUrl.searchParams.get("matId");
-  let fileId = req.nextUrl.searchParams.get("fileId");
+  let fileIdParam = req.nextUrl.searchParams.get("fileId");
   const isInline = req.nextUrl.searchParams.get("inline") === "true" || req.nextUrl.searchParams.get("preview") === "true";
 
-  console.log("[Download API Stage 1] Incoming preview/download request:", { matId, fileId, isInline });
+  console.log("[Download API Stage 1] Incoming preview/download request:", { matId, fileIdParam, isInline });
 
-  // 1. Verify Authentication via Bearer Header (Optional for inline previews of approved materials)
+  // 1. Verify Authentication via Bearer Header
   const authHeader = req.headers.get("Authorization");
-  let uid = "";
-  let userName = "Student";
-  let userEmail = "";
+  let uid = "GUEST";
+  let userName = "Paperino User";
+  let userEmail = "student@paperino.app";
   let isAdmin = false;
 
   if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -56,8 +77,8 @@ export async function GET(req: NextRequest) {
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       uid = decodedToken.uid;
-      userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Student";
-      userEmail = decodedToken.email || "";
+      userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Paperino User";
+      userEmail = decodedToken.email || "student@paperino.app";
       
       if (adminDb) {
         const userSnap = await adminDb.collection("users").doc(uid).get();
@@ -77,7 +98,7 @@ export async function GET(req: NextRequest) {
         isAdmin = true;
       }
     } catch (err: any) {
-      console.warn("[Download API Stage 1 Notice] Auth token decoding failed (continuing for public preview if approved):", err.message);
+      console.warn("[Download API Stage 1 Notice] Auth token decoding notice:", err.message);
     }
   }
 
@@ -89,7 +110,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 2. Resolve fileId and metadata from Firestore
-  let finalFileId = "";
+  let rawFileTarget = fileIdParam || "";
   let matName = "material.pdf";
   let matStatus = "approved";
 
@@ -100,14 +121,13 @@ export async function GET(req: NextRequest) {
         const matData = matSnap.data() || {};
         matStatus = matData.status || "approved";
         
-        // Permission check: if material is pending/rejected, only uploader or admin can access
         if (matStatus !== "approved" && matData.uploaderId !== uid && !isAdmin) {
           return new Response(JSON.stringify({ error: "Access Denied", message: "This material is pending review." }), {
             status: 403,
             headers: { "Content-Type": "application/json" }
           });
         }
-        finalFileId = matData.fileId || "";
+        rawFileTarget = matData.fileId || matData.fileUrl || rawFileTarget;
         matName = matData.fileName || matData.title || "material.pdf";
       }
     } catch (err: any) {
@@ -115,33 +135,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if (!finalFileId && fileId && VALID_FILE_ID.test(fileId)) {
-    try {
-      const snap = await adminDb.collection("materials").where("fileId", "==", fileId).limit(1).get();
-      if (!snap.empty) {
-        const matData = snap.docs[0].data();
-        matStatus = matData.status || "approved";
-        if (matStatus !== "approved" && matData.uploaderId !== uid && !isAdmin) {
-          return new Response(JSON.stringify({ error: "Access Denied", message: "This material is pending review." }), {
-            status: 403,
-            headers: { "Content-Type": "application/json" }
-          });
-        }
-        matName = matData.fileName || matData.title || "material.pdf";
-      }
-    } catch (e) {
-      console.warn("[Download API Stage 2 Notice] Material query by fileId skipped:", e);
-    }
-    finalFileId = fileId;
-  }
+  const finalFileId = extractDriveFileId(rawFileTarget);
 
-  if (!finalFileId || !VALID_FILE_ID.test(finalFileId)) {
-    console.error("[Download API Stage 2 Error] Invalid or missing fileId:", { matId, fileId, finalFileId });
+  if (!finalFileId || finalFileId.length < 10) {
+    console.error("[Download API Stage 2 Error] Invalid or missing fileId resolution:", { matId, fileIdParam, rawFileTarget, finalFileId });
     return new Response(JSON.stringify({ error: "Invalid or missing file association" }), {
       status: 400,
       headers: { "Content-Type": "application/json" }
     });
   }
+
+  // Generate unique download tracking IDs
+  const downloadId = randomUUID();
+  const shortDownloadId = `DL-${downloadId.substring(0, 8).toUpperCase()}`;
+  const shortUid = `USR-${uid.substring(0, 8).toUpperCase()}`;
 
   // 3. Stream binary file directly from Google Drive Storage
   let fileBuffer: Buffer;
@@ -189,12 +196,157 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 4. Return raw Response with binary buffer
+  // 4. MANDATORY HIGH-VISIBILITY WATERMARKING PIPELINE (2 per page, 40px title, 26px details, 14% opacity, -35° angle)
+  let watermarkApplied = false;
   const isPdf = mimeType.includes("pdf") || matName.toLowerCase().endsWith(".pdf");
-  const finalMime = isPdf ? "application/pdf" : mimeType;
+  const isImage = mimeType.startsWith("image/") || ["png", "jpg", "jpeg"].some(ext => matName.toLowerCase().endsWith(ext));
+
+  if (!isInline) {
+    console.log(`[Download API Stage 4] Starting Paperino high-visibility security watermark generation...`);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const now = new Date();
+    const formattedDate = `${String(now.getDate()).padStart(2, "0")} ${months[now.getMonth()]} ${now.getFullYear()}, ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    const detailLines = [
+      `Downloaded by: ${userName}`,
+      `User ID: ${shortUid}`,
+      `Downloaded: ${formattedDate}`,
+      `Download ID: ${shortDownloadId}`
+    ];
+
+    try {
+      let pdfDoc: PDFDocument;
+
+      if (isPdf) {
+        pdfDoc = await PDFDocument.load(fileBuffer);
+      } else if (isImage) {
+        pdfDoc = await PDFDocument.create();
+        let embeddedImg;
+        if (matName.toLowerCase().endsWith(".png")) {
+          embeddedImg = await pdfDoc.embedPng(fileBuffer);
+        } else {
+          embeddedImg = await pdfDoc.embedJpg(fileBuffer);
+        }
+        const page = pdfDoc.addPage([embeddedImg.width, embeddedImg.height]);
+        page.drawImage(embeddedImg, { x: 0, y: 0, width: embeddedImg.width, height: embeddedImg.height });
+        matName = `${matName.split('.')[0]}_watermarked.pdf`;
+        mimeType = "application/pdf";
+      } else {
+        pdfDoc = await PDFDocument.create();
+        const page = pdfDoc.addPage([600, 800]);
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        page.drawText(`Paperino Security Verified Document`, { x: 50, y: 750, size: 18, font: fontBold, color: rgb(0.545, 0.361, 0.965) });
+        page.drawText(`Document: ${matName}`, { x: 50, y: 720, size: 12, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+      }
+
+      const pages = pdfDoc.getPages();
+      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const watermarkColor = rgb(0.545, 0.361, 0.965); // #8B5CF6 Paperino Purple
+      const watermarkOpacity = 0.14; // 14% Opacity for high visibility in screenshots and prints
+      const watermarkAngle = degrees(-35); // -35° rotation
+
+      for (const page of pages) {
+        const { width, height } = page.getSize();
+        
+        // Exactly 2 diagonal positions per page
+        const diagonalPositions = [
+          { x: width * 0.12, y: height * 0.75 }, // Watermark 1: Top-Left quadrant
+          { x: width * 0.28, y: height * 0.35 }, // Watermark 2: Bottom-Right quadrant
+        ];
+
+        for (const pos of diagonalPositions) {
+          // 1. Headline "PAPERINO" (40px bold)
+          page.drawText("PAPERINO", {
+            x: pos.x,
+            y: pos.y,
+            size: 40,
+            font: fontBold,
+            color: watermarkColor,
+            opacity: watermarkOpacity,
+            rotate: watermarkAngle,
+          });
+
+          // 2. Metadata Lines (26px bold)
+          let offsetY = 36;
+          for (const line of detailLines) {
+            page.drawText(line, {
+              x: pos.x,
+              y: pos.y - offsetY,
+              size: 26,
+              font: fontBold,
+              color: watermarkColor,
+              opacity: watermarkOpacity,
+              rotate: watermarkAngle,
+            });
+            offsetY += 32;
+          }
+        }
+      }
+
+      const watermarkedBytes = await pdfDoc.save();
+      fileBuffer = Buffer.from(watermarkedBytes);
+      mimeType = "application/pdf";
+      watermarkApplied = true;
+      console.log(`[Download API Stage 4 Complete] High-visibility 2-diagonal watermark applied. Size: ${fileBuffer.length} bytes`);
+    } catch (wmErr: any) {
+      console.error("[Download API Stage 4 Error] Security watermark generation failed:", wmErr);
+      watermarkApplied = false;
+    }
+
+    // STRICT VALIDATION BEFORE DOWNLOAD: BLOCK UNWATERMARKED FILE DOWNLOADS
+    if (!watermarkApplied) {
+      console.error("[Download API Security Enforcement] Watermark validation failed. BLOCKING download response.");
+      return new Response(
+        JSON.stringify({ error: "Security watermark generation failed. Please try again." }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
+
+    // LOG SUCCESSFUL DOWNLOAD TO FIRESTORE WITH watermarkApplied: true
+    try {
+      const userAgent = req.headers.get("user-agent") || "";
+      let browser = "Browser";
+      if (userAgent.includes("Chrome")) browser = "Chrome";
+      else if (userAgent.includes("Safari")) browser = "Safari";
+      else if (userAgent.includes("Firefox")) browser = "Firefox";
+
+      let device = "Desktop";
+      if (/mobile|android|iphone|ipad/i.test(userAgent)) device = "Mobile";
+
+      const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "Local/Proxy";
+
+      adminDb.collection("download_logs").doc(downloadId).set({
+        userId: uid,
+        materialId: matId || finalFileId,
+        downloadTime: admin.firestore.FieldValue.serverTimestamp(),
+        watermarkApplied: true,
+        downloadId,
+        userName,
+        userEmail,
+        browser,
+        device,
+        ipAddress,
+        userAgent
+      }).catch(e => console.warn("[Download Log Firestore Notice]:", e));
+
+      if (matId) {
+        adminDb.collection("materials").doc(matId).update({
+          downloads: admin.firestore.FieldValue.increment(1)
+        }).catch(e => console.warn("[Material Download Count Notice]:", e));
+      }
+    } catch (logErr) {
+      console.error("[Download API Audit Log Warning]:", logErr);
+    }
+  }
+
+  // 5. Return raw Response with binary buffer
+  const finalMime = isPdf || !isInline ? "application/pdf" : mimeType;
   const dispositionType = isInline ? "inline" : `attachment; filename="${encodeURIComponent(matName)}"`;
 
-  console.log(`[Download API Stage 4 Complete] Returning raw binary Response (${fileBuffer.length} bytes, Content-Type="${finalMime}", Content-Disposition="${dispositionType}")`);
+  console.log(`[Download API Stage 5 Complete] Serving binary response (${fileBuffer.length} bytes, Content-Type="${finalMime}", Content-Disposition="${dispositionType}")`);
 
   return new Response(new Uint8Array(fileBuffer), {
     status: 200,

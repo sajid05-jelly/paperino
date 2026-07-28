@@ -1,16 +1,25 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Upload, Settings, FileText, Activity, Bot, ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, BrainCircuit, Wrench } from "lucide-react";
+import { 
+  LayoutDashboard, Upload, Settings, FileText, Activity, Bot, 
+  ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, 
+  BrainCircuit, Wrench, Building2, ChevronDown, Sparkles 
+} from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // System Control Sub-menu Expand State
+  const isSystemPath = ["/admin/system", "/admin/analytics", "/admin/ats", "/admin/career-dna", "/admin/free-class-finder"].some(path => pathname?.startsWith(path));
+  const [isSystemControlOpen, setIsSystemControlOpen] = useState(isSystemPath);
 
   useEffect(() => {
     if (!loading) {
@@ -42,6 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
 
             <div className="h-px w-full bg-white/10 my-2"></div>
+            
             <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors w-full text-left">
               <Plus size={20} className="text-fuchsia-400" />
               Create New Course
@@ -58,27 +68,94 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <ShieldAlert size={20} />
               Pending Reviews
             </Link>
+            
             <div className="h-px w-full bg-white/10 my-2"></div>
-             <Link href="/admin/ats" className="flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors font-medium border border-emerald-500/20">
-               <Bot size={20} />
-               ATS Management
-             </Link>
-              <Link href="/admin/career-dna" className="flex items-center gap-3 px-4 py-3 rounded-lg text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors font-medium border border-purple-500/20">
-                <BrainCircuit size={20} />
-                Career DNA Admin
-              </Link>
-              <Link href="/admin/system" className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors font-medium border border-red-500/20">
-                <Wrench size={20} />
-                System Control
-              </Link>
-              <Link href="/admin/subject-requests" className="flex items-center gap-3 px-4 py-3 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors font-medium border border-amber-500/20">
-                <BookOpen size={20} />
-                Subject Requests
-              </Link>
-              <Link href="/admin/security" className="flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors font-medium border border-emerald-500/20">
-                <ShieldCheck size={20} />
-                Security Center
-              </Link>
+
+            {/* ── System Control Expandable Group ───────────────────────────── */}
+            <div className="space-y-1">
+              <button
+                onClick={() => setIsSystemControlOpen(!isSystemControlOpen)}
+                className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition-all font-medium border cursor-pointer ${
+                  isSystemPath 
+                    ? "bg-red-500/15 border-red-500/40 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.2)]" 
+                    : "text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/20"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Wrench size={20} />
+                  <span>System Control</span>
+                </div>
+                <ChevronDown size={16} className={`transition-transform duration-200 ${isSystemControlOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {isSystemControlOpen && (
+                <div className="pl-4 space-y-1.5 pt-1 border-l-2 border-red-500/30 ml-4 animate-in fade-in duration-200">
+                  {/* 1. Maintenance */}
+                  <Link 
+                    href="/admin/system" 
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      pathname === "/admin/system" ? "bg-red-500/20 text-red-300 font-bold border border-red-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Wrench size={15} className="text-red-400 shrink-0" />
+                    <span>Maintenance</span>
+                  </Link>
+
+                  {/* 2. Paperino Header Message */}
+                  <Link 
+                    href="/admin/analytics" 
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      pathname === "/admin/analytics" ? "bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Sparkles size={15} className="text-violet-400 shrink-0" />
+                    <span>Paperino Header Message</span>
+                  </Link>
+
+                  {/* 3. ATS Management */}
+                  <Link 
+                    href="/admin/ats" 
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      pathname === "/admin/ats" ? "bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Bot size={15} className="text-emerald-400 shrink-0" />
+                    <span>ATS Management</span>
+                  </Link>
+
+                  {/* 4. Career DNA Admin */}
+                  <Link 
+                    href="/admin/career-dna" 
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      pathname === "/admin/career-dna" ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <BrainCircuit size={15} className="text-purple-400 shrink-0" />
+                    <span>Career DNA Admin</span>
+                  </Link>
+
+                  {/* 5. Free Class Finder Control */}
+                  <Link 
+                    href="/admin/free-class-finder" 
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      pathname === "/admin/free-class-finder" ? "bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Building2 size={15} className="text-violet-400 shrink-0" />
+                    <span>Free Class Finder Control</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <Link href="/admin/subject-requests" className="flex items-center gap-3 px-4 py-3 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors font-medium border border-amber-500/20">
+              <BookOpen size={20} />
+              Subject Requests
+            </Link>
+            <Link href="/admin/security" className="flex items-center gap-3 px-4 py-3 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors font-medium border border-emerald-500/20">
+              <ShieldCheck size={20} />
+              Security Center
+            </Link>
             <Link href="/admin/team" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <ShieldCheck size={20} className="text-emerald-400" />
               Platform Analytics
