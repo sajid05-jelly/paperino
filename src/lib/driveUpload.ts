@@ -6,6 +6,10 @@ interface DriveUploadResult {
   webContentLink?: string;
 }
 
+/**
+ * Direct client-to-Google Drive upload helper with server-side public permission enforcement.
+ * Ensures contributor and admin uploads use the exact same upload pipeline.
+ */
 export async function uploadToDriveDirect(
   file: File,
   semester: string,
@@ -108,24 +112,37 @@ export async function uploadToDriveDirect(
       throw new Error("Failed to retrieve file ID from Google Drive upload");
     }
 
-    // 4. Set the permissions to 'anyone with the link can view' (reader)
-    const permissionRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
-      {
-        method: "POST",
+    // 4. Set public sharing permissions via server API (guarantees public access without client CORS/scope issues)
+    try {
+      const permRes = await fetch("/api/upload", {
+        method: "PATCH",
         headers: {
-          "Authorization": `Bearer ${accessToken}`,
+          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          role: "reader",
-          type: "anyone",
-        }),
-      }
-    );
+        body: JSON.stringify({ fileId }),
+      });
 
-    if (!permissionRes.ok) {
-      console.warn("Failed to set public sharing permissions on uploaded file. Proceeding anyway.");
+      if (!permRes.ok) {
+        console.warn("[driveUpload] Server permissions PATCH returned non-200. Client fallback starting...");
+        // Client fallback attempt if server endpoint is busy
+        await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              role: "reader",
+              type: "anyone",
+            }),
+          }
+        ).catch(() => {});
+      }
+    } catch (permErr) {
+      console.warn("[driveUpload] Exception setting public permission via server API:", permErr);
     }
 
     return {

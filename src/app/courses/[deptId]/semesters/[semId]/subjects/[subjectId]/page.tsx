@@ -9,6 +9,8 @@ import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import QuickUploadModal from "@/components/QuickUploadModal";
+import SuggestSubjectModal from "@/components/SuggestSubjectModal";
+import DocPreviewViewer from "@/components/DocPreviewViewer";
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 
@@ -626,13 +628,16 @@ export default function SubjectPage({ params }: { params: Promise<{ deptId: stri
               </div>
             </div>
 
-            {/* Document Iframe container */}
-            <div className="flex-1 bg-[#050308] relative">
-              <iframe 
-                src={getDrivePreviewUrl(previewMat.fileId)} 
-                className="w-full h-full border-none"
-                allow="autoplay"
-                title="Material Preview"
+            {/* Document Preview container */}
+            <div className="flex-1 bg-[#050308] relative min-h-[500px]">
+              <DocPreviewViewer
+                mat={previewMat}
+                onDownload={() => {
+                  setDownloadingId(previewMat.id);
+                  triggerSecureDownload(previewMat, showToast, dismissToast, (loading) => {
+                    if (!loading) setDownloadingId(null);
+                  });
+                }}
               />
             </div>
           </div>

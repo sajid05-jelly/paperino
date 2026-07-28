@@ -131,6 +131,64 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * PATCH /api/upload
+ * Explicitly sets public reader permission ('anyone with link can view') on a Google Drive File ID.
+ * Resolves preview blocking issues for contributor-uploaded files.
+ */
+export async function PATCH(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    const verifiedUser = await verifyServerAuth(authHeader);
+    
+    if (!verifiedUser) {
+      return NextResponse.json({ error: "Unauthorized. Insufficient permissions." }, { status: 403 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { fileId } = body;
+
+    if (!fileId || typeof fileId !== "string" || !/^[a-zA-Z0-9_-]{10,60}$/.test(fileId)) {
+      return NextResponse.json({ error: "Valid Google Drive fileId is required" }, { status: 400 });
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      return NextResponse.json({ error: "Google Drive OAuth credentials not configured" }, { status: 500 });
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      "https://developers.google.com/oauthplayground"
+    );
+
+    oauth2Client.setCredentials({
+      refresh_token: refreshToken
+    });
+
+    const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+    // Grant 'anyone with link can view' permission via Server Drive API
+    await drive.permissions.create({
+      fileId: fileId,
+      requestBody: {
+        role: "reader",
+        type: "anyone",
+      },
+    });
+
+    console.log(`[Drive API Server PATCH] Successfully granted public permissions for fileId: ${fileId}`);
+    return NextResponse.json({ success: true, fileId });
+  } catch (error: any) {
+    console.error("[Drive API Server PATCH Error]:", error);
+    return NextResponse.json({ error: error.message || "Failed to update Google Drive permissions" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     // Authenticate and check permissions

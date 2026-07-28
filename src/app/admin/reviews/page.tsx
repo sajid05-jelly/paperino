@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import {
   CheckCircle2, Trash2, Ban, Loader2, ShieldAlert, FileText,
   Eye, Download, X, FileIcon, ImageIcon, RotateCcw, AlertOctagon,
-  Calendar, UserCheck
+  Calendar, UserCheck, Sparkles
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +15,7 @@ import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/li
 import { notifyUser } from "@/lib/notifications";
 import UserAvatar from "@/components/UserAvatar";
 import { logAdminAction } from "@/lib/admin-logger";
+import DocPreviewViewer from "@/components/DocPreviewViewer";
 
 interface Material {
   id: string;
@@ -96,31 +97,11 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
         </div>
 
         {/* Preview area */}
-        <div className="flex-1 overflow-auto min-h-0 bg-black/30">
-          {!previewUrl ? (
-            <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
-              <FileIcon size={40} className="opacity-30" />
-              <p className="text-sm">No preview available.</p>
-              <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer">
-                Download to view
-              </button>
-            </div>
-          ) : isImage ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={previewUrl}
-              alt={fileName}
-              className="max-w-full max-h-[70vh] object-contain mx-auto block"
-            />
-          ) : (
-            <iframe
-              src={previewUrl}
-              title={fileName}
-              className="w-full"
-              style={{ height: "70vh", border: "none" }}
-              allow="autoplay"
-            />
-          )}
+        <div className="flex-1 overflow-auto min-h-0 bg-black/30 h-[70vh]">
+          <DocPreviewViewer
+            mat={mat}
+            onDownload={() => triggerSecureDownload(mat, showToast, dismissToast)}
+          />
         </div>
       </div>
     </div>
@@ -336,7 +317,23 @@ export default function AdminReviewsPage() {
       const mat = materials.find(m => m.id === id);
       if (!mat) throw new Error("Material not found.");
 
-      // 1. Approve material status
+      // 1. Approve material status & ensure Google Drive public sharing permission
+      if (mat.fileId && user) {
+        try {
+          const token = await user.getIdToken();
+          await fetch("/api/upload", {
+            method: "PATCH",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ fileId: mat.fileId })
+          });
+        } catch (e) {
+          console.warn("[Admin Review] Drive permission patch skipped:", e);
+        }
+      }
+
       await updateDoc(doc(db, "materials", id), { status: "approved" });
       logAdminAction(user?.email || "unknown", "APPROVE_MATERIAL", id, `Approved material: ${mat.title || mat.fileName}`);
 
@@ -538,6 +535,45 @@ export default function AdminReviewsPage() {
     }
   };
 
+  const [repairingPermissions, setRepairingPermissions] = useState(false);
+
+  const handleRepairAllPermissions = async () => {
+    if (!user) return;
+    setRepairingPermissions(true);
+    showToast("Starting Google Drive permissions repair for contributor PDFs...", "info");
+    try {
+      const snap = await getDocs(collection(db, "materials"));
+      const token = await user.getIdToken();
+      let repairedCount = 0;
+
+      for (const docSnap of snap.docs) {
+        const mat = docSnap.data();
+        if (mat.fileId) {
+          try {
+            await fetch("/api/upload", {
+              method: "PATCH",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ fileId: mat.fileId })
+            });
+            repairedCount++;
+          } catch (e) {
+            console.warn(`Repair error for ${mat.fileId}:`, e);
+          }
+        }
+      }
+
+      showToast(`✅ Successfully repaired Google Drive permissions for ${repairedCount} materials!`, "success");
+    } catch (err: any) {
+      console.error("Permission repair failed:", err);
+      showToast("Permission repair failed: " + err.message, "error");
+    } finally {
+      setRepairingPermissions(false);
+    }
+  };
+
   const closePreview = useCallback(() => setPreviewMat(null), []);
 
   const filteredMaterials = materials;
@@ -555,6 +591,15 @@ export default function AdminReviewsPage() {
             </h1>
             <p className="text-gray-400">Review and moderate study materials and senior insights submitted by contributors.</p>
           </div>
+          <button
+            disabled={repairingPermissions}
+            onClick={handleRepairAllPermissions}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+            title="Automatically update Google Drive public permissions for all uploaded materials"
+          >
+            {repairingPermissions ? <Loader2 size={14} className="animate-spin text-purple-400" /> : <Sparkles size={14} className="text-purple-400" />}
+            <span>Repair PDF Drive Permissions</span>
+          </button>
         </div>
 
         {/* Tab Selection */}

@@ -39,11 +39,21 @@ export default function ErrorSniffer() {
       }
     };
 
+    // Catch custom permission errors (e.g., Google Drive preview permissions)
+    const handleCustomPermissionError = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.message) {
+        setErrorMsg(customEvent.detail.message);
+      }
+    };
+
     window.addEventListener("unhandledrejection", handleRejection);
+    window.addEventListener("paperino:permission_error", handleCustomPermissionError);
 
     return () => {
       console.error = originalConsoleError;
       window.removeEventListener("unhandledrejection", handleRejection);
+      window.removeEventListener("paperino:permission_error", handleCustomPermissionError);
     };
   }, []);
 
