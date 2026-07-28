@@ -1582,7 +1582,7 @@ export default function CareerDnaPage() {
                                   rel="noopener noreferrer"
                                   className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all cursor-pointer text-center inline-flex items-center gap-1.5"
                                 >
-                                  <span>Apply on Unstop</span>
+                                  <span>Apply</span>
                                   <ExternalLink size={12} />
                                 </a>
                               ) : (
