@@ -324,9 +324,12 @@ export async function GET(req: NextRequest) {
   }
 
   // Stream output response
+  const isInline = req.nextUrl.searchParams.get("inline") === "true" || req.nextUrl.searchParams.get("preview") === "true";
+  const dispositionType = isInline ? "inline" : "attachment";
+
   const responseHeaders = new Headers();
   responseHeaders.set("Content-Type", mimeType);
-  responseHeaders.set("Content-Disposition", `attachment; filename="${matName}"`);
+  responseHeaders.set("Content-Disposition", `${dispositionType}; filename="${matName}"`);
   responseHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate");
   responseHeaders.set("Pragma", "no-cache");
   responseHeaders.set("Expires", "0");
