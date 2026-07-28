@@ -4,14 +4,13 @@
  * Secure download & preview proxy for Paperino study materials.
  * Verifies Firebase Auth ID Token, fetches configurations from platform_config/security,
  * enforces rate-limiting, writes log entries, retrieves Drive File ID privately,
- * overlays dynamic PDF watermarks, and streams inline/attachment binary responses.
+ * overlays dynamic PDF watermarks on downloads, and streams fast inline/attachment responses.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 import { google } from "googleapis";
-import { Readable } from "stream";
 import { randomUUID } from "crypto";
 import { PDFDocument, rgb, degrees } from "pdf-lib";
 
@@ -44,8 +43,9 @@ function getMimeTypeByFilename(filename: string): string {
 export async function GET(req: NextRequest) {
   let matId = req.nextUrl.searchParams.get("matId");
   let fileId = req.nextUrl.searchParams.get("fileId");
+  const isInline = req.nextUrl.searchParams.get("inline") === "true" || req.nextUrl.searchParams.get("preview") === "true";
 
-  console.log("[Download API] Request received:", { matId, fileId });
+  console.log("[Download API] Request received:", { matId, fileId, isInline });
 
   // 1. Verify Authentication via Bearer Header
   const authHeader = req.headers.get("Authorization");
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 4. Rate Limiting Enforcer (Admins are exempt)
-  if (!isAdmin && downloadRateLimit > 0) {
+  if (!isAdmin && downloadRateLimit > 0 && !isInline) {
     try {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       const logsQuery = await adminDb
@@ -257,9 +257,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch document stream from storage service: " + err.message }, { status: 500 });
   }
 
-  // 6. Dynamic Watermarking for PDFs
+  // 6. Dynamic Watermarking for PDFs (Applied on full file downloads; skipped on fast inline previews to avoid CPU latency)
   const isPdf = mimeType.includes("pdf") || matName.toLowerCase().endsWith(".pdf");
-  if (isPdf && watermarkEnabled) {
+  if (isPdf && watermarkEnabled && !isInline) {
     try {
       console.log(`[Download API Stage 4] Overlaying Paperino dynamic watermark on PDF...`);
       const pdfDoc = await PDFDocument.load(fileBuffer);
@@ -291,7 +291,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 7. Write to Audit Logs (Async, non-blocking)
-  if (downloadLogging) {
+  if (downloadLogging && !isInline) {
     try {
       const userAgent = req.headers.get("user-agent") || "";
       let browser = "Unknown Browser";
@@ -327,7 +327,6 @@ export async function GET(req: NextRequest) {
   }
 
   // Stream output response
-  const isInline = req.nextUrl.searchParams.get("inline") === "true" || req.nextUrl.searchParams.get("preview") === "true";
   const dispositionType = isInline ? "inline" : "attachment";
 
   const responseHeaders = new Headers();

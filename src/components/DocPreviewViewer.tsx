@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Download, Loader2, AlertCircle } from "lucide-react";
+import { FileText, Download, Loader2 } from "lucide-react";
 import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { auth } from "@/lib/firebase";
@@ -37,25 +37,25 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
     let isMounted = true;
     let createdUrl: string | null = null;
 
-    // 10-second hard rendering timeout controller
+    // 25-second rendering safety timeout controller
     const abortController = new AbortController();
     const hardTimeoutId = setTimeout(() => {
       if (isMounted && loading) {
         abortController.abort();
         setLoading(false);
-        const timeoutErrorMsg = `Preview generation timed out (10s limit) for document: "${title}".`;
+        const timeoutErrorMsg = `Preview generation timed out for document: "${title}".`;
         setError(timeoutErrorMsg);
-        console.error("[Paperino Native Viewer Stage 5 Failure] ⏱️", timeoutErrorMsg);
+        console.warn("[Paperino Native Viewer Stage 5 Warning]", timeoutErrorMsg);
 
         if (typeof window !== "undefined") {
           window.dispatchEvent(
             new CustomEvent("paperino:permission_error", {
-              detail: { message: `Native Paperino Viewer Error: ${timeoutErrorMsg}` }
+              detail: { message: `Native Paperino Viewer Notice: ${timeoutErrorMsg}` }
             })
           );
         }
       }
-    }, 10000);
+    }, 25000);
 
     const fetchPaperinoNativeStream = async () => {
       console.log(`[Paperino Native Viewer Stage 1 [FETCH]] Initiating preview session for: "${title}" (id=${mat.id}, fileId=${mat.fileId})...`);
@@ -104,9 +104,12 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
         const { token: sessionToken } = await tokenRes.json();
         console.log(`[Paperino Native Viewer Stage 2 [API]] Session token obtained successfully.`);
 
-        // Stage 2: Build stream URL with fallback between matId & fileId
-        const identifierParam = mat.id ? `matId=${encodeURIComponent(mat.id)}` : `fileId=${encodeURIComponent(mat.fileId || "")}`;
-        const downloadUrl = `/api/download?${identifierParam}&token=${encodeURIComponent(sessionToken)}&inline=true`;
+        // Stage 2: Build stream URL passing both matId & fileId for instant server resolution
+        const matParam = mat.id ? `matId=${encodeURIComponent(mat.id)}` : "";
+        const fileParam = mat.fileId ? `fileId=${encodeURIComponent(mat.fileId)}` : "";
+        const identifierQuery = [matParam, fileParam].filter(Boolean).join("&");
+
+        const downloadUrl = `/api/download?${identifierQuery}&token=${encodeURIComponent(sessionToken)}&inline=true`;
 
         console.log(`[Paperino Native Viewer Stage 2 [API]] Fetching binary stream via ${downloadUrl}...`);
         const streamRes = await fetch(downloadUrl, {
@@ -143,8 +146,8 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
           console.log(`[Paperino Native Viewer Stage 6 [SUCCESS]] Document preview rendered successfully!`);
         }
       } catch (err: any) {
-        if (err.name === "AbortError") return; // Handled by 10s timeout
-        console.error("[Paperino Native Viewer Stage 5 [FAILURE]]:", err);
+        if (err.name === "AbortError") return;
+        console.warn("[Paperino Native Viewer Stage 5 [NOTICE]]:", err);
         if (isMounted) {
           clearTimeout(hardTimeoutId);
           const errorMsg = err.message || "Failed to load document stream.";
@@ -154,7 +157,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
           if (typeof window !== "undefined") {
             window.dispatchEvent(
               new CustomEvent("paperino:permission_error", {
-                detail: { message: `Native Paperino Viewer Failure: ${errorMsg}` }
+                detail: { message: `Native Paperino Viewer Notice: ${errorMsg}` }
               })
             );
           }
@@ -215,7 +218,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
             disabled={downloading}
             className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-[0_0_25px_rgba(168,85,247,0.3)] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 mt-4"
           >
-            {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {downloading ? <Loader2 size={16} className="animate-spin text-white" /> : <Download size={16} />}
             <span>Download Document</span>
           </button>
         </div>
