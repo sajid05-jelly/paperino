@@ -26,7 +26,9 @@ export type NotificationType =
   | "department_rejected"
   | "subject_approved"
   | "subject_rejected"
-  | "premium_unlocked";
+  | "premium_unlocked"
+  | "free_class_reported"
+  | "free_class_expired";
 
 export interface PaperinoNotification {
   id: string;
@@ -34,6 +36,7 @@ export interface PaperinoNotification {
   title: string;
   message: string;
   type: NotificationType;
+  roomId?: string;
   read: boolean;
   createdAt: number;
 }
@@ -58,10 +61,11 @@ export async function createNotification(
       createdAt: Date.now(),
     });
   } catch (err) {
-    // Non-fatal — don't let notification errors break the main flow
     console.error("[Notifications] Failed to create notification:", err);
   }
 }
+
+export const notifyUser = createNotification;
 
 // Hardcoded admin emails — kept in sync with AuthContext
 const HARDCODED_ADMIN_EMAILS = [
@@ -74,8 +78,6 @@ const HARDCODED_ADMIN_EMAILS = [
 
 /**
  * Broadcast a notification to all admins.
- * Looks up admin UIDs from the `users` collection (role == "admin")
- * and also from hardcoded admin emails.
  */
 export async function notifyAdmins(
   db: Firestore,
@@ -86,7 +88,6 @@ export async function notifyAdmins(
   try {
     const adminUids = new Set<string>();
 
-    // 1. Fetch UIDs of users with role == "admin"
     try {
       const adminQuery = query(
         collection(db, "users"),
@@ -98,57 +99,15 @@ export async function notifyAdmins(
       console.warn("[Notifications] Query by role==admin skipped:", e);
     }
 
-    // 2. Also fetch by hardcoded admin emails
-    try {
-      const emailQuery = query(
-        collection(db, "users"),
-        where("email", "in", HARDCODED_ADMIN_EMAILS)
-      );
-      const emailSnap = await getDocs(emailQuery);
-      emailSnap.forEach((d) => adminUids.add(d.id));
-    } catch (e) {
-      console.warn("[Notifications] Query by hardcoded emails skipped:", e);
-    }
-
-    // 3. Fallback: query all users if adminUids set is empty and check email/role client-side
     if (adminUids.size === 0) {
-      try {
-        const allUsersSnap = await getDocs(collection(db, "users"));
-        allUsersSnap.forEach((docSnap) => {
-          const u = docSnap.data();
-          if (
-            u.role === "admin" ||
-            (u.email && HARDCODED_ADMIN_EMAILS.includes(u.email.toLowerCase()))
-          ) {
-            adminUids.add(docSnap.id);
-          }
-        });
-      } catch (e) {
-        console.warn("[Notifications] Fallback all users scan skipped:", e);
-      }
+      await createNotification(db, "ADMIN", title, message, type);
+    } else {
+      const promises = Array.from(adminUids).map((uid) =>
+        createNotification(db, uid, title, message, type)
+      );
+      await Promise.all(promises);
     }
-
-    // Write one notification per admin UID
-    const writes = Array.from(adminUids).map((uid) =>
-      createNotification(db, uid, title, message, type)
-    );
-    await Promise.all(writes);
-    console.log(`[Notifications] Broadcasted "${title}" to ${adminUids.size} admin(s).`);
   } catch (err) {
-    console.error("[Notifications] Failed to notify admins:", err);
+    console.error("[Notifications] notifyAdmins failed:", err);
   }
-}
-
-/**
- * Send a notification to a specific user.
- */
-export async function notifyUser(
-  db: Firestore,
-  userId: string,
-  title: string,
-  message: string,
-  type: NotificationType
-): Promise<void> {
-  if (!userId) return;
-  await createNotification(db, userId, title, message, type);
 }

@@ -54,7 +54,7 @@ const NotificationContext = createContext<NotificationContextType>({
 export const usePulseNotifications = () => useContext(NotificationContext);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { user, lastPulseReadAt } = useAuth();
+  const { user, isAdmin, lastPulseReadAt } = useAuth();
   const [updates, setUpdates] = useState<PulseUpdate[]>([]);
   const [latestToast, setLatestToast] = useState<PulseUpdate | null>(null);
   const [localReadTime, setLocalReadTime] = useState<number>(0);
@@ -115,7 +115,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const q = query(
       collection(db, "notifications"),
-      where("userId", "==", user.uid)
+      where("userId", "in", [user.uid, "ALL", ...(isAdmin ? ["ADMIN"] : [])])
     );
 
     const unsubscribe = onSnapshot(q, (snap) => {

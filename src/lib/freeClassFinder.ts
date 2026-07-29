@@ -10,7 +10,9 @@ export interface FreeClassReport {
   reporterUid?: string;
   reporterName?: string;
   createdAt: number;
+  createdAtMs?: number;
   expiresAt: number;
+  expiresAtMs?: number;
   expectedFreeDurationMinutes?: number;
   trueVotes: number;
   falseVotes: number;
@@ -51,22 +53,26 @@ export function calculateConfidenceScore(
   return conf.score ?? 0;
 }
 
-export function getRemainingTimeText(createdAt: number, durationMinutes: number = 30): { text: string; isExpired: boolean } {
-  const durationMs = (durationMinutes || 30) * 60 * 1000;
-  const elapsedMs = Date.now() - createdAt;
-  const remainingMs = durationMs - elapsedMs;
+export function getRemainingTimeText(createdAt: number, durationMinutes: number = 30, expiresAtMs?: number): { text: string; isExpired: boolean; remainingMins: number } {
+  const now = Date.now();
+  const targetExpiry = expiresAtMs || (createdAt + (durationMinutes || 30) * 60 * 1000);
+  const remainingMs = targetExpiry - now;
 
   if (remainingMs <= 0) {
-    return { text: "Needs Recheck", isExpired: true };
+    return { text: "Expired", isExpired: true, remainingMins: 0 };
   }
 
   const remainingMin = Math.ceil(remainingMs / 60000);
   if (remainingMin >= 60) {
     const hours = Math.floor(remainingMin / 60);
     const mins = remainingMin % 60;
-    return { text: mins > 0 ? `${hours}h ${mins}m remaining` : `${hours}h remaining`, isExpired: false };
+    return { 
+      text: mins > 0 ? `⏳ ${hours}h ${mins}m remaining` : `⏳ ${hours}h remaining`, 
+      isExpired: false,
+      remainingMins: remainingMin
+    };
   }
-  return { text: `${remainingMin} mins remaining`, isExpired: false };
+  return { text: `⏳ ${remainingMin} mins remaining`, isExpired: false, remainingMins: remainingMin };
 }
 
 export function formatTimeAgo(timestamp: number): string {

@@ -4,8 +4,76 @@ import * as admin from "firebase-admin";
 
 export const dynamic = "force-dynamic";
 
+// ── AUTOMATIC CLEANUP ROUTINE ────────────────────────────────────────────────
+async function runFreeClassCleanup() {
+  if (!adminDb) return;
+  try {
+    const now = Date.now();
+    const snap = await adminDb.collection("free_class_reports").get();
+
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data();
+      const createdAt = data.createdAtMs || (data.createdAt?.toMillis ? data.createdAt.toMillis() : now);
+      const durationMin = data.expectedFreeDurationMinutes || 30;
+      const expiresAtMs = data.expiresAtMs || (data.expiresAt?.toMillis ? data.expiresAt.toMillis() : (createdAt + durationMin * 60 * 1000));
+      const trueVotes = data.trueVotes || 0;
+      const falseVotes = data.falseVotes || 0;
+
+      const isExpired = expiresAtMs > 0 && expiresAtMs <= now;
+      const isFake = falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0);
+
+      if (isExpired || isFake) {
+        console.log(`[Lifecycle Cleanup] Deleting report ${docSnap.id} (Expired: ${isExpired}, Fake: ${isFake})`);
+
+        // 1. Delete Firestore Document
+        await docSnap.ref.delete();
+
+        // 2. Clean up associated notifications
+        try {
+          const notifSnap = await adminDb.collection("notifications").where("roomId", "==", docSnap.id).get();
+          for (const nDoc of notifSnap.docs) {
+            await nDoc.ref.delete();
+          }
+        } catch (e) {
+          console.warn("[Cleanup] Notification cleanup notice:", e);
+        }
+
+        // 3. Create Expired Notification if expired
+        if (isExpired) {
+          try {
+            await adminDb.collection("notifications").add({
+              userId: "ALL",
+              title: "⏰ Free Classroom Report Expired",
+              message: `Room ${docSnap.id} report has expired and was automatically cleaned up.`,
+              type: "free_class_expired",
+              roomId: docSnap.id,
+              read: false,
+              createdAt: now
+            });
+          } catch (e) {
+            console.warn("[Cleanup] Expired notification notice:", e);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Cleanup Routine Error]:", err);
+  }
+}
+
+export async function GET(req: NextRequest) {
+  await runFreeClassCleanup();
+  return new Response(JSON.stringify({ success: true, message: "Cleanup completed successfully." }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
+    // Run automatic cleanup on incoming API actions
+    runFreeClassCleanup().catch(() => {});
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized", message: "Please login to submit a classroom report." }), {
@@ -40,11 +108,24 @@ export async function POST(req: NextRequest) {
     const { action, collegeName, block, floor, roomNumber, capacity, hasAC, expectedFreeDurationMinutes, reportId, voteType } = body;
 
     const now = Date.now();
-    const durationMinutes = parseInt(expectedFreeDurationMinutes, 10) || 30;
-    const expiresAt = now + durationMinutes * 60 * 1000;
+
+    // Calculate Duration in Minutes
+    let durationMinutes = 30;
+    if (typeof expectedFreeDurationMinutes === "number") {
+      durationMinutes = expectedFreeDurationMinutes;
+    } else if (typeof expectedFreeDurationMinutes === "string") {
+      if (expectedFreeDurationMinutes === "until_next_period" || expectedFreeDurationMinutes === "not_sure") {
+        durationMinutes = 60;
+      } else {
+        durationMinutes = parseInt(expectedFreeDurationMinutes, 10) || 30;
+      }
+    }
+
+    const expiresAtMs = now + durationMinutes * 60 * 1000;
+    const expiresAtTimestamp = admin.firestore.Timestamp.fromMillis(expiresAtMs);
     const cleanCollege = collegeName ? String(collegeName).trim() : "SRM IST";
 
-    // ── ACTION 1: SUBMIT REPORT (Initial 0 True, 0 False, No Auto-Vote) ────────
+    // ── ACTION 1: SUBMIT REPORT ──────────────────────────────────────────────
     if (action === "create" || (!action && roomNumber)) {
       if (!roomNumber || !block) {
         return new Response(JSON.stringify({ error: "Bad Request", message: "Block and Room Number are required." }), {
@@ -64,8 +145,10 @@ export async function POST(req: NextRequest) {
         const existingData = existingSnap.data() || {};
         await reportRef.update({
           collegeName: cleanCollege,
-          createdAt: now,
-          expiresAt,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAtMs: now,
+          expiresAt: expiresAtTimestamp,
+          expiresAtMs: expiresAtMs,
           expectedFreeDurationMinutes: durationMinutes,
           reporterCount: (existingData.reporterCount || 1) + 1,
           capacity: capacity ? parseInt(capacity, 10) : (existingData.capacity || null),
@@ -82,8 +165,10 @@ export async function POST(req: NextRequest) {
           expectedFreeDurationMinutes: durationMinutes,
           reporterUid: uid,
           reporterName: userName,
-          createdAt: now,
-          expiresAt,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAtMs: now,
+          expiresAt: expiresAtTimestamp,
+          expiresAtMs: expiresAtMs,
           trueVotes: 0,
           falseVotes: 0,
           voters: {},
@@ -92,14 +177,41 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      console.log(`[API Free Class Finder] Successfully created report for ${docId} (Initial: 0 True, 0 False)`);
+      // ── Create Notifications ─────────────────────────────────────────────
+      try {
+        // 1. Notify Everyone (Public Bell)
+        await adminDb.collection("notifications").add({
+          userId: "ALL",
+          title: "📢 New Free Classroom Report",
+          message: `${formattedRoom} was reported as free by a student.`,
+          type: "free_class_reported",
+          roomId: formattedRoom,
+          read: false,
+          createdAt: now
+        });
+
+        // 2. Notify Admins
+        await adminDb.collection("notifications").add({
+          userId: "ADMIN",
+          title: "🚀 New Free Classroom Submitted",
+          message: `College: ${cleanCollege} | Block: ${block.trim()} | Floor: ${floor} | Room: ${formattedRoom} | Reporter: ${userName} | Expected Free: ${durationMinutes} mins`,
+          type: "free_class_reported",
+          roomId: formattedRoom,
+          read: false,
+          createdAt: now
+        });
+      } catch (notifErr) {
+        console.warn("[API Notifications Warning]:", notifErr);
+      }
+
+      console.log(`[API Free Class Finder] Successfully created report for ${docId} (Expires: ${new Date(expiresAtMs).toLocaleTimeString()})`);
       return new Response(JSON.stringify({ success: true, roomNumber: formattedRoom, reportId: docId }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // ── ACTION 2: VOTE (Only other users can vote; reporter cannot vote on own report)
+    // ── ACTION 2: VOTE ──────────────────────────────────────────────────────
     if (action === "vote" && reportId && voteType) {
       const reportRef = adminDb.collection("free_class_reports").doc(reportId);
       const reportSnap = await reportRef.get();
@@ -113,7 +225,6 @@ export async function POST(req: NextRequest) {
 
       const data = reportSnap.data() || {};
 
-      // Reporter cannot vote on their own report
       if (data.reporterUid === uid) {
         return new Response(JSON.stringify({ error: "Forbidden", message: "You cannot vote on your own classroom report." }), {
           status: 403,
@@ -128,12 +239,10 @@ export async function POST(req: NextRequest) {
       const newVoters = { ...(data.voters || {}) };
 
       if (existingVote === voteType) {
-        // Toggle off if clicking the same vote
         delete newVoters[uid];
         if (voteType === "true") newTrueVotes = Math.max(0, newTrueVotes - 1);
         else newFalseVotes = Math.max(0, newFalseVotes - 1);
       } else {
-        // Switch vote if clicking opposite vote
         if (existingVote === "true") newTrueVotes = Math.max(0, newTrueVotes - 1);
         if (existingVote === "false") newFalseVotes = Math.max(0, newFalseVotes - 1);
 
@@ -142,13 +251,22 @@ export async function POST(req: NextRequest) {
         else newFalseVotes += 1;
       }
 
+      // Check immediate auto-removal rule on vote update
+      if (newFalseVotes >= 5 || (newFalseVotes > newTrueVotes && newFalseVotes > 0)) {
+        console.log(`[API Free Class Finder] Auto-deleting fake report ${reportId} (False: ${newFalseVotes}, True: ${newTrueVotes})`);
+        await reportRef.delete();
+        return new Response(JSON.stringify({ success: true, removed: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
       await reportRef.update({
         trueVotes: newTrueVotes,
         falseVotes: newFalseVotes,
         voters: newVoters
       });
 
-      console.log(`[API Free Class Finder] Registered community vote (${voteType}) for ${reportId} by ${uid}`);
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" }

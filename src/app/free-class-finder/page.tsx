@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { 
   Building2, Plus, Search, Filter, Check, X as IconX, 
   Sparkles, Clock, ShieldCheck, Zap, Award, CheckCircle2,
-  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info
+  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb
 } from "lucide-react";
 import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -62,6 +62,11 @@ export default function FreeClassFinderPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Run Backend Background Cleanup Trigger
+  useEffect(() => {
+    fetch("/api/free-class-finder").catch(() => {});
+  }, []);
+
   // Fetch Admin Configuration & Module Feature Toggle
   useEffect(() => {
     const unsub = onSnapshot(
@@ -87,7 +92,7 @@ export default function FreeClassFinderPage() {
     return () => unsub();
   }, []);
 
-  // Fetch Reports Real-time with Auto-Removal Rules
+  // Fetch Reports Real-time with Automatic Lifecycle Expiry Filtering
   useEffect(() => {
     if (isEnabled === false) return;
 
@@ -100,15 +105,18 @@ export default function FreeClassFinderPage() {
 
         snap.forEach((d) => {
           const data = d.data();
-          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().getTime() : (Number(data.createdAt) || currentTime);
+          const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : (Number(data.createdAt) || currentTime));
+          const durationMin = data.expectedFreeDurationMinutes || 30;
+          const expiresAtMs = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : (createdAt + durationMin * 60 * 1000));
           const trueVotes = data.trueVotes || 0;
           const falseVotes = data.falseVotes || 0;
 
-          // ── Rule 6: Auto Removal ─────────────────────────────────────────
-          // If False votes >= 5 OR False votes > True votes (when falseVotes > 0)
-          if (falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0)) {
-            return;
-          }
+          // ── Lifecycle Filtering Rules ─────────────────────────────────────
+          // 1. Expiry Check: If expiresAtMs <= currentTime
+          if (expiresAtMs <= currentTime) return;
+
+          // 2. Safety Check: If False votes >= 5 OR False votes > True votes (when falseVotes > 0)
+          if (falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0)) return;
 
           if (data.status === "flagged") return;
 
@@ -123,8 +131,10 @@ export default function FreeClassFinderPage() {
             reporterUid: data.reporterUid,
             reporterName: data.reporterName,
             createdAt,
-            expiresAt: data.expiresAt || (createdAt + (data.expectedFreeDurationMinutes || 30) * 60 * 1000),
-            expectedFreeDurationMinutes: data.expectedFreeDurationMinutes || 30,
+            createdAtMs: createdAt,
+            expiresAt: expiresAtMs,
+            expiresAtMs: expiresAtMs,
+            expectedFreeDurationMinutes: durationMin,
             trueVotes,
             falseVotes,
             voters: data.voters || {},
@@ -169,16 +179,25 @@ export default function FreeClassFinderPage() {
     return () => unsub();
   }, [config.expiryMinutes, isEnabled]);
 
+  // Dynamic Live Filter for Reports (Automatically purges expired cards as time ticks)
+  const activeLiveReports = useMemo(() => {
+    const currentTime = Date.now();
+    return reports.filter((r) => {
+      const targetExpiry = r.expiresAtMs || (r.createdAt + (r.expectedFreeDurationMinutes || 30) * 60 * 1000);
+      return targetExpiry > currentTime;
+    });
+  }, [reports, now]);
+
   // Compute Recommended Rooms
   const recommendedRooms = useMemo(() => {
-    return reports
+    return activeLiveReports
       .filter((r) => (r.confidenceScore || 0) >= config.minConfidenceThreshold)
       .sort((a, b) => (b.confidenceScore || 0) - (a.confidenceScore || 0));
-  }, [reports, config.minConfidenceThreshold]);
+  }, [activeLiveReports, config.minConfidenceThreshold]);
 
   // Compute Filtered Reports
   const filteredReports = useMemo(() => {
-    return reports.filter((r) => {
+    return activeLiveReports.filter((r) => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchRoom = r.roomNumber.toLowerCase().includes(q);
@@ -192,9 +211,9 @@ export default function FreeClassFinderPage() {
       if (filterAC && !r.hasAC) return false;
       return true;
     });
-  }, [reports, searchQuery, selectedBlock, selectedFloor, minCapacity, filterAC]);
+  }, [activeLiveReports, searchQuery, selectedBlock, selectedFloor, minCapacity, filterAC]);
 
-  // Submit Free Classroom Report (Initial 0 True, 0 False, No Auto-Vote)
+  // Submit Free Classroom Report
   const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -222,12 +241,14 @@ export default function FreeClassFinderPage() {
       const currentTime = Date.now();
       const cleanCollege = formCollege.trim();
       const cleanBlock = formBlock.trim();
-      const durationNum = parseInt(formExpectedDuration, 10) || 30;
+      const durationNum = formExpectedDuration === "until_next_period" 
+        ? 60 
+        : (formExpectedDuration === "not_sure" ? 60 : parseInt(formExpectedDuration, 10) || 30);
       const formattedRoom = formRoomNumber.toUpperCase().includes(cleanBlock.toUpperCase())
         ? formRoomNumber.trim().toUpperCase()
         : `${cleanBlock.toUpperCase()}-${formRoomNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}`;
 
-      // Construct Optimistic UI Card (Rule 2: Initial 0 True, 0 False, No Reporter Auto-Vote)
+      // Construct Optimistic UI Card
       const optimisticReport: FreeClassReport = {
         id: formattedRoom,
         collegeName: cleanCollege,
@@ -240,7 +261,9 @@ export default function FreeClassFinderPage() {
         reporterUid: user.uid,
         reporterName: user.displayName || user.email?.split("@")[0] || "Student",
         createdAt: currentTime,
+        createdAtMs: currentTime,
         expiresAt: currentTime + durationNum * 60 * 1000,
+        expiresAtMs: currentTime + durationNum * 60 * 1000,
         trueVotes: 0,
         falseVotes: 0,
         voters: {},
@@ -271,7 +294,7 @@ export default function FreeClassFinderPage() {
         roomNumber: formRoomNumber,
         capacity: formCapacity,
         hasAC: formHasAC,
-        expectedFreeDurationMinutes: durationNum
+        expectedFreeDurationMinutes: formExpectedDuration
       };
 
       const res = await fetch("/api/free-class-finder", {
@@ -302,7 +325,7 @@ export default function FreeClassFinderPage() {
     }
   };
 
-  // Community Vote Handler (Rule 3: Only other users can vote; reporter cannot vote on own report)
+  // Community Vote Handler
   const handleVote = async (report: FreeClassReport, voteType: "true" | "false") => {
     if (!user) {
       showToast("Please login to vote on classroom status.", "error");
@@ -419,7 +442,7 @@ export default function FreeClassFinderPage() {
               {recommendedRooms.slice(0, 3).map((room, idx) => {
                 const medals = ["🥇", "🥈", "🥉"];
                 const conf = calculateCommunityConfidence(room.trueVotes, room.falseVotes);
-                const timerState = getRemainingTimeText(room.createdAt, room.expectedFreeDurationMinutes || 30);
+                const timerState = getRemainingTimeText(room.createdAt, room.expectedFreeDurationMinutes || 30, room.expiresAtMs || room.expiresAt);
 
                 return (
                   <div
@@ -550,144 +573,161 @@ export default function FreeClassFinderPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredReports.map((report) => {
-              const myVote = user ? report.voters?.[user.uid] : undefined;
-              const conf = calculateCommunityConfidence(report.trueVotes, report.falseVotes);
-              const timerState = getRemainingTimeText(report.createdAt, report.expectedFreeDurationMinutes || 30);
-              const isReporter = user?.uid === report.reporterUid;
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredReports.map((report) => {
+                const myVote = user ? report.voters?.[user.uid] : undefined;
+                const conf = calculateCommunityConfidence(report.trueVotes, report.falseVotes);
+                const timerState = getRemainingTimeText(report.createdAt, report.expectedFreeDurationMinutes || 30, report.expiresAtMs || report.expiresAt);
+                const isReporter = user?.uid === report.reporterUid;
 
-              return (
-                <div
-                  key={report.id}
-                  className="glass-panel p-6 rounded-3xl border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between gap-5 relative group shadow-[0_0_20px_rgba(0,0,0,0.4)]"
-                >
-                  {/* Card Section 1: Header (College Name, Block • Floor, Room Number) */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
-                      <GraduationCap size={15} className="text-purple-400" />
-                      <span>{report.collegeName || "SRM IST"}</span>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-gray-400 font-medium">
-                        {report.block} • Floor {report.floor}
-                      </p>
-                      <h3 className="text-2xl font-black text-white tracking-wide mt-0.5">{report.roomNumber}</h3>
-                    </div>
-
-                    {/* Reported Relative Time */}
-                    <div className="flex items-center gap-1 text-[11px] text-gray-400 pt-1">
-                      <Clock size={12} className="text-gray-500" />
-                      <span>Reported: <strong className="text-gray-200 font-semibold">{formatTimeAgo(report.createdAt)}</strong></span>
-                      {isReporter && (
-                        <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
-                          Your Report
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card Section 2: Expected Free Timer Container (RULE 5: ENTIRE CARD CLICKABLE) */}
-                  <div 
-                    onClick={() => setSelectedTimerReport(report)}
-                    className="p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-purple-500/30 hover:bg-black/60 transition-all cursor-pointer flex items-center justify-between group/timer shadow-[0_0_15px_rgba(0,0,0,0.2)]"
-                    title="Click to view detailed expected time remaining"
+                return (
+                  <div
+                    key={report.id}
+                    className="glass-panel p-6 rounded-3xl border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between gap-5 relative group shadow-[0_0_20px_rgba(0,0,0,0.4)]"
                   >
-                    <div className="flex items-center gap-2 text-xs text-gray-400 font-medium group-hover/timer:text-gray-200 transition-colors">
-                      <Timer size={15} className={timerState.isExpired ? "text-amber-400" : "text-purple-400"} />
-                      <span>Expected Free:</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-all ${
-                        timerState.isExpired
-                          ? "bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse"
-                          : "bg-purple-500/15 border-purple-500/30 text-purple-300 group-hover/timer:border-purple-400/50"
-                      }`}>
-                        {timerState.text}
-                      </span>
-                      <Info size={14} className="text-gray-500 group-hover/timer:text-purple-400 transition-colors" />
-                    </div>
-                  </div>
+                    {/* Card Section 1: Header (College Name, Block • Floor, Room Number) */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
+                        <GraduationCap size={15} className="text-purple-400" />
+                        <span>{report.collegeName || "SRM IST"}</span>
+                      </div>
 
-                  {/* Card Section 3: Community Status & Voting (RULE 1: NO EMOJIS, CLEAN True/False COUNTS) */}
-                  <div className="space-y-3 pt-2 border-t border-white/5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-300">Community Status</span>
-                      <span className="text-xs font-extrabold font-mono text-purple-300">
-                        Confidence: {conf.label}
-                      </span>
-                    </div>
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium">
+                          {report.block} • Floor {report.floor}
+                        </p>
+                        <h3 className="text-2xl font-black text-white tracking-wide mt-0.5">{report.roomNumber}</h3>
+                      </div>
 
-                    {/* Voting Buttons: ✔ True / ✖ False (No Emoji Icons) */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* ✔ True */}
-                      <button
-                        onClick={() => handleVote(report, "true")}
-                        disabled={actionLoading !== null || isReporter}
-                        title={isReporter ? "You cannot vote on your own report" : "Vote True"}
-                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          isReporter
-                            ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
-                            : myVote === "true"
-                            ? "bg-purple-500/25 border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
-                            : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
-                        }`}
-                      >
-                        {actionLoading === `${report.id}-true` ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Check size={14} className={myVote === "true" ? "text-purple-300" : "text-emerald-400"} />
+                      {/* Reported Relative Time */}
+                      <div className="flex items-center gap-1 text-[11px] text-gray-400 pt-1">
+                        <Clock size={12} className="text-gray-500" />
+                        <span>Reported: <strong className="text-gray-200 font-semibold">{formatTimeAgo(report.createdAt)}</strong></span>
+                        {isReporter && (
+                          <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
+                            Your Report
+                          </span>
                         )}
-                        <span>✔ {report.trueVotes} True</span>
-                      </button>
+                      </div>
+                    </div>
 
-                      {/* ✖ False */}
-                      <button
-                        onClick={() => handleVote(report, "false")}
-                        disabled={actionLoading !== null || isReporter}
-                        title={isReporter ? "You cannot vote on your own report" : "Vote False"}
-                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          isReporter
-                            ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
-                            : myVote === "false"
-                            ? "bg-rose-500/25 border-rose-500/50 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
-                            : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
-                        }`}
-                      >
-                        {actionLoading === `${report.id}-false` ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <IconX size={14} className={myVote === "false" ? "text-rose-300" : "text-rose-400"} />
+                    {/* Card Section 2: Expected Free Timer Container (Live Countdown Updates) */}
+                    <div 
+                      onClick={() => setSelectedTimerReport(report)}
+                      className="p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-purple-500/30 hover:bg-black/60 transition-all cursor-pointer flex items-center justify-between group/timer shadow-[0_0_15px_rgba(0,0,0,0.2)]"
+                      title="Click to view detailed expected time remaining"
+                    >
+                      <div className="flex items-center gap-2 text-xs text-gray-400 font-medium group-hover/timer:text-gray-200 transition-colors">
+                        <Timer size={15} className={timerState.isExpired ? "text-amber-400" : "text-purple-400"} />
+                        <span>Expected Free:</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                          timerState.isExpired
+                            ? "bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse"
+                            : "bg-purple-500/15 border-purple-500/30 text-purple-300 group-hover/timer:border-purple-400/50"
+                        }`}>
+                          {timerState.text}
+                        </span>
+                        <Info size={14} className="text-gray-500 group-hover/timer:text-purple-400 transition-colors" />
+                      </div>
+                    </div>
+
+                    {/* Card Section 3: Community Status & Voting */}
+                    <div className="space-y-3 pt-2 border-t border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-300">Community Status</span>
+                        <span className="text-xs font-extrabold font-mono text-purple-300">
+                          Confidence: {conf.label}
+                        </span>
+                      </div>
+
+                      {/* Voting Buttons: ✔ True / ✖ False */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* ✔ True */}
+                        <button
+                          onClick={() => handleVote(report, "true")}
+                          disabled={actionLoading !== null || isReporter}
+                          title={isReporter ? "You cannot vote on your own report" : "Vote True"}
+                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                            isReporter
+                              ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
+                              : myVote === "true"
+                              ? "bg-purple-500/25 border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+                              : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {actionLoading === `${report.id}-true` ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Check size={14} className={myVote === "true" ? "text-purple-300" : "text-emerald-400"} />
+                          )}
+                          <span>✔ {report.trueVotes} True</span>
+                        </button>
+
+                        {/* ✖ False */}
+                        <button
+                          onClick={() => handleVote(report, "false")}
+                          disabled={actionLoading !== null || isReporter}
+                          title={isReporter ? "You cannot vote on your own report" : "Vote False"}
+                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                            isReporter
+                              ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
+                              : myVote === "false"
+                              ? "bg-rose-500/25 border-rose-500/50 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                              : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {actionLoading === `${report.id}-false` ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <IconX size={14} className={myVote === "false" ? "text-rose-300" : "text-rose-400"} />
+                          )}
+                          <span>✖ {report.falseVotes} False</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Card Section 4: Amenities */}
+                    {(report.hasAC || report.capacity) && (
+                      <div className="flex items-center gap-3 text-xs pt-1 border-t border-white/5">
+                        {report.hasAC && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold">
+                            <Wind size={13} /> AC Room
+                          </span>
                         )}
-                        <span>✖ {report.falseVotes} False</span>
-                      </button>
-                    </div>
+                        {report.capacity && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 font-medium ml-auto">
+                            <Users size={13} className="text-purple-400" /> {report.capacity} Seats
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
+                );
+              })}
+            </div>
 
-                  {/* Card Section 4: Amenities (AC Badge & Seating Capacity) */}
-                  {(report.hasAC || report.capacity) && (
-                    <div className="flex items-center gap-3 text-xs pt-1 border-t border-white/5">
-                      {report.hasAC && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold">
-                          <Wind size={13} /> AC Room
-                        </span>
-                      )}
-                      {report.capacity && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 font-medium ml-auto">
-                          <Users size={13} className="text-purple-400" /> {report.capacity} Seats
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {/* 💡 Community Note */}
+            <div className="glass-panel p-4 rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-950/20 via-purple-900/10 to-transparent flex items-start sm:items-center gap-3.5 shadow-[0_0_20px_rgba(139,92,246,0.1)]">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0 shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                <Lightbulb size={18} />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>💡 Community Note</span>
+                </h4>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  This classroom is community-reported. If you have seen this room recently, please mark it as True or False. Your verification helps other students find genuinely available classrooms.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Expected Free Time Details Modal (Triggered by Clicking Entire Expected Free Row) */}
+      {/* Expected Free Time Details Modal */}
       {selectedTimerReport && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedTimerReport(null)}></div>
@@ -716,7 +756,7 @@ export default function FreeClassFinderPage() {
               <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between">
                 <span className="font-semibold text-gray-400">Time Remaining:</span>
                 <span className="font-extrabold text-white font-mono">
-                  {getRemainingTimeText(selectedTimerReport.createdAt, selectedTimerReport.expectedFreeDurationMinutes || 30).text}
+                  {getRemainingTimeText(selectedTimerReport.createdAt, selectedTimerReport.expectedFreeDurationMinutes || 30, selectedTimerReport.expiresAtMs || selectedTimerReport.expiresAt).text}
                 </span>
               </div>
 
@@ -738,7 +778,7 @@ export default function FreeClassFinderPage() {
         </div>
       )}
 
-      {/* Report Classroom Modal (Clean Placeholder UX) */}
+      {/* Report Classroom Modal */}
       {isReportModalOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsReportModalOpen(false)}></div>
@@ -760,7 +800,7 @@ export default function FreeClassFinderPage() {
             </div>
 
             <form onSubmit={handleSubmitReport} className="space-y-4">
-              {/* Field 1: College / Institution (Empty input with light grey placeholder) */}
+              {/* Field 1: College / Institution */}
               <div>
                 <label className="block text-xs font-bold text-gray-300 mb-1.5">College / Institution *</label>
                 <input
@@ -774,7 +814,7 @@ export default function FreeClassFinderPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Field 2: Block / Building (Empty input with light grey placeholder) */}
+                {/* Field 2: Block / Building */}
                 <div>
                   <label className="block text-xs font-bold text-gray-300 mb-1.5">Block / Building *</label>
                   <input
@@ -787,7 +827,7 @@ export default function FreeClassFinderPage() {
                   />
                 </div>
 
-                {/* Field 3: Floor (Dropdown) */}
+                {/* Field 3: Floor */}
                 <div>
                   <label className="block text-xs font-bold text-gray-300 mb-1.5">Floor *</label>
                   <select
@@ -831,15 +871,15 @@ export default function FreeClassFinderPage() {
                   onChange={(e) => setFormExpectedDuration(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500/50 cursor-pointer"
                 >
-                  <option value="10" className="bg-[#0e091b]">10 mins</option>
-                  <option value="20" className="bg-[#0e091b]">20 mins</option>
-                  <option value="30" className="bg-[#0e091b]">30 mins</option>
-                  <option value="45" className="bg-[#0e091b]">45 mins</option>
-                  <option value="60" className="bg-[#0e091b]">1 hour</option>
-                  <option value="120" className="bg-[#0e091b]">2 hours</option>
-                  <option value="180" className="bg-[#0e091b]">3 hours</option>
-                  <option value="45" className="bg-[#0e091b]">Until next period</option>
-                  <option value="30" className="bg-[#0e091b]">Not sure</option>
+                  <option value="10" className="bg-[#0e091b] text-white py-2">10 mins</option>
+                  <option value="20" className="bg-[#0e091b] text-white py-2">20 mins</option>
+                  <option value="30" className="bg-[#0e091b] text-white py-2">30 mins</option>
+                  <option value="45" className="bg-[#0e091b] text-white py-2">45 mins</option>
+                  <option value="60" className="bg-[#0e091b] text-white py-2">1 hour</option>
+                  <option value="120" className="bg-[#0e091b] text-white py-2">2 hours</option>
+                  <option value="180" className="bg-[#0e091b] text-white py-2">3 hours</option>
+                  <option value="until_next_period" className="bg-[#0e091b] text-white py-2">Until next period</option>
+                  <option value="not_sure" className="bg-[#0e091b] text-white py-2">Not sure</option>
                 </select>
               </div>
 
