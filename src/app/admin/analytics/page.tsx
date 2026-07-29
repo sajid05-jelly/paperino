@@ -561,42 +561,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Paperino Header Message Customizer */}
-            <div className="glass-panel p-8 rounded-3xl border border-white/5 space-y-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Sparkles className="text-violet-400" size={20}/> Paperino Header Message
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Change the dynamic tagline shown directly below the "Paperino" brand title across the website.
-              </p>
-              
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  value={headerMessage}
-                  onChange={(e) => setHeaderMessage(e.target.value)}
-                  placeholder="The Universe of Study Materials"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-colors"
-                />
-                <button
-                  onClick={handleSaveHeaderMessage}
-                  disabled={savingHeader}
-                  className="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-violet-900/20"
-                >
-                  {savingHeader ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <span>Save</span>
-                  )}
-                </button>
-              </div>
-              {saveHeaderSuccess && (
-                <p className="text-emerald-400 text-xs font-semibold flex items-center gap-1 animate-in fade-in duration-300">
-                  <CheckCircle2 size={12} /> Tagline updated instantly!
-                </p>
-              )}
-            </div>
-
           </div>
         </>
       )}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { GraduationCap, Calendar, Search, ChevronRight, Loader2, Plus } from "lucide-react";
+import { GraduationCap, Calendar, Search, ChevronRight, Loader2, Plus, Building2, Layers } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 import CreateCourseModal from "@/components/CreateCourseModal";
@@ -30,6 +30,8 @@ export default function CoursesPage() {
 
   const sortedDepts = sortDepartments(filteredDepts, deptMaterialCounts);
 
+  const [selectedCollege, setSelectedCollege] = useState<string | null>("srm");
+
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 relative min-h-[80vh]">
       <AmbientOrbs />
@@ -37,39 +39,102 @@ export default function CoursesPage() {
       <div className="text-glow absolute -top-40 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="text-center mb-10 w-full relative z-10">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 mb-6 tracking-tight text-glow">
-          Explore Courses
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-3">
+          <Building2 size={14} className="text-purple-400" />
+          <span>Colleges Directory</span>
+        </div>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 mb-4 tracking-tight text-glow">
+          Explore Colleges
         </h1>
-        <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
-          Select a department to browse study resources, GPA tools, notes, and past question papers.
+        <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto mb-10">
+          Select a university to browse department courses, study resources, GPA tools, notes, and past question papers.
         </p>
 
-        {/* Search & Suggest Layout */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 max-w-3xl mx-auto">
-          <div className="relative flex-1 w-full group">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-full blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-65 transition-opacity duration-500"></div>
-            <div className="relative flex items-center bg-[#07050d]/80 border border-white/10 group-focus-within:border-purple-500/50 rounded-full p-2 backdrop-blur-xl shadow-lg transition-colors">
-              <div className="pl-4 pr-2 text-gray-400 group-focus-within:text-purple-400 transition-colors">
-                <Search size={18} />
+        {/* SRM University College Card */}
+        <div className="w-full max-w-3xl mx-auto mb-10 text-left">
+          <div 
+            onClick={() => setSelectedCollege(selectedCollege === "srm" ? null : "srm")}
+            className={`vision-glass p-8 rounded-[2.5rem] cursor-pointer relative overflow-hidden transition-all duration-500 border ${
+              selectedCollege === "srm" 
+                ? "border-purple-500/60 bg-[#120924]/80 shadow-[0_0_50px_rgba(139,92,246,0.3)] ring-2 ring-purple-500/40" 
+                : "border-white/10 bg-[#0f0a1a]/50 hover:border-purple-500/30 hover:bg-[#120924]/60"
+            }`}
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
+            
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-start md:items-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
+                  <Building2 size={32} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full">
+                      SRM IST
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      ● Active Campus
+                    </span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                    SRM University
+                  </h3>
+                  <p className="text-gray-400 text-xs md:text-sm mt-1 max-w-xl font-light leading-relaxed">
+                    Access B.Tech, MCA, MBA &amp; all departmental courses across SRM campuses (KTR, Ramapuram, Vadapalani, Trichy, NCR).
+                  </p>
+                </div>
               </div>
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search departments (e.g. B.Tech, MBA, MCA)..." 
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 py-2.5 text-sm md:text-base"
-              />
+
+              <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                  {selectedCollege === "srm" ? "Hide Courses" : "Explore Courses"}
+                </span>
+                <ChevronRight size={18} className={`text-purple-400 transition-transform duration-300 ${selectedCollege === "srm" ? "rotate-90" : ""}`} />
+              </div>
             </div>
           </div>
-          {user && (
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold transition-all shadow-[0_0_20px_rgba(232,121,249,0.35)] hover:shadow-[0_0_30px_rgba(232,121,249,0.55)] cursor-pointer"
-            >
-              <Plus size={18} /> Suggest Course
-            </button>
-          )}
         </div>
+
+        {/* Search & Suggest Layout for SRM Courses */}
+        {selectedCollege === "srm" && (
+          <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between border-b border-purple-500/20 pb-4 px-2">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Layers className="text-purple-400" size={20} />
+                SRM Courses
+              </h3>
+              <span className="text-xs text-purple-300 font-semibold bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
+                {sortedDepts.length} Courses
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4 max-w-3xl mx-auto">
+              <div className="relative flex-1 w-full group">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-full blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-65 transition-opacity duration-500"></div>
+                <div className="relative flex items-center bg-[#07050d]/80 border border-white/10 group-focus-within:border-purple-500/50 rounded-full p-2 backdrop-blur-xl shadow-lg transition-colors">
+                  <div className="pl-4 pr-2 text-gray-400 group-focus-within:text-purple-400 transition-colors">
+                    <Search size={18} />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search SRM courses (e.g. B.Tech, MBA, MCA)..." 
+                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 py-2.5 text-sm md:text-base"
+                  />
+                </div>
+              </div>
+              {user && (
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold transition-all shadow-[0_0_20px_rgba(232,121,249,0.35)] hover:shadow-[0_0_30px_rgba(232,121,249,0.55)] cursor-pointer"
+                >
+                  <Plus size={18} /> Suggest Course
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (

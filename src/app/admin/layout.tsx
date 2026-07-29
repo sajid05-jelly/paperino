@@ -22,13 +22,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isLeadAdmin = user?.email?.toLowerCase() === LEAD_ADMIN_EMAIL.toLowerCase();
 
   // System Control Sub-menu Expand State
-  const isSystemPath = ["/admin/system", "/admin/analytics", "/admin/ats", "/admin/career-dna", "/admin/free-class-finder"].some(path => pathname?.startsWith(path));
+  const isSystemPath = ["/admin/system", "/admin/analytics", "/admin/header-message", "/admin/ats", "/admin/career-dna", "/admin/free-class-finder"].some(path => pathname?.startsWith(path));
   const [isSystemControlOpen, setIsSystemControlOpen] = useState(isSystemPath);
 
   // Protected Lead-Admin-Only Routes
   const LEAD_ADMIN_ONLY_PATHS = [
     "/admin/system",
     "/admin/maintenance",
+    "/admin/header-message",
     "/admin/ats",
     "/admin/career-dna",
     "/admin/free-class-finder",
@@ -148,9 +149,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                       {/* 2. Paperino Header Message */}
                       <Link 
-                        href="/admin/analytics" 
+                        href="/admin/header-message" 
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          pathname === "/admin/analytics" ? "bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
+                          pathname === "/admin/header-message" ? "bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
                         }`}
                       >
                         <Sparkles size={15} className="text-violet-400 shrink-0" />
