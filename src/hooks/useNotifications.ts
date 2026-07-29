@@ -9,7 +9,8 @@ export function useNotifications() {
     loadingNotifications: loading,
     markNotificationRead: markRead,
     markAllNotificationsRead: markAllRead,
-    clearAllNotifications: clearMyNotifications
+    clearAllNotifications: clearMyNotifications,
+    deleteSingleNotification
   } = usePulseNotifications();
 
   return {
@@ -18,6 +19,7 @@ export function useNotifications() {
     loading,
     markRead,
     markAllRead,
-    clearMyNotifications
+    clearMyNotifications,
+    deleteSingleNotification
   };
 }

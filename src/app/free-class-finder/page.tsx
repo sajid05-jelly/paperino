@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   Building2, Plus, Search, Filter, Check, X as IconX, 
   Sparkles, Clock, ShieldCheck, Zap, Award, CheckCircle2,
-  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb
+  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb, Trash2, UserCheck, Radio
 } from "lucide-react";
 import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -15,18 +16,10 @@ import {
   calculateCommunityConfidence, getRemainingTimeText, formatTimeAgo 
 } from "@/lib/freeClassFinder";
 
-const BLOCKS = [
-  { id: "ALL", name: "All Buildings" },
-  { id: "TP", name: "Tech Park (TP)" },
-  { id: "MB", name: "Main Building (MB)" },
-  { id: "UB", name: "University Building (UB)" },
-  { id: "BEL", name: "Bio-Engineering Lab (BEL)" },
-  { id: "ARC", name: "Architecture Block (ARC)" },
-];
-
-export default function FreeClassFinderPage() {
-  const { user } = useAuth();
+function FreeClassFinderContent() {
+  const { user, isAdmin } = useAuth();
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
 
   const [reports, setReports] = useState<FreeClassReport[]>([]);
   const [config, setConfig] = useState<FreeClassConfig>(DEFAULT_FREE_CLASS_CONFIG);
@@ -35,10 +28,22 @@ export default function FreeClassFinderPage() {
 
   // Search and Filter states
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBlock, setSelectedBlock] = useState("ALL");
+  const [selectedCollege, setSelectedCollege] = useState("ALL");
   const [selectedFloor, setSelectedFloor] = useState<string>("ALL");
   const [minCapacity, setMinCapacity] = useState<number>(0);
   const [filterAC, setFilterAC] = useState(false);
+
+  // Deep Link Room Search Param Handling
+  useEffect(() => {
+    const roomParam = searchParams.get("room");
+    if (roomParam) {
+      setSearchQuery(roomParam);
+      setSelectedCollege("ALL");
+      setSelectedFloor("ALL");
+      setFilterAC(false);
+      setMinCapacity(0);
+    }
+  }, [searchParams]);
 
   // Modal State
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -92,11 +97,11 @@ export default function FreeClassFinderPage() {
     return () => unsub();
   }, []);
 
-  // Fetch Reports Real-time with Automatic Lifecycle Expiry Filtering
+  // Fetch Reports Real-time from exact collection: freeClassrooms
   useEffect(() => {
     if (isEnabled === false) return;
 
-    const collectionName = "free_class_reports";
+    const collectionName = "freeClassrooms";
     const unsub = onSnapshot(
       collection(db, collectionName),
       (snap) => {
@@ -112,12 +117,8 @@ export default function FreeClassFinderPage() {
           const falseVotes = data.falseVotes || 0;
 
           // ── Lifecycle Filtering Rules ─────────────────────────────────────
-          // 1. Expiry Check: If expiresAtMs <= currentTime
           if (expiresAtMs <= currentTime) return;
-
-          // 2. Safety Check: If False votes >= 5 OR False votes > True votes (when falseVotes > 0)
           if (falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0)) return;
-
           if (data.status === "flagged") return;
 
           const rep: FreeClassReport = {
@@ -147,27 +148,8 @@ export default function FreeClassFinderPage() {
           list.push(rep);
         });
 
-        list.sort((a, b) => {
-          if ((b.confidenceScore || 0) !== (a.confidenceScore || 0)) {
-            return (b.confidenceScore || 0) - (a.confidenceScore || 0);
-          }
-          if (b.createdAt !== a.createdAt) {
-            return b.createdAt - a.createdAt;
-          }
-          return (b.trueVotes || 0) - (a.trueVotes || 0);
-        });
-
-        setReports((prev) => {
-          const map = new Map<string, FreeClassReport>();
-          list.forEach((r) => map.set(r.id, r));
-          prev.forEach((r) => {
-            if (!map.has(r.id) && (currentTime - r.createdAt < 60000)) {
-              map.set(r.id, r);
-            }
-          });
-          return Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
-        });
-
+        list.sort((a, b) => b.createdAt - a.createdAt);
+        setReports(list);
         setLoading(false);
       },
       (err) => {
@@ -179,7 +161,7 @@ export default function FreeClassFinderPage() {
     return () => unsub();
   }, [config.expiryMinutes, isEnabled]);
 
-  // Dynamic Live Filter for Reports (Automatically purges expired cards as time ticks)
+  // Dynamic Live Filter for Reports (Automatically purges expired cards)
   const activeLiveReports = useMemo(() => {
     const currentTime = Date.now();
     return reports.filter((r) => {
@@ -188,6 +170,22 @@ export default function FreeClassFinderPage() {
     });
   }, [reports, now]);
 
+  // Dynamic Colleges / Buildings created by users in active reports
+  const dynamicColleges = useMemo(() => {
+    const set = new Set<string>();
+    activeLiveReports.forEach((r) => {
+      if (r.collegeName?.trim()) set.add(r.collegeName.trim());
+      if (r.block?.trim()) set.add(r.block.trim());
+    });
+    return Array.from(set).sort();
+  }, [activeLiveReports]);
+
+  // Compute My Active Reports (LEFT PANEL)
+  const myActiveReports = useMemo(() => {
+    if (!user) return [];
+    return activeLiveReports.filter((r) => r.reporterUid === user.uid);
+  }, [activeLiveReports, user]);
+
   // Compute Recommended Rooms
   const recommendedRooms = useMemo(() => {
     return activeLiveReports
@@ -195,7 +193,7 @@ export default function FreeClassFinderPage() {
       .sort((a, b) => (b.confidenceScore || 0) - (a.confidenceScore || 0));
   }, [activeLiveReports, config.minConfidenceThreshold]);
 
-  // Compute Filtered Reports
+  // Compute Filtered Community Reports (RIGHT PANEL)
   const filteredReports = useMemo(() => {
     return activeLiveReports.filter((r) => {
       if (searchQuery.trim()) {
@@ -205,13 +203,17 @@ export default function FreeClassFinderPage() {
         const matchCollege = (r.collegeName || "").toLowerCase().includes(q);
         if (!matchRoom && !matchBlock && !matchCollege) return false;
       }
-      if (selectedBlock !== "ALL" && !r.block.toLowerCase().includes(selectedBlock.toLowerCase())) return false;
+      if (
+        selectedCollege !== "ALL" && 
+        !r.collegeName?.toLowerCase().includes(selectedCollege.toLowerCase()) &&
+        !r.block?.toLowerCase().includes(selectedCollege.toLowerCase())
+      ) return false;
       if (selectedFloor !== "ALL" && String(r.floor) !== selectedFloor) return false;
       if (minCapacity > 0 && (r.capacity || 0) < minCapacity) return false;
       if (filterAC && !r.hasAC) return false;
       return true;
     });
-  }, [activeLiveReports, searchQuery, selectedBlock, selectedFloor, minCapacity, filterAC]);
+  }, [activeLiveReports, searchQuery, selectedCollege, selectedFloor, minCapacity, filterAC]);
 
   // Submit Free Classroom Report
   const handleSubmitReport = async (e: React.FormEvent) => {
@@ -278,7 +280,7 @@ export default function FreeClassFinderPage() {
       ]);
 
       // Reset filters so new room is visible
-      setSelectedBlock("ALL");
+      setSelectedCollege("ALL");
       setSelectedFloor("ALL");
       setSearchQuery("");
       setFilterAC(false);
@@ -322,6 +324,42 @@ export default function FreeClassFinderPage() {
       showToast("Failed to report classroom: " + err.message, "error");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Reporter Delete Report Handler
+  const handleDeleteRoomReport = async (report: FreeClassReport) => {
+    if (!user) return;
+    if (!confirm(`Delete this free classroom report for Room ${report.roomNumber}?`)) return;
+
+    setActionLoading(`${report.id}-delete`);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/free-class-finder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: "delete",
+          reportId: report.id
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Failed to delete classroom report.");
+      }
+
+      // Optimistically remove from local state
+      setReports((prev) => prev.filter((r) => r.id !== report.id));
+      showToast(`🗑 Room ${report.roomNumber} report deleted successfully.`, "success");
+    } catch (err: any) {
+      console.error("Delete report error:", err);
+      showToast("Failed to delete report: " + err.message, "error");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -490,15 +528,16 @@ export default function FreeClassFinderPage() {
               />
             </div>
 
-            {/* Block Filter */}
-            <div className="w-full md:w-48">
+            {/* Dynamic College / Building Filter */}
+            <div className="w-full md:w-52">
               <select
-                value={selectedBlock}
-                onChange={(e) => setSelectedBlock(e.target.value)}
+                value={selectedCollege}
+                onChange={(e) => setSelectedCollege(e.target.value)}
                 className="w-full bg-[#0d0818] border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:outline-none focus:border-purple-500/50 transition-colors cursor-pointer"
               >
-                {BLOCKS.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
+                <option value="ALL">All Colleges / Buildings</option>
+                {dynamicColleges.map((col) => (
+                  <option key={col} value={col}>{col}</option>
                 ))}
               </select>
             </div>
@@ -553,175 +592,287 @@ export default function FreeClassFinderPage() {
           </div>
         </div>
 
-        {/* Free Classroom Cards Grid */}
+        {/* ── TWO-PANEL REALTIME DASHBOARD ── */}
         {loading || isEnabled === null ? (
           <div className="flex justify-center py-20">
             <Loader2 className="animate-spin text-purple-400" size={40} />
           </div>
-        ) : filteredReports.length === 0 ? (
-          <div className="text-center py-20 px-4 glass-panel rounded-3xl border border-white/5 border-dashed">
-            <Building2 size={48} className="mx-auto text-gray-600 mb-4" />
-            <h3 className="text-lg font-bold text-white mb-1">No Free Classrooms Found</h3>
-            <p className="text-sm text-gray-400 max-w-sm mx-auto mb-6">
-              Be the first to report an available classroom to help your fellow students!
-            </p>
-            <button
-              onClick={() => setIsReportModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all cursor-pointer inline-flex items-center gap-2"
-            >
-              <Plus size={16} /> Report Classroom
-            </button>
-          </div>
         ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredReports.map((report) => {
-                const myVote = user ? report.voters?.[user.uid] : undefined;
-                const conf = calculateCommunityConfidence(report.trueVotes, report.falseVotes);
-                const timerState = getRemainingTimeText(report.createdAt, report.expectedFreeDurationMinutes || 30, report.expiresAtMs || report.expiresAt);
-                const isReporter = user?.uid === report.reporterUid;
-
-                return (
-                  <div
-                    key={report.id}
-                    className="glass-panel p-6 rounded-3xl border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between gap-5 relative group shadow-[0_0_20px_rgba(0,0,0,0.4)]"
-                  >
-                    {/* Card Section 1: Header (College Name, Block • Floor, Room Number) */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
-                        <GraduationCap size={15} className="text-purple-400" />
-                        <span>{report.collegeName || "SRM IST"}</span>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-gray-400 font-medium">
-                          {report.block} • Floor {report.floor}
-                        </p>
-                        <h3 className="text-2xl font-black text-white tracking-wide mt-0.5">{report.roomNumber}</h3>
-                      </div>
-
-                      {/* Reported Relative Time */}
-                      <div className="flex items-center gap-1 text-[11px] text-gray-400 pt-1">
-                        <Clock size={12} className="text-gray-500" />
-                        <span>Reported: <strong className="text-gray-200 font-semibold">{formatTimeAgo(report.createdAt)}</strong></span>
-                        {isReporter && (
-                          <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
-                            Your Report
-                          </span>
-                        )}
-                      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* ── LEFT PANEL: My Active Reports ── */}
+            {user && (
+              <div className="lg:col-span-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shadow-[0_0_15px_rgba(139,92,246,0.2)]">
+                      <UserCheck size={16} />
                     </div>
-
-                    {/* Card Section 2: Expected Free Timer Container (Live Countdown Updates) */}
-                    <div 
-                      onClick={() => setSelectedTimerReport(report)}
-                      className="p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-purple-500/30 hover:bg-black/60 transition-all cursor-pointer flex items-center justify-between group/timer shadow-[0_0_15px_rgba(0,0,0,0.2)]"
-                      title="Click to view detailed expected time remaining"
-                    >
-                      <div className="flex items-center gap-2 text-xs text-gray-400 font-medium group-hover/timer:text-gray-200 transition-colors">
-                        <Timer size={15} className={timerState.isExpired ? "text-amber-400" : "text-purple-400"} />
-                        <span>Expected Free:</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-all ${
-                          timerState.isExpired
-                            ? "bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse"
-                            : "bg-purple-500/15 border-purple-500/30 text-purple-300 group-hover/timer:border-purple-400/50"
-                        }`}>
-                          {timerState.text}
-                        </span>
-                        <Info size={14} className="text-gray-500 group-hover/timer:text-purple-400 transition-colors" />
-                      </div>
-                    </div>
-
-                    {/* Card Section 3: Community Status & Voting */}
-                    <div className="space-y-3 pt-2 border-t border-white/5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-300">Community Status</span>
-                        <span className="text-xs font-extrabold font-mono text-purple-300">
-                          Confidence: {conf.label}
-                        </span>
-                      </div>
-
-                      {/* Voting Buttons: ✔ True / ✖ False */}
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* ✔ True */}
-                        <button
-                          onClick={() => handleVote(report, "true")}
-                          disabled={actionLoading !== null || isReporter}
-                          title={isReporter ? "You cannot vote on your own report" : "Vote True"}
-                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                            isReporter
-                              ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
-                              : myVote === "true"
-                              ? "bg-purple-500/25 border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
-                              : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
-                          }`}
-                        >
-                          {actionLoading === `${report.id}-true` ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <Check size={14} className={myVote === "true" ? "text-purple-300" : "text-emerald-400"} />
-                          )}
-                          <span>✔ {report.trueVotes} True</span>
-                        </button>
-
-                        {/* ✖ False */}
-                        <button
-                          onClick={() => handleVote(report, "false")}
-                          disabled={actionLoading !== null || isReporter}
-                          title={isReporter ? "You cannot vote on your own report" : "Vote False"}
-                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                            isReporter
-                              ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
-                              : myVote === "false"
-                              ? "bg-rose-500/25 border-rose-500/50 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
-                              : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
-                          }`}
-                        >
-                          {actionLoading === `${report.id}-false` ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <IconX size={14} className={myVote === "false" ? "text-rose-300" : "text-rose-400"} />
-                          )}
-                          <span>✖ {report.falseVotes} False</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Card Section 4: Amenities */}
-                    {(report.hasAC || report.capacity) && (
-                      <div className="flex items-center gap-3 text-xs pt-1 border-t border-white/5">
-                        {report.hasAC && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold">
-                            <Wind size={13} /> AC Room
-                          </span>
-                        )}
-                        {report.capacity && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 font-medium ml-auto">
-                            <Users size={13} className="text-purple-400" /> {report.capacity} Seats
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    <h2 className="text-lg font-bold text-white tracking-wide">My Active Reports</h2>
                   </div>
-                );
-              })}
-            </div>
+                  <span className="text-xs font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/25">
+                    {myActiveReports.length} {myActiveReports.length === 1 ? "room" : "rooms"}
+                  </span>
+                </div>
 
-            {/* 💡 Community Note */}
-            <div className="glass-panel p-4 rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-950/20 via-purple-900/10 to-transparent flex items-start sm:items-center gap-3.5 shadow-[0_0_20px_rgba(139,92,246,0.1)]">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0 shadow-[0_0_10px_rgba(139,92,246,0.2)]">
-                <Lightbulb size={18} />
+                {myActiveReports.length === 0 ? (
+                  <div className="p-6 rounded-3xl glass-panel border border-white/10 text-center space-y-3 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                    <Building2 size={32} className="mx-auto text-purple-400/40" />
+                    <p className="text-xs text-gray-400">You haven't reported any free classrooms yet.</p>
+                    <button
+                      onClick={() => setIsReportModalOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 font-bold text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={14} /> Report Free Room
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {myActiveReports.map((report) => {
+                      const timerState = getRemainingTimeText(report.createdAt, report.expectedFreeDurationMinutes || 30, report.expiresAtMs || report.expiresAt);
+                      return (
+                        <div
+                          key={`my-${report.id}`}
+                          className="glass-panel p-5 rounded-3xl border border-purple-500/40 bg-gradient-to-b from-[#160d2e] to-[#0a0614] shadow-[0_0_25px_rgba(139,92,246,0.15)] space-y-4 relative group"
+                        >
+                          {/* Header */}
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-1 text-[11px] font-bold text-purple-300">
+                                <GraduationCap size={13} className="text-purple-400" />
+                                <span>{report.collegeName || "SRM IST"}</span>
+                              </div>
+                              <h3 className="text-xl font-black text-white mt-0.5 tracking-wide">{report.roomNumber}</h3>
+                              <p className="text-xs text-gray-400 font-medium">{report.block} • Floor {report.floor}</p>
+                            </div>
+                            <span className="text-[10px] font-bold text-purple-200 bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(139,92,246,0.3)]">
+                              Your Report
+                            </span>
+                          </div>
+
+                          {/* Expected Free Timer */}
+                          <div 
+                            onClick={() => setSelectedTimerReport(report)}
+                            className="p-3 rounded-2xl bg-black/50 border border-white/10 cursor-pointer flex items-center justify-between hover:border-purple-500/40 transition-colors"
+                          >
+                            <span className="text-xs text-gray-400 font-medium flex items-center gap-1.5">
+                              <Timer size={14} className="text-purple-400" /> Expected Free:
+                            </span>
+                            <span className="text-xs font-bold text-purple-300 font-mono">
+                              {timerState.text}
+                            </span>
+                          </div>
+
+                          {/* Details & Delete Report Button */}
+                          <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                            <span className="text-gray-400 text-[11px]">
+                              Reported {formatTimeAgo(report.createdAt)}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteRoomReport(report)}
+                              disabled={actionLoading === `${report.id}-delete`}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {actionLoading === `${report.id}-delete` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={13} />}
+                              <span>Delete Report</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span>💡 Community Note</span>
-                </h4>
-                <p className="text-xs text-gray-300 leading-relaxed">
-                  This classroom is community-reported. If you have seen this room recently, please mark it as True or False. Your verification helps other students find genuinely available classrooms.
-                </p>
+            )}
+
+            {/* ── RIGHT PANEL: Live Community Free Classrooms ── */}
+            <div className={user ? "lg:col-span-8 space-y-4" : "lg:col-span-12 space-y-4"}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shadow-[0_0_15px_rgba(139,92,246,0.2)]">
+                    <Radio size={16} className="text-purple-400 animate-pulse" />
+                  </div>
+                  <h2 className="text-lg font-bold text-white tracking-wide">Live Community Free Classrooms</h2>
+                </div>
+                <span className="text-xs font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/25">
+                  {filteredReports.length} {filteredReports.length === 1 ? "room" : "rooms"}
+                </span>
               </div>
+
+              {filteredReports.length === 0 ? (
+                <div className="text-center py-16 px-4 glass-panel rounded-3xl border border-white/5 border-dashed space-y-4">
+                  <Building2 size={48} className="mx-auto text-gray-600 mb-2" />
+                  <h3 className="text-lg font-bold text-white mb-1">No Free Classrooms Found</h3>
+                  <p className="text-sm text-gray-400 max-w-sm mx-auto">
+                    Be the first to report an available classroom to help your fellow students!
+                  </p>
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all cursor-pointer inline-flex items-center gap-2"
+                  >
+                    <Plus size={16} /> Report Classroom
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {filteredReports.map((report) => {
+                      const myVote = user ? report.voters?.[user.uid] : undefined;
+                      const conf = calculateCommunityConfidence(report.trueVotes, report.falseVotes);
+                      const timerState = getRemainingTimeText(report.createdAt, report.expectedFreeDurationMinutes || 30, report.expiresAtMs || report.expiresAt);
+                      const isReporter = user?.uid === report.reporterUid;
+                      const isTargetRoom = searchParams.get("room") === report.roomNumber;
+
+                      return (
+                        <div
+                          key={report.id}
+                          className={`glass-panel p-6 rounded-3xl border transition-all flex flex-col justify-between gap-5 relative group shadow-[0_0_20px_rgba(0,0,0,0.4)] ${
+                            isTargetRoom
+                              ? "border-purple-500 ring-2 ring-purple-500/50 shadow-[0_0_30px_rgba(139,92,246,0.4)] bg-purple-950/20"
+                              : "border-white/10 hover:border-purple-500/40"
+                          }`}
+                        >
+                          {/* Card Section 1: Header */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
+                                <GraduationCap size={15} className="text-purple-400" />
+                                <span>{report.collegeName || "SRM IST"}</span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium">
+                                {report.block} • Floor {report.floor}
+                              </p>
+                              <h3 className="text-2xl font-black text-white tracking-wide mt-0.5">{report.roomNumber}</h3>
+                            </div>
+
+                            {/* Reported Relative Time */}
+                            <div className="flex items-center gap-1 text-[11px] text-gray-400 pt-1">
+                              <Clock size={12} className="text-gray-500" />
+                              <span>Reported by <strong className="text-gray-200 font-semibold">{report.reporterName || "Student"}</strong> ({formatTimeAgo(report.createdAt)})</span>
+                              {isReporter && (
+                                <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
+                                  Your Report
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Card Section 2: Expected Free Timer Container */}
+                          <div 
+                            onClick={() => setSelectedTimerReport(report)}
+                            className="p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-purple-500/30 hover:bg-black/60 transition-all cursor-pointer flex items-center justify-between group/timer shadow-[0_0_15px_rgba(0,0,0,0.2)]"
+                            title="Click to view detailed expected time remaining"
+                          >
+                            <div className="flex items-center gap-2 text-xs text-gray-400 font-medium group-hover/timer:text-gray-200 transition-colors">
+                              <Timer size={15} className={timerState.isExpired ? "text-amber-400" : "text-purple-400"} />
+                              <span>Expected Free:</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                                timerState.isExpired
+                                  ? "bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse"
+                                  : "bg-purple-500/15 border-purple-500/30 text-purple-300 group-hover/timer:border-purple-400/50"
+                              }`}>
+                                {timerState.text}
+                              </span>
+                              <Info size={14} className="text-gray-500 group-hover/timer:text-purple-400 transition-colors" />
+                            </div>
+                          </div>
+
+                          {/* Card Section 3: Community Status & Voting */}
+                          <div className="space-y-3 pt-2 border-t border-white/5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-300">Community Status</span>
+                              <span className="text-xs font-extrabold font-mono text-purple-300">
+                                Confidence: {conf.label}
+                              </span>
+                            </div>
+
+                            {/* Voting Buttons: True / False */}
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* True */}
+                              <button
+                                onClick={() => handleVote(report, "true")}
+                                disabled={actionLoading !== null || isReporter}
+                                title={isReporter ? "You cannot vote on your own report" : "Vote True"}
+                                className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                  isReporter
+                                    ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
+                                    : myVote === "true"
+                                    ? "bg-purple-500/25 border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+                                    : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
+                                }`}
+                              >
+                                {actionLoading === `${report.id}-true` ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <Check size={14} className={myVote === "true" ? "text-purple-300" : "text-emerald-400"} />
+                                )}
+                                <span>{report.trueVotes} True</span>
+                              </button>
+
+                              {/* False */}
+                              <button
+                                onClick={() => handleVote(report, "false")}
+                                disabled={actionLoading !== null || isReporter}
+                                title={isReporter ? "You cannot vote on your own report" : "Vote False"}
+                                className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                  isReporter
+                                    ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
+                                    : myVote === "false"
+                                    ? "bg-rose-500/25 border-rose-500/50 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                                    : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
+                                }`}
+                              >
+                                {actionLoading === `${report.id}-false` ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <IconX size={14} className={myVote === "false" ? "text-rose-300" : "text-rose-400"} />
+                                )}
+                                <span>{report.falseVotes} False</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Card Section 4: Amenities */}
+                          {(report.hasAC || report.capacity) && (
+                            <div className="flex items-center gap-3 text-xs pt-1 border-t border-white/5">
+                              {report.hasAC && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold">
+                                  <Wind size={13} /> AC Room
+                                </span>
+                              )}
+                              {report.capacity && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 font-medium ml-auto">
+                                  <Users size={13} className="text-purple-400" /> {report.capacity} Seats
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 💡 Community Note */}
+                  <div className="glass-panel p-4 rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-950/20 via-purple-900/10 to-transparent flex items-start sm:items-center gap-3.5 shadow-[0_0_20px_rgba(139,92,246,0.1)]">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0 shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                      <Lightbulb size={18} />
+                    </div>
+                    <div className="space-y-0.5">
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>💡 Community Note</span>
+                      </h4>
+                      <p className="text-xs text-gray-300 leading-relaxed">
+                        This classroom is community-reported. If you have seen this room recently, please mark it as True or False. Your verification helps other students find genuinely available classrooms.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -930,5 +1081,17 @@ export default function FreeClassFinderPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FreeClassFinderPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#050308] flex items-center justify-center">
+        <Loader2 className="animate-spin text-purple-400" size={40} />
+      </div>
+    }>
+      <FreeClassFinderContent />
+    </Suspense>
   );
 }

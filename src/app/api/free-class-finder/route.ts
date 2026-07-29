@@ -4,12 +4,14 @@ import * as admin from "firebase-admin";
 
 export const dynamic = "force-dynamic";
 
+const COLLECTION_NAME = "freeClassrooms";
+
 // ── AUTOMATIC CLEANUP ROUTINE ────────────────────────────────────────────────
 async function runFreeClassCleanup() {
   if (!adminDb) return;
   try {
     const now = Date.now();
-    const snap = await adminDb.collection("free_class_reports").get();
+    const snap = await adminDb.collection(COLLECTION_NAME).get();
 
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
@@ -23,7 +25,7 @@ async function runFreeClassCleanup() {
       const isFake = falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0);
 
       if (isExpired || isFake) {
-        console.log(`[Lifecycle Cleanup] Deleting report ${docSnap.id} (Expired: ${isExpired}, Fake: ${isFake})`);
+        console.log(`[Cleanup] Deleting report ${docSnap.id} from ${COLLECTION_NAME} (Expired: ${isExpired}, Fake: ${isFake})`);
 
         // 1. Delete Firestore Document
         await docSnap.ref.delete();
@@ -138,7 +140,7 @@ export async function POST(req: NextRequest) {
         ? roomNumber.trim().toUpperCase()
         : `${block.trim().toUpperCase()}-${roomNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}`;
       const docId = formattedRoom;
-      const reportRef = adminDb.collection("free_class_reports").doc(docId);
+      const reportRef = adminDb.collection(COLLECTION_NAME).doc(docId);
       const existingSnap = await reportRef.get();
 
       if (existingSnap.exists) {
@@ -153,6 +155,7 @@ export async function POST(req: NextRequest) {
           reporterCount: (existingData.reporterCount || 1) + 1,
           capacity: capacity ? parseInt(capacity, 10) : (existingData.capacity || null),
           hasAC: hasAC !== undefined ? !!hasAC : !!existingData.hasAC,
+          status: "active"
         });
       } else {
         await reportRef.set({
@@ -177,34 +180,27 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // ── Create Notifications ─────────────────────────────────────────────
+      console.log(`✔ Firestore document created`);
+      console.log(`✔ Document ID: ${docId}`);
+      console.log(`✔ Collection path: ${COLLECTION_NAME}`);
+
+      // ── Create Public Broadcast Notification for All Users ─────────────────────
       try {
-        // 1. Notify Everyone (Public Bell)
         await adminDb.collection("notifications").add({
           userId: "ALL",
-          title: "📢 New Free Classroom Report",
-          message: `${formattedRoom} was reported as free by a student.`,
+          ownerUid: "ALL",
+          title: "📢 Free Classroom Available!",
+          message: `Room ${formattedRoom} (${cleanCollege} - ${block.trim()}) is reported free! Click to view details.`,
           type: "free_class_reported",
           roomId: formattedRoom,
           read: false,
-          createdAt: now
-        });
-
-        // 2. Notify Admins
-        await adminDb.collection("notifications").add({
-          userId: "ADMIN",
-          title: "🚀 New Free Classroom Submitted",
-          message: `College: ${cleanCollege} | Block: ${block.trim()} | Floor: ${floor} | Room: ${formattedRoom} | Reporter: ${userName} | Expected Free: ${durationMinutes} mins`,
-          type: "free_class_reported",
-          roomId: formattedRoom,
-          read: false,
+          isRead: false,
           createdAt: now
         });
       } catch (notifErr) {
         console.warn("[API Notifications Warning]:", notifErr);
       }
 
-      console.log(`[API Free Class Finder] Successfully created report for ${docId} (Expires: ${new Date(expiresAtMs).toLocaleTimeString()})`);
       return new Response(JSON.stringify({ success: true, roomNumber: formattedRoom, reportId: docId }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
@@ -213,7 +209,7 @@ export async function POST(req: NextRequest) {
 
     // ── ACTION 2: VOTE ──────────────────────────────────────────────────────
     if (action === "vote" && reportId && voteType) {
-      const reportRef = adminDb.collection("free_class_reports").doc(reportId);
+      const reportRef = adminDb.collection(COLLECTION_NAME).doc(reportId);
       const reportSnap = await reportRef.get();
 
       if (!reportSnap.exists) {
@@ -253,7 +249,7 @@ export async function POST(req: NextRequest) {
 
       // Check immediate auto-removal rule on vote update
       if (newFalseVotes >= 5 || (newFalseVotes > newTrueVotes && newFalseVotes > 0)) {
-        console.log(`[API Free Class Finder] Auto-deleting fake report ${reportId} (False: ${newFalseVotes}, True: ${newTrueVotes})`);
+        console.log(`[API Free Class Finder] Auto-deleting fake report ${reportId} from ${COLLECTION_NAME}`);
         await reportRef.delete();
         return new Response(JSON.stringify({ success: true, removed: true }), {
           status: 200,
@@ -268,6 +264,61 @@ export async function POST(req: NextRequest) {
       });
 
       return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // ── ACTION 3: DELETE REPORT (Reporter or Admin) ──────────────────────────
+    if (action === "delete" && reportId) {
+      const reportRef = adminDb.collection(COLLECTION_NAME).doc(reportId);
+      const reportSnap = await reportRef.get();
+
+      if (!reportSnap.exists) {
+        return new Response(JSON.stringify({ error: "Not Found", message: "Classroom report not found." }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      const data = reportSnap.data() || {};
+
+      // Permission check: Must be reporter OR admin
+      const userRecord = await admin.auth().getUser(uid).catch(() => null);
+      const userEmail = userRecord?.email || "";
+      const isHardcodedAdmin = [
+        "mohamedsajid.sa@gmail.com",
+        "sudharajsekar2005@gmail.com",
+        "admin.paperinoirfan27@gmail.com",
+        "admin.paperinosam14@gmail.com",
+        "gameplayitlifeitis@gmail.com"
+      ].includes(userEmail);
+
+      const userDoc = await adminDb.collection("users").doc(uid).get();
+      const isAdminRole = userDoc.exists && userDoc.data()?.role === "admin";
+
+      if (data.reporterUid !== uid && !isHardcodedAdmin && !isAdminRole) {
+        return new Response(JSON.stringify({ error: "Forbidden", message: "Only the reporter or admin can delete this report." }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // 1. Delete classroom report document
+      await reportRef.delete();
+
+      // 2. Delete related notifications
+      try {
+        const notifSnap = await adminDb.collection("notifications").where("roomId", "==", reportId).get();
+        for (const nDoc of notifSnap.docs) {
+          await nDoc.ref.delete();
+        }
+      } catch (e) {
+        console.warn("[Delete Report] Notification cleanup warning:", e);
+      }
+
+      console.log(`[API Free Class Finder] Successfully deleted report ${reportId} from ${COLLECTION_NAME}`);
+      return new Response(JSON.stringify({ success: true, message: "Report deleted successfully." }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });

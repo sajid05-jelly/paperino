@@ -25,15 +25,11 @@ service cloud.firestore {
 
     // ── Users collection ────────────────────────────────────────────────────
     match /users/{userId} {
-      // Any signed-in user can read profiles (needed for notifyAdmins lookup & leaderboard)
       allow read: if isSignedIn();
       
-      // Users can only create their own profile as a student
       allow create: if isSignedIn() && request.auth.uid == userId && 
         request.resource.data.role == "student" && request.resource.data.status == "active";
       
-      // Users can update their own profile (but not role/status/contributorLevel/premium/points), UNLESS they are an admin OR
-      // their email is in the hardcoded admin list (allows initial admin promotion after create)
       allow update: if isSignedIn() && (
         (request.auth.uid == userId && (
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'contributorLevel', 'premiumStartDate', 'premiumEndDate', 'uploads', 'contributionPoints'])) ||
@@ -177,11 +173,10 @@ service cloud.firestore {
 
     // ── Notifications ────────────────────────────────────────────────────────
     match /notifications/{notifId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow read: if true;
       allow create: if true;
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     // ── Pulse Blacklist (Admin Only) ─────────────────────────────────────────
@@ -250,7 +245,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ── Free Class Finder ───────────────────────────────────────────────────
+    // ── Free Class Finder (EXACT COLLECTION: freeClassrooms) ────────────────
+    match /freeClassrooms/{reportId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+    match /freeClassrooms {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Legacy fallback rules for backwards compatibility
     match /free_class_reports/{reportId} {
       allow read: if true;
       allow create, update, delete: if isSignedIn();

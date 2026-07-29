@@ -33,11 +33,14 @@ export type NotificationType =
 export interface PaperinoNotification {
   id: string;
   userId: string;
+  ownerUid?: string;
   title: string;
   message: string;
   type: NotificationType;
   roomId?: string;
   read: boolean;
+  isRead?: boolean;
+  readAt?: any;
   createdAt: number;
 }
 
@@ -54,10 +57,12 @@ export async function createNotification(
   try {
     await addDoc(collection(db, "notifications"), {
       userId,
+      ownerUid: userId,
       title,
       message,
       type,
       read: false,
+      isRead: false,
       createdAt: Date.now(),
     });
   } catch (err) {

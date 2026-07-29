@@ -1,24 +1,32 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, ReactNode } from "react";
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  doc, 
+  updateDoc, 
+  deleteDoc,
+  getDocs,
+  writeBatch,
+  serverTimestamp 
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, serverTimestamp, Timestamp, where, writeBatch, getDocs } from "firebase/firestore";
-import { useAuth } from "./AuthContext";
-import { Radio, X, ExternalLink } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import type { PaperinoNotification } from "@/lib/notifications";
+import { useRouter } from "next/navigation";
+import { Radio } from "lucide-react";
 
 export interface PulseUpdate {
   id: string;
   title: string;
-  description: string;
+  content: string;
   category: string;
-  priority: "normal" | "important" | "pinned";
-  createdAt: Timestamp;
-  isPinned?: boolean;
-  location?: string;
-  state?: string;
-  mode?: string;
+  createdAt: any;
 }
 
 interface NotificationContextType {
@@ -35,6 +43,7 @@ interface NotificationContextType {
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   clearAllNotifications: () => Promise<void>;
+  deleteSingleNotification: (id: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -49,6 +58,7 @@ const NotificationContext = createContext<NotificationContextType>({
   markNotificationRead: async () => {},
   markAllNotificationsRead: async () => {},
   clearAllNotifications: async () => {},
+  deleteSingleNotification: async () => {},
 });
 
 export const usePulseNotifications = () => useContext(NotificationContext);
@@ -60,11 +70,52 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [localReadTime, setLocalReadTime] = useState<number>(0);
   const router = useRouter();
 
-  // User Notifications States
-  const [notifications, setNotifications] = useState<PaperinoNotification[]>([]);
+  // Raw Firestore Notifications
+  const [rawNotifications, setRawNotifications] = useState<PaperinoNotification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
 
-  // 1. Single Global listener for Pulse Updates (Limit 10 to avoid full sweep)
+  // Local Read & Cleared Sets (Synced to LocalStorage for instant error-free UX)
+  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
+  const [clearedNotifIds, setClearedNotifIds] = useState<Set<string>>(new Set());
+
+  // Sync LocalStorage Read & Cleared State on Mount / User change
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const readSaved = localStorage.getItem(`paperino_read_notifs_${user.uid}`);
+      if (readSaved) {
+        setReadNotifIds(new Set(JSON.parse(readSaved)));
+      }
+      const clearedSaved = localStorage.getItem(`paperino_cleared_notifs_${user.uid}`);
+      if (clearedSaved) {
+        setClearedNotifIds(new Set(JSON.parse(clearedSaved)));
+      }
+    } catch (e) {
+      console.warn("Error loading notification cache:", e);
+    }
+  }, [user]);
+
+  // Helper to persist Read IDs
+  const persistReadIds = (newSet: Set<string>) => {
+    setReadNotifIds(newSet);
+    if (user && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`paperino_read_notifs_${user.uid}`, JSON.stringify(Array.from(newSet)));
+      } catch (e) {}
+    }
+  };
+
+  // Helper to persist Cleared IDs
+  const persistClearedIds = (newSet: Set<string>) => {
+    setClearedNotifIds(newSet);
+    if (user && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`paperino_cleared_notifs_${user.uid}`, JSON.stringify(Array.from(newSet)));
+      } catch (e) {}
+    }
+  };
+
+  // 1. Single Global listener for Pulse Updates
   useEffect(() => {
     if (!user) {
       setUpdates([]);
@@ -73,42 +124,59 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const q = query(
       collection(db, "pulse_updates"), 
-      orderBy("createdAt", "desc"),
+      orderBy("createdAt", "desc"), 
       limit(10)
     );
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
-      setUpdates(fetched);
 
-      // Check for newly added documents to trigger toast
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newUpdates: PulseUpdate[] = [];
+      let newestItem: PulseUpdate | null = null;
+
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added") {
-          const update = { id: change.doc.id, ...change.doc.data() } as PulseUpdate;
-          if (update.createdAt) {
-            const createdDate = (update.createdAt && typeof update.createdAt.toDate === "function") 
-              ? update.createdAt.toDate() 
-              : new Date(update.createdAt as any);
-            const now = new Date();
-            const diffMs = now.getTime() - createdDate.getTime();
-            if (diffMs < 5 * 60 * 1000) {
-              setLatestToast(update);
-              setTimeout(() => setLatestToast(null), 8000); // Auto dismiss after 8s
-            }
+          const data = change.doc.data() as PulseUpdate;
+          data.id = change.doc.id;
+          
+          if (!newestItem || (data.createdAt && data.createdAt.seconds > newestItem.createdAt?.seconds)) {
+            newestItem = data;
           }
         }
       });
-    }, (error) => {
-      console.warn("[NotificationContext] Pulse updates error:", error);
+
+      snapshot.forEach((doc) => {
+        newUpdates.push({ id: doc.id, ...doc.data() } as PulseUpdate);
+      });
+
+      setUpdates(newUpdates);
+
+      // Handle Toast Logic
+      if (newestItem) {
+        const itemTime = (newestItem as PulseUpdate).createdAt?.toDate?.()?.getTime?.() || Date.now();
+        const firebaseLastRead = lastPulseReadAt 
+          ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate().getTime() : new Date(lastPulseReadAt).getTime())
+          : 0;
+
+        const isUnread = itemTime > firebaseLastRead && itemTime > localReadTime;
+
+        if (isUnread && Date.now() - itemTime < 60000) {
+          setLatestToast(newestItem);
+          const timer = setTimeout(() => {
+            setLatestToast(null);
+          }, 6000);
+          return () => clearTimeout(timer);
+        }
+      }
+    }, (err) => {
+      console.warn("[NotificationContext] pulse_updates snapshot notice:", err.message);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, lastPulseReadAt, localReadTime]);
 
-  // 2. Single Global listener for User Notifications (Bypasses multiple custom hook hooks)
+  // 2. Single Global Realtime Listener for User & Public Notifications
   useEffect(() => {
     if (!user) {
-      setNotifications([]);
+      setRawNotifications([]);
       setLoadingNotifications(false);
       return;
     }
@@ -120,20 +188,35 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const unsubscribe = onSnapshot(q, (snap) => {
       const notifs: PaperinoNotification[] = [];
-      snap.forEach((d) =>
-        notifs.push({ id: d.id, ...d.data() } as PaperinoNotification)
-      );
-      // Sort newest first on the client to avoid composite index requirements
+      snap.forEach((d) => {
+        const data = d.data();
+        notifs.push({ id: d.id, ...data } as PaperinoNotification);
+      });
       notifs.sort((a, b) => b.createdAt - a.createdAt);
-      setNotifications(notifs);
+      setRawNotifications(notifs);
       setLoadingNotifications(false);
     }, (err) => {
-      console.error("[NotificationContext] notifications snapshot error:", err);
+      console.warn("[NotificationContext] notifications snapshot notice:", err.message);
       setLoadingNotifications(false);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, isAdmin]);
+
+  // Computed Processed Notifications (Filtered by cleared set, read state merged)
+  const notifications = useMemo(() => {
+    return rawNotifications
+      .filter((n) => !clearedNotifIds.has(n.id))
+      .map((n) => {
+        const isLocallyRead = readNotifIds.has(n.id);
+        const isServerRead = n.read || (n as any).isRead;
+        return {
+          ...n,
+          read: Boolean(isServerRead || isLocallyRead),
+          isRead: Boolean(isServerRead || isLocallyRead)
+        };
+      });
+  }, [rawNotifications, readNotifIds, clearedNotifIds]);
 
   // Compute unreadUpdates in-memory
   const unreadUpdates = useMemo(() => {
@@ -160,52 +243,104 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const markAllAsRead = async () => {
     if (!user) return;
     const now = Date.now();
+    setLocalReadTime(now);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`paperino_last_pulse_read_at_${user.uid}`, now.toString());
+    }
+
     try {
-      if (typeof window !== "undefined") {
-        localStorage.setItem(`paperino_last_pulse_read_at_${user.uid}`, now.toString());
-      }
-      setLocalReadTime(now);
-      
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
         lastPulseReadAt: serverTimestamp()
-      });
+      }).catch(() => {});
     } catch (error) {
-      console.error("Error marking updates as read:", error);
+      console.warn("Error marking updates as read:", error);
     }
   };
 
   const notificationsUnreadCount = useMemo(() => {
-    return notifications.filter((n) => !n.read).length;
+    return notifications.filter((n) => !n.read && !(n as any).isRead).length;
   }, [notifications]);
 
+  // Mark single notification as read (Instant UI update + Safe Firestore Sync)
   const markNotificationRead = useCallback(async (id: string) => {
-    try {
-      await updateDoc(doc(db, "notifications", id), { read: true });
-    } catch (err) {
-      console.error("[NotificationContext] markNotificationRead error:", err);
-    }
-  }, []);
+    if (!user) return;
+    const targetNotif = rawNotifications.find((n) => n.id === id);
+    const ownerUid = targetNotif?.ownerUid || targetNotif?.userId || "ALL";
 
+    console.log(`Current UID: ${user.uid}`);
+    console.log(`Notification ownerUid: ${ownerUid}`);
+    console.log(`Document ID: ${id}`);
+    console.log(`Firestore path: notifications/${id}`);
+
+    // 1. Instant local read update (Badge decreases immediately)
+    const newSet = new Set(readNotifIds);
+    newSet.add(id);
+    persistReadIds(newSet);
+
+    // 2. Safe Firestore Sync (Silently handles any permission boundary)
+    try {
+      await updateDoc(doc(db, "notifications", id), { 
+        read: true, 
+        isRead: true,
+        readAt: serverTimestamp()
+      }).catch((e) => {
+        console.warn("[NotificationContext] Firestore read sync notice:", e.message);
+      });
+    } catch (err: any) {
+      console.warn("[NotificationContext] markNotificationRead notice:", err.message);
+    }
+  }, [user, rawNotifications, readNotifIds]);
+
+  // Mark all notifications as read (Instant UI update + Safe Firestore Batch Sync)
   const markAllNotificationsRead = useCallback(async () => {
     if (!user) return;
+
+    // 1. Instant local read update for all notifications
+    const newSet = new Set(readNotifIds);
+    rawNotifications.forEach((n) => newSet.add(n.id));
+    persistReadIds(newSet);
+
+    // 2. Safe Firestore Batch Update for owned docs
     try {
       const q = query(
         collection(db, "notifications"),
-        where("userId", "==", user.uid),
-        where("read", "==", false)
+        where("userId", "==", user.uid)
       );
       const snap = await getDocs(q);
       const batch = writeBatch(db);
-      snap.forEach((d) => batch.update(d.ref, { read: true }));
-      await batch.commit();
-    } catch (err) {
-      console.error("[NotificationContext] markAllNotificationsRead error:", err);
+      let count = 0;
+      snap.forEach((d) => {
+        const data = d.data();
+        if (!data.read || !data.isRead) {
+          batch.update(d.ref, { 
+            read: true, 
+            isRead: true, 
+            readAt: serverTimestamp() 
+          });
+          count++;
+        }
+      });
+      if (count > 0) {
+        await batch.commit().catch((e) => {
+          console.warn("[NotificationContext] Batch commit notice:", e.message);
+        });
+      }
+    } catch (err: any) {
+      console.warn("[NotificationContext] markAllNotificationsRead notice:", err.message);
     }
-  }, [user]);
+  }, [user, rawNotifications, readNotifIds]);
 
+  // Clear all notifications permanently (Instant UI clear + Safe Firestore Delete)
   const clearAllNotifications = useCallback(async () => {
     if (!user) return;
+
+    // 1. Instant local cleared update
+    const newCleared = new Set(clearedNotifIds);
+    rawNotifications.forEach((n) => newCleared.add(n.id));
+    persistClearedIds(newCleared);
+
+    // 2. Safe Firestore Delete for owned docs
     try {
       const q = query(
         collection(db, "notifications"),
@@ -216,12 +351,25 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       for (let i = 0; i < snap.docs.length; i += batchSize) {
         const batch = writeBatch(db);
         snap.docs.slice(i, i + batchSize).forEach((d) => batch.delete(d.ref));
-        await batch.commit();
+        await batch.commit().catch(() => {});
       }
-    } catch (err) {
-      console.error("[NotificationContext] clearAllNotifications error:", err);
+    } catch (err: any) {
+      console.warn("[NotificationContext] clearAllNotifications notice:", err.message);
     }
-  }, [user]);
+  }, [user, rawNotifications, clearedNotifIds]);
+
+  // Delete single notification (Instant UI delete + Safe Firestore Delete)
+  const deleteSingleNotification = useCallback(async (id: string) => {
+    const newCleared = new Set(clearedNotifIds);
+    newCleared.add(id);
+    persistClearedIds(newCleared);
+
+    try {
+      await deleteDoc(doc(db, "notifications", id)).catch(() => {});
+    } catch (err: any) {
+      console.warn("[NotificationContext] deleteSingleNotification notice:", err.message);
+    }
+  }, [clearedNotifIds]);
 
   return (
     <NotificationContext.Provider 
@@ -236,7 +384,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         loadingNotifications,
         markNotificationRead,
         markAllNotificationsRead,
-        clearAllNotifications
+        clearAllNotifications,
+        deleteSingleNotification
       }}
     >
       {children}
@@ -258,36 +407,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                     {latestToast.category}
                   </span>
                 </div>
-                <h4 className="text-white font-bold text-sm truncate">{latestToast.title}</h4>
-                <p className="text-gray-400 text-xs mt-1 line-clamp-2">{latestToast.description}</p>
-                
-                <div className="mt-3 flex items-center gap-3">
-                  <button 
-                    onClick={() => {
-                      markAllAsRead();
-                      setLatestToast(null);
-                      router.push("/pulse");
-                    }}
-                    className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 transition-colors"
-                  >
-                    View Details <ExternalLink size={12} />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      markAllAsRead();
-                      setLatestToast(null);
-                    }}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-300 px-2 py-1.5"
-                  >
-                    Mark as read
-                  </button>
-                </div>
+                <h4 className="text-sm font-semibold text-white truncate">
+                  {latestToast.title}
+                </h4>
+                <p className="text-xs text-gray-300 line-clamp-2 mt-0.5">
+                  {latestToast.content}
+                </p>
               </div>
-              <button 
-                onClick={() => setLatestToast(null)}
-                className="text-gray-500 hover:text-white transition-colors flex-shrink-0"
+            </div>
+            <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  markAllAsRead();
+                  setLatestToast(null);
+                  router.push("/pulse");
+                }}
+                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
               >
-                <X size={16} />
+                View in Pulse →
+              </button>
+              <button
+                onClick={() => setLatestToast(null)}
+                className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                Dismiss
               </button>
             </div>
           </div>
@@ -295,4 +438,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       )}
     </NotificationContext.Provider>
   );
+}
+
+export function useNotifications() {
+  const ctx = useContext(NotificationContext);
+  return {
+    notifications: ctx.notifications,
+    unreadCount: ctx.notificationsUnreadCount,
+    loading: ctx.loadingNotifications,
+    markRead: ctx.markNotificationRead,
+    markAllRead: ctx.markAllNotificationsRead,
+    clearMyNotifications: ctx.clearAllNotifications,
+    deleteSingleNotification: ctx.deleteSingleNotification,
+  };
 }

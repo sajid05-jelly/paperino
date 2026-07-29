@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Bell, CheckCheck, Inbox, X, Trash2, Loader2 } from "lucide-react";
+import React, { useState } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
-import { usePulseNotifications, PulseUpdate } from "@/context/NotificationContext";
-import { useAuth } from "@/context/AuthContext";
+import { usePulseNotifications } from "@/context/NotificationContext";
 import type { PaperinoNotification } from "@/lib/notifications";
+import { Bell, CheckCheck, Trash2, X, Sparkles, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-/* ── Helpers ──────────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────────────── */
 
-function timeAgo(ts: number): string {
-  const diff = Math.floor((Date.now() - ts) / 1000);
+function timeAgo(ms: number): string {
+  const diff = Math.floor((Date.now() - ms) / 1000);
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -42,180 +41,145 @@ const TYPE_META: Record<
 
 /* ── Component ────────────────────────────────────────── */
 
-export default function NotificationBell() {
-  const { user } = useAuth();
-  const { notifications: standardNotifications, unreadCount: standardUnread, markRead: markStandardRead, markAllRead: markAllStandardRead, clearMyNotifications } = useNotifications();
-  const { updates: pulseUpdates, unreadCount: pulseUnread, markAllAsRead: markAllPulseRead, lastPulseReadAt } = usePulseNotifications();
+export function NotificationBell() {
   const router = useRouter();
+  const { unreadUpdates, markAllAsRead: markAllPulseRead } = usePulseNotifications();
+  const {
+    notifications: standardNotifications,
+    unreadCount: standardUnread,
+    markRead: markStandardRead,
+    markAllRead: markAllStandardRead,
+    clearMyNotifications,
+    deleteSingleNotification
+  } = useNotifications();
 
-  const [pulseClearedTime, setPulseClearedTime] = useState(0);
   const [open, setOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const bellRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (user && typeof window !== "undefined") {
-      const val = localStorage.getItem(`paperino_pulse_cleared_at_${user.uid}`);
-      setPulseClearedTime(val ? parseInt(val) : 0);
-    }
-  }, [user, open]);
+  const totalUnread = unreadUpdates.length + standardUnread;
+  const totalCount = unreadUpdates.length + standardNotifications.length;
 
-  // Filter pulse updates to show only those created after the clear timestamp
-  const visiblePulseUpdates = useMemo(() => {
-    return pulseUpdates.filter((p: PulseUpdate) => {
-      const createdDate = (p.createdAt && typeof p.createdAt.toDate === "function") 
-        ? p.createdAt.toDate().getTime() 
-        : new Date(p.createdAt as any).getTime();
-      return createdDate > pulseClearedTime;
-    });
-  }, [pulseUpdates, pulseClearedTime]);
-
-  const unreadCount = standardUnread + pulseUnread;
-
-  const markAllRead = useCallback(async () => {
-    await markAllStandardRead();
+  const handleMarkAllRead = async () => {
     await markAllPulseRead();
-  }, [markAllStandardRead, markAllPulseRead]);
+    await markAllStandardRead();
+  };
 
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(e.target as Node) &&
-        bellRef.current &&
-        !bellRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-        setConfirmClear(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setOpen(false); setConfirmClear(false); }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  const handleOpen = useCallback(() => setOpen((v) => !v), []);
-
-  const handleMarkRead = useCallback(
-    (id: string) => {
-      markStandardRead(id);
-    },
-    [markStandardRead]
-  );
-
-  const handleClearAll = useCallback(async () => {
+  const handleClearAll = async () => {
     setClearing(true);
     try {
       await clearMyNotifications();
-      await markAllPulseRead();
-      if (user && typeof window !== "undefined") {
-        const now = Date.now();
-        localStorage.setItem(`paperino_pulse_cleared_at_${user.uid}`, now.toString());
-        setPulseClearedTime(now);
-      }
-      setConfirmClear(false);
-    } catch {
-      // Error already logged in hook
     } finally {
       setClearing(false);
+      setConfirmClear(false);
     }
-  }, [clearMyNotifications, markAllPulseRead, user]);
+  };
 
-  const totalCount = standardNotifications.length + visiblePulseUpdates.length;
+  const handleNotificationClick = async (n: PaperinoNotification) => {
+    await markStandardRead(n.id);
+    setOpen(false);
+
+    if (n.type === "free_class_reported" || n.type === "free_class_expired" || n.roomId) {
+      router.push(`/free-class-finder${n.roomId ? `?room=${encodeURIComponent(n.roomId)}` : ""}`);
+    }
+  };
+
+  const handleDeleteSingle = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await deleteSingleNotification(id);
+  };
 
   return (
-    <div className="relative flex-shrink-0">
-      {/* Bell Button */}
+    <div className="relative">
+      {/* Trigger Button */}
       <button
-        ref={bellRef}
-        onClick={handleOpen}
-        title="Notifications"
-        className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 border
-          ${open
-            ? "bg-violet-500/20 border-violet-500/40 text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.3)]"
-            : "bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20"
-          }`}
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Notifications"
+        className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-all focus:outline-none"
       >
-        <Bell size={16} className={unreadCount > 0 ? "text-violet-300" : ""} />
-
-        {/* Unread badge */}
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-violet-500 text-white text-[10px] font-bold flex items-center justify-center shadow-[0_0_8px_rgba(139,92,246,0.6)] animate-pulse">
-            {unreadCount > 9 ? "9+" : unreadCount}
+        <Bell size={20} />
+        {totalUnread > 0 && (
+          <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white px-1 shadow-[0_0_8px_rgba(139,92,246,0.8)] animate-pulse">
+            {totalUnread > 99 ? "99+" : totalUnread}
           </span>
         )}
       </button>
 
-      {/* Dropdown Panel */}
+      {/* Backdrop */}
       {open && (
         <div
-          ref={panelRef}
-          className="fixed md:absolute top-[60px] md:top-[calc(100%+10px)] right-3 md:right-0 left-auto w-[calc(100vw-24px)] md:w-[380px] max-w-[380px] max-h-[70vh] md:max-h-[500px] flex flex-col z-[9999] rounded-2xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-          style={{ background: "rgba(8,6,18,0.97)", backdropFilter: "blur(20px)" }}
-        >
+          className="fixed inset-0 z-40"
+          onClick={() => {
+            setOpen(false);
+            setConfirmClear(false);
+          }}
+        />
+      )}
+
+      {/* Dropdown Panel */}
+      {open && (
+        <div className="absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl bg-[#0e091b]/95 backdrop-blur-2xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.6)] overflow-hidden text-white animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07] flex-shrink-0">
+          <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell size={15} className="text-violet-400" />
-              <span className="text-sm font-bold text-white">Notifications</span>
-              {unreadCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 text-[10px] font-bold">
-                  {unreadCount} new
+              <span className="font-bold text-sm text-white">Notifications</span>
+              {totalUnread > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                  {totalUnread} new
                 </span>
               )}
             </div>
+
             <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
+              {totalUnread > 0 && (
                 <button
-                  onClick={markAllRead}
+                  onClick={handleMarkAllRead}
                   title="Mark all as read"
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-violet-300 hover:bg-white/5 transition-colors text-xs flex items-center gap-1"
                 >
-                  <CheckCheck size={12} /> Mark all read
+                  <CheckCheck size={14} />
+                  <span className="hidden sm:inline text-[11px]">Read all</span>
                 </button>
               )}
+
+              {totalCount > 0 && (
+                <button
+                  onClick={() => setConfirmClear(true)}
+                  title="Clear all"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-white/5 transition-colors text-xs"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+
               <button
-                onClick={() => setOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                onClick={() => {
+                  setOpen(false);
+                  setConfirmClear(false);
+                }}
+                className="p-1 rounded-lg text-gray-500 hover:text-white transition-colors"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {standardNotifications.length === 0 && visiblePulseUpdates.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-600">
-                <Inbox size={32} className="opacity-40" />
-                <p className="text-sm">No notifications yet</p>
+          {/* List */}
+          <div className="max-h-[380px] overflow-y-auto divide-y divide-white/[0.04]">
+            {totalCount === 0 ? (
+              <div className="py-12 text-center px-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-gray-500">
+                  <Bell size={22} />
+                </div>
+                <p className="text-sm font-semibold text-gray-300">No notifications yet</p>
+                <p className="text-xs text-gray-500 mt-1 max-w-[200px] mx-auto">
+                  You'll see updates about free classrooms, material approvals, and contributions here.
+                </p>
               </div>
             ) : (
-              <div className="divide-y divide-white/[0.04]">
-                {visiblePulseUpdates.map((p: PulseUpdate) => {
-                  const firebaseLastRead = lastPulseReadAt 
-                    ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate() : new Date(lastPulseReadAt))
-                    : new Date(0);
-                  
-                  const localLastReadStr = typeof window !== "undefined" ? localStorage.getItem(`paperino_last_pulse_read_at_${p.id}`) : null;
-                  const localLastRead = localLastReadStr ? new Date(parseInt(localLastReadStr)) : new Date(0);
-                  const lastRead = firebaseLastRead > localLastRead ? firebaseLastRead : localLastRead;
-
-                  const createdDate = (p.createdAt && typeof p.createdAt.toDate === "function") 
-                    ? p.createdAt.toDate() 
-                    : new Date(p.createdAt as any);
-                  const isUnread = createdDate > lastRead;
-
+              <div>
+                {/* Pulse Updates Section */}
+                {unreadUpdates.map((p) => {
                   return (
                     <button
                       key={`pulse-${p.id}`}
@@ -224,9 +188,7 @@ export default function NotificationBell() {
                         setOpen(false);
                         router.push("/pulse");
                       }}
-                      className={`w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] ${
-                        isUnread ? "bg-cyan-500/[0.04]" : ""
-                      }`}
+                      className="w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] bg-cyan-500/[0.04]"
                     >
                       <div className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-base bg-white/5 border border-white/5 mt-0.5 text-cyan-400">
                         📻
@@ -235,30 +197,32 @@ export default function NotificationBell() {
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">New Update</span>
                         </div>
-                        <p className={`text-sm leading-snug mb-0.5 ${isUnread ? "text-white font-semibold" : "text-gray-300 font-medium"}`}>
+                        <p className="text-sm leading-snug mb-0.5 text-white font-semibold">
                           {p.title}
                         </p>
                         <p className="text-[10px] text-gray-600 mt-1.5">
                           {p.createdAt ? timeAgo(p.createdAt.toDate().getTime()) : "just now"}
                         </p>
                       </div>
-                      {isUnread && (
-                        <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 bg-cyan-400 shadow-[0_0_6px_currentColor]" />
-                      )}
+                      <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 bg-cyan-400 shadow-[0_0_6px_currentColor]" />
                     </button>
                   );
                 })}
+
+                {/* Standard Notifications Section */}
                 {standardNotifications.map((n) => {
                   const meta = TYPE_META[n.type] ?? {
                     dot: "bg-gray-400",
                     icon: "🔔",
                   };
+                  const isUnread = !n.read && !(n as any).isRead;
+
                   return (
-                    <button
+                    <div
                       key={n.id}
-                      onClick={() => handleMarkRead(n.id)}
-                      className={`w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] ${
-                        !n.read ? "bg-violet-500/[0.04]" : ""
+                      onClick={() => handleNotificationClick(n)}
+                      className={`w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] cursor-pointer ${
+                        isUnread ? "bg-violet-500/[0.04]" : ""
                       }`}
                     >
                       {/* Icon */}
@@ -270,26 +234,35 @@ export default function NotificationBell() {
                       <div className="flex-1 min-w-0">
                         <p
                           className={`text-sm leading-snug mb-0.5 ${
-                            !n.read ? "text-white font-semibold" : "text-gray-300 font-medium"
+                            isUnread ? "text-white font-semibold" : "text-gray-300 font-medium"
                           }`}
                         >
                           {n.title}
                         </p>
-                        <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
+                        <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">
                           {n.message}
                         </p>
-                        <p className="text-[10px] text-gray-600 mt-1.5">
+                        <p className="text-[10px] text-gray-500 mt-1.5">
                           {timeAgo(n.createdAt)}
                         </p>
                       </div>
 
-                      {/* Unread dot */}
-                      {!n.read && (
-                        <div
-                          className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${meta.dot} shadow-[0_0_6px_currentColor]`}
-                        />
-                      )}
-                    </button>
+                      {/* Right actions: Unread Dot + Individual Delete Button */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isUnread && (
+                          <div
+                            className={`w-2 h-2 rounded-full ${meta.dot} shadow-[0_0_6px_currentColor]`}
+                          />
+                        )}
+                        <button
+                          onClick={(e) => handleDeleteSingle(e, n.id)}
+                          title="Delete notification"
+                          className="p-1 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -320,17 +293,12 @@ export default function NotificationBell() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-gray-600">
-                    {totalCount} notification{totalCount !== 1 ? "s" : ""}
-                  </p>
-                  <button
-                    onClick={() => setConfirmClear(true)}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                  >
-                    <Trash2 size={10} /> Clear all
-                  </button>
-                </div>
+                <button
+                  onClick={() => setConfirmClear(true)}
+                  className="w-full text-center text-xs text-gray-400 hover:text-rose-300 py-1 transition-colors flex items-center justify-center gap-1.5 font-medium"
+                >
+                  <Trash2 size={13} /> Clear all notifications
+                </button>
               )}
             </div>
           )}
@@ -339,3 +307,5 @@ export default function NotificationBell() {
     </div>
   );
 }
+
+export default NotificationBell;
