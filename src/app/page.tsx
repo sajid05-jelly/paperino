@@ -11,7 +11,7 @@ const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: f
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function Home() {
-  const [selectedCollege, setSelectedCollege] = useState<string | null>("srm");
+  const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
   const { departments, deptMaterialCounts, listenToDeptsWithMaterials, loading } = useSubjects();
   
   useEffect(() => {

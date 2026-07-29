@@ -30,7 +30,7 @@ export default function CoursesPage() {
 
   const sortedDepts = sortDepartments(filteredDepts, deptMaterialCounts);
 
-  const [selectedCollege, setSelectedCollege] = useState<string | null>("srm");
+  const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 relative min-h-[80vh]">
@@ -51,7 +51,7 @@ export default function CoursesPage() {
         </p>
 
         {/* SRM University College Card */}
-        <div className="w-full max-w-3xl mx-auto mb-10 text-left">
+        <div className="w-full max-w-3xl mx-auto text-left">
           <div 
             onClick={() => setSelectedCollege(selectedCollege === "srm" ? null : "srm")}
             className={`vision-glass p-8 rounded-[2.5rem] cursor-pointer relative overflow-hidden transition-all duration-500 border ${
@@ -94,16 +94,19 @@ export default function CoursesPage() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Search & Suggest Layout for SRM Courses */}
-        {selectedCollege === "srm" && (
-          <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-300">
+      {/* SRM Courses View (Only displayed when selectedCollege === "srm") */}
+      {selectedCollege === "srm" && (
+        <div className="w-full space-y-8 animate-in fade-in zoom-in-95 duration-400 relative z-10">
+          {/* Header & Search */}
+          <div className="space-y-6 max-w-4xl mx-auto">
             <div className="flex items-center justify-between border-b border-purple-500/20 pb-4 px-2">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Layers className="text-purple-400" size={20} />
+              <h3 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+                <Layers className="text-purple-400" size={22} />
                 SRM Courses
               </h3>
-              <span className="text-xs text-purple-300 font-semibold bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
+              <span className="text-xs text-purple-300 font-semibold bg-purple-500/10 border border-purple-500/20 px-3.5 py-1 rounded-full">
                 {sortedDepts.length} Courses
               </span>
             </div>
@@ -134,64 +137,65 @@ export default function CoursesPage() {
               )}
             </div>
           </div>
-        )}
-      </div>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 w-full">
-          <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
-          <p className="text-gray-400">Loading departments...</p>
-        </div>
-      ) : sortedDepts.length === 0 ? (
-        <div className="vision-glass p-12 text-center rounded-3xl w-full max-w-2xl mx-auto border border-white/10 mt-6 animate-in fade-in zoom-in-95">
-          <GraduationCap className="mx-auto text-gray-600 mb-4" size={48} />
-          <h3 className="text-xl font-medium text-white mb-2">No departments found</h3>
-          <p className="text-gray-400 mb-6">We couldn't find any departments matching your search.</p>
-          {user && (
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors"
-            >
-              Suggest a New Department
-            </button>
+          {/* Department Cards Grid */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 w-full">
+              <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
+              <p className="text-gray-400">Loading departments...</p>
+            </div>
+          ) : sortedDepts.length === 0 ? (
+            <div className="vision-glass p-12 text-center rounded-3xl w-full max-w-2xl mx-auto border border-white/10 mt-6 animate-in fade-in zoom-in-95">
+              <GraduationCap className="mx-auto text-gray-600 mb-4" size={48} />
+              <h3 className="text-xl font-medium text-white mb-2">No departments found</h3>
+              <p className="text-gray-400 mb-6">We couldn't find any departments matching your search.</p>
+              {user && (
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors"
+                >
+                  Suggest a New Department
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full relative z-10 mt-4">
+              {sortedDepts.map((dept, i) => (
+                <Link key={dept.id} href={`/courses/${dept.id}`}>
+                  <div 
+                    className="vision-glass p-6 rounded-[2rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[160px] animate-in fade-in slide-in-from-bottom-8 relative overflow-hidden"
+                    style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
+                        <GraduationCap size={22} />
+                      </div>
+
+                      <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        {dept.code}
+                      </span>
+                    </div>
+
+                    <div className="relative z-10">
+                      <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
+                        {dept.name}
+                      </h3>
+                      <div className="flex items-center justify-between text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} /> {dept.totalSemesters} Semesters
+                        </span>
+                        <span className="flex items-center gap-0.5 font-semibold">
+                          Explore <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full relative z-10 mt-4">
-          {sortedDepts.map((dept, i) => (
-            <Link key={dept.id} href={`/courses/${dept.id}`}>
-              <div 
-                className="vision-glass p-6 rounded-[2rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[160px] animate-in fade-in slide-in-from-bottom-8 relative overflow-hidden"
-                style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <div className="flex items-center justify-between mb-4 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
-                    <GraduationCap size={22} />
-                  </div>
-
-                  <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    {dept.code}
-                  </span>
-                </div>
-
-                <div className="relative z-10">
-                  <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
-                    {dept.name}
-                  </h3>
-                  <div className="flex items-center justify-between text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} /> {dept.totalSemesters} Semesters
-                    </span>
-                    <span className="flex items-center gap-0.5 font-semibold">
-                      Explore <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
         </div>
       )}
 
