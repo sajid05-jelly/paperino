@@ -107,7 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Pending Course Requests
             </Link>
 
-            <Link href="/admin/reviews" className="flex items-center gap-3 px-4 py-3 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors font-medium border border-amber-500/20">
+            <Link href="/admin/reviews" className="flex items-center gap-3 px-4 py-3 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors font-medium border border-rose-500/20">
               <ShieldAlert size={20} />
               Pending Reviews
             </Link>
