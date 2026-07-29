@@ -42,41 +42,7 @@ export default function AdminDashboard() {
   const [clearingNotifs, setClearingNotifs] = useState(false);
   const [clearResult, setClearResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Dynamic Tagline Message System
-  const [headerMessage, setHeaderMessage] = useState("");
-  const [savingHeader, setSavingHeader] = useState(false);
-  const [saveHeaderSuccess, setSaveHeaderSuccess] = useState(false);
-
-  useEffect(() => {
-    const fetchHeaderMessage = async () => {
-      try {
-        const snap = await getDoc(doc(db, "settings", "headerMessage"));
-        if (snap.exists()) {
-          setHeaderMessage(snap.data().message || "");
-        }
-      } catch (err) {
-        console.error("[Admin] Failed to fetch header message:", err);
-      }
-    };
-    fetchHeaderMessage();
-  }, []);
-
-  const handleSaveHeaderMessage = async () => {
-    setSavingHeader(true);
-    setSaveHeaderSuccess(false);
-    try {
-      await setDoc(doc(db, "settings", "headerMessage"), {
-        message: headerMessage,
-        updatedAt: new Date()
-      }, { merge: true });
-      setSaveHeaderSuccess(true);
-      setTimeout(() => setSaveHeaderSuccess(false), 3000);
-    } catch (err) {
-      console.error("[Admin] Failed to save header message:", err);
-    } finally {
-      setSavingHeader(false);
-    }
-  };
+  // Dynamic Tagline is now managed in /admin/header-message
 
   const handleClearAllNotifications = useCallback(async () => {
     setClearingNotifs(true);

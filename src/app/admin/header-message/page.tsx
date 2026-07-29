@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles, Loader2, CheckCircle2, MessageSquareText } from "lucide-react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { getIdToken } from "firebase/auth";
 
 export default function AdminHeaderMessagePage() {
   const [headerMessage, setHeaderMessage] = useState("");
@@ -15,13 +15,9 @@ export default function AdminHeaderMessagePage() {
   useEffect(() => {
     async function fetchHeaderMessage() {
       try {
-        const docRef = doc(db, "system_settings", "header_message");
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          setHeaderMessage(snap.data().text || "");
-        } else {
-          setHeaderMessage("The Universe of Study Materials");
-        }
+        const res = await fetch("/api/admin/header-message");
+        const data = await res.json();
+        setHeaderMessage(data.text || "The Universe of Study Materials");
       } catch (err: any) {
         console.error("[Admin] Failed to fetch header message:", err);
       } finally {
@@ -38,8 +34,22 @@ export default function AdminHeaderMessagePage() {
     setError("");
 
     try {
-      const docRef = doc(db, "system_settings", "header_message");
-      await setDoc(docRef, { text: headerMessage.trim(), updatedAt: new Date() }, { merge: true });
+      const user = auth.currentUser;
+      if (!user) throw new Error("Not authenticated");
+      const token = await getIdToken(user);
+
+      const res = await fetch("/api/admin/header-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: headerMessage.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save");
+
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
     } catch (err: any) {
