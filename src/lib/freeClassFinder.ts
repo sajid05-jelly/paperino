@@ -33,11 +33,13 @@ export const DEFAULT_FREE_CLASS_CONFIG: FreeClassConfig = {
 };
 
 export function calculateCommunityConfidence(trueVotes: number, falseVotes: number): { score: number | null; label: string } {
-  const total = (trueVotes || 0) + (falseVotes || 0);
+  const t = trueVotes || 0;
+  const f = falseVotes || 0;
+  const total = t + f;
   if (total === 0) {
-    return { score: null, label: "Not enough reports" };
+    return { score: null, label: "New Report" };
   }
-  const score = Math.round(((trueVotes || 0) / total) * 100);
+  const score = Math.round((t / total) * 100);
   return { score, label: `${score}%` };
 }
 
@@ -45,7 +47,7 @@ export function calculateConfidenceScore(
   report: { trueVotes: number; falseVotes: number; createdAt?: number },
   expiryMinutes: number = 30
 ): number {
-  const conf = calculateCommunityConfidence(report.trueVotes, report.falseVotes);
+  const conf = calculateCommunityConfidence(report.trueVotes || 0, report.falseVotes || 0);
   return conf.score ?? 0;
 }
 

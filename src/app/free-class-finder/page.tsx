@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { 
-  Building2, Plus, Search, Filter, ThumbsUp, ThumbsDown, 
+  Building2, Plus, Search, Filter, Check, X as IconX, 
   Sparkles, Clock, ShieldCheck, Zap, Award, CheckCircle2,
-  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer
+  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info
 } from "lucide-react";
 import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -42,6 +42,7 @@ export default function FreeClassFinderPage() {
 
   // Modal State
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedTimerReport, setSelectedTimerReport] = useState<FreeClassReport | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -86,7 +87,7 @@ export default function FreeClassFinderPage() {
     return () => unsub();
   }, []);
 
-  // Fetch Reports Real-time with Auto-Removal of Fake Reports
+  // Fetch Reports Real-time with Auto-Removal Rules
   useEffect(() => {
     if (isEnabled === false) return;
 
@@ -103,8 +104,9 @@ export default function FreeClassFinderPage() {
           const trueVotes = data.trueVotes || 0;
           const falseVotes = data.falseVotes || 0;
 
-          // Auto remove fake reports
-          if (falseVotes >= 5 || (falseVotes - trueVotes >= 5)) {
+          // ── Rule 6: Auto Removal ─────────────────────────────────────────
+          // If False votes >= 5 OR False votes > True votes (when falseVotes > 0)
+          if (falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0)) {
             return;
           }
 
@@ -192,7 +194,7 @@ export default function FreeClassFinderPage() {
     });
   }, [reports, searchQuery, selectedBlock, selectedFloor, minCapacity, filterAC]);
 
-  // Submit Free Classroom Report
+  // Submit Free Classroom Report (Initial 0 True, 0 False, No Auto-Vote)
   const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -225,7 +227,7 @@ export default function FreeClassFinderPage() {
         ? formRoomNumber.trim().toUpperCase()
         : `${cleanBlock.toUpperCase()}-${formRoomNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}`;
 
-      // Construct Optimistic UI Card
+      // Construct Optimistic UI Card (Rule 2: Initial 0 True, 0 False, No Reporter Auto-Vote)
       const optimisticReport: FreeClassReport = {
         id: formattedRoom,
         collegeName: cleanCollege,
@@ -239,12 +241,12 @@ export default function FreeClassFinderPage() {
         reporterName: user.displayName || user.email?.split("@")[0] || "Student",
         createdAt: currentTime,
         expiresAt: currentTime + durationNum * 60 * 1000,
-        trueVotes: 1,
+        trueVotes: 0,
         falseVotes: 0,
-        voters: { [user.uid]: "true" },
+        voters: {},
         reporterCount: 1,
         status: "active",
-        confidenceScore: 100
+        confidenceScore: 0
       };
 
       setReports((prev) => [
@@ -300,10 +302,15 @@ export default function FreeClassFinderPage() {
     }
   };
 
-  // Community Vote Handler (👍 True / 👎 False)
+  // Community Vote Handler (Rule 3: Only other users can vote; reporter cannot vote on own report)
   const handleVote = async (report: FreeClassReport, voteType: "true" | "false") => {
     if (!user) {
       showToast("Please login to vote on classroom status.", "error");
+      return;
+    }
+
+    if (report.reporterUid === user.uid) {
+      showToast("You cannot vote on your own classroom report.", "error");
       return;
     }
 
@@ -548,6 +555,7 @@ export default function FreeClassFinderPage() {
               const myVote = user ? report.voters?.[user.uid] : undefined;
               const conf = calculateCommunityConfidence(report.trueVotes, report.falseVotes);
               const timerState = getRemainingTimeText(report.createdAt, report.expectedFreeDurationMinutes || 30);
+              const isReporter = user?.uid === report.reporterUid;
 
               return (
                 <div
@@ -572,25 +580,37 @@ export default function FreeClassFinderPage() {
                     <div className="flex items-center gap-1 text-[11px] text-gray-400 pt-1">
                       <Clock size={12} className="text-gray-500" />
                       <span>Reported: <strong className="text-gray-200 font-semibold">{formatTimeAgo(report.createdAt)}</strong></span>
+                      {isReporter && (
+                        <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
+                          Your Report
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Card Section 2: Expected Free Timer */}
-                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
+                  {/* Card Section 2: Expected Free Timer Container (RULE 5: ENTIRE CARD CLICKABLE) */}
+                  <div 
+                    onClick={() => setSelectedTimerReport(report)}
+                    className="p-3.5 rounded-2xl bg-black/40 border border-white/5 hover:border-purple-500/30 hover:bg-black/60 transition-all cursor-pointer flex items-center justify-between group/timer shadow-[0_0_15px_rgba(0,0,0,0.2)]"
+                    title="Click to view detailed expected time remaining"
+                  >
+                    <div className="flex items-center gap-2 text-xs text-gray-400 font-medium group-hover/timer:text-gray-200 transition-colors">
                       <Timer size={15} className={timerState.isExpired ? "text-amber-400" : "text-purple-400"} />
                       <span>Expected Free:</span>
                     </div>
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
-                      timerState.isExpired
-                        ? "bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse"
-                        : "bg-purple-500/15 border-purple-500/30 text-purple-300"
-                    }`}>
-                      {timerState.text}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                        timerState.isExpired
+                          ? "bg-amber-500/15 border-amber-500/30 text-amber-300 animate-pulse"
+                          : "bg-purple-500/15 border-purple-500/30 text-purple-300 group-hover/timer:border-purple-400/50"
+                      }`}>
+                        {timerState.text}
+                      </span>
+                      <Info size={14} className="text-gray-500 group-hover/timer:text-purple-400 transition-colors" />
+                    </div>
                   </div>
 
-                  {/* Card Section 3: Community Status & Voting (👍 True / 👎 False) */}
+                  {/* Card Section 3: Community Status & Voting (RULE 1: NO EMOJIS, CLEAN True/False COUNTS) */}
                   <div className="space-y-3 pt-2 border-t border-white/5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-300">Community Status</span>
@@ -599,14 +619,17 @@ export default function FreeClassFinderPage() {
                       </span>
                     </div>
 
-                    {/* Voting Buttons: 👍 True / 👎 False */}
+                    {/* Voting Buttons: ✔ True / ✖ False (No Emoji Icons) */}
                     <div className="grid grid-cols-2 gap-3">
-                      {/* 👍 True */}
+                      {/* ✔ True */}
                       <button
                         onClick={() => handleVote(report, "true")}
-                        disabled={actionLoading !== null}
+                        disabled={actionLoading !== null || isReporter}
+                        title={isReporter ? "You cannot vote on your own report" : "Vote True"}
                         className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          myVote === "true"
+                          isReporter
+                            ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
+                            : myVote === "true"
                             ? "bg-purple-500/25 border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
                             : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
                         }`}
@@ -614,17 +637,20 @@ export default function FreeClassFinderPage() {
                         {actionLoading === `${report.id}-true` ? (
                           <Loader2 size={14} className="animate-spin" />
                         ) : (
-                          <ThumbsUp size={14} />
+                          <Check size={14} className={myVote === "true" ? "text-purple-300" : "text-emerald-400"} />
                         )}
-                        <span>👍 {report.trueVotes} True</span>
+                        <span>✔ {report.trueVotes} True</span>
                       </button>
 
-                      {/* 👎 False */}
+                      {/* ✖ False */}
                       <button
                         onClick={() => handleVote(report, "false")}
-                        disabled={actionLoading !== null}
+                        disabled={actionLoading !== null || isReporter}
+                        title={isReporter ? "You cannot vote on your own report" : "Vote False"}
                         className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          myVote === "false"
+                          isReporter
+                            ? "bg-white/5 border-white/5 text-gray-500 cursor-not-allowed opacity-60"
+                            : myVote === "false"
                             ? "bg-rose-500/25 border-rose-500/50 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
                             : "bg-white/5 border-white/10 text-gray-300 hover:text-white hover:bg-white/10"
                         }`}
@@ -632,9 +658,9 @@ export default function FreeClassFinderPage() {
                         {actionLoading === `${report.id}-false` ? (
                           <Loader2 size={14} className="animate-spin" />
                         ) : (
-                          <ThumbsDown size={14} />
+                          <IconX size={14} className={myVote === "false" ? "text-rose-300" : "text-rose-400"} />
                         )}
-                        <span>👎 {report.falseVotes} False</span>
+                        <span>✖ {report.falseVotes} False</span>
                       </button>
                     </div>
                   </div>
@@ -660,6 +686,57 @@ export default function FreeClassFinderPage() {
           </div>
         )}
       </div>
+
+      {/* Expected Free Time Details Modal (Triggered by Clicking Entire Expected Free Row) */}
+      {selectedTimerReport && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedTimerReport(null)}></div>
+          <div className="relative w-full max-w-md bg-[#0e091b] border border-purple-500/40 p-6 rounded-3xl shadow-[0_0_50px_rgba(139,92,246,0.3)] z-10 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                  <Timer size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Expected Free Details</h3>
+                  <p className="text-xs text-gray-400">Room {selectedTimerReport.roomNumber}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedTimerReport(null)} className="text-gray-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-gray-300">
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between">
+                <span className="font-semibold text-gray-400">Estimated Duration:</span>
+                <span className="font-bold text-purple-300 font-mono">{selectedTimerReport.expectedFreeDurationMinutes || 30} mins</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between">
+                <span className="font-semibold text-gray-400">Time Remaining:</span>
+                <span className="font-extrabold text-white font-mono">
+                  {getRemainingTimeText(selectedTimerReport.createdAt, selectedTimerReport.expectedFreeDurationMinutes || 30).text}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between">
+                <span className="font-semibold text-gray-400">Reported By:</span>
+                <span className="font-medium text-gray-200">{selectedTimerReport.reporterName || "Student"} ({formatTimeAgo(selectedTimerReport.createdAt)})</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setSelectedTimerReport(null)}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(139,92,246,0.3)] cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Report Classroom Modal (Clean Placeholder UX) */}
       {isReportModalOpen && (

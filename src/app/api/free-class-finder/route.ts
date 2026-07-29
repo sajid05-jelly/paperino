@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = now + durationMinutes * 60 * 1000;
     const cleanCollege = collegeName ? String(collegeName).trim() : "SRM IST";
 
-    // ── ACTION 1: SUBMIT REPORT ──────────────────────────────────────────────
+    // ── ACTION 1: SUBMIT REPORT (Initial 0 True, 0 False, No Auto-Vote) ────────
     if (action === "create" || (!action && roomNumber)) {
       if (!roomNumber || !block) {
         return new Response(JSON.stringify({ error: "Bad Request", message: "Block and Room Number are required." }), {
@@ -67,14 +67,9 @@ export async function POST(req: NextRequest) {
           createdAt: now,
           expiresAt,
           expectedFreeDurationMinutes: durationMinutes,
-          trueVotes: (existingData.trueVotes || 0) + 1,
           reporterCount: (existingData.reporterCount || 1) + 1,
           capacity: capacity ? parseInt(capacity, 10) : (existingData.capacity || null),
           hasAC: hasAC !== undefined ? !!hasAC : !!existingData.hasAC,
-          voters: {
-            ...(existingData.voters || {}),
-            [uid]: "true"
-          }
         });
       } else {
         await reportRef.set({
@@ -89,24 +84,22 @@ export async function POST(req: NextRequest) {
           reporterName: userName,
           createdAt: now,
           expiresAt,
-          trueVotes: 1,
+          trueVotes: 0,
           falseVotes: 0,
-          voters: {
-            [uid]: "true"
-          },
+          voters: {},
           reporterCount: 1,
           status: "active"
         });
       }
 
-      console.log(`[API Free Class Finder] Successfully created/updated report for ${docId} (${cleanCollege}, ${durationMinutes} mins)`);
+      console.log(`[API Free Class Finder] Successfully created report for ${docId} (Initial: 0 True, 0 False)`);
       return new Response(JSON.stringify({ success: true, roomNumber: formattedRoom, reportId: docId }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // ── ACTION 2: VOTE ──────────────────────────────────────────────────────
+    // ── ACTION 2: VOTE (Only other users can vote; reporter cannot vote on own report)
     if (action === "vote" && reportId && voteType) {
       const reportRef = adminDb.collection("free_class_reports").doc(reportId);
       const reportSnap = await reportRef.get();
@@ -119,6 +112,15 @@ export async function POST(req: NextRequest) {
       }
 
       const data = reportSnap.data() || {};
+
+      // Reporter cannot vote on their own report
+      if (data.reporterUid === uid) {
+        return new Response(JSON.stringify({ error: "Forbidden", message: "You cannot vote on your own classroom report." }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
       const existingVote = data.voters?.[uid];
 
       let newTrueVotes = data.trueVotes || 0;
@@ -126,10 +128,12 @@ export async function POST(req: NextRequest) {
       const newVoters = { ...(data.voters || {}) };
 
       if (existingVote === voteType) {
+        // Toggle off if clicking the same vote
         delete newVoters[uid];
         if (voteType === "true") newTrueVotes = Math.max(0, newTrueVotes - 1);
         else newFalseVotes = Math.max(0, newFalseVotes - 1);
       } else {
+        // Switch vote if clicking opposite vote
         if (existingVote === "true") newTrueVotes = Math.max(0, newTrueVotes - 1);
         if (existingVote === "false") newFalseVotes = Math.max(0, newFalseVotes - 1);
 
@@ -144,7 +148,7 @@ export async function POST(req: NextRequest) {
         voters: newVoters
       });
 
-      console.log(`[API Free Class Finder] Registered community vote (${voteType}) for ${reportId}`);
+      console.log(`[API Free Class Finder] Registered community vote (${voteType}) for ${reportId} by ${uid}`);
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
