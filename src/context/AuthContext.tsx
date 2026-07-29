@@ -134,7 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "sudharajsekar2005@gmail.com",
         "admin.paperinoirfan27@gmail.com",
         "admin.paperinosam14@gmail.com",
-        "gameplayitlifeitis@gmail.com"
+        "gameplayitlifeitis@gmail.com",
+        "gameplayitlifeis@gmail.com",
+        "gameplayitlife@gmail.com"
       ];
       
       const envAdmins = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",") || [];
@@ -151,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Always create as "student" first (Firestore rules require role="student" on create)
             await setDoc(userRef, {
               displayName: toProperCase(currentUser.displayName || ""),
-              email: currentUser.email,
+              email: (currentUser.email || "").toLowerCase(),
               role: "student",
               status: "active",
               points: 0,
@@ -161,16 +163,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               lastPulseReadAt: new Date(0),
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp()
+            }).catch(err => {
+              console.warn("[AuthContext] Failed to create user profile in DB:", err);
             });
             // If this email is an admin, promote via update (update rule allows admin role changes)
             if (currentIsAdmin) {
-              await setDoc(userRef, { role: "admin" }, { merge: true });
+              await setDoc(userRef, { role: "admin" }, { merge: true }).catch(err => {
+                console.warn("[AuthContext] Failed to promote to admin in DB:", err);
+              });
             }
           } else {
             // Daily Active Users Tracking (update lastLogin max once per day)
             const data = userSnap.data();
             if (currentIsAdmin && data.role !== "admin") {
-              await setDoc(userRef, { role: "admin" }, { merge: true });
+              await setDoc(userRef, { role: "admin" }, { merge: true }).catch(err => {
+                console.warn("[AuthContext] Failed to promote to admin in DB:", err);
+              });
             }
             const now = new Date();
             const lastLoginDate = data.lastLogin?.toDate ? data.lastLogin.toDate() : new Date(0);
@@ -179,7 +187,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               lastLoginDate.getMonth() !== now.getMonth() ||
               lastLoginDate.getFullYear() !== now.getFullYear()
             ) {
-              await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+              await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(err => {
+                console.warn("[AuthContext] Failed to update lastLogin in DB:", err);
+              });
             }
           }
         } catch (error) {

@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 
 export const dynamic = "force-dynamic";
 
-const COLLECTION_NAME = "freeClassrooms";
+const COLLECTION_NAME = "free_class_reports";
 
 // ── AUTOMATIC CLEANUP ROUTINE ────────────────────────────────────────────────
 async function runFreeClassCleanup() {
@@ -22,7 +22,7 @@ async function runFreeClassCleanup() {
       const falseVotes = data.falseVotes || 0;
 
       const isExpired = expiresAtMs > 0 && expiresAtMs <= now;
-      const isFake = falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0);
+      const isFake = falseVotes >= 5;
 
       if (isExpired || isFake) {
         console.log(`[Cleanup] Deleting report ${docSnap.id} from ${COLLECTION_NAME} (Expired: ${isExpired}, Fake: ${isFake})`);
@@ -64,11 +64,55 @@ async function runFreeClassCleanup() {
 }
 
 export async function GET(req: NextRequest) {
-  await runFreeClassCleanup();
-  return new Response(JSON.stringify({ success: true, message: "Cleanup completed successfully." }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" }
-  });
+  try {
+    await runFreeClassCleanup();
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized", message: "Bearer token missing." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const token = authHeader.substring(7);
+    if (!adminAuth || !adminDb) {
+      return new Response(JSON.stringify({ error: "Server Error", message: "Firebase Admin SDK not initialized." }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    await adminAuth.verifyIdToken(token);
+
+    const snapshot = await adminDb.collection(COLLECTION_NAME).orderBy("createdAt", "desc").get();
+    const list = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      const formattedData = { ...data };
+      if (data.createdAt && typeof data.createdAt.toMillis === "function") {
+        formattedData.createdAt = data.createdAt.toMillis();
+      }
+      if (data.expiresAt && typeof data.expiresAt.toMillis === "function") {
+        formattedData.expiresAt = data.expiresAt.toMillis();
+      }
+      return {
+        id: docSnap.id,
+        ...formattedData
+      };
+    });
+
+    return new Response(JSON.stringify(list), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (error: any) {
+    console.error("[API Free Class Finder GET Error]", error);
+    return new Response(JSON.stringify({ error: "Error", message: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -132,6 +176,31 @@ export async function POST(req: NextRequest) {
       if (!roomNumber || !block) {
         return new Response(JSON.stringify({ error: "Bad Request", message: "Block and Room Number are required." }), {
           status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Enforce limit of max 2 active reports per user
+      const activeUserSnap = await adminDb.collection(COLLECTION_NAME)
+        .where("reporterUid", "==", uid)
+        .where("status", "==", "active")
+        .get();
+
+      // Check current expiry times too since some might not have been swept yet
+      let activeCount = 0;
+      activeUserSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const createdAt = data.createdAtMs || (data.createdAt?.toMillis ? data.createdAt.toMillis() : now);
+        const durationMin = data.expectedFreeDurationMinutes || 30;
+        const expiresAtMs = data.expiresAtMs || (data.expiresAt?.toMillis ? data.expiresAt.toMillis() : (createdAt + durationMin * 60 * 1000));
+        if (expiresAtMs > now) {
+          activeCount++;
+        }
+      });
+
+      if (activeCount >= 2) {
+        return new Response(JSON.stringify({ error: "Forbidden", message: "You already have 2 active reports. Delete one before creating another." }), {
+          status: 403,
           headers: { "Content-Type": "application/json" }
         });
       }
@@ -248,7 +317,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Check immediate auto-removal rule on vote update
-      if (newFalseVotes >= 5 || (newFalseVotes > newTrueVotes && newFalseVotes > 0)) {
+      if (newFalseVotes >= 5) {
         console.log(`[API Free Class Finder] Auto-deleting fake report ${reportId} from ${COLLECTION_NAME}`);
         await reportRef.delete();
         return new Response(JSON.stringify({ success: true, removed: true }), {
@@ -291,7 +360,9 @@ export async function POST(req: NextRequest) {
         "sudharajsekar2005@gmail.com",
         "admin.paperinoirfan27@gmail.com",
         "admin.paperinosam14@gmail.com",
-        "gameplayitlifeitis@gmail.com"
+        "gameplayitlifeitis@gmail.com",
+        "gameplayitlifeis@gmail.com",
+        "gameplayitlife@gmail.com"
       ].includes(userEmail);
 
       const userDoc = await adminDb.collection("users").doc(uid).get();
@@ -306,6 +377,21 @@ export async function POST(req: NextRequest) {
 
       // 1. Delete classroom report document
       await reportRef.delete();
+
+      // If deleted by an admin (moderator deletion)
+      const isModerator = isHardcodedAdmin || isAdminRole;
+      if (isModerator && data.reporterUid !== uid) {
+        const reason = body.reason || "Moderator removal";
+        await adminDb.collection("admin_logs").add({
+          action: "delete_free_classroom_moderation",
+          adminUid: uid,
+          adminName: userName,
+          reportId: reportId,
+          deletedAt: now,
+          reason: reason,
+          details: `Admin ${userName} removed classroom report for room ${reportId}. Reason: ${reason}`
+        }).catch(e => console.error("[Moderation Logging Error]:", e));
+      }
 
       // 2. Delete related notifications
       try {

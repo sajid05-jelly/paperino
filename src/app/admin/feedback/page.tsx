@@ -5,6 +5,8 @@ import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from "fireba
 import { db } from "@/lib/firebase";
 import { MessageSquare, Loader2, CheckCircle2, Trash2, Filter, Reply } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
+
 interface Feedback {
   id: string;
   uid: string;
@@ -25,32 +27,54 @@ export default function FeedbackCenterPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
+  const { user } = useAuth();
+
+  const fetchFeedbacks = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/data?collection=user_feedback", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch feedback from API");
+      const data = await res.json();
+      setFeedbacks(data);
+    } catch (err) {
+      console.error("Error fetching feedback:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setLoading(true);
-    const q = query(collection(db, "user_feedback"));
-    
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const fbList: Feedback[] = [];
-      snap.forEach(doc => fbList.push({ id: doc.id, ...doc.data() } as Feedback));
-      
-      // Sort by timestamp, newest first
-      fbList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-      
-      setFeedbacks(fbList);
-      setLoading(false);
-    }, (err) => {
-      console.error("Error fetching feedback:", err);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (user) {
+      fetchFeedbacks();
+    }
+  }, [user]);
 
   const handleResolve = async (id: string) => {
+    if (!user) return;
     setActionLoading(id);
     try {
-      await updateDoc(doc(db, "user_feedback", id), { status: "resolved" });
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "update",
+          collection: "user_feedback",
+          id,
+          updateData: { status: "resolved" }
+        })
+      });
+      if (!res.ok) throw new Error("Failed to resolve feedback via API");
+      setFeedbacks(prev => prev.map(fb => fb.id === id ? { ...fb, status: "resolved" } : fb));
     } catch (err) {
       console.error("Resolve error:", err);
     }
@@ -58,10 +82,25 @@ export default function FeedbackCenterPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!user) return;
     if (!confirm("Are you sure you want to delete this feedback forever?")) return;
     setActionLoading(id);
     try {
-      await deleteDoc(doc(db, "user_feedback", id));
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "delete",
+          collection: "user_feedback",
+          id
+        })
+      });
+      if (!res.ok) throw new Error("Failed to delete feedback via API");
+      setFeedbacks(prev => prev.filter(fb => fb.id !== id));
     } catch (err) {
       console.error("Delete error:", err);
     }

@@ -47,9 +47,23 @@ function FreeClassFinderContent() {
 
   // Modal State
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [selectedTimerReport, setSelectedTimerReport] = useState<FreeClassReport | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const handleOpenReportModal = () => {
+    if (!user) {
+      showToast("Please login to report a free classroom.", "error");
+      return;
+    }
+    const activeCount = reports.filter(r => r.reporterUid === user.uid).length;
+    if (activeCount >= 2) {
+      showToast("You already have 2 active reports. Delete one before creating another.", "error");
+      return;
+    }
+    setIsReportModalOpen(true);
+  };
 
   // Form Fields (Empty Defaults for Pure Placeholder UX)
   const [formCollege, setFormCollege] = useState("");
@@ -66,6 +80,32 @@ function FreeClassFinderContent() {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
+
+  // Cooldown countdown tick loop
+  useEffect(() => {
+    const lastSubmit = localStorage.getItem("lastFreeClassSubmitTime");
+    if (lastSubmit) {
+      const elapsed = Date.now() - parseInt(lastSubmit, 10);
+      const remaining = Math.max(0, 60 - Math.floor(elapsed / 1000));
+      if (remaining > 0) {
+        setCooldownSeconds(remaining);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setCooldownSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownSeconds]);
 
   // Run Backend Background Cleanup Trigger
   useEffect(() => {
@@ -97,69 +137,151 @@ function FreeClassFinderContent() {
     return () => unsub();
   }, []);
 
-  // Fetch Reports Real-time from exact collection: freeClassrooms
+  // Fetch Reports Real-time using onSnapshot with standard API polling fallback if permissions error occurs
   useEffect(() => {
-    if (isEnabled === false) return;
+    if (isEnabled === false || !user) return;
 
-    const collectionName = "freeClassrooms";
-    const unsub = onSnapshot(
-      collection(db, collectionName),
-      (snap) => {
-        const list: FreeClassReport[] = [];
-        const currentTime = Date.now();
+    let unsub: (() => void) | null = null;
+    let fallbackInterval: NodeJS.Timeout | null = null;
 
-        snap.forEach((d) => {
-          const data = d.data();
-          const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : (Number(data.createdAt) || currentTime));
-          const durationMin = data.expectedFreeDurationMinutes || 30;
-          const expiresAtMs = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : (createdAt + durationMin * 60 * 1000));
-          const trueVotes = data.trueVotes || 0;
-          const falseVotes = data.falseVotes || 0;
+    const processReportsData = (rawList: any[]) => {
+      const list: FreeClassReport[] = [];
+      const currentTime = Date.now();
 
-          // ── Lifecycle Filtering Rules ─────────────────────────────────────
-          if (expiresAtMs <= currentTime) return;
-          if (falseVotes >= 5 || (falseVotes > trueVotes && falseVotes > 0)) return;
-          if (data.status === "flagged") return;
+      rawList.forEach((data: any) => {
+        const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : (data.createdAt?.seconds ? data.createdAt.seconds * 1000 : (Number(data.createdAt) || currentTime)));
+        const durationMin = data.expectedFreeDurationMinutes || 30;
+        const expiresAtMs = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : (data.expiresAt?.seconds ? data.expiresAt.seconds * 1000 : (createdAt + durationMin * 60 * 1000)));
+        const trueVotes = data.trueVotes || 0;
+        const falseVotes = data.falseVotes || 0;
 
-          const rep: FreeClassReport = {
-            id: d.id,
-            collegeName: data.collegeName || "SRM IST",
-            block: data.block || "Tech Park (TP)",
-            floor: data.floor || 1,
-            roomNumber: data.roomNumber || d.id,
-            capacity: data.capacity,
-            hasAC: data.hasAC,
-            reporterUid: data.reporterUid,
-            reporterName: data.reporterName,
-            createdAt,
-            createdAtMs: createdAt,
-            expiresAt: expiresAtMs,
-            expiresAtMs: expiresAtMs,
-            expectedFreeDurationMinutes: durationMin,
-            trueVotes,
-            falseVotes,
-            voters: data.voters || {},
-            reporterCount: data.reporterCount || 1,
-            status: data.status || "active"
-          };
+        if (expiresAtMs <= currentTime) return; // Expired
+        if (falseVotes >= 5) return; // Deleted/Fake threshold = 5
+        if (data.status === "flagged") return;
 
-          const conf = calculateCommunityConfidence(trueVotes, falseVotes);
-          rep.confidenceScore = conf.score ?? 0;
-          list.push(rep);
-        });
+        const rep: FreeClassReport = {
+          id: data.id,
+          collegeName: data.collegeName || "SRM IST",
+          block: data.block || "Tech Park (TP)",
+          floor: data.floor || 1,
+          roomNumber: data.roomNumber || data.id,
+          capacity: data.capacity,
+          hasAC: data.hasAC,
+          reporterUid: data.reporterUid,
+          reporterName: data.reporterName,
+          createdAt,
+          createdAtMs: createdAt,
+          expiresAt: expiresAtMs,
+          expiresAtMs: expiresAtMs,
+          expectedFreeDurationMinutes: durationMin,
+          trueVotes,
+          falseVotes,
+          voters: data.voters || {},
+          reporterCount: data.reporterCount || 1,
+          status: data.status || "active"
+        };
 
-        list.sort((a, b) => b.createdAt - a.createdAt);
-        setReports(list);
-        setLoading(false);
-      },
-      (err) => {
-        console.warn("Free class reports listener notice:", err.message);
-        setLoading(false);
+        const conf = calculateCommunityConfidence(trueVotes, falseVotes);
+        rep.confidenceScore = conf.score ?? 0;
+        list.push(rep);
+      });
+
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      setReports(list);
+      setLoading(false);
+    };
+
+    const startPollingFallback = () => {
+      if (fallbackInterval) return;
+      console.warn("[Free Class Finder] Falling back to server-side polling due to client Firestore rules constraints.");
+      
+      const fetchReports = async () => {
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch("/api/free-class-finder", {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (!res.ok) throw new Error("Failed to fetch reports from server");
+          const rawList = await res.json();
+          processReportsData(rawList);
+        } catch (err) {
+          console.warn("Failed to fetch free classrooms list in fallback:", err);
+          setLoading(false);
+        }
+      };
+
+      fetchReports();
+      fallbackInterval = setInterval(fetchReports, 5000);
+    };
+
+    try {
+      // 1. Try to use direct realtime onSnapshot listener
+      const collectionName = "free_class_reports";
+      unsub = onSnapshot(
+        collection(db, collectionName),
+        (snap) => {
+          const rawList = snap.docs.map(docSnap => ({
+            id: docSnap.id,
+            ...docSnap.data()
+          }));
+          processReportsData(rawList);
+        },
+        (err) => {
+          // If onSnapshot fails (e.g. Missing or insufficient permissions), start polling
+          console.warn(`[Free Class Finder] Realtime snapshot notice (Expected if rules aren't deployed): ${err.message}`);
+          startPollingFallback();
+        }
+      );
+    } catch (e) {
+      startPollingFallback();
+    }
+
+    return () => {
+      if (unsub) unsub();
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
+  }, [config.expiryMinutes, isEnabled, user]);
+
+  // Periodic check to auto-delete expired reports permanently from Firestore
+  useEffect(() => {
+    if (!user || isEnabled === false) return;
+
+    const checkAndSweepExpired = async () => {
+      const currentTime = Date.now();
+      const expired = reports.filter(r => {
+        const targetExpiry = r.expiresAtMs || (r.createdAt + (r.expectedFreeDurationMinutes || 30) * 60 * 1000);
+        return targetExpiry <= currentTime;
+      });
+
+      if (expired.length === 0) return;
+
+      try {
+        const token = await user.getIdToken();
+        for (const r of expired) {
+          console.log(`[Auto-Expiry Sweep] Deleting expired classroom ${r.id} from Firestore...`);
+          await fetch("/api/free-class-finder", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              action: "delete",
+              reportId: r.id
+            })
+          });
+          // Optimistically update local reports state
+          setReports(prev => prev.filter(item => item.id !== r.id));
+        }
+      } catch (err) {
+        console.warn("[Auto-Expiry Sweep Error]:", err);
       }
-    );
+    };
 
-    return () => unsub();
-  }, [config.expiryMinutes, isEnabled]);
+    // Run sweep every 5 seconds
+    const interval = setInterval(checkAndSweepExpired, 5000);
+    return () => clearInterval(interval);
+  }, [reports, user, isEnabled]);
 
   // Dynamic Live Filter for Reports (Automatically purges expired cards)
   const activeLiveReports = useMemo(() => {
@@ -363,6 +485,43 @@ function FreeClassFinderContent() {
     }
   };
 
+  // Admin/Lead Admin Moderation Delete Handler
+  const handleModeratorDelete = async (report: FreeClassReport) => {
+    if (!user) return;
+    const reason = prompt("Enter reason for removing this classroom report (Optional):") || "Moderator removal";
+    if (!confirm("Are you sure you want to remove this classroom report?")) return;
+
+    setActionLoading(`${report.id}-delete`);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/free-class-finder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: "delete",
+          reportId: report.id,
+          reason
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Failed to remove classroom report.");
+      }
+
+      setReports((prev) => prev.filter((r) => r.id !== report.id));
+      showToast("Classroom report removed successfully.", "success");
+    } catch (err: any) {
+      console.error("Moderator delete error:", err);
+      showToast("Failed to remove report: " + err.message, "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // Community Vote Handler
   const handleVote = async (report: FreeClassReport, voteType: "true" | "false") => {
     if (!user) {
@@ -394,6 +553,9 @@ function FreeClassFinderContent() {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || data.error || "Failed to register vote.");
+      }
+      if (data.removed) {
+        showToast("This classroom report was removed because multiple students marked it as incorrect.", "info");
       }
     } catch (err: any) {
       console.error("Vote error:", err);
@@ -437,11 +599,21 @@ function FreeClassFinderContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050308] text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-10">
+    <div className="min-h-screen text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{
+      background: "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(109,40,217,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(76,29,149,0.22) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%), linear-gradient(135deg, #07030f 0%, #0a041a 30%, #060210 60%, #050308 100%)"
+    }}>
+      {/* Premium ambient glow orbs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+        <div style={{ position: "absolute", top: "-10%", left: "-5%", width: "500px", height: "500px", background: "radial-gradient(circle, rgba(109,40,217,0.12) 0%, transparent 70%)", borderRadius: "50%", filter: "blur(40px)" }} />
+        <div style={{ position: "absolute", top: "30%", right: "-10%", width: "600px", height: "600px", background: "radial-gradient(circle, rgba(76,29,149,0.10) 0%, transparent 70%)", borderRadius: "50%", filter: "blur(60px)" }} />
+        <div style={{ position: "absolute", bottom: "10%", left: "30%", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)", borderRadius: "50%", filter: "blur(50px)" }} />
+      </div>
+      <div className="max-w-7xl mx-auto space-y-10 relative z-10">
         
         {/* Paperino Style Hero Banner */}
-        <div className="relative rounded-3xl overflow-hidden p-8 sm:p-12 border border-purple-500/25 bg-gradient-to-r from-[#120924] via-[#0d071a] to-[#050308] shadow-[0_0_50px_rgba(139,92,246,0.15)]">
+        <div className="relative rounded-3xl overflow-hidden p-8 sm:p-12 border border-purple-500/30 shadow-[0_0_80px_rgba(109,40,217,0.25),0_0_30px_rgba(139,92,246,0.1),inset_0_1px_0_rgba(255,255,255,0.05)]" style={{
+          background: "linear-gradient(135deg, rgba(88,28,135,0.35) 0%, rgba(49,10,101,0.45) 40%, rgba(17,5,40,0.8) 100%), radial-gradient(ellipse 120% 100% at 0% 0%, rgba(139,92,246,0.15) 0%, transparent 60%)"
+        }}>
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-wider">
@@ -456,7 +628,7 @@ function FreeClassFinderContent() {
             </div>
 
             <button
-              onClick={() => setIsReportModalOpen(true)}
+              onClick={handleOpenReportModal}
               className="px-6 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all cursor-pointer flex items-center justify-center gap-2 border border-purple-400/30 flex-shrink-0"
             >
               <Plus size={18} />
@@ -620,7 +792,7 @@ function FreeClassFinderContent() {
                     <Building2 size={32} className="mx-auto text-purple-400/40" />
                     <p className="text-xs text-gray-400">You haven't reported any free classrooms yet.</p>
                     <button
-                      onClick={() => setIsReportModalOpen(true)}
+                      onClick={handleOpenReportModal}
                       className="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 font-bold text-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <Plus size={14} /> Report Free Room
@@ -699,6 +871,19 @@ function FreeClassFinderContent() {
                 </span>
               </div>
 
+              {/* ⚠️ Community Disclaimer Box */}
+              <div className="glass-panel p-4 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 via-transparent to-transparent flex items-start gap-3 shadow-[0_0_20px_rgba(245,158,11,0.05)]">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <span className="font-bold text-base leading-none">⚠</span>
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-white">Community Report</h4>
+                  <p className="text-[11px] text-gray-300 leading-relaxed">
+                    Free classrooms are reported by students and may change at any time. Please verify before using the room. Help the community by voting True or False.
+                  </p>
+                </div>
+              </div>
+
               {filteredReports.length === 0 ? (
                 <div className="text-center py-16 px-4 glass-panel rounded-3xl border border-white/5 border-dashed space-y-4">
                   <Building2 size={48} className="mx-auto text-gray-600 mb-2" />
@@ -707,7 +892,7 @@ function FreeClassFinderContent() {
                     Be the first to report an available classroom to help your fellow students!
                   </p>
                   <button
-                    onClick={() => setIsReportModalOpen(true)}
+                    onClick={handleOpenReportModal}
                     className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all cursor-pointer inline-flex items-center gap-2"
                   >
                     <Plus size={16} /> Report Classroom
@@ -739,6 +924,16 @@ function FreeClassFinderContent() {
                                 <GraduationCap size={15} className="text-purple-400" />
                                 <span>{report.collegeName || "SRM IST"}</span>
                               </div>
+                              {(isAdmin || user?.email?.toLowerCase() === "mohamedsajid.sa@gmail.com") && (
+                                <button
+                                  onClick={() => handleModeratorDelete(report)}
+                                  disabled={actionLoading !== null}
+                                  className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:text-rose-300 transition-all cursor-pointer shadow-[0_0_15px_rgba(244,63,94,0.1)] flex items-center justify-center shrink-0"
+                                  title="Moderator Remove"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
                             </div>
 
                             <div>
@@ -751,7 +946,7 @@ function FreeClassFinderContent() {
                             {/* Reported Relative Time */}
                             <div className="flex items-center gap-1 text-[11px] text-gray-400 pt-1">
                               <Clock size={12} className="text-gray-500" />
-                              <span>Reported by <strong className="text-gray-200 font-semibold">{report.reporterName || "Student"}</strong> ({formatTimeAgo(report.createdAt)})</span>
+                              <span>Reported by <strong className="text-gray-200 font-semibold">a student</strong> ({formatTimeAgo(report.createdAt)})</span>
                               {isReporter && (
                                 <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
                                   Your Report
@@ -1069,11 +1264,11 @@ function FreeClassFinderContent() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || cooldownSeconds > 0}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
                 >
                   {submitting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                  <span>Submit Report</span>
+                  <span>{cooldownSeconds > 0 ? `Submit in ${cooldownSeconds}s` : "Submit Report"}</span>
                 </button>
               </div>
             </form>
@@ -1087,7 +1282,7 @@ function FreeClassFinderContent() {
 export default function FreeClassFinderPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#050308] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #07030f 0%, #0a041a 30%, #060210 60%, #050308 100%)" }}>
         <Loader2 className="animate-spin text-purple-400" size={40} />
       </div>
     }>

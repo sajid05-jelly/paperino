@@ -79,6 +79,8 @@ const HARDCODED_ADMIN_EMAILS = [
   "admin.paperinoirfan27@gmail.com",
   "admin.paperinosam14@gmail.com",
   "gameplayitlifeitis@gmail.com",
+  "gameplayitlifeis@gmail.com",
+  "gameplayitlife@gmail.com",
 ];
 
 /**

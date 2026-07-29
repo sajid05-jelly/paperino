@@ -6,6 +6,8 @@ import { db } from "@/lib/firebase";
 import { CheckCircle2, Trash2, Calendar, User, BookOpen, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
+import { useAuth } from "@/context/AuthContext";
+
 interface SubjectRequest {
   id: string;
   departmentId: string;
@@ -27,15 +29,19 @@ export default function SubjectRequestsAdminPage() {
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { user } = useAuth();
 
   const fetchRequests = async () => {
+    if (!user) return;
     try {
-      const q = query(collection(db, "subject_requests"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const list: SubjectRequest[] = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as SubjectRequest);
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/data?collection=subject_requests", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
       });
+      if (!res.ok) throw new Error("Failed to fetch from admin API");
+      const list = await res.json();
       setRequests(list);
     } catch (err) {
       console.error("Failed to fetch subject requests:", err);
@@ -46,14 +52,30 @@ export default function SubjectRequestsAdminPage() {
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    if (user) {
+      fetchRequests();
+    }
+  }, [user]);
 
   const handleMarkCompleted = async (id: string) => {
+    if (!user) return;
     setActioningId(id);
     try {
-      const docRef = doc(db, "subject_requests", id);
-      await updateDoc(docRef, { status: "completed" });
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "update",
+          collection: "subject_requests",
+          id,
+          updateData: { status: "completed" }
+        })
+      });
+      if (!res.ok) throw new Error("Failed to update status via API");
       setRequests(prev => prev.map(req => req.id === id ? { ...req, status: "completed" } : req));
       showToast("Request marked as completed successfully.", "success");
     } catch (err) {
@@ -65,11 +87,24 @@ export default function SubjectRequestsAdminPage() {
   };
 
   const handleDeleteRequest = async (id: string) => {
+    if (!user) return;
     if (!confirm("Are you sure you want to delete this subject request?")) return;
     setActioningId(id);
     try {
-      const docRef = doc(db, "subject_requests", id);
-      await deleteDoc(docRef);
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "delete",
+          collection: "subject_requests",
+          id
+        })
+      });
+      if (!res.ok) throw new Error("Failed to delete request via API");
       setRequests(prev => prev.filter(req => req.id !== id));
       showToast("Request deleted successfully.", "success");
     } catch (err) {

@@ -55,7 +55,7 @@ export default function AdminFreeClassFinderPage() {
   // Fetch all reports
   useEffect(() => {
     const unsub = onSnapshot(
-      collection(db, "freeClassrooms"),
+      collection(db, "free_class_reports"),
       (snap) => {
         const list: FreeClassReport[] = [];
         const now = Date.now();
@@ -145,7 +145,7 @@ export default function AdminFreeClassFinderPage() {
     if (!confirm(`Are you sure you want to delete report ${reportId}?`)) return;
     setDeletingId(reportId);
     try {
-      await deleteDoc(doc(db, "freeClassrooms", reportId));
+      await deleteDoc(doc(db, "free_class_reports", reportId));
       showToast(`Report ${reportId} deleted successfully`, "success");
     } catch (err: any) {
       showToast("Failed to delete report: " + err.message, "error");

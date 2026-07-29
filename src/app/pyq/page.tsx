@@ -184,27 +184,12 @@ export default function PYQPredictorPage() {
   };
 
   return (
-    <div className="w-full min-h-screen relative overflow-hidden bg-background">
-      {/* ── Layered Radial Gradient Background ── */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(var(--primary-rgb),0.35),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_50%,rgba(var(--accent-rgb),0.15),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_20%_80%,rgba(var(--secondary-rgb),0.15),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_30%_at_50%_100%,rgba(var(--primary-rgb),0.2),transparent_60%)]" />
-      </div>
-
-      {/* ── Floating Glassmorphism Blobs ── */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-[rgba(var(--primary-rgb),0.1)] blur-[120px] animate-pulse" />
-        <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-[rgba(var(--accent-rgb),0.1)] blur-[100px] animate-pulse [animation-delay:2s]" />
-        <div className="absolute bottom-20 left-1/4 w-72 h-72 rounded-full bg-[rgba(var(--secondary-rgb),0.1)] blur-[100px] animate-pulse [animation-delay:4s]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[rgba(var(--primary-rgb),0.05)] blur-[150px]" />
-      </div>
-
-      {/* ── Aurora Lights ── */}
-      <div className="fixed top-0 left-0 right-0 h-[500px] pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-1/2 h-64 bg-gradient-to-b from-[rgba(var(--primary-rgb),0.08)] via-[rgba(var(--accent-rgb),0.05)] to-transparent blur-[80px] animate-pulse [animation-duration:6s]" />
-        <div className="absolute top-10 left-1/3 w-1/3 h-48 bg-gradient-to-b from-[rgba(var(--accent-rgb),0.06)] via-[rgba(var(--secondary-rgb),0.04)] to-transparent blur-[60px] animate-pulse [animation-delay:3s] [animation-duration:8s]" />
+    <div className="w-full min-h-screen relative overflow-hidden" style={{ background: "radial-gradient(ellipse 80% 60% at 20% -10%, rgba(109,40,217,0.22) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(76,29,149,0.20) 0%, transparent 60%), linear-gradient(160deg, #07030f 0%, #0a041a 35%, #060210 65%, #050308 100%)" }}>
+      {/* Premium ambient glow orbs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+        <div style={{ position: "absolute", top: "-10%", left: "-5%", width: "600px", height: "600px", background: "radial-gradient(circle, rgba(109,40,217,0.14) 0%, transparent 70%)", borderRadius: "50%", filter: "blur(60px)" }} />
+        <div style={{ position: "absolute", top: "40%", right: "-10%", width: "500px", height: "500px", background: "radial-gradient(circle, rgba(76,29,149,0.10) 0%, transparent 70%)", borderRadius: "50%", filter: "blur(80px)" }} />
+        <div style={{ position: "absolute", bottom: "10%", left: "30%", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%)", borderRadius: "50%", filter: "blur(60px)" }} />
       </div>
 
       {/* ── Main Content ── */}
@@ -217,70 +202,54 @@ export default function PYQPredictorPage() {
               {/* Pulsing AI Orb */}
               <div className="flex justify-center mb-8">
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-[rgba(var(--primary-rgb),0.3)] blur-[30px] animate-pulse" />
-                  <div className="absolute -inset-3 rounded-full bg-[rgba(var(--primary-rgb),0.15)] blur-[20px] animate-pulse [animation-delay:1s]" />
-                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[rgba(var(--primary-rgb),0.3)] via-[rgba(var(--accent-rgb),0.2)] to-[rgba(var(--accent-rgb),0.3)] backdrop-blur-xl border border-[rgba(var(--primary-rgb),0.2)] flex items-center justify-center shadow-[0_0_40px_rgba(var(--primary-rgb),0.3)]">
-                    <BrainCircuit size={36} className="text-[rgb(var(--primary-rgb))] drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.75)] animate-pulse" />
+                  <div className="absolute inset-0 rounded-full bg-violet-600/30 blur-[30px] animate-pulse" />
+                  <div className="absolute -inset-3 rounded-full bg-violet-500/15 blur-[20px] animate-pulse [animation-delay:1s]" />
+                  <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-violet-600/40 via-purple-700/30 to-indigo-600/30 backdrop-blur-xl border border-violet-500/30 flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.4)]">
+                    <BrainCircuit size={36} className="text-violet-300 drop-shadow-[0_0_10px_rgba(139,92,246,0.8)] animate-pulse" />
                   </div>
                 </div>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-white via-[rgb(var(--primary-rgb))] to-[rgb(var(--accent-rgb))] bg-clip-text text-transparent mb-5 leading-tight tracking-tight drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.25)]">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-white via-violet-300 to-purple-400 bg-clip-text text-transparent mb-5 leading-tight tracking-tight drop-shadow-[0_0_20px_rgba(139,92,246,0.3)]">
                 AI Powered Exam Intelligence
               </h1>
-              <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto mb-6 leading-relaxed">
+              <p className="text-gray-300 text-base md:text-lg max-w-2xl mx-auto mb-6 leading-relaxed">
                 Predict important units, repeated questions, and high-probability exam topics using previous year papers.
               </p>
 
               {/* Credits in Glowing Glass Pill */}
-              <div className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-white/[0.04] backdrop-blur-xl border border-[rgba(var(--primary-rgb),0.2)] shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]">
+              <div className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-violet-500/10 backdrop-blur-xl border border-violet-500/25 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
                 <AICreditsDisplay tool="pyq" />
               </div>
             </div>
 
             {/* ── Upload Card — Premium AI Research Console ── */}
-            <div className={`relative rounded-3xl overflow-hidden transition-all duration-500 ${loading ? 'shadow-[0_0_40px_rgba(var(--primary-rgb),0.25)] border-[rgba(var(--primary-rgb),0.4)]' : ''}`}>
-              {/* Kolam-inspired SVG Decoration */}
-              <svg className="absolute top-4 right-4 w-32 h-32 opacity-[0.04] pointer-events-none z-0" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M60 10L73 35L98 35L78 52L85 78L60 63L35 78L42 52L22 35L47 35Z" stroke="white" strokeWidth="0.5" fill="none" />
-                <path d="M60 20L70 40L90 40L74 52L80 72L60 60L40 72L46 52L30 40L50 40Z" stroke="white" strokeWidth="0.5" fill="none" />
-                <circle cx="60" cy="60" r="45" stroke="white" strokeWidth="0.3" fill="none" />
-                <circle cx="60" cy="60" r="35" stroke="white" strokeWidth="0.3" fill="none" />
-                <path d="M60 15L60 105M15 60L105 60" stroke="white" strokeWidth="0.2" />
-                <path d="M25 25L95 95M95 25L25 95" stroke="white" strokeWidth="0.2" />
-                <circle cx="60" cy="15" r="3" stroke="white" strokeWidth="0.3" fill="none" />
-                <circle cx="60" cy="105" r="3" stroke="white" strokeWidth="0.3" fill="none" />
-                <circle cx="15" cy="60" r="3" stroke="white" strokeWidth="0.3" fill="none" />
-                <circle cx="105" cy="60" r="3" stroke="white" strokeWidth="0.3" fill="none" />
-              </svg>
-
+            <div className={`relative rounded-3xl overflow-hidden transition-all duration-500 ${loading ? 'shadow-[0_0_50px_rgba(139,92,246,0.3)] border-violet-500/40' : ''}`}>
               {/* Card Background */}
-              <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-xl" />
-              <div className="absolute inset-0 bg-gradient-to-br from-[rgba(var(--primary-rgb),0.06)] via-transparent to-[rgba(var(--accent-rgb),0.04)]" />
-              
+              <div className="absolute inset-0 backdrop-blur-xl" style={{ background: "linear-gradient(135deg, rgba(88,28,135,0.22) 0%, rgba(49,10,101,0.28) 50%, rgba(17,5,40,0.6) 100%)" }} />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-600/[0.06] via-transparent to-purple-900/[0.08]" />
               {/* Animated Glow Blob Inside Card */}
-              <div className="absolute -top-20 -left-20 w-72 h-72 bg-[rgba(var(--primary-rgb),0.1)] blur-[100px] rounded-full pointer-events-none" />
-              <div className="absolute -bottom-16 -right-16 w-56 h-56 bg-[rgba(var(--accent-rgb),0.08)] blur-[80px] rounded-full pointer-events-none" />
-
+              <div className="absolute -top-20 -left-20 w-72 h-72 bg-violet-600/[0.12] blur-[100px] rounded-full pointer-events-none" />
+              <div className="absolute -bottom-16 -right-16 w-56 h-56 bg-purple-500/[0.08] blur-[80px] rounded-full pointer-events-none" />
               {/* Card Border */}
-              <div className="absolute inset-0 rounded-3xl border border-[rgba(var(--primary-rgb),0.2)] pointer-events-none" />
-              {loading && <div className="absolute inset-0 rounded-3xl border border-[rgba(var(--primary-rgb),0.4)] animate-pulse pointer-events-none" />}
+              <div className="absolute inset-0 rounded-3xl border border-violet-500/25 pointer-events-none" />
+              {loading && <div className="absolute inset-0 rounded-3xl border border-violet-400/50 animate-pulse pointer-events-none" />}
 
               <div className="relative z-10 p-8 md:p-10">
                 {/* Console Header */}
                 <div className="flex items-center gap-3 mb-8">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[rgba(var(--primary-rgb),0.6)]" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-[rgba(var(--accent-rgb),0.4)]" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-[rgba(var(--secondary-rgb),0.3)]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-purple-600/70" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-500/50" />
                   </div>
-                  <span className="text-[11px] uppercase tracking-[0.2em] text-[rgba(var(--primary-rgb),0.6)] font-medium ml-2">AI Research Console</span>
+                  <span className="text-[11px] uppercase tracking-[0.2em] text-violet-400 font-semibold ml-2">AI Research Console</span>
                 </div>
 
                 {/* Subject Input */}
                 <div className="mb-8">
-                  <label className="block text-sm font-medium text-[rgba(var(--primary-rgb),0.8)] mb-3 flex items-center gap-2">
-                    <Zap size={14} className="text-[rgb(var(--primary-rgb))]" />
+                  <label className="block text-sm font-semibold text-violet-300 mb-3 flex items-center gap-2">
+                    <Zap size={14} className="text-violet-400" />
                     Subject Name
                   </label>
                   <input 
@@ -288,23 +257,23 @@ export default function PYQPredictorPage() {
                     placeholder="e.g. Data Structures, Computer Networks"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    className="w-full bg-black/40 border border-[rgba(var(--primary-rgb),0.15)] rounded-2xl p-4 text-white outline-none focus:border-[rgba(var(--primary-rgb),0.5)] focus:shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)] transition-all duration-300 backdrop-blur-md placeholder:text-gray-600 hover:border-[rgba(var(--primary-rgb),0.25)]"
+                    className="w-full bg-black/50 border border-violet-500/20 rounded-2xl p-4 text-white outline-none focus:border-violet-500/60 focus:shadow-[0_0_25px_rgba(139,92,246,0.2)] transition-all duration-300 backdrop-blur-md placeholder:text-gray-600 hover:border-violet-500/35 text-[15px]"
                   />
                 </div>
 
                 {/* Upload Zone */}
                 <div className="mb-8">
-                  <label className="block text-sm font-medium text-[rgba(var(--primary-rgb),0.8)] mb-3 flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-violet-300 mb-3 flex items-center justify-between">
                     <span className="flex items-center gap-2">
-                      <Upload size={14} className="text-[rgb(var(--primary-rgb))]" />
+                      <Upload size={14} className="text-violet-400" />
                       Upload PYQs (Max 5 PDFs)
                     </span>
-                    <span className="text-xs text-gray-500 bg-white/[0.03] px-2.5 py-1 rounded-full">{files.length}/5 files selected</span>
+                    <span className="text-xs text-gray-500 bg-white/[0.04] px-2.5 py-1 rounded-full border border-white/[0.06]">{files.length}/5 files selected</span>
                   </label>
                   <div 
                     className={`border-2 border-dashed rounded-2xl p-6 md:p-10 text-center transition-all duration-300 cursor-pointer backdrop-blur-sm ${
-                      isDragging ? 'border-[rgba(var(--primary-rgb),0.5)] bg-[rgba(var(--primary-rgb),0.1)] shadow-[inset_0_0_40px_rgba(var(--primary-rgb),0.08)]' : 
-                      'border-white/[0.08] hover:border-[rgba(var(--primary-rgb),0.3)] hover:bg-[rgba(var(--primary-rgb),0.04)]'
+                      isDragging ? 'border-violet-500/60 bg-violet-500/[0.08] shadow-[inset_0_0_40px_rgba(139,92,246,0.08)]' : 
+                      'border-violet-500/[0.18] hover:border-violet-500/40 hover:bg-violet-500/[0.04]'
                     }`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -324,11 +293,11 @@ export default function PYQPredictorPage() {
                     />
                     
                     <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-full bg-[rgba(var(--primary-rgb),0.1)] border border-[rgba(var(--primary-rgb),0.15)] flex items-center justify-center text-[rgb(var(--primary-rgb))] mb-4 shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)]">
+                      <div className="w-16 h-16 rounded-full bg-violet-600/15 border border-violet-500/25 flex items-center justify-center text-violet-400 mb-4 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
                         <Upload size={28} />
                       </div>
-                      <p className="text-gray-200 font-medium mb-1">Drag & Drop your PDFs here</p>
-                      <p className="text-gray-500 text-sm">Or click to browse files</p>
+                      <p className="text-white font-semibold mb-1">Drag & Drop your PDFs here</p>
+                      <p className="text-gray-400 text-sm">Or click to browse files</p>
                     </div>
                   </div>
 
@@ -365,7 +334,8 @@ export default function PYQPredictorPage() {
                 <button 
                   onClick={() => analyzePYQs()}
                   disabled={files.length === 0 || !subject || loading}
-                  className="w-full group relative disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all duration-300 overflow-hidden bg-gradient-to-r from-[rgb(var(--primary-rgb))] via-[rgb(var(--accent-rgb))] to-[rgb(var(--primary-rgb))] shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)] hover:shadow-[0_0_50px_rgba(var(--primary-rgb),0.45)] active:scale-[0.98]"
+                  className="w-full group relative disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all duration-300 overflow-hidden shadow-[0_0_35px_rgba(139,92,246,0.35)] hover:shadow-[0_0_55px_rgba(139,92,246,0.5)] active:scale-[0.98]"
+                  style={{ background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%)" }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 ease-in-out" />
                   {loading ? (

@@ -18,7 +18,9 @@ service cloud.firestore {
           "sudharajsekar2005@gmail.com",
           "admin.paperinoirfan27@gmail.com",
           "admin.paperinosam14@gmail.com",
-          "gameplayitlifeitis@gmail.com"
+          "gameplayitlifeitis@gmail.com",
+          "gameplayitlifeis@gmail.com",
+          "gameplayitlife@gmail.com"
         ])
       );
     }
@@ -26,33 +28,7 @@ service cloud.firestore {
     // ── Users collection ────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if isSignedIn();
-      
-      allow create: if isSignedIn() && request.auth.uid == userId && 
-        request.resource.data.role == "student" && request.resource.data.status == "active";
-      
-      allow update: if isSignedIn() && (
-        (request.auth.uid == userId && (
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'contributorLevel', 'premiumStartDate', 'premiumEndDate', 'uploads', 'contributionPoints'])) ||
-          (request.resource.data.role == "admin" && (
-            (request.resource.data.hasAny(['email']) && request.resource.data.email in [
-              "mohamedsajid.sa@gmail.com",
-              "sudharajsekar2005@gmail.com",
-              "admin.paperinoirfan27@gmail.com",
-              "admin.paperinosam14@gmail.com",
-              "gameplayitlifeitis@gmail.com"
-            ]) || 
-            resource.data.email in [
-              "mohamedsajid.sa@gmail.com",
-              "sudharajsekar2005@gmail.com",
-              "admin.paperinoirfan27@gmail.com",
-              "admin.paperinosam14@gmail.com",
-              "gameplayitlifeitis@gmail.com"
-            ]
-          ))
-        )) || isAdmin()
-      );
-      
-      allow delete: if isAdmin();
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // ── Departments ─────────────────────────────────────────────────────────
@@ -116,7 +92,7 @@ service cloud.firestore {
 
     // ── Feedback ────────────────────────────────────────────────────────────
     match /user_feedback/{feedbackId} {
-      allow read: if isAdmin();
+      allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
@@ -131,8 +107,8 @@ service cloud.firestore {
     match /platform_stats/materialCounts {
       allow read: if true;
     }
-    match /platform_stats/{document=**} {
-      allow read: if isAdmin();
+     match /platform_stats/{document=**} {
+      allow read: if isSignedIn();
     }
 
     // ── AI Usage tracking (per-user, stored in users subcollection) ──────────
@@ -209,7 +185,8 @@ service cloud.firestore {
     // ── Subject Requests ────────────────────────────────────────────────────
     match /subject_requests/{requestId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
     // ── Career DNA ──────────────────────────────────────────────────────────
