@@ -16,8 +16,14 @@ export default function AdminHeaderMessagePage() {
     async function fetchHeaderMessage() {
       try {
         const res = await fetch("/api/admin/header-message");
-        const data = await res.json();
-        setHeaderMessage(data.text || "The Universe of Study Materials");
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          setHeaderMessage(data.text || "The Universe of Study Materials");
+        } else {
+          console.warn("[Admin] Header message endpoint returned non-JSON response:", await res.text());
+          setHeaderMessage("The Universe of Study Materials");
+        }
       } catch (err: any) {
         console.error("[Admin] Failed to fetch header message:", err);
       } finally {
@@ -46,6 +52,11 @@ export default function AdminHeaderMessagePage() {
         },
         body: JSON.stringify({ text: headerMessage.trim() }),
       });
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server returned an invalid non-JSON response.");
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save");

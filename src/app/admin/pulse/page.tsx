@@ -103,6 +103,8 @@ export default function AdminPulsePage() {
       isPinned: priority === "pinned",
       location: showModeAndLoc ? location : "",
       mode: showModeAndLoc ? mode : "",
+      createdByRole: "admin",
+      isCreatedByAdmin: true,
       updatedAt: Timestamp.now(),
     };
 

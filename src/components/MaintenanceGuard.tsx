@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { Loader2, X, Sparkles } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
+import PaperinoLoader from "@/components/PaperinoLoader";
 
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
@@ -83,12 +84,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   const isMaintenancePage = pathname === "/maintenance";
 
   if (loading || loadingConfig) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#07050d] space-y-4">
-        <Loader2 className="w-10 h-10 text-purple-400 animate-spin" />
-        <p className="text-purple-300 text-sm font-medium animate-pulse">Syncing environment...</p>
-      </div>
-    );
+    return <PaperinoLoader />;
   }
 
   // If visitor page is maintenance, render children cleanly without global Navbar/Footer

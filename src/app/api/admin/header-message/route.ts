@@ -14,11 +14,16 @@ export async function GET(req: NextRequest) {
     const docRef = adminDb.collection("system_settings").doc("header_message");
     const snap = await docRef.get();
 
-    if (snap.exists) {
+    if (snap.exists && snap.data()?.text) {
       return NextResponse.json({ text: snap.data()?.text || "" });
-    } else {
-      return NextResponse.json({ text: "The Universe of Study Materials" });
     }
+
+    const clientSnap = await adminDb.collection("settings").doc("headerMessage").get();
+    if (clientSnap.exists && clientSnap.data()?.message) {
+      return NextResponse.json({ text: clientSnap.data()?.message || "" });
+    }
+
+    return NextResponse.json({ text: "The Universe of Study Materials" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -46,6 +51,10 @@ export async function POST(req: NextRequest) {
 
     const docRef = adminDb.collection("system_settings").doc("header_message");
     await docRef.set({ text: text.trim(), updatedAt: new Date() }, { merge: true });
+
+    // Also update settings/headerMessage for client-side Firestore listener (Navbar)
+    const clientDocRef = adminDb.collection("settings").doc("headerMessage");
+    await clientDocRef.set({ message: text.trim(), updatedAt: new Date() }, { merge: true });
 
     return NextResponse.json({ success: true, message: "Header message updated" });
   } catch (err: any) {

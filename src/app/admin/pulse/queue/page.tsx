@@ -128,6 +128,8 @@ export default function AdminPulseQueuePage() {
         priority: "normal",
         isPinned: false,
         verifiedSource: true,
+        createdByRole: "admin",
+        isCreatedByAdmin: true,
         sourceName: item.sourceName || "Automated",
         deadline: item.deadline || null,
         organizer: item.organizer || "",

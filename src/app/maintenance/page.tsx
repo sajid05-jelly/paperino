@@ -1,765 +1,847 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { Wrench, Trophy, Sparkles, RefreshCw, Star, AlertTriangle, ArrowRight, Play, Check, Flame } from "lucide-react";
 import Logo from "@/components/Logo";
 
-// Motivational tips to display
-const MOTIVATIONAL_TIPS = [
-  "Great things take time.",
-  "Your next Paperino experience is loading.",
-  "Building something amazing for SRM students.",
-  "Updating database queries for lightning-fast speeds.",
-  "Compiling survival notes from top seniors.",
-  "Restructuring space-themed assets for you.",
-  "Optimizing GPA calculators to keep your grades shining."
+/* ── QUOTES ─────────────────────────────────────────────────────────────────── */
+const QUOTES = [
+  "Building something amazing for you.",
+  "Small updates. Big future.",
+  "Almost there — worth the wait.",
+  "Education deserves better.",
+  "Good things take time.",
+  "Precision engineering, for students.",
+  "Every line of code, for you.",
+  "The future of studying is loading.",
 ];
 
+/* ── STATUS TASKS ────────────────────────────────────────────────────────────── */
+const INITIAL_TASKS = [
+  { label: "Database Optimization", done: true },
+  { label: "AI Modules", done: true },
+  { label: "Notification Engine", done: true },
+  { label: "Deploying Free Class Finder", done: false },
+  { label: "Security Hardening", done: false },
+  { label: "Performance Tuning", done: false },
+];
+
+const PROGRESS_MESSAGES = [
+  "Optimizing...",
+  "Deploying...",
+  "Securing...",
+  "Compiling...",
+  "Finalizing...",
+  "Syncing...",
+  "Patching...",
+];
+
+/* ── REPAIR MESSAGES ─────────────────────────────────────────────────────────── */
+const REPAIR_STATUS_MESSAGES = [
+  "Calibrating...",
+  "Repairing...",
+  "Welding...",
+  "Optimizing...",
+  "Deploying...",
+];
+
+/* ── MAIN PAGE ───────────────────────────────────────────────────────────────── */
 export default function VisitorMaintenancePage() {
   const [config, setConfig] = useState({
-    maintenance: true,
-    title: "System Maintenance Mode",
-    message: "We are currently performing critical system upgrades. Please check back soon!",
-    estimatedReturn: "A few hours",
-    showProgress: true,
-    game: "bookStack"
+    title: "System Upgrade in Progress",
+    message: "We're building something better for you. Paperino is currently receiving new features and performance improvements.",
+    estimatedReturn: "Coming Back Soon",
   });
 
-  const [activeTipIndex, setActiveTipIndex] = useState(0);
+  const [quoteIdx, setQuoteIdx] = useState(0);
+  const [quoteVisible, setQuoteVisible] = useState(true);
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [progressMsgIdx, setProgressMsgIdx] = useState(0);
+  const [progressPct] = useState(78);
 
-  // Listen to Firestore document `settings/siteConfig`
+  // Firestore config
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "siteConfig"), (snap) => {
       if (snap.exists()) {
-        const data = snap.data();
+        const d = snap.data();
         setConfig({
-          maintenance: data.maintenance ?? true,
-          title: data.title || "System Maintenance Mode",
-          message: data.message || "We are currently performing critical system upgrades.",
-          estimatedReturn: data.estimatedReturn || "A few hours",
-          showProgress: data.showProgress ?? true,
-          game: data.game || "none"
+          title: d.title || "System Upgrade in Progress",
+          message: d.message || "We're building something better for you.",
+          estimatedReturn: d.estimatedReturn || "Coming Back Soon",
         });
       }
-    }, (err) => {
-      console.error("[Maintenance] Error loading siteConfig:", err);
-    });
+    }, console.error);
     return () => unsub();
   }, []);
 
-  // Rotate motivational tips every 10 seconds
+  // Quote rotation with fade
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveTipIndex((prev) => (prev + 1) % MOTIVATIONAL_TIPS.length);
+      setQuoteVisible(false);
+      setTimeout(() => {
+        setQuoteIdx(i => (i + 1) % QUOTES.length);
+        setQuoteVisible(true);
+      }, 600);
     }, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  // Progress message rotation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgressMsgIdx(i => (i + 1) % PROGRESS_MESSAGES.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Randomly flip tasks between done/in-progress
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTasks(prev => {
+        const undoneIdx = prev.map((t, i) => (!t.done ? i : -1)).filter(i => i >= 0);
+        if (undoneIdx.length === 0) return prev;
+        const pick = undoneIdx[Math.floor(Math.random() * undoneIdx.length)];
+        return prev.map((t, i) => (i === pick ? { ...t, done: true } : t));
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="min-h-screen w-full flex flex-col justify-between p-6 md:p-12 relative text-white bg-[#07050d] overflow-y-auto">
-      {/* Background Gradient Blurs */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap');
 
-      {/* Header */}
-      <div className="w-full max-w-6xl mx-auto flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 relative overflow-hidden rounded-full flex items-center justify-center border border-white/10 shadow-[0_0_15px_rgba(167,139,250,0.4)]">
-            <Logo className="w-full h-full object-cover scale-[1.3]" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white text-glow">Paperino</span>
+        /* ── AURORA ── */
+        @keyframes aurora1 {
+          0%,100% { transform: translate(-10%,-15%) scale(1); opacity:0.35; }
+          50% { transform: translate(5%,10%) scale(1.15); opacity:0.5; }
+        }
+        @keyframes aurora2 {
+          0%,100% { transform: translate(10%,10%) scale(1.1); opacity:0.25; }
+          50% { transform: translate(-5%,-10%) scale(0.9); opacity:0.4; }
+        }
+        @keyframes aurora3 {
+          0%,100% { transform: translate(0,0) scale(1); opacity:0.2; }
+          33% { transform: translate(-8%,5%) scale(1.1); opacity:0.35; }
+          66% { transform: translate(6%,-8%) scale(0.95); opacity:0.28; }
+        }
+        .aurora1 { animation: aurora1 14s ease-in-out infinite; }
+        .aurora2 { animation: aurora2 18s ease-in-out infinite; }
+        .aurora3 { animation: aurora3 22s ease-in-out infinite; }
+
+        /* ── FLOATING PARTICLES ── */
+        @keyframes float-up {
+          0% { transform: translateY(0) translateX(0); opacity:0; }
+          10% { opacity:0.7; }
+          90% { opacity:0.3; }
+          100% { transform: translateY(-110vh) translateX(var(--drift)); opacity:0; }
+        }
+        .particle {
+          position:fixed;
+          bottom:-10px;
+          border-radius:50%;
+          pointer-events:none;
+          animation: float-up var(--dur) linear var(--delay) infinite;
+        }
+
+        /* ── SCAN LINE ── */
+        @keyframes scan {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(400%); }
+        }
+        .scan-line { animation: scan 3.5s linear infinite; }
+
+        /* ── DRONES & ROBOTIC ARMS ── */
+        @keyframes drone-arm-1 {
+          0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+          25% { transform: translate(30px, 20px) rotate(-15deg); }
+          50% { transform: translate(15px, 35px) rotate(10deg); }
+          75% { transform: translate(40px, 10px) rotate(-5deg); }
+        }
+        @keyframes drone-arm-2 {
+          0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+          25% { transform: translate(-25px, 25px) rotate(15deg); }
+          50% { transform: translate(-40px, 10px) rotate(-10deg); }
+          75% { transform: translate(-15px, 30px) rotate(5deg); }
+        }
+        @keyframes drone-arm-3 {
+          0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+          25% { transform: translate(25px, -25px) rotate(-10deg); }
+          50% { transform: translate(35px, -15px) rotate(15deg); }
+          75% { transform: translate(10px, -35px) rotate(-5deg); }
+        }
+        @keyframes drone-arm-4 {
+          0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+          25% { transform: translate(-30px, -20px) rotate(12deg); }
+          50% { transform: translate(-15px, -35px) rotate(-15deg); }
+          75% { transform: translate(-35px, -10px) rotate(8deg); }
+        }
+
+        .arm-robot-1 { animation: drone-arm-1 7s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+        .arm-robot-2 { animation: drone-arm-2 6.5s cubic-bezier(0.45, 0, 0.55, 1) infinite 0.8s; }
+        .arm-robot-3 { animation: drone-arm-3 7.2s cubic-bezier(0.45, 0, 0.55, 1) infinite 1.5s; }
+        .arm-robot-4 { animation: drone-arm-4 6.8s cubic-bezier(0.45, 0, 0.55, 1) infinite 0.3s; }
+
+        /* ── LASER WELD PULSE ── */
+        @keyframes laser-weld-1 {
+          0%, 100% { opacity: 0; stroke-dashoffset: 100; }
+          15%, 35% { opacity: 1; stroke-dashoffset: 0; }
+          45% { opacity: 0.2; }
+          60%, 80% { opacity: 0.9; stroke-dashoffset: 0; }
+        }
+        @keyframes laser-weld-2 {
+          0%, 100% { opacity: 0; }
+          20%, 40% { opacity: 1; }
+          55%, 75% { opacity: 0.85; }
+        }
+        .laser-beam-weld-1 { animation: laser-weld-1 3.2s ease-in-out infinite; stroke-dasharray: 120; }
+        .laser-beam-weld-2 { animation: laser-weld-2 2.6s ease-in-out infinite 0.7s; }
+        .laser-beam-weld-3 { animation: laser-weld-1 3.8s ease-in-out infinite 1.2s; stroke-dasharray: 120; }
+        .laser-beam-weld-4 { animation: laser-weld-2 3.1s ease-in-out infinite 1.8s; }
+
+        /* ── SCAN RINGS ── */
+        @keyframes ring-rotate-cw {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes ring-rotate-ccw {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
+        .scan-ring-1 { transform-origin: 130px 130px; animation: ring-rotate-cw 12s linear infinite; }
+        .scan-ring-2 { transform-origin: 130px 130px; animation: ring-rotate-ccw 9s linear infinite; }
+        .scan-ring-3 { transform-origin: 130px 130px; animation: ring-rotate-cw 16s linear infinite; }
+
+        /* ── BLUEPRINT FLASH ── */
+        @keyframes blueprint-flash {
+          0%, 88%, 100% { opacity: 0.15; }
+          92%, 96% { opacity: 0.7; filter: drop-shadow(0 0 8px rgba(99,102,241,0.8)); }
+        }
+        .blueprint-grid-flash { animation: blueprint-flash 6.5s ease-in-out infinite; }
+
+        /* ── DIAGNOSTIC SWEEP ── */
+        @keyframes diag-sweep {
+          0% { transform: translateY(-70px); opacity: 0; }
+          15% { opacity: 0.8; }
+          85% { opacity: 0.8; }
+          100% { transform: translateY(70px); opacity: 0; }
+        }
+        .diag-sweep-line { animation: diag-sweep 4s ease-in-out infinite; }
+
+        /* ── LOGO ENERGY REPAIR PULSE ── */
+        @keyframes logo-energy-cycle {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 25px rgba(109,40,217,0.4)); }
+          70% { transform: scale(1.04); filter: drop-shadow(0 0 45px rgba(139,92,246,0.95)) drop-shadow(0 0 20px rgba(59,130,246,0.8)); }
+          75% { transform: scale(0.99); }
+          82% { transform: scale(1.02); filter: drop-shadow(0 0 35px rgba(167,139,250,0.8)); }
+        }
+        .logo-repair-pulse { animation: logo-energy-cycle 7s ease-in-out infinite; }
+
+        /* ── NEON PROGRESS ORBIT ── */
+        @keyframes progress-orbit {
+          from { stroke-dashoffset: 400; }
+          to { stroke-dashoffset: 0; }
+        }
+        .neon-progress-line {
+          stroke-dasharray: 80 120;
+          stroke-dashoffset: 400;
+          animation: progress-orbit 5s linear infinite;
+        }
+
+        /* ── SPARK ── */
+        @keyframes spark {
+          0% { transform: scale(0) translate(0,0); opacity:1; }
+          100% { transform: scale(1.5) translate(var(--sx),var(--sy)); opacity:0; }
+        }
+        .spark { animation: spark 0.65s ease-out forwards; }
+
+        /* ── QUOTE FADE ── */
+        .quote-fade {
+          transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .quote-visible { opacity:1; transform:translateY(0); }
+        .quote-hidden { opacity:0; transform:translateY(8px); }
+
+        /* ── TASK APPEAR ── */
+        @keyframes task-check {
+          0% { transform: scale(0) rotate(-10deg); }
+          60% { transform: scale(1.2) rotate(5deg); }
+          100% { transform: scale(1) rotate(0); }
+        }
+        .task-check { animation: task-check 0.4s cubic-bezier(0.175,0.885,0.32,1.275) forwards; }
+
+        /* ── NEON BORDER GLOW ── */
+        @keyframes neon-border {
+          0%,100% { box-shadow: 0 0 20px rgba(139,92,246,0.2), 0 0 40px rgba(109,40,217,0.1), inset 0 0 20px rgba(139,92,246,0.03); }
+          50% { box-shadow: 0 0 35px rgba(139,92,246,0.35), 0 0 70px rgba(109,40,217,0.2), inset 0 0 30px rgba(139,92,246,0.06); }
+        }
+        .neon-border { animation: neon-border 4s ease-in-out infinite; }
+
+        /* ── COUNTER SPIN ── */
+        @keyframes counter-enter {
+          from { transform:translateY(-100%); opacity:0; }
+          to { transform:translateY(0); opacity:1; }
+        }
+        .counter-enter { animation: counter-enter 0.35s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+        /* ── LIGHT BEAM ── */
+        @keyframes beam {
+          0%,100% { opacity:0.04; transform:rotate(-25deg) translateY(-10%); }
+          50% { opacity:0.12; transform:rotate(-25deg) translateY(5%); }
+        }
+        .beam { animation: beam 8s ease-in-out infinite; }
+        .beam2 { animation: beam 12s ease-in-out 3s infinite; }
+
+        /* ── REPAIR MESSAGE SWAP ── */
+        @keyframes repair-msg-swap {
+          0%, 15% { opacity: 0; transform: translateY(4px); }
+          25%, 80% { opacity: 1; transform: translateY(0); }
+          90%, 100% { opacity: 0; transform: translateY(-4px); }
+        }
+        .repair-msg-anim { animation: repair-msg-swap 2.5s ease-in-out infinite; }
+      `}</style>
+
+      <div className="min-h-screen w-full relative overflow-hidden text-white"
+        style={{ background: "#04030e", fontFamily: "'Inter','Outfit',system-ui,sans-serif" }}>
+
+        {/* ── BACKGROUND AURORA ── */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
+          {/* Aurora blobs */}
+          <div className="aurora1 absolute -top-32 -left-32 w-[800px] h-[600px] rounded-full"
+            style={{ background: "radial-gradient(ellipse, rgba(109,40,217,0.4) 0%, rgba(79,70,229,0.2) 45%, transparent 70%)", filter: "blur(80px)" }} />
+          <div className="aurora2 absolute -bottom-40 -right-40 w-[700px] h-[700px] rounded-full"
+            style={{ background: "radial-gradient(ellipse, rgba(37,99,235,0.3) 0%, rgba(59,130,246,0.15) 45%, transparent 70%)", filter: "blur(100px)" }} />
+          <div className="aurora3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full"
+            style={{ background: "radial-gradient(ellipse, rgba(139,92,246,0.15) 0%, transparent 65%)", filter: "blur(60px)" }} />
+
+          {/* Light beams */}
+          <div className="beam absolute top-0 left-1/4 w-[2px] h-full origin-top"
+            style={{ background: "linear-gradient(180deg, rgba(139,92,246,0.6) 0%, transparent 60%)", transform: "rotate(-25deg) translateY(-10%)" }} />
+          <div className="beam2 absolute top-0 right-1/3 w-[1px] h-full origin-top"
+            style={{ background: "linear-gradient(180deg, rgba(59,130,246,0.4) 0%, transparent 50%)", transform: "rotate(15deg)" }} />
+
+          {/* Floating particles */}
+          {[...Array(18)].map((_, i) => (
+            <div key={i} className="particle"
+              style={{
+                left: `${5 + i * 5.3}%`,
+                width: i % 3 === 0 ? "3px" : i % 2 === 0 ? "2px" : "1.5px",
+                height: i % 3 === 0 ? "3px" : i % 2 === 0 ? "2px" : "1.5px",
+                background: i % 4 === 0 ? "rgba(139,92,246,0.8)" : i % 3 === 0 ? "rgba(59,130,246,0.7)" : "rgba(167,139,250,0.5)",
+                boxShadow: `0 0 ${i % 2 === 0 ? 6 : 3}px currentColor`,
+                "--dur": `${12 + (i * 3.7) % 18}s`,
+                "--delay": `${(i * 1.3) % 10}s`,
+                "--drift": `${(i % 5 - 2) * 30}px`,
+              } as React.CSSProperties}
+            />
+          ))}
         </div>
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider animate-pulse">
-          <Wrench size={12} /> Maintenance Mode
-        </div>
-      </div>
 
-      {/* Main Container */}
-      <div className="w-full max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-12 py-10 z-10">
-        
-        {/* Left Side: Status / Details */}
-        <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 max-w-xl">
-          <div className="h-14 w-14 bg-purple-600/10 border border-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 shadow-[0_0_30px_rgba(139,92,246,0.25)]">
-            <Wrench size={28} className="animate-spin duration-3000" />
-          </div>
-          
-          <div className="space-y-3">
-            <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-purple-400 leading-tight tracking-tight drop-shadow-[0_0_20px_rgba(255,255,255,0.05)]">
-              {config.title}
-            </h1>
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed font-light">
-              {config.message}
-            </p>
-          </div>
+        {/* ── PAGE CONTENT ── */}
+        <div className="relative z-10 min-h-screen flex flex-col">
 
-          {/* Time & Progress Info */}
-          <div className="w-full bg-[#110f1d]/60 border border-white/5 p-6 rounded-3xl space-y-4 backdrop-blur-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Estimated Return</span>
-              <span className="text-sm text-purple-300 font-bold bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-lg">
-                🚀 {config.estimatedReturn}
-              </span>
+          {/* ── HEADER ── */}
+          <header className="w-full max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center"
+                style={{ border: "1px solid rgba(139,92,246,0.4)", boxShadow: "0 0 15px rgba(139,92,246,0.3)" }}>
+                <Logo className="w-full h-full object-cover scale-125" />
+              </div>
+              <span className="font-bold text-lg tracking-tight" style={{ fontFamily: "'Outfit',sans-serif" }}>Paperino</span>
             </div>
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-widest"
+              style={{
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.25)",
+                color: "#fbbf24",
+              }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              System Upgrade
+            </div>
+          </header>
 
-            {config.showProgress && (
-              <div className="space-y-2 pt-2 border-t border-white/5">
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>Upgrade Progress</span>
-                  <span className="text-purple-400 font-bold">85% Complete</span>
-                </div>
-                <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-purple-500 via-fuchsia-500 to-cyan-500 animate-[loadingBar_3s_ease-in-out_infinite]" style={{ width: "85%" }}></div>
+          {/* ── MAIN BODY ── */}
+          <main className="flex-1 w-full max-w-7xl mx-auto px-6 flex flex-col lg:flex-row items-center justify-center gap-12 py-10">
+
+            {/* ═══════════════════ LEFT PANEL ═══════════════════ */}
+            <div className="flex-1 max-w-xl flex flex-col gap-6">
+
+              {/* Title */}
+              <div className="space-y-4">
+                <h1 className="font-black leading-none"
+                  style={{
+                    fontFamily: "'Outfit',sans-serif",
+                    fontSize: "clamp(2.2rem,5vw,3.5rem)",
+                    letterSpacing: "-0.035em",
+                    background: "linear-gradient(135deg, #fff 0%, #c4b5fd 40%, #818cf8 70%, #60a5fa 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}>
+                  {config.title}
+                </h1>
+                <p className="text-base leading-relaxed" style={{ color: "rgba(148,163,184,0.85)", maxWidth: "480px" }}>
+                  {config.message}
+                </p>
+              </div>
+
+              {/* ── STATUS CARD ── */}
+              <div className="rounded-2xl p-5 space-y-3 neon-border"
+                style={{
+                  background: "rgba(255,255,255,0.028)",
+                  border: "1px solid rgba(139,92,246,0.2)",
+                  backdropFilter: "blur(24px)",
+                }}>
+                <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "rgba(148,163,184,0.5)" }}>
+                  Live System Status
+                </p>
+                <div className="space-y-2.5">
+                  {tasks.map((task, i) => (
+                    <div key={task.label} className="flex items-center gap-3"
+                      style={{ animationDelay: `${i * 80}ms` }}>
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-500"
+                        style={task.done ? {
+                          background: "rgba(34,197,94,0.15)",
+                          border: "1px solid rgba(34,197,94,0.4)",
+                          boxShadow: "0 0 10px rgba(34,197,94,0.25)",
+                        } : {
+                          background: "rgba(139,92,246,0.1)",
+                          border: "1px solid rgba(139,92,246,0.3)",
+                        }}>
+                        {task.done ? (
+                          <svg className="task-check" width="10" height="10" viewBox="0 0 10 10">
+                            <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="#4ade80" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                          </svg>
+                        ) : (
+                          <div className="w-2 h-2 rounded-full animate-spin"
+                            style={{ border: "1.5px solid rgba(139,92,246,0.8)", borderTopColor: "transparent" }} />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium transition-colors duration-500"
+                        style={{ color: task.done ? "rgba(203,213,225,0.9)" : "rgba(167,139,250,0.85)" }}>
+                        {task.label}
+                      </span>
+                      {!task.done && (
+                        <span className="ml-auto text-[9px] uppercase tracking-widest font-bold animate-pulse"
+                          style={{ color: "#a78bfa" }}>
+                          live
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Rotating Motivational Tip */}
-          <div className="w-full h-12 flex items-center justify-center lg:justify-start">
-            <p className="text-xs italic text-gray-400/80 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-700">
-              <Sparkles size={13} className="text-purple-400 animate-pulse" />
-              "{MOTIVATIONAL_TIPS[activeTipIndex]}"
-            </p>
-          </div>
-        </div>
-
-        {/* Right Side: Mini Game Area */}
-        {config.game !== "none" && (
-          <div className="w-full max-w-[420px] aspect-[4/5] sm:aspect-[4/4.5] flex flex-col justify-between p-6 rounded-[2.5rem] bg-[#110f1c]/90 border border-white/10 shadow-2xl relative overflow-hidden backdrop-blur-2xl">
-            <div className="absolute -right-24 -bottom-24 w-48 h-48 bg-purple-600/10 rounded-full blur-[60px] pointer-events-none"></div>
-            <GameConsole game={config.game} />
-          </div>
-        )}
-
-      </div>
-
-      {/* Footer */}
-      <div className="text-center text-xs text-gray-500/80 z-10 pt-6 border-t border-white/5 w-full max-w-6xl mx-auto">
-        &copy; {new Date().getFullYear()} Paperino SRM Study Hub. Built with love for SRM students.
-      </div>
-    </div>
-  );
-}
-
-/* ── GAME CONSOLE WRAPPER ──────────────────────────────── */
-
-function GameConsole({ game }: { game: string }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [highScore, setHighScore] = useState(0);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`paperino_game_high_${game}`);
-      setHighScore(saved ? parseInt(saved) : 0);
-    }
-    setIsPlaying(false);
-  }, [game]);
-
-  const updateHighScore = (score: number) => {
-    if (score > highScore) {
-      setHighScore(score);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(`paperino_game_high_${game}`, score.toString());
-      }
-    }
-  };
-
-  const getGameTitle = () => {
-    if (game === "bookStack") return "Book Stack Challenge 📚";
-    if (game === "memoryMatch") return "Memory Match 🧠";
-    if (game === "quickQuiz") return "Quick Quiz Blitz ⚡";
-    if (game === "colorTap") return "Color Tap Challenge 🎯";
-    return "Mini Game";
-  };
-
-  const getGameInstructions = () => {
-    if (game === "bookStack") return "Tap/Click or press Spacebar to drop the sliding book onto the stack. Keep alignment perfect!";
-    if (game === "memoryMatch") return "Flip study cards to match pairs under time & move limits!";
-    if (game === "quickQuiz") return "Answer as many fun SRM & general questions as possible in 30 seconds!";
-    if (game === "colorTap") return "Tap the matching colored circle before the progress timer runs out!";
-    return "";
-  };
-
-  return (
-    <div className="h-full w-full flex flex-col justify-between relative">
-      {/* Game Header */}
-      <div className="flex justify-between items-center pb-4 border-b border-white/5">
-        <div>
-          <h3 className="font-bold text-sm text-white flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-            {getGameTitle()}
-          </h3>
-          <p className="text-[9px] text-gray-400 font-light">Play to pass time!</p>
-        </div>
-        <div className="flex items-center gap-1 text-[10px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-0.5 rounded-full font-bold">
-          <Trophy size={10} /> High: {highScore}
-        </div>
-      </div>
-
-      {/* Game Area */}
-      <div className="flex-1 my-4 bg-black/60 border border-white/5 rounded-2xl overflow-hidden relative min-h-[240px] flex items-center justify-center">
-        {isPlaying ? (
-          <ActiveGameEngine game={game} onGameOver={updateHighScore} />
-        ) : (
-          <div className="flex flex-col items-center justify-center p-6 text-center space-y-4">
-            <div className="w-14 h-14 bg-purple-500/20 rounded-full border border-purple-500/30 flex items-center justify-center text-purple-400">
-              <Play size={24} className="ml-1" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">Start microgame</p>
-              <p className="text-xs text-gray-500 leading-relaxed mt-1 max-w-[280px]">
-                {getGameInstructions()}
-              </p>
-            </div>
-            <button
-              onClick={() => setIsPlaying(true)}
-              className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 transition-colors font-bold text-xs uppercase tracking-wider cursor-pointer"
-            >
-              Start Game
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Reset button inside instructions */}
-      {isPlaying && (
-        <button
-          onClick={() => setIsPlaying(false)}
-          className="text-center text-gray-500 hover:text-gray-300 transition-colors text-xs flex items-center justify-center gap-1 cursor-pointer"
-        >
-          <RefreshCw size={12} /> Reset Console
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ActiveGameEngine({ game, onGameOver }: { game: string; onGameOver: (score: number) => void }) {
-  if (game === "bookStack") return <BookStackGame onGameOver={onGameOver} />;
-  if (game === "memoryMatch") return <MemoryMatchGame onGameOver={onGameOver} />;
-  if (game === "quickQuiz") return <QuickQuizGame onGameOver={onGameOver} />;
-  if (game === "colorTap") return <ColorTapGame onGameOver={onGameOver} />;
-  return null;
-}
-
-/* ── 🎮 GAME 1: BOOK STACK CHALLENGE ─────────────────────── */
-
-function BookStackGame({ onGameOver }: { onGameOver: (score: number) => void }) {
-  const [score, setScore] = useState(0);
-  const [isGameOver, setIsGameOver] = useState(false);
-  
-  // Stacking coordinates (visual scaling)
-  const [stack, setStack] = useState<Array<{ id: number; x: number; width: number; color: string }>>([
-    { id: 0, x: 75, width: 150, color: "bg-purple-600 border-purple-400" }
-  ]);
-  
-  const [currentBlock, setCurrentBlock] = useState({ x: 0, width: 150, dir: 1, speed: 2 });
-  const gameLoopRef = useRef<any>(null);
-
-  // Dropping action
-  const handleDrop = useCallback(() => {
-    if (isGameOver) return;
-
-    setStack((prevStack) => {
-      const topBlock = prevStack[prevStack.length - 1];
-      const left = currentBlock.x;
-      const right = currentBlock.x + currentBlock.width;
-      
-      const overlapMin = Math.max(left, topBlock.x);
-      const overlapMax = Math.min(right, topBlock.x + topBlock.width);
-      const overlapWidth = overlapMax - overlapMin;
-
-      if (overlapWidth <= 0) {
-        setIsGameOver(true);
-        onGameOver(score);
-        return prevStack;
-      }
-
-      // Success drop
-      const newScore = score + 1;
-      setScore(newScore);
-
-      const colors = [
-        "bg-purple-600 border-purple-400",
-        "bg-violet-600 border-violet-400",
-        "bg-fuchsia-600 border-fuchsia-400",
-        "bg-indigo-600 border-indigo-400",
-        "bg-pink-600 border-pink-400"
-      ];
-      const randomColor = colors[newScore % colors.length];
-
-      // Spawn next block
-      setCurrentBlock({
-        x: 0,
-        width: overlapWidth,
-        dir: 1,
-        speed: Math.min(6, 2 + newScore * 0.25)
-      });
-
-      return [
-        ...prevStack,
-        { id: newScore, x: overlapMin, width: overlapWidth, color: randomColor }
-      ];
-    });
-  }, [currentBlock, score, isGameOver, onGameOver]);
-
-  // Handle keys/clicks
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === " " || e.key === "ArrowDown" || e.key === "Enter") {
-        e.preventDefault();
-        handleDrop();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleDrop]);
-
-  // Sliding loop
-  useEffect(() => {
-    if (isGameOver) return;
-
-    const tick = () => {
-      setCurrentBlock((prev) => {
-        let nextX = prev.x + prev.dir * prev.speed;
-        let nextDir = prev.dir;
-        
-        const limit = 300 - prev.width;
-        if (nextX >= limit) {
-          nextX = limit;
-          nextDir = -1;
-        } else if (nextX <= 0) {
-          nextX = 0;
-          nextDir = 1;
-        }
-
-        return { ...prev, x: nextX, dir: nextDir };
-      });
-      gameLoopRef.current = requestAnimationFrame(tick);
-    };
-
-    gameLoopRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(gameLoopRef.current);
-  }, [isGameOver]);
-
-  const handleRestart = () => {
-    setScore(0);
-    setIsGameOver(false);
-    setStack([{ id: 0, x: 75, width: 150, color: "bg-purple-600 border-purple-400" }]);
-    setCurrentBlock({ x: 0, width: 150, dir: 1, speed: 2 });
-  };
-
-  return (
-    <div 
-      onClick={handleDrop}
-      className="w-full h-full flex flex-col justify-between p-3 select-none touch-none bg-gradient-to-b from-[#090812] to-[#121021] cursor-pointer"
-    >
-      <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
-        <span>Score: <span className="text-purple-400">{score}</span></span>
-        <span className="text-[9px] text-gray-500">Tap / Space to drop book</span>
-      </div>
-
-      <div className="flex-1 w-full relative bg-black/50 border border-white/5 rounded-xl overflow-hidden min-h-[220px]">
-        {isGameOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-30">
-            <h4 className="text-lg font-black text-rose-500 animate-bounce">Stack collapsed!</h4>
-            <p className="text-xs text-gray-400">Total books stacked: {score}</p>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleRestart(); }}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer"
-            >
-              Stack Again
-            </button>
-          </div>
-        ) : (
-          <div className="absolute inset-0 flex flex-col justify-end p-2">
-            {/* Sliding target block */}
-            <div 
-              className="absolute top-4 h-6 rounded-md bg-cyan-500 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)] flex items-center justify-center text-xs text-black font-extrabold transition-all duration-75"
-              style={{ left: `${currentBlock.x}px`, width: `${currentBlock.width}px` }}
-            >
-              📖
-            </div>
-
-            {/* Stack elements */}
-            <div className="space-y-1 relative w-full flex flex-col items-start max-h-[160px] overflow-hidden justify-end">
-              {stack.slice(-5).map((block) => (
-                <div
-                  key={block.id}
-                  className={`h-5 rounded-md border flex items-center justify-center text-[10px] text-white font-bold shadow-md transition-all duration-300 ${block.color}`}
-                  style={{ marginLeft: `${block.x}px`, width: `${block.width}px` }}
-                >
-                  {block.id === 0 ? "BASE" : `📚 Stack ${block.id}`}
+              {/* ── PROGRESS BAR ── */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "rgba(148,163,184,0.5)" }}>
+                    Upgrade Progress
+                  </span>
+                  <span className="text-xs font-bold overflow-hidden h-4 relative" style={{ color: "#a78bfa" }}>
+                    <span key={progressMsgIdx} className="counter-enter block">
+                      {PROGRESS_MESSAGES[progressMsgIdx]}
+                    </span>
+                  </span>
                 </div>
-              ))}
+                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-full rounded-full progress-shimmer" style={{ width: `${progressPct}%` }} />
+                </div>
+              </div>
+
+              {/* ── ESTIMATED RETURN ── */}
+              <div className="inline-flex items-center gap-3 self-start px-5 py-3 rounded-2xl"
+                style={{
+                  background: "linear-gradient(135deg, rgba(109,40,217,0.12) 0%, rgba(79,70,229,0.08) 100%)",
+                  border: "1px solid rgba(139,92,246,0.35)",
+                  backdropFilter: "blur(16px)",
+                  boxShadow: "0 0 30px rgba(109,40,217,0.2)",
+                }}>
+                <div className="relative">
+                  <div className="pulse-ring absolute inset-0 rounded-full"
+                    style={{ border: "1.5px solid rgba(139,92,246,0.5)" }} />
+                  <span className="text-xl">🚀</span>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: "rgba(148,163,184,0.5)" }}>Estimated Return</p>
+                  <p className="text-sm font-bold" style={{ color: "#c4b5fd" }}>{config.estimatedReturn}</p>
+                </div>
+              </div>
+
+              {/* ── QUOTE ── */}
+              <div className="h-8 flex items-center gap-2">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <circle cx="6" cy="6" r="5" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" />
+                  <circle cx="6" cy="6" r="2" fill="rgba(139,92,246,0.8)" className="animate-pulse" />
+                </svg>
+                <p className={`text-sm italic quote-fade ${quoteVisible ? "quote-visible" : "quote-hidden"}`}
+                  style={{ color: "rgba(148,163,184,0.65)" }}>
+                  "{QUOTES[quoteIdx]}"
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
-/* ── 🎮 GAME 2: MEMORY MATCH ─────────────────────────────── */
+            {/* ═══════════════════ RIGHT PANEL — REPAIR STATION ═══════════════════ */}
+            <div className="w-full max-w-[480px] shrink-0">
+              <div className="relative rounded-3xl overflow-hidden neon-border"
+                style={{
+                  background: "rgba(255,255,255,0.022)",
+                  border: "1px solid rgba(139,92,246,0.25)",
+                  backdropFilter: "blur(32px)",
+                  aspectRatio: "1 / 1.05",
+                }}>
 
-function MemoryMatchGame({ onGameOver }: { onGameOver: (score: number) => void }) {
-  const ICONS = ["📚", "🪐", "💡", "🎓", "👽", "🧬"];
-  
-  const [cards, setCards] = useState<Array<{ id: number; icon: string; flipped: boolean; matched: boolean }>>([]);
-  const [flippedIds, setFlippedIds] = useState<number[]>([]);
-  const [moves, setMoves] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(45);
-  const [isWon, setIsWon] = useState(false);
-  const [isGameOver, setIsGameOver] = useState(false);
+                {/* Moving neon grid background */}
+                <div className="absolute inset-0 grid-scroll"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(rgba(139,92,246,0.07) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(139,92,246,0.07) 1px, transparent 1px)
+                    `,
+                    backgroundSize: "40px 40px",
+                  }} />
 
-  const initGame = () => {
-    const list = [...ICONS, ...ICONS]
-      .map((icon, index) => ({ id: index, icon, flipped: false, matched: false }))
-      .sort(() => Math.random() - 0.5);
-    
-    setCards(list);
-    setFlippedIds([]);
-    setMoves(0);
-    setTimeRemaining(45);
-    setIsWon(false);
-    setIsGameOver(false);
-  };
+                {/* Scan line */}
+                <div className="scan-line absolute left-0 right-0 h-px pointer-events-none"
+                  style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.5), rgba(59,130,246,0.5), transparent)" }} />
 
-  useEffect(() => {
-    initGame();
-  }, []);
+                {/* Inner top glow */}
+                <div className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
+                  style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(109,40,217,0.2) 0%, transparent 70%)" }} />
 
-  // Timer loop
-  useEffect(() => {
-    if (isWon || isGameOver) return;
-    
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          setIsGameOver(true);
-          onGameOver(0);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+                <div className="relative z-10 flex flex-col items-center justify-center h-full p-8 gap-6">
 
-    return () => clearInterval(interval);
-  }, [isWon, isGameOver]);
+                  {/* Station label */}
+                  <div className="flex items-center gap-2 px-4 py-1.5 rounded-full"
+                    style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)" }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                    <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#c4b5fd" }}>
+                      Paperino Repair Station
+                    </span>
+                  </div>
 
-  const handleCardClick = (index: number) => {
-    if (flippedIds.length >= 2 || cards[index].flipped || cards[index].matched || isGameOver) return;
+                  {/* ── HOLOGRAPHIC LOGO SCENE ── */}
+                  <RepairScene />
 
-    const updated = [...cards];
-    updated[index].flipped = true;
-    setCards(updated);
+                  {/* Status text */}
+                  <div className="text-center space-y-1">
+                    <p className="text-xs font-semibold" style={{ color: "#a78bfa" }}>Robots actively upgrading</p>
+                    <p className="text-[10px]" style={{ color: "rgba(148,163,184,0.45)" }}>
+                      AI-assisted deployment in progress
+                    </p>
+                  </div>
 
-    const nextFlipped = [...flippedIds, index];
-    setFlippedIds(nextFlipped);
+                  {/* Bottom circuit lines */}
+                  <svg className="absolute bottom-0 left-0 right-0 w-full" height="60" viewBox="0 0 480 60" fill="none">
+                    <path className="circuit-line" d="M0 50 L80 50 L100 30 L200 30 L220 50 L480 50"
+                      stroke="rgba(139,92,246,0.4)" strokeWidth="1" />
+                    <path className="circuit-line-2" d="M0 40 L60 40 L80 20 L160 20 L180 40 L480 40"
+                      stroke="rgba(59,130,246,0.3)" strokeWidth="0.8" />
+                    {[80, 160, 240, 320, 400].map(x => (
+                      <circle key={x} cx={x} cy="50" r="2.5" fill="rgba(139,92,246,0.5)" className="animate-pulse" />
+                    ))}
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </main>
 
-    if (nextFlipped.length === 2) {
-      setMoves(m => m + 1);
-      const [first, second] = nextFlipped;
-
-      if (cards[first].icon === cards[second].icon) {
-        setTimeout(() => {
-          setCards(prev => {
-            const copy = [...prev];
-            copy[first].matched = true;
-            copy[second].matched = true;
-            
-            // Check win condition
-            if (copy.every(c => c.matched)) {
-              setIsWon(true);
-              const score = Math.max(10, timeRemaining * 10 - moves * 2);
-              onGameOver(score);
-            }
-            return copy;
-          });
-          setFlippedIds([]);
-        }, 500);
-      } else {
-        setTimeout(() => {
-          setCards(prev => {
-            const copy = [...prev];
-            copy[first].flipped = false;
-            copy[second].flipped = false;
-            return copy;
-          });
-          setFlippedIds([]);
-        }, 1000);
-      }
-    }
-  };
-
-  return (
-    <div className="w-full h-full flex flex-col justify-between p-3 select-none bg-gradient-to-b from-[#090812] to-[#121021]">
-      <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
-        <span>Moves: <span className="text-purple-400">{moves}</span></span>
-        <span className={timeRemaining < 10 ? "text-rose-400 font-black animate-pulse" : "text-gray-400"}>
-          Time: {timeRemaining}s
-        </span>
-      </div>
-
-      <div className="flex-1 w-full grid grid-cols-4 gap-2 relative bg-black/40 p-2 rounded-xl border border-white/5 min-h-[200px]">
-        {isWon ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
-            <h4 className="text-lg font-black text-emerald-400">Matched!</h4>
-            <p className="text-xs text-gray-400">Matched in {moves} moves with {timeRemaining}s left.</p>
-            <button onClick={initGame} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Play Again</button>
-          </div>
-        ) : isGameOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
-            <h4 className="text-lg font-black text-rose-400">Time Out!</h4>
-            <button onClick={initGame} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Try Again</button>
-          </div>
-        ) : (
-          cards.map((card, index) => (
-            <button
-              key={card.id}
-              onClick={() => handleCardClick(index)}
-              className={`aspect-square flex items-center justify-center rounded-xl border transition-all duration-300 ${
-                card.flipped || card.matched
-                  ? "bg-purple-600/20 border-purple-500/50 text-2xl"
-                  : "bg-white/5 border-white/10 text-transparent hover:bg-white/10 hover:border-white/20"
-              }`}
-            >
-              {(card.flipped || card.matched) && card.icon}
-            </button>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ── 🎮 GAME 3: QUICK QUIZ BLITZ ─────────────────────────── */
-
-const QUIZ_QUESTIONS = [
-  { q: "What does SRM stand for?", a: ["Sri Ramasamy Memorial", "Sri Ramanuja Mission", "Srinivasa Ramanujan Memorial", "Sri Rama Mandir"], c: 0 },
-  { q: "Which department is known for coding?", a: ["CSE", "ECE", "MECH", "CIVIL"], c: 0 },
-  { q: "What is the passing grade limit point at SRM?", a: ["10", "9", "5", "0"], c: 2 },
-  { q: "In programming, what represents a true/false value?", a: ["Integer", "String", "Boolean", "Float"], c: 2 },
-  { q: "What is the capital city of India?", a: ["Mumbai", "Chennai", "New Delhi", "Kolkata"], c: 2 },
-  { q: "Which language is used for web structure?", a: ["Python", "HTML", "C++", "VBA"], c: 1 },
-  { q: "What is the hexadecimal representation of 10?", a: ["A", "B", "F", "X"], c: 0 },
-  { q: "What does GPU stand for?", a: ["General Power Unit", "Graphics Processing Unit", "Gear Processing Unit", "Gigabit Port Utility"], c: 1 }
-];
-
-function QuickQuizGame({ onGameOver }: { onGameOver: (score: number) => void }) {
-  const [score, setScore] = useState(0);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(30);
-  const [isGameOver, setIsGameOver] = useState(false);
-
-  // Shuffle and set current question index
-  const nextQuestion = () => {
-    setCurrentIdx((prev) => (prev + 1) % QUIZ_QUESTIONS.length);
-  };
-
-  useEffect(() => {
-    setTimeRemaining(30);
-    setScore(0);
-    setCurrentIdx(Math.floor(Math.random() * QUIZ_QUESTIONS.length));
-    setIsGameOver(false);
-  }, []);
-
-  // Timer loop
-  useEffect(() => {
-    if (isGameOver) return;
-    
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          setIsGameOver(true);
-          onGameOver(score);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isGameOver, score]);
-
-  const handleOptionClick = (optionIdx: number) => {
-    if (isGameOver) return;
-
-    if (optionIdx === QUIZ_QUESTIONS[currentIdx].c) {
-      setScore(s => s + 10);
-    }
-    nextQuestion();
-  };
-
-  const handleRestart = () => {
-    setScore(0);
-    setTimeRemaining(30);
-    setCurrentIdx(Math.floor(Math.random() * QUIZ_QUESTIONS.length));
-    setIsGameOver(false);
-  };
-
-  return (
-    <div className="w-full h-full flex flex-col justify-between p-3 select-none bg-gradient-to-b from-[#090812] to-[#121021]">
-      <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
-        <span>Score: <span className="text-purple-400">{score}</span></span>
-        <span className={timeRemaining < 10 ? "text-rose-400 font-black animate-pulse" : "text-gray-400"}>
-          Timer: {timeRemaining}s
-        </span>
-      </div>
-
-      <div className="flex-1 w-full flex flex-col justify-center items-stretch relative bg-black/40 p-4 rounded-xl border border-white/5 min-h-[220px]">
-        {isGameOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
-            <h4 className="text-lg font-black text-emerald-400">Quiz Finished!</h4>
-            <p className="text-xs text-gray-400">You scored {score} points.</p>
-            <button onClick={handleRestart} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Restart Blitz</button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm font-semibold text-white text-center leading-relaxed">
-              {QUIZ_QUESTIONS[currentIdx].q}
+          {/* ── FOOTER ── */}
+          <footer className="w-full max-w-7xl mx-auto px-6 py-5 flex items-center justify-between"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+            <p className="text-xs" style={{ color: "rgba(148,163,184,0.35)" }}>
+              © {new Date().getFullYear()} Paperino SRM Study Hub
             </p>
-            
-            <div className="grid grid-cols-2 gap-2">
-              {QUIZ_QUESTIONS[currentIdx].a.map((option, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleOptionClick(idx)}
-                  className="px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 text-xs text-left text-gray-300 hover:bg-purple-600/20 hover:border-purple-500/40 hover:text-white transition-all cursor-pointer truncate"
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+            <p className="text-xs" style={{ color: "rgba(148,163,184,0.3)" }}>
+              Built with care for SRM students
+            </p>
+          </footer>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
-/* ── 🎮 GAME 4: COLOR TAP CHALLENGE ──────────────────────── */
+/* ── REPAIR SCENE ANIMATION ──────────────────────────────────────────────────── */
+function RepairScene() {
+  const [sparks, setSparks] = useState<{ id: number; x: number; y: number; color: string }[]>([]);
+  const [energyPulses, setEnergyPulses] = useState<{ id: number; x1: number; y1: number; x2: number; y2: number; color: string }[]>([]);
+  const [fragments, setFragments] = useState<{ id: number; startX: number; startY: number; targetX: number; targetY: number; color: string }[]>([]);
+  const [repairMsgIdx, setRepairMsgIdx] = useState(0);
+  const sparkId = useRef(0);
+  const pulseId = useRef(0);
+  const fragmentId = useRef(0);
 
-const COLORS = [
-  { name: "Purple", hex: "bg-purple-500" },
-  { name: "Cyan", hex: "bg-cyan-500" },
-  { name: "Emerald", hex: "bg-emerald-500" },
-  { name: "Rose", hex: "bg-rose-500" }
-];
-
-function ColorTapGame({ onGameOver }: { onGameOver: (score: number) => void }) {
-  const [score, setScore] = useState(0);
-  const [combo, setCombo] = useState(1);
-  const [targetColorIdx, setTargetColorIdx] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(1.5); // seconds per tap
-  const [isGameOver, setIsGameOver] = useState(false);
-  const maxTimeRef = useRef(1.5);
-
-  const gameLoopRef = useRef<any>(null);
-
-  const loadNextColor = () => {
-    setTargetColorIdx(Math.floor(Math.random() * COLORS.length));
-    maxTimeRef.current = Math.max(0.6, 1.5 - score * 0.05); // Speed up
-    setTimeLeft(maxTimeRef.current);
-  };
-
+  // Cycling repair status messages
   useEffect(() => {
-    setScore(0);
-    setCombo(1);
-    setIsGameOver(false);
-    loadNextColor();
+    const msgInterval = setInterval(() => {
+      setRepairMsgIdx(prev => (prev + 1) % REPAIR_STATUS_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(msgInterval);
   }, []);
 
-  // Frame tick for progress bar
+  // Continuous welding, spark generation, energy particle flow & fragment assembly
   useEffect(() => {
-    if (isGameOver) return;
+    // 1. Sparks on laser contact with logo
+    const sparkInterval = setInterval(() => {
+      const weldPoints = [
+        { x: 110, y: 110 }, { x: 150, y: 110 },
+        { x: 110, y: 150 }, { x: 150, y: 150 },
+        { x: 130, y: 100 }, { x: 130, y: 160 }
+      ];
+      const target = weldPoints[Math.floor(Math.random() * weldPoints.length)];
+      const isBlue = Math.random() > 0.4;
+      const id = sparkId.current++;
 
-    const tick = () => {
-      setTimeLeft((prev) => {
-        if (prev <= 0.016) {
-          setIsGameOver(true);
-          onGameOver(score);
-          return 0;
-        }
-        return prev - 0.016;
-      });
-      gameLoopRef.current = requestAnimationFrame(tick);
+      setSparks(prev => [
+        ...prev.slice(-14),
+        { id, x: target.x, y: target.y, color: isBlue ? "#60a5fa" : "#c4b5fd" }
+      ]);
+
+      setTimeout(() => {
+        setSparks(prev => prev.filter(s => s.id !== id));
+      }, 650);
+    }, 220);
+
+    // 2. Energy particles travelling along laser pathways from robots to logo
+    const energyInterval = setInterval(() => {
+      const pathways = [
+        { x1: 45, y1: 45, x2: 110, y2: 110, color: "#a78bfa" },
+        { x1: 215, y1: 45, x2: 150, y2: 110, color: "#60a5fa" },
+        { x1: 45, y1: 215, x2: 110, y2: 150, color: "#38bdf8" },
+        { x1: 215, y1: 215, x2: 150, y2: 150, color: "#818cf8" }
+      ];
+      const path = pathways[Math.floor(Math.random() * pathways.length)];
+      const id = pulseId.current++;
+
+      setEnergyPulses(prev => [...prev.slice(-8), { id, ...path }]);
+      setTimeout(() => {
+        setEnergyPulses(prev => prev.filter(p => p.id !== id));
+      }, 1200);
+    }, 450);
+
+    // 3. Fragments flying into place
+    const fragmentInterval = setInterval(() => {
+      const angles = [30, 120, 210, 300];
+      const angle = angles[Math.floor(Math.random() * angles.length)] * (Math.PI / 180);
+      const startDist = 95;
+      const targetDist = 38;
+      const startX = 130 + Math.cos(angle) * startDist;
+      const startY = 130 + Math.sin(angle) * startDist;
+      const targetX = 130 + Math.cos(angle) * targetDist;
+      const targetY = 130 + Math.sin(angle) * targetDist;
+      const colors = ["#a78bfa", "#60a5fa", "#38bdf8", "#c4b5fd"];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const id = fragmentId.current++;
+
+      setFragments(prev => [...prev.slice(-6), { id, startX, startY, targetX, targetY, color }]);
+      setTimeout(() => {
+        setFragments(prev => prev.filter(f => f.id !== id));
+      }, 1800);
+    }, 1400);
+
+    return () => {
+      clearInterval(sparkInterval);
+      clearInterval(energyInterval);
+      clearInterval(fragmentInterval);
     };
-
-    gameLoopRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(gameLoopRef.current);
-  }, [isGameOver, score]);
-
-  const handleCircleClick = (colorIdx: number) => {
-    if (isGameOver) return;
-
-    if (colorIdx === targetColorIdx) {
-      const nextScore = score + 10 * combo;
-      setScore(nextScore);
-      setCombo(c => Math.min(5, c + 1));
-      loadNextColor();
-    } else {
-      setIsGameOver(true);
-      onGameOver(score);
-    }
-  };
-
-  const handleRestart = () => {
-    setScore(0);
-    setCombo(1);
-    setIsGameOver(false);
-    loadNextColor();
-  };
+  }, []);
 
   return (
-    <div className="w-full h-full flex flex-col justify-between p-3 select-none bg-gradient-to-b from-[#090812] to-[#121021]">
-      <div className="flex justify-between items-center text-xs text-gray-400 font-bold mb-2">
-        <span>Score: <span className="text-purple-400">{score}</span></span>
-        <span className="flex items-center gap-1 text-orange-400 font-bold">
-          <Flame size={12} /> x{combo} Combo
+    <div className="relative w-72 h-72 flex items-center justify-center">
+      {/* Dynamic Status Tag beside Repair Station */}
+      <div className="absolute top-2 right-2 z-20 px-2.5 py-1 rounded-md flex items-center gap-1.5 backdrop-blur-md"
+        style={{
+          background: "rgba(15, 10, 30, 0.75)",
+          border: "1px solid rgba(139,92,246,0.3)",
+          boxShadow: "0 0 12px rgba(109,40,217,0.3)"
+        }}>
+        <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+        <span key={repairMsgIdx} className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 repair-msg-anim">
+          {REPAIR_STATUS_MESSAGES[repairMsgIdx]}
         </span>
       </div>
 
-      <div className="flex-1 w-full flex flex-col justify-between items-center relative bg-black/40 p-4 rounded-xl border border-white/5 min-h-[220px]">
-        {isGameOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center space-y-3 bg-black/85 z-20 rounded-xl">
-            <h4 className="text-lg font-black text-rose-500">Tap Failed!</h4>
-            <p className="text-xs text-gray-400">Final score: {score}</p>
-            <button onClick={handleRestart} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-all cursor-pointer">Play Again</button>
-          </div>
-        ) : (
-          <>
-            {/* Target Display */}
-            <div className="text-center py-2">
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Tap this color</span>
-              <p className="text-lg font-bold text-white mt-1 animate-pulse">
-                {COLORS[targetColorIdx].name}
-              </p>
-            </div>
+      <svg width="280" height="280" viewBox="0 0 260 260" fill="none" className="absolute inset-0">
+        {/* ── ROTATING SCAN RINGS ── */}
+        <circle cx="130" cy="130" r="118" stroke="rgba(139,92,246,0.12)" strokeWidth="1" className="scan-ring-1" />
+        <circle cx="130" cy="130" r="102" stroke="rgba(59,130,246,0.18)" strokeWidth="1.2" strokeDasharray="15 30 45 15" className="scan-ring-2" />
+        <circle cx="130" cy="130" r="82" stroke="rgba(147,51,234,0.15)" strokeWidth="0.8" strokeDasharray="6 12" className="scan-ring-3" />
 
-            {/* Time progress bar */}
-            <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-all"
-                style={{ width: `${(timeLeft / maxTimeRef.current) * 100}%` }}
-              ></div>
-            </div>
+        {/* ── NEON CONTINUOUS PROGRESS ORBIT LINES ── */}
+        <circle cx="130" cy="130" r="94" stroke="url(#progressLineGrad)" strokeWidth="1.5" className="neon-progress-line" />
 
-            {/* Color circles */}
-            <div className="grid grid-cols-2 gap-4 w-full pt-4">
-              {COLORS.map((color, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleCircleClick(idx)}
-                  className={`w-full h-10 rounded-xl transition-all cursor-pointer transform hover:scale-105 active:scale-95 ${color.hex} border border-white/10 shadow-lg`}
-                ></button>
-              ))}
-            </div>
-          </>
-        )}
+        {/* ── HOLOGRAPHIC BLUEPRINT GRID (flashing) ── */}
+        <g className="blueprint-grid-flash">
+          {[-2, -1, 0, 1, 2].map(r =>
+            [-2, -1, 0, 1, 2].map(c => (
+              <circle key={`bp-${r}-${c}`} cx={130 + c * 22} cy={130 + r * 22} r="1.2" fill="#818cf8" />
+            ))
+          )}
+          <circle cx="130" cy="130" r="48" stroke="rgba(99,102,241,0.3)" strokeWidth="0.8" strokeDasharray="3 3" />
+        </g>
+
+        {/* ── DIAGNOSTIC SCAN LINE SWEEP ── */}
+        <g className="diag-sweep-line">
+          <line x1="75" y1="130" x2="185" y2="130" stroke="rgba(56,189,248,0.6)" strokeWidth="1.5" style={{ filter: "drop-shadow(0 0 6px rgba(56,189,248,0.8))" }} />
+        </g>
+
+        {/* ── LASER BEAMS & ROBOT ARM CONNECTORS ── */}
+        {/* Arm 1 → Logo */}
+        <line className="laser-beam-weld-1" x1="45" y1="45" x2="110" y2="110" stroke="url(#laserViolet)" strokeWidth="1.8" strokeLinecap="round" />
+        {/* Arm 2 → Logo */}
+        <line className="laser-beam-weld-2" x1="215" y1="45" x2="150" y2="110" stroke="url(#laserBlue)" strokeWidth="1.8" strokeLinecap="round" />
+        {/* Arm 3 → Logo */}
+        <line className="laser-beam-weld-3" x1="45" y1="215" x2="110" y2="150" stroke="url(#laserCyan)" strokeWidth="1.8" strokeLinecap="round" />
+        {/* Arm 4 → Logo */}
+        <line className="laser-beam-weld-4" x1="215" y1="215" x2="150" y2="150" stroke="url(#laserIndigo)" strokeWidth="1.8" strokeLinecap="round" />
+
+        {/* ── ENERGY PARTICLES TRAVELLING TO LOGO ── */}
+        {energyPulses.map(p => (
+          <circle key={p.id} r="2.5" fill={p.color} style={{ filter: `drop-shadow(0 0 5px ${p.color})` }}>
+            <animateMotion path={`M ${p.x1} ${p.y1} L ${p.x2} ${p.y2}`} dur="1.1s" repeatCount="indefinite" />
+          </circle>
+        ))}
+
+        {/* ── 4 ROBOTIC ARMS (Dynamic extend/retract/rotate) ── */}
+        {/* Arm 1: Top-Left */}
+        <g transform="translate(45,45)" className="arm-robot-1">
+          <rect x="-14" y="-10" width="28" height="20" rx="5" fill="rgba(24,16,48,0.95)" stroke="#8b5cf6" strokeWidth="1.2" />
+          <line x1="-8" y1="-10" x2="-14" y2="-18" stroke="#a78bfa" strokeWidth="1.5" />
+          <line x1="8" y1="-10" x2="14" y2="-18" stroke="#a78bfa" strokeWidth="1.5" />
+          {/* Segment 1 */}
+          <line x1="0" y1="10" x2="12" y2="28" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="12" cy="28" r="3" fill="#c4b5fd" />
+          {/* Segment 2 */}
+          <line x1="12" y1="28" x2="28" y2="40" stroke="#a78bfa" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="28" cy="40" r="2.5" fill="#60a5fa" style={{ filter: "drop-shadow(0 0 6px #60a5fa)" }} />
+        </g>
+
+        {/* Arm 2: Top-Right */}
+        <g transform="translate(215,45)" className="arm-robot-2">
+          <rect x="-14" y="-10" width="28" height="20" rx="5" fill="rgba(16,24,48,0.95)" stroke="#3b82f6" strokeWidth="1.2" />
+          <line x1="-8" y1="-10" x2="-14" y2="-18" stroke="#60a5fa" strokeWidth="1.5" />
+          <line x1="8" y1="-10" x2="14" y2="-18" stroke="#60a5fa" strokeWidth="1.5" />
+          {/* Segment 1 */}
+          <line x1="0" y1="10" x2="-12" y2="28" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="-12" cy="28" r="3" fill="#93c5fd" />
+          {/* Segment 2 */}
+          <line x1="-12" y1="28" x2="-28" y2="40" stroke="#60a5fa" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="-28" cy="40" r="2.5" fill="#a78bfa" style={{ filter: "drop-shadow(0 0 6px #a78bfa)" }} />
+        </g>
+
+        {/* Arm 3: Bottom-Left */}
+        <g transform="translate(45,215)" className="arm-robot-3">
+          <rect x="-14" y="-10" width="28" height="20" rx="5" fill="rgba(12,28,48,0.95)" stroke="#06b6d4" strokeWidth="1.2" />
+          <line x1="-8" y1="10" x2="-14" y2="18" stroke="#38bdf8" strokeWidth="1.5" />
+          <line x1="8" y1="10" x2="14" y2="18" stroke="#38bdf8" strokeWidth="1.5" />
+          {/* Segment 1 */}
+          <line x1="0" y1="-10" x2="12" y2="-28" stroke="#06b6d4" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="12" cy="-28" r="3" fill="#67e8f9" />
+          {/* Segment 2 */}
+          <line x1="12" y1="-28" x2="28" y2="-40" stroke="#38bdf8" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="28" cy="-40" r="2.5" fill="#38bdf8" style={{ filter: "drop-shadow(0 0 6px #38bdf8)" }} />
+        </g>
+
+        {/* Arm 4: Bottom-Right */}
+        <g transform="translate(215,215)" className="arm-robot-4">
+          <rect x="-14" y="-10" width="28" height="20" rx="5" fill="rgba(24,18,48,0.95)" stroke="#6366f1" strokeWidth="1.2" />
+          <line x1="-8" y1="10" x2="-14" y2="18" stroke="#818cf8" strokeWidth="1.5" />
+          <line x1="8" y1="10" x2="14" y2="18" stroke="#818cf8" strokeWidth="1.5" />
+          {/* Segment 1 */}
+          <line x1="0" y1="-10" x2="-12" y2="-28" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="-12" cy="-28" r="3" fill="#a5b4fc" />
+          {/* Segment 2 */}
+          <line x1="-12" y1="-28" x2="-28" y2="-40" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="-28" cy="-40" r="2.5" fill="#c4b5fd" style={{ filter: "drop-shadow(0 0 6px #c4b5fd)" }} />
+        </g>
+
+        {/* ── FRAGMENTS ATTACHING TO LOGO ── */}
+        {fragments.map(f => (
+          <g key={f.id}>
+            <polygon points={`${f.targetX},${f.targetY - 3} ${f.targetX + 3},${f.targetY + 3} ${f.targetX - 3},${f.targetY + 3}`}
+              fill={f.color} opacity="0.85" style={{ filter: `drop-shadow(0 0 4px ${f.color})` }}>
+              <animate attributeName="points"
+                from={`${f.startX},${f.startY - 4} ${f.startX + 4},${f.startY + 4} ${f.startX - 4},${f.startY + 4}`}
+                to={`${f.targetX},${f.targetY - 3} ${f.targetX + 3},${f.targetY + 3} ${f.targetX - 3},${f.targetY + 3}`}
+                dur="1.7s" fill="freeze" />
+            </polygon>
+          </g>
+        ))}
+
+        {/* ── SPARK PARTICLES AT WELD CONTACT ── */}
+        {sparks.map(s => (
+          <g key={s.id}>
+            {[...Array(6)].map((_, j) => {
+              const angle = (j / 6) * Math.PI * 2;
+              return (
+                <circle key={j}
+                  className="spark"
+                  cx={s.x} cy={s.y} r={1.2 + Math.random()}
+                  fill={s.color}
+                  style={{
+                    "--sx": `${Math.cos(angle) * (10 + Math.random() * 14)}px`,
+                    "--sy": `${Math.sin(angle) * (10 + Math.random() * 14)}px`,
+                    filter: `drop-shadow(0 0 4px ${s.color})`,
+                    animationDelay: `${j * 0.04}s`,
+                  } as React.CSSProperties}
+                />
+              );
+            })}
+          </g>
+        ))}
+
+        {/* ── GRADIENTS DEFS ── */}
+        <defs>
+          <linearGradient id="laserViolet" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="rgba(167,139,250,0.1)" />
+            <stop offset="50%" stopColor="rgba(139,92,246,0.95)" />
+            <stop offset="100%" stopColor="rgba(167,139,250,1)" />
+          </linearGradient>
+          <linearGradient id="laserBlue" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(96,165,250,0.1)" />
+            <stop offset="50%" stopColor="rgba(59,130,246,0.95)" />
+            <stop offset="100%" stopColor="rgba(96,165,250,1)" />
+          </linearGradient>
+          <linearGradient id="laserCyan" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(34,211,238,0.1)" />
+            <stop offset="50%" stopColor="rgba(6,182,212,0.9)" />
+            <stop offset="100%" stopColor="rgba(34,211,238,1)" />
+          </linearGradient>
+          <linearGradient id="laserIndigo" x1="100%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="rgba(129,140,248,0.1)" />
+            <stop offset="50%" stopColor="rgba(99,102,241,0.95)" />
+            <stop offset="100%" stopColor="rgba(129,140,248,1)" />
+          </linearGradient>
+          <linearGradient id="progressLineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#8b5cf6" />
+            <stop offset="50%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#06b6d4" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* ── PAPERINO LOGO (Center Circular Neon Hologram) ── */}
+      <div className="relative logo-repair-pulse z-10 w-20 h-20 rounded-full overflow-hidden flex items-center justify-center"
+        style={{
+          border: "2px solid rgba(59,130,246,0.85)",
+          background: "radial-gradient(circle, rgba(15,20,50,0.95) 0%, rgba(8,5,24,0.98) 100%)",
+          boxShadow: "0 0 25px rgba(59,130,246,0.85), 0 0 50px rgba(139,92,246,0.65), 0 0 85px rgba(59,130,246,0.4), inset 0 0 15px rgba(59,130,246,0.5)",
+          backdropFilter: "blur(8px)",
+          animationDuration: "2.5s",
+        }}>
+        <Logo className="w-full h-full object-cover scale-110" />
+
+        {/* Holographic overlay */}
+        <div className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            background: "radial-gradient(circle at 30% 30%, rgba(96,165,250,0.3) 0%, transparent 60%), linear-gradient(135deg, rgba(139,92,246,0.2) 0%, transparent 50%, rgba(59,130,246,0.2) 100%)",
+            mixBlendMode: "overlay",
+          }} />
       </div>
     </div>
   );
 }
+

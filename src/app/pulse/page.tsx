@@ -3,11 +3,15 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc } from "firebase/firestore";
-import { Radio, Pin, Link as LinkIcon, ExternalLink, Calendar, ChevronRight, Lock, ShieldCheck, Clock, Trash2 } from "lucide-react";
+import {
+  Radio, Pin, ShieldCheck, Clock, Trash2, Share2, Bookmark, FileText,
+  Download, ExternalLink, MapPin, Building2, Monitor, CalendarDays, Users,
+  ClipboardList, Banknote, BookOpen,
+} from "lucide-react";
 import { useToast } from "@/components/Toast";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import FormattedDescription from "@/components/FormattedDescription";
 
 interface PulseUpdate {
   id: string;
@@ -18,6 +22,8 @@ interface PulseUpdate {
   priority: "normal" | "important" | "pinned";
   createdAt: Timestamp;
   createdBy: string;
+  createdByRole?: string;
+  isCreatedByAdmin?: boolean;
   isPinned: boolean;
   verifiedSource?: boolean;
   sourceName?: string;
@@ -26,1200 +32,637 @@ interface PulseUpdate {
   location?: string;
   mode?: string;
   state?: string;
+  imageUrl?: string;
+  imageUrls?: string[];
+  pdfUrl?: string;
+  pdfName?: string;
+  // Structured metadata fields for hackathon/event cards
+  teamSize?: string;
+  registrationFee?: string;
+  eventDate?: string | Timestamp;
+  about?: string;
 }
 
-interface ExtractedDetails {
-  date: string;
-  location: string;
-  organizer: string;
-  fee: string;
-  teamSize: string;
-  prizePool: string;
-  deadline: string;
-  highlights: string[];
-  summary: string;
-}
+const CATEGORIES = ["All", "Internships", "Hackathons", "Workshops", "Placements", "Events", "Platform"];
 
-function parseHackathonDetails(update: PulseUpdate): ExtractedDetails {
-  const desc = update.description || "";
-  
-  const organizer = update.organizer || "Check Website";
-  
-  let location = update.location || "Location Unknown";
-  if (update.state && !location.toLowerCase().includes(update.state.toLowerCase()) && location !== "Location Unknown") {
-    location = `${location}, ${update.state}`;
-  }
-
-  const deadline = update.deadline
-    ? new Date(update.deadline.seconds * 1000).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "Check Website";
-
-  let date = "Check Website";
-  const dateRegex = /\b(\d{1,2}(?:-\d{1,2})?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{4})?)\b/i;
-  const dateMatch = desc.match(dateRegex);
-  if (dateMatch) {
-    date = dateMatch[1];
-  }
-
-  let fee = "Free / Check Website";
-  if (desc.toLowerCase().includes("free")) {
-    fee = "Free";
-  } else {
-    const feeMatch = desc.match(/(?:fee|rs|inr|registration)\.?\s*[:\-\s]*₹?\s*(\d+)/i);
-    if (feeMatch) {
-      fee = `₹${feeMatch[1]}`;
-    }
-  }
-
-  let teamSize = "Check Website";
-  const teamMatch = desc.match(/(?:team size|members|team of)\s*[:\-\s]*(\d+(?:-\d+)?)/i);
-  if (teamMatch) {
-    teamSize = `${teamMatch[1]} Members`;
-  } else if (desc.toLowerCase().includes("solo") || desc.toLowerCase().includes("individual")) {
-    teamSize = "1 Member (Solo)";
-  }
-
-  let prizePool = "Check Website";
-  const prizeMatch = desc.match(/(?:prize pool|prizes worth|cash prize|prizes of)\s*[:\-\s]*₹?\s*(\d+(?:,\d+)*(?:\s*k|\s*lakh)?)/i);
-  if (prizeMatch) {
-    prizePool = `₹${prizeMatch[1]}`;
-  } else {
-    const moneyMatch = desc.match(/₹\s*(\d+(?:,\d+)*(?:\s*k|\s*lakh)?)/i);
-    if (moneyMatch) {
-      prizePool = moneyMatch[0];
-    }
-  }
-
-  const highlights: string[] = [];
-  const lines = desc.split("\n");
-  for (const line of lines) {
-    const cleanLine = line.trim().replace(/^[\u2022\-\*\d\.\s]+/, "").trim();
-    if (cleanLine && (line.trim().startsWith("•") || line.trim().startsWith("-") || line.trim().startsWith("*")) && cleanLine.length < 50) {
-      highlights.push(cleanLine);
-    }
-  }
-
-  if (highlights.length === 0) {
-    if (update.mode === "Offline") {
-      highlights.push("Offline Hackathon Experience");
-    } else if (update.mode === "Hybrid") {
-      highlights.push("Hybrid Event Structure");
-    } else {
-      highlights.push("100% Online Hackathon");
-    }
-    
-    if (fee === "Free") {
-      highlights.push("Free Registration");
-    }
-    
-    if (prizePool !== "Check Website") {
-      highlights.push(`Win from ${prizePool} Prize Pool`);
-    }
-
-    highlights.push("Certificates for all participants");
-    highlights.push("Networking & Mentorship");
-  }
-
-  const finalHighlights = highlights.slice(0, 5);
-
-  let summary = desc;
-  const sentenceMatch = desc.match(/^[^.!?]+[.!?]+[^.!?]+[.!?]+/);
-  if (sentenceMatch) {
-    summary = sentenceMatch[0];
-  } else if (desc.length > 140) {
-    summary = desc.substring(0, 140) + "...";
-  }
-
-  return {
-    date,
-    location,
-    organizer,
-    fee,
-    teamSize,
-    prizePool,
-    deadline,
-    highlights: finalHighlights,
-    summary,
-  };
-}
-
-interface InternshipDetails {
-  company: string;
-  role: string;
-  location: string;
-  stipend: string;
-  duration: string;
-  eligibility: string;
-  deadline: string;
-  summary: string;
-  skills: string[];
-}
-
-function parseInternshipDetails(update: PulseUpdate): InternshipDetails {
-  const desc = update.description || "";
-  const title = update.title || "";
-  
-  let company = update.organizer && update.organizer !== "Unstop" && update.organizer !== "Devfolio" ? update.organizer : "";
-  if (!company) {
-    const match = title.match(/^([^–\-\|]+)/);
-    if (match) {
-      company = match[1].replace(/internship/i, "").trim();
-    }
-  }
-  if (!company) company = "Company Unknown";
-
-  let role = title;
-  const roleMatch = title.match(/(?:internship|intern)\s*-\s*(.*)/i) || title.match(/(.*)\s*(?:internship|intern)/i);
-  if (roleMatch) {
-    role = roleMatch[1].trim();
-  }
-
-  let location = update.location || "Remote / Office";
-  if (update.state && !location.toLowerCase().includes(update.state.toLowerCase()) && location !== "Location Unknown") {
-    location = `${location}, ${update.state}`;
-  }
-
-  let stipend = "Check Website";
-  const stipendMatch = desc.match(/(?:stipend|salary|package|pay)\s*[:\-\s]*₹?\s*(\d+(?:,\d+)*(?:\s*k|\s*lakh|\s*\/month)?)/i);
-  if (stipendMatch) {
-    stipend = stipendMatch[1].toLowerCase().includes("/month") ? `₹${stipendMatch[1]}` : `₹${stipendMatch[1]}/month`;
-  } else if (desc.toLowerCase().includes("unpaid")) {
-    stipend = "Unpaid";
-  } else if (desc.toLowerCase().includes("paid")) {
-    stipend = "Paid";
-  }
-
-  let duration = "3-6 Months";
-  const durationMatch = desc.match(/(\d+\s*(?:month|months|week|weeks|year|years|yr|yrs|mon|mons))\s*(?:duration|period)?/i) || desc.match(/(?:duration|period)\s*[:\-\s]*(\d+\s*\w+)/i);
-  if (durationMatch) {
-    duration = durationMatch[1];
-  }
-
-  let eligibility = "B.Tech / MCA / Dual Degree";
-  const eligibilityMatch = desc.match(/(?:eligibility|eligible|batch|criteria|qualification)\s*[:\-\s]*([^\n.]+)/i);
-  if (eligibilityMatch) {
-    eligibility = eligibilityMatch[1].trim();
-  }
-
-  const deadline = update.deadline
-    ? new Date(update.deadline.seconds * 1000).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "Check Website";
-
-  let summary = desc;
-  if (desc.length > 550) {
-    summary = desc.substring(0, 550) + "...";
-  }
-
-  const skills: string[] = [];
-  const skillsList = ["react", "node", "javascript", "python", "java", "c++", "sql", "aws", "git", "figma", "machine learning", "ui/ux", "communication", "typescript"];
-  skillsList.forEach(s => {
-    if (desc.toLowerCase().includes(s)) {
-      skills.push(s.toUpperCase());
-    }
-  });
-  if (skills.length === 0) {
-    skills.push("Software Engineering", "Analytical Skills", "Collaboration");
-  }
-
-  return { company, role, location, stipend, duration, eligibility, deadline, summary, skills: skills.slice(0, 5) };
-}
-
-interface WebsiteUpdateDetails {
-  title: string;
-  summary: string;
-  date: string;
-  version: string;
-  modules: string[];
-  whatsNew: string[];
-}
-
-function parseWebsiteUpdateDetails(update: PulseUpdate): WebsiteUpdateDetails {
-  const desc = update.description || "";
-  const title = update.title || "";
-  
-  const date = update.createdAt
-    ? new Date(update.createdAt.seconds * 1000).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "Recent";
-
-  let version = "v1.1.0";
-  const verMatch = title.match(/(v\d+\.\d+\.\d+)/i) || desc.match(/(v\d+\.\d+\.\d+)/i);
-  if (verMatch) {
-    version = verMatch[1];
-  }
-
-  const modules: string[] = [];
-  const modulesList = ["gpa", "btech", "pyq", "ats", "leaderboard", "pulse", "login", "maintenance", "dashboard"];
-  modulesList.forEach(m => {
-    if (desc.toLowerCase().includes(m)) {
-      modules.push(m.toUpperCase());
-    }
-  });
-  if (modules.length === 0) {
-    modules.push("CORE SYSTEM");
-  }
-
-  const whatsNew: string[] = [];
-  const lines = desc.split("\n");
-  for (const line of lines) {
-    const cleanLine = line.trim().replace(/^[\u2022\-\*\d\.\s]+/, "").trim();
-    if (cleanLine && (line.trim().startsWith("•") || line.trim().startsWith("-") || line.trim().startsWith("*")) && cleanLine.length < 90) {
-      whatsNew.push(cleanLine);
-    }
-  }
-  if (whatsNew.length === 0) {
-    whatsNew.push("Performance optimizations and latency improvements", "Enhanced user interface aesthetics", "General stability and bug fixes");
-  }
-
-  let summary = desc;
-  if (desc.length > 550) {
-    summary = desc.substring(0, 550) + "...";
-  }
-
-  return { title, summary, date, version, modules, whatsNew: whatsNew.slice(0, 5) };
-}
-
-interface AnnouncementDetails {
-  title: string;
-  summary: string;
-  date: string;
-}
-
-function parseAnnouncementDetails(update: PulseUpdate): AnnouncementDetails {
-  const desc = update.description || "";
-  const date = update.createdAt
-    ? new Date(update.createdAt.seconds * 1000).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "Recent";
-  
-  return { title: update.title, summary: desc, date };
-}
-
-interface PlacementDetails {
-  company: string;
-  role: string;
-  salaryPackage: string;
-  eligibility: string;
-  deadline: string;
-  skills: string[];
-  summary: string;
-  logoLetter: string;
-}
-
-function parsePlacementDetails(update: PulseUpdate): PlacementDetails {
-  const desc = update.description || "";
-  const title = update.title || "";
-
-  let company = update.organizer || "Company Name";
-  if (company === "Unstop" || company === "Devfolio") {
-    const match = title.match(/^([^–\-\|]+)/);
-    company = match ? match[1].trim() : "Company Name";
-  }
-
-  let role = title;
-  const roleMatch = title.match(/(?:recruitment|placement|hiring|role)\s*-\s*(.*)/i) || title.match(/(.*)\s*(?:recruitment|placement|hiring|role)/i);
-  if (roleMatch) {
-    role = roleMatch[1].trim();
-  }
-
-  let salaryPackage = "Check Website";
-  const packageMatch = desc.match(/(?:package|lpa|ctc|salary)\s*[:\-\s]*₹?\s*(\d+(?:\.\d+)?\s*(?:lpa|lakhs|lakh|l)?)/i) || desc.match(/(\d+(?:\.\d+)?\s*(?:lpa|lakhs|lakh))/i);
-  if (packageMatch) {
-    salaryPackage = packageMatch[1].toUpperCase();
-  }
-
-  let eligibility = "All Eligible Streams";
-  const eligibilityMatch = desc.match(/(?:eligibility|eligible|batch|criteria)\s*[:\-\s]*([^\n.]+)/i);
-  if (eligibilityMatch) {
-    eligibility = eligibilityMatch[1].trim();
-  }
-
-  const deadline = update.deadline
-    ? new Date(update.deadline.seconds * 1000).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "Check Website";
-
-  const skills: string[] = [];
-  const skillsList = ["react", "node", "javascript", "python", "java", "sql", "aws", "machine learning", "dsa", "c++", "oops"];
-  skillsList.forEach(s => {
-    if (desc.toLowerCase().includes(s)) {
-      skills.push(s.toUpperCase());
-    }
-  });
-  if (skills.length === 0) {
-    skills.push("DSA", "Core Java/Python", "Analytical Skills");
-  }
-
-  const logoLetter = company.charAt(0).toUpperCase();
-
-  let summary = desc;
-  if (desc.length > 550) {
-    summary = desc.substring(0, 550) + "...";
-  }
-
-  return { company, role, salaryPackage, eligibility, deadline, skills: skills.slice(0, 5), logoLetter, summary };
-}
-
-const CATEGORIES = [
-  "All",
-  "Announcements",
-  "Internships",
-  "Hackathons",
-  "Placements",
-  "Website Updates",
-  "Events",
-  "Archived"
-];
+// Categories that use the COMPACT structured card layout
+const STRUCTURED_CATEGORIES = ["Hackathons", "Workshops", "Events", "Placements"];
 
 export default function PulsePage() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
-  const router = useRouter();
   const [updates, setUpdates] = useState<PulseUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [expandedInternships, setExpandedInternships] = useState<Record<string, boolean>>({});
-  const { showToast } = useToast();
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
-  const handleDelete = async (id: string) => {
-    setDeleteConfirmId(null);
+  const { showToast } = useToast();
+  const { user, isAdmin, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const isLoggedOut = !authLoading && !user;
+
+  useEffect(() => {
     try {
-      await deleteDoc(doc(db, "pulse_updates", id));
-      showToast("Post deleted successfully.", "success");
-    } catch (err) {
-      console.error("Error deleting post:", err);
-      showToast("Failed to delete post.", "error");
+      const saved = localStorage.getItem("paperino_pulse_bookmarks");
+      if (saved) setBookmarkedIds(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  const toggleBookmark = (id: string) => {
+    setBookmarkedIds(prev => {
+      let next: string[];
+      if (prev.includes(id)) {
+        next = prev.filter(item => item !== id);
+        showToast("Removed from bookmarks", "info");
+      } else {
+        next = [...prev, id];
+        showToast("Saved to bookmarks!", "success");
+      }
+      try { localStorage.setItem("paperino_pulse_bookmarks", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const isBookmarked = (id: string) => bookmarkedIds.includes(id);
+  const isExpanded = (id: string) => expandedIds.includes(id);
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleShare = async (update: PulseUpdate) => {
+    const shareUrl = update.link || (typeof window !== "undefined" ? window.location.href : "");
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share({ title: update.title, url: shareUrl }); return; } catch {}
     }
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast("Link copied to clipboard!", "success");
+    }
+  };
+
+  const isVerifiedResource = (update: PulseUpdate): boolean => {
+    if (update.createdByRole === "admin" || update.createdByRole === "lead_admin") return true;
+    if (update.isCreatedByAdmin) return true;
+    if (update.verifiedSource) return true;
+    if (update.createdBy) return true;
+    return false;
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "Internships": return "💼";
+      case "Hackathons": return "🚀";
+      case "Workshops": return "🛠️";
+      case "Placements": return "🎓";
+      case "Events": return "🎪";
+      default: return "📢";
+    }
+  };
+
+  const getApplyButtonText = (update: PulseUpdate) => {
+    const cat = (update.category || "").toLowerCase();
+    const link = (update.link || "").toLowerCase();
+    if (cat.includes("internship") || cat.includes("hackathon") || cat.includes("placement")) {
+      if (link.includes("register") || link.includes("form")) return "Register Now";
+      return "Apply Now";
+    }
+    if (link.includes("apply")) return "Apply Now";
+    if (link.includes("register") || link.includes("form")) return "Register Now";
+    return "Visit Website";
+  };
+
+  const formatTimestamp = (ts?: Timestamp | string) => {
+    if (!ts) return null;
+    if (typeof ts === "string") return ts;
+    const d = new Date(ts.seconds * 1000);
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   };
 
   useEffect(() => {
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
-      
-      const getSortScore = (update: PulseUpdate) => {
-        if (update.isPinned) return 1000;
-        if (isNew(update.createdAt)) return 900;
-        
-        const locationLower = (update.location || "").toLowerCase();
-        const stateLower = (update.state || "").toLowerCase();
-        const titleLower = (update.title || "").toLowerCase();
-        const modeLower = (update.mode || "Offline").toLowerCase();
-        
-        const isTN = 
-          stateLower.includes("tamil nadu") || 
-          stateLower.includes("tamilnadu") ||
-          locationLower.includes("tamil nadu") ||
-          locationLower.includes("chennai") ||
-          locationLower.includes("coimbatore") ||
-          locationLower.includes("trichy") ||
-          locationLower.includes("tiruchirappalli") ||
-          locationLower.includes("madurai") ||
-          locationLower.includes("salem") ||
-          locationLower.includes("erode") ||
-          locationLower.includes("vellore") ||
-          locationLower.includes("tirunelveli") ||
-          locationLower.includes("thanjavur") ||
-          locationLower.includes("kanchipuram") ||
-          locationLower.includes("hosur") ||
-          titleLower.match(/srm|sathyabama|vit chennai|anna university|ssn|psg|kumaraguru|cit|sastra|amrita|thiagarajar|kct|licet|joseph/);
-
-        const isSouthIndia = 
-          stateLower.includes("karnataka") || 
-          stateLower.includes("kerala") || 
-          stateLower.includes("andhra pradesh") || 
-          stateLower.includes("telangana") ||
-          locationLower.includes("bangalore") ||
-          locationLower.includes("bengaluru") ||
-          locationLower.includes("kochi") ||
-          locationLower.includes("hyderabad") ||
-          locationLower.includes("thiruvananthapuram") ||
-          locationLower.includes("amaravati") ||
-          locationLower.includes("warangal") ||
-          locationLower.includes("visakhapatnam") ||
-          locationLower.includes("cochin") ||
-          locationLower.includes("trivandrum");
-
-        if (modeLower === "offline") {
-          if (isTN) return 100;        // Level 1: Tamil Nadu Offline
-          if (isSouthIndia) return 80; // Level 3: South India Offline
-          return 70;                   // India Offline
-        }
-        
-        if (modeLower === "hybrid") {
-          if (isTN) return 90;         // Level 2: Tamil Nadu Hybrid
-          return 60;                   // Other Hybrid
-        }
-        
-        if (modeLower === "online") {
-          return 50;                   // Online
-        }
-        
-        return 40;                     // Location Unknown / Others
-      };
-
-      data.sort((a, b) => {
-        const scoreA = getSortScore(a);
-        const scoreB = getSortScore(b);
-        if (scoreA !== scoreB) {
-          return scoreB - scoreA;
-        }
-        return (b.createdAt?.toDate().getTime() || 0) - (a.createdAt?.toDate().getTime() || 0);
+      const fetched: PulseUpdate[] = [];
+      snapshot.forEach(d => fetched.push({ id: d.id, ...d.data() } as PulseUpdate));
+      fetched.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
       });
-
-      setUpdates(data);
+      setUpdates(fetched);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching pulse updates:", error);
+      console.error("Pulse fetch error:", error);
+      showToast("Failed to load live updates.", "error");
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  const isExpired = (deadline?: Timestamp) => {
-    if (!deadline) return false;
-    return deadline.toDate() < new Date();
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "pulse_updates", id));
+      showToast("Post deleted successfully", "success");
+      setDeleteConfirmId(null);
+    } catch {
+      showToast("Failed to delete post", "error");
+    }
   };
 
-  const filteredUpdates = updates.filter(
-    (u) => {
-      const expired = isExpired(u.deadline);
-      if (activeCategory === "Archived") {
-        return expired;
-      }
-      
-      if (expired) return false; // Hide expired items from other tabs
-      
-      return activeCategory === "All" || u.category === activeCategory;
-    }
+  const filteredUpdates = activeCategory === "All" ? updates : updates.filter(u => u.category === activeCategory);
+  const isNew = (ts?: Timestamp) => ts ? (Date.now() - ts.seconds * 1000) / 86400000 <= 3 : false;
+  const isExpiredTs = (ts?: Timestamp) => ts ? Date.now() > ts.seconds * 1000 : false;
+
+  // ─── SHARED BADGE STYLE ────────────────────────────────────────────────────────
+  const badgeStyle = (bg: string, border: string, color: string, glow?: string) => ({
+    background: bg,
+    border: `1px solid ${border}`,
+    color,
+    boxShadow: glow || "none",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+  });
+
+  // ─── SHARED CARD SHELL PROPS ───────────────────────────────────────────────────
+  const getCardStyle = (pinned: boolean) => ({
+    background: pinned
+      ? "linear-gradient(145deg, rgba(88,28,220,0.14) 0%, rgba(67,56,202,0.1) 50%, rgba(37,99,235,0.07) 100%)"
+      : "rgba(255,255,255,0.032)",
+    border: pinned ? "1px solid rgba(139,92,246,0.42)" : "1px solid rgba(255,255,255,0.07)",
+    backdropFilter: "blur(28px)",
+    WebkitBackdropFilter: "blur(28px)",
+    boxShadow: pinned
+      ? "0 0 45px rgba(109,40,217,0.18), 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07)"
+      : "0 2px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)",
+  });
+
+  // ─── SHARED BADGE ROW ─────────────────────────────────────────────────────────
+  const BadgeRow = ({ update, pinned }: { update: PulseUpdate; pinned: boolean }) => (
+    <div className={`flex flex-wrap items-center gap-1.5${isAdmin ? " pr-10" : ""}`}>
+      {isNew(update.createdAt) && !pinned && (
+        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest animate-pulse"
+          style={badgeStyle("rgba(6,182,212,0.12)", "rgba(6,182,212,0.35)", "#67e8f9", "0 0 10px rgba(6,182,212,0.25)")}>
+          NEW
+        </span>
+      )}
+      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+        style={badgeStyle("rgba(109,40,217,0.14)", "rgba(139,92,246,0.32)", "#c4b5fd", "0 0 10px rgba(109,40,217,0.18)")}>
+        <span>{getCategoryIcon(update.category)}</span>
+        <span>{update.category}</span>
+      </span>
+      {update.mode && (
+        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+          style={update.mode === "Offline"
+            ? badgeStyle("rgba(16,185,129,0.1)", "rgba(16,185,129,0.3)", "#6ee7b7")
+            : update.mode === "Hybrid"
+              ? badgeStyle("rgba(14,165,233,0.1)", "rgba(14,165,233,0.3)", "#7dd3fc")
+              : badgeStyle("rgba(99,102,241,0.1)", "rgba(99,102,241,0.3)", "#a5b4fc")}>
+          <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
+          {update.mode}
+        </span>
+      )}
+      {isVerifiedResource(update) && (
+        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+          style={badgeStyle(
+            "linear-gradient(135deg, rgba(37,99,235,0.13) 0%, rgba(79,70,229,0.1) 50%, rgba(109,40,217,0.13) 100%)",
+            "rgba(79,70,229,0.42)", "#93c5fd", "0 0 14px rgba(79,70,229,0.22)"
+          )}>
+          <ShieldCheck size={10} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 5px rgba(34,211,238,0.8))" }} />
+          Verified
+        </span>
+      )}
+      {pinned && (
+        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+          style={badgeStyle("rgba(245,158,11,0.12)", "rgba(245,158,11,0.3)", "#fcd34d", "0 0 8px rgba(245,158,11,0.15)")}>
+          <Pin size={9} /> PINNED
+        </span>
+      )}
+      {isExpiredTs(update.deadline) && (
+        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+          style={badgeStyle("rgba(244,63,94,0.1)", "rgba(244,63,94,0.3)", "#fda4af")}>
+          <Clock size={9} /> EXPIRED
+        </span>
+      )}
+    </div>
   );
 
-  const isNew = (timestamp: Timestamp) => {
-    if (!timestamp) return false;
-    const now = new Date();
-    const date = timestamp.toDate();
-    const diffHours = Math.abs(now.getTime() - date.getTime()) / 36e5;
-    return diffHours < 24;
+  // ─── SHARED ACTIONS BAR ────────────────────────────────────────────────────────
+  const ActionsBar = ({ update }: { update: PulseUpdate }) => (
+    !isLoggedOut ? (
+      <div className="flex items-center justify-between gap-2 pt-4 mt-auto"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        {update.link ? (
+          <a href={update.link} target="_blank" rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 cursor-pointer"
+            style={{
+              background: "linear-gradient(135deg, rgba(109,40,217,0.88) 0%, rgba(79,70,229,0.88) 100%)",
+              border: "1px solid rgba(167,139,250,0.42)",
+              color: "#fff",
+              boxShadow: "0 0 20px rgba(109,40,217,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+              backdropFilter: "blur(8px)",
+            }}>
+            {getApplyButtonText(update)}
+            <ExternalLink size={12} className="shrink-0" />
+          </a>
+        ) : <div className="flex-1" />}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={e => { e.stopPropagation(); handleShare(update); }}
+            className="p-2.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(148,163,184,0.85)" }}>
+            <Share2 size={13} />
+          </button>
+          <button onClick={e => { e.stopPropagation(); toggleBookmark(update.id); }}
+            className="p-2.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all duration-300 cursor-pointer"
+            style={isBookmarked(update.id) ? {
+              background: "rgba(109,40,217,0.22)",
+              border: "1px solid rgba(139,92,246,0.48)",
+              color: "#c4b5fd",
+              boxShadow: "0 0 14px rgba(109,40,217,0.28)",
+            } : {
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(148,163,184,0.85)",
+            }}>
+            <Bookmark size={13} style={isBookmarked(update.id) ? { fill: "#a78bfa", color: "#a78bfa" } : {}} />
+          </button>
+        </div>
+      </div>
+    ) : null
+  );
+
+  // ─── META ROW HELPER ─────────────────────────────────────────────────────────
+  const MetaRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string | null }) => {
+    if (!value) return null;
+    return (
+      <div className="flex items-start gap-2.5 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div className="shrink-0 mt-0.5" style={{ color: "#8b5cf6" }}>{icon}</div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "rgba(148,163,184,0.55)" }}>{label}</span>
+          <span className="text-sm font-medium text-white/90 leading-snug break-words">{value}</span>
+        </div>
+      </div>
+    );
   };
 
-  const isLoggedOut = !authLoading && !user;
+  // ─── STRUCTURED CARD (Hackathon / Workshop / Event / Placement) ────────────────
+  const StructuredCard = ({ update, idx }: { update: PulseUpdate; idx: number }) => {
+    const pinned = update.isPinned;
+    const desc = update.description || "";
+    const LIMIT = 220; // ~3-4 lines of text
+    const isTruncatable = desc.length > LIMIT;
+    const expanded = isExpanded(update.id);
+    const displayDesc = (!expanded && isTruncatable) ? desc.slice(0, LIMIT).trimEnd() + "…" : desc;
 
-  return (
-    <div className="min-h-screen pt-20 pb-24 relative overflow-hidden">
-      {/* Background ambient glow */}
-      <div className="fixed inset-0 pointer-events-none -z-10">
-        <div className="absolute top-0 right-1/4 w-[40rem] h-[40rem] bg-violet-500/10 rounded-full blur-[120px] mix-blend-screen hidden md:block"></div>
-        <div className="absolute bottom-0 left-1/4 w-[40rem] h-[40rem] bg-cyan-500/10 rounded-full blur-[120px] mix-blend-screen hidden md:block"></div>
-      </div>
+    return (
+      <article
+        key={update.id}
+        onClick={() => isLoggedOut && router.push("/login")}
+        className={`group relative rounded-3xl transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-4 fade-in fill-mode-both flex flex-col${isLoggedOut ? " cursor-pointer" : ""}`}
+        style={{ animationDelay: `${idx * 55}ms`, ...getCardStyle(pinned) }}
+        onMouseEnter={e => {
+          if (!pinned) {
+            const el = e.currentTarget as HTMLElement;
+            el.style.border = "1px solid rgba(139,92,246,0.28)";
+            el.style.boxShadow = "0 0 40px rgba(109,40,217,0.14), 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)";
+            el.style.transform = "translateY(-2px)";
+          }
+        }}
+        onMouseLeave={e => {
+          if (!pinned) {
+            const el = e.currentTarget as HTMLElement;
+            el.style.border = "1px solid rgba(255,255,255,0.07)";
+            el.style.boxShadow = "0 2px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)";
+            el.style.transform = "translateY(0)";
+          }
+        }}
+      >
+        {/* Shimmer overlay */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-3xl"
+          style={{ background: "linear-gradient(135deg, rgba(109,40,217,0.05) 0%, rgba(79,70,229,0.03) 50%, rgba(37,99,235,0.05) 100%)" }} />
+        <div className="absolute top-0 left-8 right-8 h-px pointer-events-none"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent)" }} />
 
-      <div className="max-w-4xl mx-auto px-4 md:px-6 z-10 relative">
-        {/* Header */}
-        <div className="text-center mb-10 md:mb-14 animate-in slide-in-from-bottom-4 duration-500 fade-in">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500/20 to-cyan-500/20 border border-violet-500/30 mb-6 backdrop-blur-md">
-            <Radio size={14} className="text-violet-400" />
-            <span className="text-xs font-bold text-violet-200 uppercase tracking-widest">Community Hub</span>
-          </div>
-          <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-violet-200 to-cyan-300 mb-6 drop-shadow-sm">
-            Paperino Pulse
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
-            Stay updated with the latest opportunities, internships, hackathons, and platform announcements curated for our community.
-          </p>
-        </div>
-
-        {/* Global Freemium Lock */}
-        {isLoggedOut && (
-          <div className="mb-12 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="glass-panel p-6 md:p-8 rounded-3xl border border-violet-500/30 shadow-[0_0_40px_rgba(139,92,246,0.15)] flex flex-col md:flex-row items-center gap-6 md:gap-8 backdrop-blur-xl bg-black/40 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-violet-500/10 blur-[50px] rounded-full pointer-events-none transition-all duration-700 group-hover:bg-violet-500/20"></div>
-              
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex flex-shrink-0 items-center justify-center text-violet-400 border border-violet-500/30 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
-                <Lock size={28} />
-              </div>
-              
-              <div className="flex-1 text-center md:text-left z-10">
-                <h3 className="text-xl font-bold text-white mb-2">🔒 Login Required</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-6 md:mb-0">
-                  To access full hackathon details, internship opportunities, registration links and exclusive updates, please login.
-                </p>
-              </div>
-              
-              <div className="w-full md:w-auto z-10">
-                <Link href="/login" className="inline-flex w-full md:w-auto items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold hover:shadow-[0_0_25px_rgba(139,92,246,0.4)] hover:-translate-y-0.5 transition-all duration-300 whitespace-nowrap">
-                  Login to Unlock Pulse
-                </Link>
-              </div>
-            </div>
-          </div>
+        {/* Admin delete */}
+        {isAdmin && (
+          <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(update.id); }}
+            className="absolute top-4 right-4 z-20 p-2 rounded-xl flex items-center justify-center transition-all cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(148,163,184,0.6)" }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(244,63,94,0.12)"; el.style.color = "#fb7185"; el.style.borderColor = "rgba(244,63,94,0.3)"; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.04)"; el.style.color = "rgba(148,163,184,0.6)"; el.style.borderColor = "rgba(255,255,255,0.08)"; }}>
+            <Trash2 size={13} />
+          </button>
         )}
 
-        {/* Categories Filter */}
-        <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 pb-2 -mx-4 px-4 md:mx-0 md:px-0 animate-in slide-in-from-bottom-4 duration-500 delay-100 fade-in">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 flex-shrink-0 ${
-                activeCategory === cat 
-                ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)] border border-transparent'
-                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        <div className="p-5 flex flex-col gap-3.5 relative z-10 flex-1">
+          {/* Badges */}
+          <BadgeRow update={update} pinned={pinned} />
 
-        {/* Feed */}
-        <div className={loading ? "space-y-6" : "grid grid-cols-1 lg:grid-cols-2 gap-6"}>
+          {/* Title */}
+          <h2 className="font-extrabold leading-tight transition-colors duration-300 group-hover:text-violet-300"
+            style={{ color: "#f1f5f9", fontFamily: "'Outfit', 'Inter', sans-serif", fontSize: "1.05rem", letterSpacing: "-0.02em" }}>
+            {update.title}
+          </h2>
+
+          {/* Structured metadata grid */}
+          <div className="flex flex-col" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
+            <MetaRow icon={<MapPin size={14} />} label="Location" value={update.location} />
+            <MetaRow icon={<Building2 size={14} />} label="Organizer" value={update.organizer} />
+            <MetaRow icon={<Monitor size={14} />} label="Mode" value={update.mode} />
+            <MetaRow icon={<CalendarDays size={14} />} label="Event Date" value={update.eventDate ? formatTimestamp(update.eventDate as Timestamp) : undefined} />
+            <MetaRow icon={<ClipboardList size={14} />} label="Deadline" value={update.deadline ? formatTimestamp(update.deadline) : undefined} />
+            <MetaRow icon={<Users size={14} />} label="Team Size" value={update.teamSize} />
+            <MetaRow icon={<Banknote size={14} />} label="Registration Fee" value={update.registrationFee} />
+          </div>
+
+          {/* About / Description (truncated with Read More) */}
+          {desc && (
+            <div className="flex flex-col gap-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.75rem" }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <BookOpen size={13} style={{ color: "#8b5cf6" }} />
+                <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "rgba(148,163,184,0.55)" }}>About</span>
+              </div>
+              <div className={isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-25" : ""}>
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(203,213,225,0.85)", fontFamily: "'Inter', sans-serif", whiteSpace: "pre-line" }}>
+                  {displayDesc}
+                </p>
+                {isTruncatable && (
+                  <button
+                    onClick={e => toggleExpand(update.id, e)}
+                    className="mt-1.5 text-xs font-semibold cursor-pointer transition-colors"
+                    style={{ color: "#a78bfa" }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#c4b5fd"}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#a78bfa"}>
+                    {expanded ? "Show less ↑" : "Read more ↓"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* PDF attachment */}
+          {!isLoggedOut && (update.pdfUrl || update.pdfName) && (
+            <div className="p-3.5 rounded-2xl flex items-center justify-between gap-3"
+              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.25)", color: "#fb7185" }}>
+                  <FileText size={15} />
+                </div>
+                <span className="text-xs font-medium text-white truncate">{update.pdfName || "Attached Document"}</span>
+              </div>
+              {update.pdfUrl && (
+                <a href={update.pdfUrl} target="_blank" rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e8f0" }}>
+                  <Download size={11} /> Download
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <ActionsBar update={update} />
+        </div>
+      </article>
+    );
+  };
+
+  // ─── INTERNSHIP / PLATFORM CARD (Full dynamic description) ────────────────────
+  const DynamicCard = ({ update, idx }: { update: PulseUpdate; idx: number }) => {
+    const pinned = update.isPinned;
+    return (
+      <article
+        key={update.id}
+        onClick={() => isLoggedOut && router.push("/login")}
+        className={`group relative rounded-3xl transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-4 fade-in fill-mode-both flex flex-col${isLoggedOut ? " cursor-pointer" : ""}`}
+        style={{ animationDelay: `${idx * 55}ms`, ...getCardStyle(pinned) }}
+        onMouseEnter={e => {
+          if (!pinned) {
+            const el = e.currentTarget as HTMLElement;
+            el.style.border = "1px solid rgba(139,92,246,0.28)";
+            el.style.boxShadow = "0 0 40px rgba(109,40,217,0.14), 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)";
+            el.style.transform = "translateY(-2px)";
+          }
+        }}
+        onMouseLeave={e => {
+          if (!pinned) {
+            const el = e.currentTarget as HTMLElement;
+            el.style.border = "1px solid rgba(255,255,255,0.07)";
+            el.style.boxShadow = "0 2px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)";
+            el.style.transform = "translateY(0)";
+          }
+        }}
+      >
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-3xl"
+          style={{ background: "linear-gradient(135deg, rgba(109,40,217,0.05) 0%, rgba(79,70,229,0.03) 50%, rgba(37,99,235,0.05) 100%)" }} />
+        <div className="absolute top-0 left-8 right-8 h-px pointer-events-none"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent)" }} />
+
+        {isAdmin && (
+          <button onClick={e => { e.stopPropagation(); setDeleteConfirmId(update.id); }}
+            className="absolute top-4 right-4 z-20 p-2 rounded-xl flex items-center justify-center transition-all cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(148,163,184,0.6)" }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(244,63,94,0.12)"; el.style.color = "#fb7185"; el.style.borderColor = "rgba(244,63,94,0.3)"; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.04)"; el.style.color = "rgba(148,163,184,0.6)"; el.style.borderColor = "rgba(255,255,255,0.08)"; }}>
+            <Trash2 size={13} />
+          </button>
+        )}
+
+        <div className="p-5 md:p-6 flex flex-col gap-4 relative z-10 flex-1">
+          <BadgeRow update={update} pinned={pinned} />
+
+          <h2 className="font-extrabold leading-tight transition-colors duration-300 group-hover:text-violet-300"
+            style={{ color: "#f1f5f9", fontFamily: "'Outfit', 'Inter', sans-serif", fontSize: "1.1rem", letterSpacing: "-0.02em" }}>
+            {update.title}
+          </h2>
+
+          {/* Full Markdown description — no truncation for internships */}
+          <div className={`flex-1 ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-25" : ""}`}
+            style={{ fontFamily: "'Inter', sans-serif" }}>
+            <FormattedDescription content={update.description} />
+          </div>
+
+          {/* Media */}
+          {!isLoggedOut && (
+            <>
+              {update.imageUrl && (
+                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <img src={update.imageUrl} alt={update.title}
+                    className="w-full max-h-80 object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+                </div>
+              )}
+              {(update.pdfUrl || update.pdfName) && (
+                <div className="p-3.5 rounded-2xl flex items-center justify-between gap-3"
+                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.25)", color: "#fb7185" }}>
+                      <FileText size={15} />
+                    </div>
+                    <span className="text-xs font-medium text-white truncate">{update.pdfName || "Attached Document"}</span>
+                  </div>
+                  {update.pdfUrl && (
+                    <a href={update.pdfUrl} target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e8f0" }}>
+                      <Download size={11} /> Download
+                    </a>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          <ActionsBar update={update} />
+        </div>
+      </article>
+    );
+  };
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────────
+  return (
+    <div
+      className="min-h-screen text-white relative overflow-x-hidden"
+      style={{
+        background: "radial-gradient(ellipse 120% 60% at 50% -5%, rgba(88,28,220,0.22) 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 90% 20%, rgba(37,99,235,0.1) 0%, transparent 50%), #050310",
+        fontFamily: "'Inter', 'Outfit', system-ui, sans-serif",
+      }}
+    >
+      {/* ── AMBIENT ORBS ── */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-60 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] rounded-full"
+          style={{ background: "radial-gradient(ellipse, rgba(109,40,217,0.35) 0%, rgba(79,70,229,0.15) 45%, transparent 70%)", filter: "blur(70px)", opacity: 0.4 }} />
+        <div className="absolute top-[40%] -right-48 w-[600px] h-[600px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(37,99,235,0.25) 0%, transparent 65%)", filter: "blur(90px)", opacity: 0.25 }} />
+        <div className="absolute bottom-[20%] -left-32 w-[500px] h-[500px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 65%)", filter: "blur(80px)", opacity: 0.2 }} />
+      </div>
+
+      {/* ── PAGE WRAPPER ── */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 space-y-10">
+
+        {/* ── HERO HEADER ── */}
+        <header className="text-center space-y-5">
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-widest uppercase"
+            style={{
+              background: "rgba(109,40,217,0.1)",
+              border: "1px solid rgba(139,92,246,0.28)",
+              color: "#c4b5fd",
+              backdropFilter: "blur(14px)",
+              boxShadow: "0 0 24px rgba(139,92,246,0.18), inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}>
+            <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" style={{ boxShadow: "0 0 8px rgba(167,139,250,0.9)" }} />
+            <Radio size={12} className="text-violet-400" />
+            <span>Paperino Live</span>
+          </div>
+
+          <h1 className="font-black leading-none"
+            style={{ fontSize: "clamp(3rem, 8vw, 5rem)", letterSpacing: "-0.035em", fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+            <span className="text-white">Paperino </span>
+            <span style={{
+              background: "linear-gradient(135deg, #a78bfa 0%, #818cf8 45%, #60a5fa 100%)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+            }}>Pulse</span>
+          </h1>
+
+          <p style={{ color: "rgba(148,163,184,0.85)", fontSize: "1rem", lineHeight: "1.75", fontFamily: "'Inter', sans-serif", maxWidth: "520px", margin: "0 auto" }}>
+            Stay updated with internships, hackathons, workshops, and platform announcements curated for our community.
+          </p>
+        </header>
+
+        {/* ── CATEGORY FILTER ── */}
+        <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Category filter">
+          {CATEGORIES.map(cat => {
+            const active = activeCategory === cat;
+            return (
+              <button key={cat} onClick={() => setActiveCategory(cat)}
+                className="px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap cursor-pointer"
+                style={active ? {
+                  background: "linear-gradient(135deg, rgba(109,40,217,0.85) 0%, rgba(79,70,229,0.85) 100%)",
+                  border: "1px solid rgba(167,139,250,0.45)",
+                  color: "#fff",
+                  boxShadow: "0 0 22px rgba(139,92,246,0.45), inset 0 1px 0 rgba(255,255,255,0.1)",
+                  backdropFilter: "blur(10px)",
+                } : {
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(148,163,184,0.85)",
+                  backdropFilter: "blur(8px)",
+                }}>
+                {cat}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* ── CARDS GRID ── */}
+        <main className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
           {loading ? (
-            // Skeleton Loaders
-            [1, 2, 3].map(i => (
-              <div key={i} className="glass-panel p-6 rounded-3xl animate-pulse flex flex-col gap-4">
-                <div className="flex gap-2"><div className="h-5 w-24 bg-white/10 rounded-md"></div></div>
-                <div className="h-8 w-3/4 bg-white/10 rounded-lg"></div>
-                <div className="space-y-2">
-                  <div className="h-4 w-full bg-white/10 rounded-md"></div>
-                  <div className="h-4 w-5/6 bg-white/10 rounded-md"></div>
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-3xl p-6 animate-pulse space-y-4"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(20px)" }}>
+                <div className="flex gap-2">
+                  <div className="h-5 w-20 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }} />
+                  <div className="h-5 w-28 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
+                </div>
+                <div className="h-6 w-3/4 rounded-xl" style={{ background: "rgba(255,255,255,0.06)" }} />
+                <div className="space-y-2 pt-2">
+                  {[1, 0.85, 0.7, 0.9, 0.75].map((w, j) => (
+                    <div key={j} className="h-3.5 rounded-lg" style={{ width: `${w * 100}%`, background: "rgba(255,255,255,0.04)" }} />
+                  ))}
                 </div>
               </div>
             ))
           ) : filteredUpdates.length === 0 ? (
-            <div className="col-span-full text-center py-20 px-6 glass-panel rounded-3xl border border-white/10 animate-in fade-in zoom-in-95">
-              <Radio className="mx-auto h-12 w-12 text-gray-500 mb-4 opacity-50" />
+            <div className="col-span-full text-center py-24 rounded-3xl"
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(20px)" }}>
+              <Radio className="mx-auto h-12 w-12 mb-4" style={{ color: "#7c3aed", opacity: 0.4 }} />
               <h3 className="text-xl font-bold text-white mb-2">No updates found</h3>
-              <p className="text-gray-400 text-sm">Check back later for new {activeCategory !== 'All' ? activeCategory.toLowerCase() : 'opportunities and announcements'}.</p>
+              <p className="text-sm" style={{ color: "rgba(148,163,184,0.65)" }}>
+                Check back later for new {activeCategory !== "All" ? activeCategory.toLowerCase() : "opportunities and announcements"}.
+              </p>
             </div>
           ) : (
-            filteredUpdates.map((update, idx) => {
-              // 1. INTERNSHIPS (Large Premium Card)
-              if (update.category === "Internships") {
-                const parsed = parseInternshipDetails(update);
-                const isExpanded = expandedInternships[update.id] || false;
-                const toggleExpand = (e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  setExpandedInternships(prev => ({ ...prev, [update.id]: !prev[update.id] }));
-                };
-
-                return (
-                  <div 
-                    key={update.id} 
-                    onClick={() => isLoggedOut && router.push("/login")}
-                    className={`group relative p-6 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both flex flex-col justify-between ${isLoggedOut ? "cursor-pointer" : ""} ${
-                      update.isPinned 
-                      ? 'bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]' 
-                      : 'bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 hover:shadow-xl hover:-translate-y-1'
-                    }`}
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    {/* Glowing border effect on hover for normal cards */}
-                    {!update.isPinned && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/0 to-cyan-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
-                    )}
-
-                    {isAdmin && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmId(update.id);
-                        }}
-                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
-                        title="Delete post"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-
-                    <div className="relative z-10 flex-1 flex flex-col justify-between">
-                      <div>
-                        {/* Header Badges */}
-                        <div className={`flex flex-wrap items-center gap-2 mb-4 ${isAdmin ? "pr-10" : ""}`}>
-                          {isNew(update.createdAt) && (
-                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
-                              NEW
-                            </span>
-                          )}
-                          <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-violet-500/30">
-                            💼 {update.category}
-                          </span>
-                          
-                          {update.location && (
-                            <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-white/10 flex items-center gap-1">
-                              📍 {update.location}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Company and Role */}
-                        <h3 className="text-[11px] text-violet-400 uppercase font-black tracking-widest mb-1">
-                          {parsed.company}
-                        </h3>
-                        <h2 className="text-xl md:text-2xl font-bold text-white mb-3 leading-tight group-hover:text-violet-300 transition-colors">
-                          {parsed.role}
-                        </h2>
-
-                        {/* Overview (Short Professional Overview + Read More) */}
-                        <div className="text-sm text-gray-400 leading-relaxed mb-5">
-                          {isExpanded ? (
-                            <p className="whitespace-pre-line">{parsed.summary}</p>
-                          ) : (
-                            <p className="line-clamp-3 whitespace-pre-line">
-                              {parsed.summary}
-                            </p>
-                          )}
-                          {parsed.summary && parsed.summary.length > 120 && (
-                            <button 
-                              onClick={toggleExpand}
-                              className="text-violet-400 hover:text-violet-300 font-semibold text-xs mt-1.5 focus:outline-none transition-colors cursor-pointer"
-                            >
-                              {isExpanded ? "Show Less" : "... Read More"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
-                        <hr className="border-white/5 mb-6" />
-
-                        {/* Premium Metadata Grid */}
-                        <div className="grid grid-cols-2 gap-3 mb-6">
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                            <span className="text-lg">💰</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Stipend</div>
-                              <div className="text-xs text-emerald-400 font-bold truncate">{parsed.stipend}</div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                            <span className="text-lg">⏳</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Duration</div>
-                              <div className="text-xs text-white font-medium truncate">{parsed.duration}</div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                            <span className="text-lg">📍</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Location</div>
-                              <div className="text-xs text-white font-medium truncate">{update.location || "Remote / On-site"}</div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                            <span className="text-lg">⏰</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Deadline</div>
-                              <div className="text-xs text-red-400 font-bold truncate">{parsed.deadline}</div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
-                            <span className="text-lg">🎓</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Eligibility</div>
-                              <div className="text-xs text-white font-medium truncate">{parsed.eligibility}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {!isLoggedOut && update.link && (
-                        <div className="pt-4 border-t border-white/5 mt-auto">
-                          <a 
-                            href={update.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-bold transition-all duration-300 w-full text-center cursor-pointer shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)]"
-                          >
-                            🚀 Apply Now <ExternalLink size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              // 2. WEBSITE UPDATES (Large Featured Update Card)
-              if (update.category === "Website Updates") {
-                const parsed = parseWebsiteUpdateDetails(update);
-                return (
-                  <div 
-                    key={update.id} 
-                    onClick={() => isLoggedOut && router.push("/login")}
-                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    {isAdmin && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmId(update.id);
-                        }}
-                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
-                        title="Delete post"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-
-                    <div className="relative z-10 flex-1 flex flex-col justify-between">
-                      <div>
-                        {/* Header Badge & Date */}
-                        <div className={`flex items-center justify-between mb-4 ${isAdmin ? "pr-10" : ""}`}>
-                          <div className="flex items-center gap-2">
-                            {isNew(update.createdAt) && (
-                              <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
-                                NEW
-                              </span>
-                            )}
-                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30">
-                              🚀 {update.category}
-                            </span>
-                            <span className="px-2 py-0.5 bg-white/10 text-white rounded text-[9px] font-bold">
-                              {parsed.version}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-gray-500 font-medium">
-                            Released: {parsed.date}
-                          </span>
-                        </div>
-
-                        <h2 className="text-xl md:text-2xl font-bold text-white mb-3 leading-tight group-hover:text-cyan-300 transition-colors">
-                          {parsed.title}
-                        </h2>
-
-                        {/* Full update description */}
-                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
-                          {parsed.summary}
-                        </p>
-                      </div>
-
-
-
-                      {!isLoggedOut && update.link && (
-                        <div className="pt-4 border-t border-white/5 mt-auto">
-                          <a 
-                            href={update.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 text-white hover:text-cyan-300 text-sm font-bold transition-all duration-300 border border-white/10 hover:border-cyan-500/30 w-full text-center"
-                          >
-                            🔍 View Update <ChevronRight size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              // 3. ANNOUNCEMENTS (Medium-sized Details Card)
-              if (update.category === "Announcements") {
-                const parsed = parseAnnouncementDetails(update);
-                return (
-                  <div 
-                    key={update.id} 
-                    onClick={() => isLoggedOut && router.push("/login")}
-                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between h-fit"
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    {isAdmin && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmId(update.id);
-                        }}
-                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
-                        title="Delete post"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-
-                    <div className="relative z-10 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className={`flex items-center justify-between mb-4 ${isAdmin ? "pr-10" : ""}`}>
-                          <div className="flex items-center gap-2">
-                            {isNew(update.createdAt) && (
-                              <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
-                                NEW
-                              </span>
-                            )}
-                            <span className="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-amber-500/30">
-                              🔔 Announcement
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-gray-500 font-medium">
-                            {parsed.date}
-                          </span>
-                        </div>
-
-                        <h2 className="text-xl font-bold text-white mb-3 leading-snug group-hover:text-amber-300 transition-colors">
-                          {parsed.title}
-                        </h2>
-
-                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
-                          {parsed.summary}
-                        </p>
-                      </div>
-
-                      {!isLoggedOut && update.link && (
-                        <div className="pt-4 border-t border-white/5 mt-auto">
-                          <a 
-                            href={update.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-2xl bg-white/5 hover:bg-amber-500/10 text-white hover:text-amber-300 text-sm font-bold transition-all duration-300 border border-white/10 w-full text-center"
-                          >
-                            🔗 Open Link <ExternalLink size={12} />
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              // 4. PLACEMENTS (Large Professional Card)
-              if (update.category === "Placements") {
-                const parsed = parsePlacementDetails(update);
-                return (
-                  <div 
-                    key={update.id} 
-                    onClick={() => isLoggedOut && router.push("/login")}
-                    className="group relative p-6 md:p-8 rounded-[2rem] border bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 transition-all duration-500 overflow-hidden flex flex-col justify-between"
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    {isAdmin && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmId(update.id);
-                        }}
-                        className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
-                        title="Delete post"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-
-                    <div className="relative z-10 flex-1 flex flex-col justify-between">
-                      <div>
-                        {/* Header Badge */}
-                        <div className={`flex items-center gap-2 mb-4 ${isAdmin ? "pr-10" : ""}`}>
-                          {isNew(update.createdAt) && (
-                            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-cyan-500/30 animate-pulse">
-                              NEW
-                            </span>
-                          )}
-                          <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-500/30">
-                            🎓 {update.category}
-                          </span>
-                        </div>
-
-                        {/* Company info with virtual logo */}
-                        <div className="flex gap-4 items-center mb-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-xl shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                            {parsed.logoLetter}
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-xs text-emerald-400 font-bold uppercase tracking-widest truncate">{parsed.company}</h3>
-                            <h2 className="text-lg md:text-xl font-bold text-white leading-tight group-hover:text-emerald-300 transition-colors">{parsed.role}</h2>
-                          </div>
-                        </div>
-
-                        {/* Full details description */}
-                        <p className="text-sm text-gray-400 leading-relaxed mb-6 whitespace-pre-line">
-                          {parsed.summary}
-                        </p>
-                      </div>
-
-                      <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
-                        <hr className="border-white/5 mb-6" />
-
-                        {/* Placement specs */}
-                        <div className="grid grid-cols-2 gap-3 mb-6">
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                            <span className="text-lg">💰</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">CTC Package</div>
-                              <div className="text-xs text-emerald-400 font-bold truncate">{parsed.salaryPackage}</div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                            <span className="text-lg">⏰</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Deadline</div>
-                              <div className="text-xs text-red-400 font-bold truncate">{parsed.deadline}</div>
-                            </div>
-                          </div>
-
-                          <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
-                            <span className="text-lg">🎓</span>
-                            <div className="min-w-0">
-                              <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Eligibility</div>
-                              <div className="text-xs text-white font-medium truncate">{parsed.eligibility}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <hr className="border-white/5 mb-6" />
-
-                        {/* Skills Required */}
-                        <div className="mb-6">
-                          <div className="text-[10px] text-gray-400 font-bold mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                            <span>💻</span> Skills Required
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {parsed.skills.map((skill, i) => (
-                              <span key={i} className="px-2.5 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-semibold border border-white/5">
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {!isLoggedOut && update.link && (
-                        <div className="pt-4 border-t border-white/5 mt-auto">
-                          <a 
-                            href={update.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white/5 hover:bg-emerald-600/20 text-white hover:text-emerald-300 text-sm font-bold transition-all duration-300 border border-white/10 hover:border-emerald-500/30 w-full text-center cursor-pointer"
-                          >
-                            💼 View & Apply <ExternalLink size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              // 5. DEFAULT / HACKATHONS
-              const parsed = parseHackathonDetails(update);
-              return (
-                <div 
-                  key={update.id} 
-                  onClick={() => isLoggedOut && router.push("/login")}
-                  className={`group relative p-6 md:p-8 rounded-[2rem] border transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-8 fade-in fill-mode-both flex flex-col justify-between ${isLoggedOut ? "cursor-pointer" : ""} ${
-                    update.isPinned 
-                    ? 'bg-gradient-to-br from-violet-500/10 to-transparent border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.1)]' 
-                    : 'bg-black/40 backdrop-blur-xl border-white/10 hover:bg-white/[0.03] hover:border-white/20 hover:shadow-xl hover:-translate-y-1'
-                  }`}
-                  style={{ animationDelay: `${idx * 100}ms` }}
-                >
-                  {/* Glowing border effect on hover for normal cards */}
-                  {!update.isPinned && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-violet-500/0 to-cyan-500/0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"></div>
-                  )}
-
-                  {isAdmin && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteConfirmId(update.id);
-                      }}
-                      className="absolute top-6 right-6 z-20 p-2.5 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/5 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 cursor-pointer flex items-center justify-center shadow-sm"
-                      title="Delete post"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-
-                  <div className="relative z-10 flex-1 flex flex-col justify-between">
-                    <div>
-                      {/* Badges */}
-                      <div className={`flex flex-wrap items-center gap-2 mb-4 ${isAdmin ? "pr-10" : ""}`}>
-                        {isNew(update.createdAt) && !update.isPinned && (
-                          <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse">
-                            NEW
-                          </span>
-                        )}
-
-                        <span className="px-3 py-1 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
-                          {update.category}
-                        </span>
-                        
-                        {update.mode && (
-                          <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border flex items-center gap-1 ${
-                            update.mode === "Offline" 
-                              ? "bg-green-500/20 text-green-400 border-green-500/30" 
-                              : update.mode === "Hybrid"
-                              ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                              : "bg-gray-500/20 text-gray-400 border-gray-500/30"
-                          }`}>
-                            {update.mode === "Offline" ? "🟢" : update.mode === "Hybrid" ? "🔵" : "⚪"} {update.mode}
-                          </span>
-                        )}
-
-                        {update.location && (
-                          <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10 flex items-center gap-1">
-                            📍 {update.location}
-                          </span>
-                        )}
-                        
-                        {update.verifiedSource && (
-                          <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-violet-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(139,92,246,0.3)]" title="Scraped and verified from authentic sources">
-                            <ShieldCheck size={12} /> VERIFIED SOURCE
-                          </span>
-                        )}
-
-                        {isExpired(update.deadline) && (
-                          <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-red-500/30 flex items-center gap-1">
-                            <Clock size={12} /> EXPIRED
-                          </span>
-                        )}
-                        
-                        {update.isPinned && (
-                          <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-violet-500/30 flex items-center gap-1 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
-                            <Pin size={10} /> PINNED
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <h2 className="text-xl md:text-2xl font-bold text-white mb-1 leading-tight group-hover:text-violet-400 transition-colors">
-                        {update.title}
-                      </h2>
-                      
-                      {update.organizer && (
-                        <p className="text-sm font-medium text-gray-500 mb-4">By {update.organizer}</p>
-                      )}
-
-                      {/* Short 2-line summary */}
-                      <p className="text-sm text-gray-400 line-clamp-2 mb-6 leading-relaxed">
-                        {parsed.summary}
-                      </p>
-                    </div>
-
-                    <div className={`relative ${isLoggedOut ? "blur-[3px] select-none pointer-events-none opacity-30" : ""}`}>
-                      <hr className="border-white/5 mb-6" />
-
-                      {/* Premium Details Grid */}
-                      <div className="grid grid-cols-2 gap-3 mb-6">
-                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                          <span className="text-lg">📅</span>
-                          <div className="min-w-0">
-                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Date</div>
-                            <div className="text-xs text-white font-medium truncate">{parsed.date}</div>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                          <span className="text-lg">📍</span>
-                          <div className="min-w-0">
-                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Location</div>
-                            <div className="text-xs text-white font-medium truncate">{parsed.location}</div>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center col-span-2">
-                          <span className="text-lg">🏫</span>
-                          <div className="min-w-0">
-                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Organizer</div>
-                            <div className="text-xs text-white font-medium truncate">{parsed.organizer}</div>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                          <span className="text-lg">💰</span>
-                          <div className="min-w-0">
-                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Fee</div>
-                            <div className="text-xs text-white font-medium truncate">{parsed.fee}</div>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                          <span className="text-lg">👥</span>
-                          <div className="min-w-0">
-                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Team Size</div>
-                            <div className="text-xs text-white font-medium truncate">{parsed.teamSize}</div>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                          <span className="text-lg">🏆</span>
-                          <div className="min-w-0">
-                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Prize Pool</div>
-                            <div className="text-xs text-emerald-400 font-bold truncate">{parsed.prizePool}</div>
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 flex gap-3 items-center">
-                          <span className="text-lg">⏰</span>
-                          <div className="min-w-0">
-                            <div className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Deadline</div>
-                            <div className="text-xs text-red-400 font-medium truncate">{parsed.deadline}</div>
-                          </div>
-                        </div>
-                      </div>
-
-
-                    </div>
-
-                    {!isLoggedOut && update.link && (
-                      <div className="pt-4 border-t border-white/5 mt-auto">
-                        <a 
-                          href={update.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="group inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/5 hover:bg-violet-600/20 text-white hover:text-violet-300 text-sm font-bold transition-all duration-300 border border-white/10 hover:border-violet-500/30 w-full text-center cursor-pointer"
-                        >
-                          🔗 Open Link <ExternalLink size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
+            filteredUpdates.map((update, idx) =>
+              STRUCTURED_CATEGORIES.includes(update.category)
+                ? <StructuredCard key={update.id} update={update} idx={idx} />
+                : <DynamicCard key={update.id} update={update} idx={idx} />
+            )
           )}
-        </div>
+        </main>
       </div>
 
+      {/* ── DELETE MODAL ── */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)}>
-          <div 
-            className="bg-[#160d21]/95 backdrop-blur-xl border border-red-500/30 rounded-2xl p-6 max-w-md w-full mx-4 shadow-[0_0_40px_rgba(239,68,68,0.2)] animate-in fade-in zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-xl font-bold text-white mb-2">Delete Announcement</h3>
-            <p className="text-gray-400 text-sm mb-6">Are you sure you want to permanently delete this post?</p>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md"
+          onClick={() => setDeleteConfirmId(null)}>
+          <div className="max-w-md w-full mx-4 p-7 rounded-3xl animate-in fade-in zoom-in-95"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "rgba(10,5,24,0.97)",
+              border: "1px solid rgba(244,63,94,0.32)",
+              backdropFilter: "blur(28px)",
+              boxShadow: "0 0 55px rgba(244,63,94,0.18), 0 24px 64px rgba(0,0,0,0.65)",
+            }}>
+            <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>Delete Announcement</h3>
+            <p className="text-sm mb-7" style={{ color: "rgba(148,163,184,0.8)" }}>Are you sure you want to permanently delete this post?</p>
             <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-semibold transition-all border border-white/5 cursor-pointer"
-              >
+              <button onClick={() => setDeleteConfirmId(null)}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-all"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", color: "#cbd5e1" }}>
                 Cancel
               </button>
-              <button 
-                onClick={() => handleDelete(deleteConfirmId)}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)] cursor-pointer"
-              >
+              <button onClick={() => handleDelete(deleteConfirmId)}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-all"
+                style={{
+                  background: "linear-gradient(135deg, #be123c, #dc2626)",
+                  border: "1px solid rgba(244,63,94,0.5)",
+                  color: "#fff",
+                  boxShadow: "0 0 22px rgba(244,63,94,0.32)",
+                }}>
                 Delete
               </button>
             </div>
