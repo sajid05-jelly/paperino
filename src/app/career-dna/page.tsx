@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { CareerDnaProfile, CareerOpportunity } from "@/types/careerDna";
+import GitHubIntelligence from "@/components/GitHubIntelligence";
 
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
@@ -823,6 +824,25 @@ export default function CareerDnaPage() {
                       )}
                     </div>
 
+                    {/* GitHub Intelligence (Optional Component) */}
+                    <GitHubIntelligence
+                      initialUsername={formData.github.replace(/https?:\/\/github\.com\//, "").replace(/\/$/, "")}
+                      onAnalysisComplete={(analysisData) => {
+                        setFormData(prev => {
+                          const updatedGithub = `https://github.com/${analysisData.username}`;
+                          const mergedLanguages = Array.from(new Set([...prev.languages, ...analysisData.mostUsedLanguages.map(l => l.language)]));
+                          const mergedFrameworks = Array.from(new Set([...prev.frameworks, ...analysisData.detectedSkills]));
+                          return {
+                            ...prev,
+                            github: updatedGithub,
+                            languages: mergedLanguages,
+                            frameworks: mergedFrameworks,
+                          };
+                        });
+                        showToast(`GitHub Intelligence synced ${analysisData.detectedSkills.length} skills from @${analysisData.username}!`, "success");
+                      }}
+                    />
+
                     {/* GitHub, LinkedIn & Portfolio Profile Links - Displayed upfront */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                       <div>
@@ -1400,6 +1420,13 @@ export default function CareerDnaPage() {
             {/* LEFT 2 COLUMNS: Progress Card and opportunities list (No sections here!) */}
             <div className="lg:col-span-2 space-y-6">
               
+              {/* GitHub Intelligence Dashboard Widget */}
+              {profile?.github && (
+                <GitHubIntelligence
+                  initialUsername={profile.github.replace(/https?:\/\/github\.com\//, "").replace(/\/$/, "")}
+                />
+              )}
+
               {/* CAREER PROGRESS SECTION (Placed right at the top of the feed) */}
               <div className="rounded-[2.5rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl p-8 space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[40px] pointer-events-none"></div>
@@ -1495,7 +1522,7 @@ export default function CareerDnaPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <Briefcase className="text-purple-400" />
-                    Recommended Opportunities
+                    Recommended Internships
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {["All", "High Match", "Medium Match", "Stretch Opportunity"].map((f) => (
@@ -1535,24 +1562,18 @@ export default function CareerDnaPage() {
                           className="p-6 rounded-[2rem] border border-white/5 bg-[#0f0a1a]/30 hover:bg-[#0f0a1a]/50 transition-all flex flex-col justify-between gap-4 relative overflow-hidden"
                         >
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-xs text-purple-300 font-extrabold tracking-wider">
                                   {opp.matchScore || 85}% MATCH
                                 </span>
-                                <span className="px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-extrabold flex items-center gap-1 shadow-[0_0_10px_rgba(59,130,246,0.15)]">
-                                  🌐 Source: Unstop
-                                </span>
-                                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-300 font-bold uppercase tracking-wider">
-                                  {opp.type || "Internship"}
-                                </span>
-                                {opp.stipend && (
-                                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-300 font-bold">
-                                    💰 {opp.stipend}
-                                  </span>
-                                )}
+                                 {opp.stipend && !opp.stipend.toLowerCase().includes("unstop") && (
+                                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-300 font-bold">
+                                     💰 {opp.stipend}
+                                   </span>
+                                 )}
                                 {opp.duration && (
-                                  <span className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-300 font-bold">
+                                  <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 font-bold">
                                     ⏱️ {opp.duration}
                                   </span>
                                 )}
@@ -1562,16 +1583,26 @@ export default function CareerDnaPage() {
                                   </span>
                                 )}
                               </div>
-                              <h4 className="text-lg font-bold text-white flex items-center gap-2">
+
+                              <h4 className="text-lg font-bold text-white flex items-center gap-2 pt-1">
                                 {opp.role}
-                                {opp.verified !== false && <span className="text-emerald-400 text-xs" title="Verified Unstop Opportunity">✓</span>}
+                                {opp.verified !== false && <span className="text-emerald-400 text-xs" title="Verified Opportunity">✓</span>}
                               </h4>
-                              <p className="text-xs text-gray-400">{opp.company} · {opp.location}</p>
+                              <p className="text-xs text-gray-400">
+                                🏢 <strong className="text-gray-200 font-semibold">{opp.company}</strong> · 📍 {opp.location}
+                              </p>
+
+                              {opp.deadline && (
+                                <p className="text-[11px] text-amber-300 font-semibold flex items-center gap-1">
+                                  ⏳ Registration Deadline: {new Date(opp.deadline).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                                </p>
+                              )}
                             </div>
-                            <div className="flex gap-2 flex-wrap sm:flex-nowrap items-center">
+
+                            <div className="flex gap-2 flex-wrap sm:flex-nowrap items-center shrink-0">
                               <button
                                 onClick={() => setSelectedEligibleMat(opp)}
-                                className="px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 text-gray-300 hover:text-white text-[10px] font-semibold cursor-pointer"
+                                className="px-3.5 py-2 rounded-full border border-white/10 hover:border-white/20 text-gray-300 hover:text-white text-[10px] font-semibold cursor-pointer"
                               >
                                 Match Details
                               </button>
@@ -1580,45 +1611,56 @@ export default function CareerDnaPage() {
                                   href={opp.applyLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all cursor-pointer text-center inline-flex items-center gap-1.5"
+                                  className="px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-[0_0_15px_rgba(139,92,246,0.3)] transition-all cursor-pointer text-center inline-flex items-center gap-1.5"
                                 >
-                                  <span>Apply</span>
+                                  <span>Apply Now</span>
                                   <ExternalLink size={12} />
                                 </a>
                               ) : (
                                 <button
                                   disabled
-                                  className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-gray-500 text-[10px] font-semibold cursor-not-allowed"
+                                  className="px-4 py-2 rounded-full bg-white/5 border border-white/5 text-gray-500 text-[10px] font-semibold cursor-not-allowed"
                                 >
-                                  Application Closed
+                                  Registration link unavailable
                                 </button>
                               )}
                             </div>
                           </div>
 
-                        {opp.matchReasons && opp.matchReasons.length > 0 && (
-                          <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3">
-                            <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1.5">Match Analysis:</span>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1">
-                              {opp.matchReasons.map((r, idx) => (
-                                <span key={idx} className="text-xs text-gray-300 flex items-center gap-1">
-                                  <span className="text-emerald-400">✔</span> {r}
-                                </span>
-                              ))}
+                          {/* Matched & Missing Skills Breakdown */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white/[0.015] border border-white/5 rounded-2xl p-3.5">
+                            {/* Matched Skills */}
+                            <div className="space-y-1">
+                              <span className="block text-[10px] text-emerald-400 font-bold uppercase tracking-wider">✓ Matched Skills:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {(opp.matchedSkills || opp.matchReasons || []).length > 0 ? (
+                                  (opp.matchedSkills || opp.matchReasons).map((sk: string, idx: number) => (
+                                    <span key={idx} className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-lg font-medium">
+                                      ✓ {sk}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[10px] text-gray-500">General qualification match</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Missing Skills */}
+                            <div className="space-y-1">
+                              <span className="block text-[10px] text-rose-400 font-bold uppercase tracking-wider">✗ Missing Skills:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {opp.missingSkills && opp.missingSkills.length > 0 ? (
+                                  opp.missingSkills.map((s, idx) => (
+                                    <span key={idx} className="text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-lg font-medium">
+                                      ! {s}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[10px] text-emerald-400 font-medium">No missing skills detected!</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        )}
-
-                        {opp.missingSkills && opp.missingSkills.length > 0 && (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] text-rose-400 font-bold uppercase tracking-wider">Missing skills:</span>
-                            {opp.missingSkills.map((s, idx) => (
-                              <span key={idx} className="text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded">
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                         </div>
                       ))}
                       {visibleCount < filteredOpportunities.length && (

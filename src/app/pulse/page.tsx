@@ -36,6 +36,10 @@ interface PulseUpdate {
   imageUrls?: string[];
   pdfUrl?: string;
   pdfName?: string;
+  source?: string;
+  sources?: string[];
+  officialEventUrl?: string;
+  registrationUrl?: string;
   // Structured metadata fields for hackathon/event cards
   teamSize?: string;
   registrationFee?: string;
@@ -43,7 +47,7 @@ interface PulseUpdate {
   about?: string;
 }
 
-const CATEGORIES = ["All", "Internships", "Hackathons", "Workshops", "Placements", "Events", "Platform"];
+const CATEGORIES = ["All", "Internships", "Hackathons", "Workshops", "Placements", "Events", "Out of Date"];
 
 // Categories that use the COMPACT structured card layout
 const STRUCTURED_CATEGORIES = ["Hackathons", "Workshops", "Events", "Placements"];
@@ -105,7 +109,7 @@ export default function PulsePage() {
     if (update.createdByRole === "admin" || update.createdByRole === "lead_admin") return true;
     if (update.isCreatedByAdmin) return true;
     if (update.verifiedSource) return true;
-    if (update.createdBy) return true;
+    if (update.createdBy && update.createdBy !== "knowafest_bot") return true;
     return false;
   };
 
@@ -116,6 +120,7 @@ export default function PulsePage() {
       case "Workshops": return "🛠️";
       case "Placements": return "🎓";
       case "Events": return "🎪";
+      case "Out of Date": return "⌛";
       default: return "📢";
     }
   };
@@ -169,9 +174,21 @@ export default function PulsePage() {
     }
   };
 
-  const filteredUpdates = activeCategory === "All" ? updates : updates.filter(u => u.category === activeCategory);
   const isNew = (ts?: Timestamp) => ts ? (Date.now() - ts.seconds * 1000) / 86400000 <= 3 : false;
   const isExpiredTs = (ts?: Timestamp) => ts ? Date.now() > ts.seconds * 1000 : false;
+
+  // ─── CATEGORY & OUT OF DATE FILTERING LOGIC ──────────────────────────────────
+  const filteredUpdates = updates.filter(u => {
+    const expired = isExpiredTs(u.deadline);
+    if (activeCategory === "Out of Date") {
+      return expired;
+    }
+    // For active tabs (All, Hackathons, Internships, etc.), exclude expired events
+    if (expired) return false;
+
+    if (activeCategory === "All") return true;
+    return u.category === activeCategory;
+  });
 
   // ─── SHARED BADGE STYLE ────────────────────────────────────────────────────────
   const badgeStyle = (bg: string, border: string, color: string, glow?: string) => ({
@@ -197,62 +214,101 @@ export default function PulsePage() {
   });
 
   // ─── SHARED BADGE ROW ─────────────────────────────────────────────────────────
-  const BadgeRow = ({ update, pinned }: { update: PulseUpdate; pinned: boolean }) => (
-    <div className={`flex flex-wrap items-center gap-1.5${isAdmin ? " pr-10" : ""}`}>
-      {isNew(update.createdAt) && !pinned && (
-        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest animate-pulse"
-          style={badgeStyle("rgba(6,182,212,0.12)", "rgba(6,182,212,0.35)", "#67e8f9", "0 0 10px rgba(6,182,212,0.25)")}>
-          NEW
-        </span>
-      )}
-      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
-        style={badgeStyle("rgba(109,40,217,0.14)", "rgba(139,92,246,0.32)", "#c4b5fd", "0 0 10px rgba(109,40,217,0.18)")}>
-        <span>{getCategoryIcon(update.category)}</span>
-        <span>{update.category}</span>
-      </span>
-      {update.mode && (
+  const BadgeRow = ({ update, pinned }: { update: PulseUpdate; pinned: boolean }) => {
+    const sourceList = Array.isArray(update.sources) && update.sources.length > 0
+      ? update.sources
+      : (update.sourceName || update.source) ? [(update.sourceName || update.source)!] : [];
+
+    return (
+      <div className={`flex flex-wrap items-center gap-1.5${isAdmin ? " pr-10" : ""}`}>
+        {isNew(update.createdAt) && !pinned && (
+          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest animate-pulse"
+            style={badgeStyle("rgba(6,182,212,0.12)", "rgba(6,182,212,0.35)", "#67e8f9", "0 0 10px rgba(6,182,212,0.25)")}>
+            NEW
+          </span>
+        )}
+
+        {/* Source Badges (Knowafest, Unstop, etc.) */}
+        {sourceList.map(src => {
+          const s = src.toLowerCase();
+          if (s === "knowafest") {
+            return (
+              <span key={src} className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+                style={badgeStyle("rgba(245,158,11,0.14)", "rgba(245,158,11,0.38)", "#fbbf24", "0 0 10px rgba(245,158,11,0.2)")}>
+                <span>📍</span>
+                <span>PAPERINO</span>
+              </span>
+            );
+          }
+          if (s === "unstop") {
+            return (
+              <span key={src} className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+                style={badgeStyle("rgba(37,99,235,0.14)", "rgba(59,130,246,0.38)", "#60a5fa", "0 0 10px rgba(59,130,246,0.2)")}>
+                <span>🎯</span>
+                <span>UNSTOP</span>
+              </span>
+            );
+          }
+          return (
+            <span key={src} className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+              style={badgeStyle("rgba(139,92,246,0.14)", "rgba(139,92,246,0.38)", "#c4b5fd")}>
+              <span>⚡</span>
+              <span>{src.toUpperCase()}</span>
+            </span>
+          );
+        })}
+
         <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
-          style={update.mode === "Offline"
-            ? badgeStyle("rgba(16,185,129,0.1)", "rgba(16,185,129,0.3)", "#6ee7b7")
-            : update.mode === "Hybrid"
-              ? badgeStyle("rgba(14,165,233,0.1)", "rgba(14,165,233,0.3)", "#7dd3fc")
-              : badgeStyle("rgba(99,102,241,0.1)", "rgba(99,102,241,0.3)", "#a5b4fc")}>
-          <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
-          {update.mode}
+          style={badgeStyle("rgba(109,40,217,0.14)", "rgba(139,92,246,0.32)", "#c4b5fd", "0 0 10px rgba(109,40,217,0.18)")}>
+          <span>{getCategoryIcon(update.category)}</span>
+          <span>{update.category}</span>
         </span>
-      )}
-      {isVerifiedResource(update) && (
-        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
-          style={badgeStyle(
-            "linear-gradient(135deg, rgba(37,99,235,0.13) 0%, rgba(79,70,229,0.1) 50%, rgba(109,40,217,0.13) 100%)",
-            "rgba(79,70,229,0.42)", "#93c5fd", "0 0 14px rgba(79,70,229,0.22)"
-          )}>
-          <ShieldCheck size={10} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 5px rgba(34,211,238,0.8))" }} />
-          Verified
-        </span>
-      )}
-      {pinned && (
-        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
-          style={badgeStyle("rgba(245,158,11,0.12)", "rgba(245,158,11,0.3)", "#fcd34d", "0 0 8px rgba(245,158,11,0.15)")}>
-          <Pin size={9} /> PINNED
-        </span>
-      )}
-      {isExpiredTs(update.deadline) && (
-        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
-          style={badgeStyle("rgba(244,63,94,0.1)", "rgba(244,63,94,0.3)", "#fda4af")}>
-          <Clock size={9} /> EXPIRED
-        </span>
-      )}
-    </div>
-  );
+        {update.mode && (
+          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+            style={update.mode === "Offline"
+              ? badgeStyle("rgba(16,185,129,0.1)", "rgba(16,185,129,0.3)", "#6ee7b7")
+              : update.mode === "Hybrid"
+                ? badgeStyle("rgba(14,165,233,0.1)", "rgba(14,165,233,0.3)", "#7dd3fc")
+                : badgeStyle("rgba(99,102,241,0.1)", "rgba(99,102,241,0.3)", "#a5b4fc")}>
+            <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
+            {update.mode}
+          </span>
+        )}
+        {isVerifiedResource(update) && (
+          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+            style={badgeStyle(
+              "linear-gradient(135deg, rgba(37,99,235,0.13) 0%, rgba(79,70,229,0.1) 50%, rgba(109,40,217,0.13) 100%)",
+              "rgba(79,70,229,0.42)", "#93c5fd", "0 0 14px rgba(79,70,229,0.22)"
+            )}>
+            <ShieldCheck size={10} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 5px rgba(34,211,238,0.8))" }} />
+            Verified
+          </span>
+        )}
+        {pinned && (
+          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+            style={badgeStyle("rgba(245,158,11,0.12)", "rgba(245,158,11,0.3)", "#fcd34d", "0 0 8px rgba(245,158,11,0.15)")}>
+            <Pin size={9} /> PINNED
+          </span>
+        )}
+        {isExpiredTs(update.deadline) && (
+          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
+            style={badgeStyle("rgba(244,63,94,0.1)", "rgba(244,63,94,0.3)", "#fda4af")}>
+            <Clock size={9} /> EXPIRED
+          </span>
+        )}
+      </div>
+    );
+  };
 
   // ─── SHARED ACTIONS BAR ────────────────────────────────────────────────────────
-  const ActionsBar = ({ update }: { update: PulseUpdate }) => (
-    !isLoggedOut ? (
+  const ActionsBar = ({ update }: { update: PulseUpdate }) => {
+    const targetUrl = update.registrationUrl || update.officialEventUrl || update.link;
+
+    return !isLoggedOut ? (
       <div className="flex items-center justify-between gap-2 pt-4 mt-auto"
         style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-        {update.link ? (
-          <a href={update.link} target="_blank" rel="noopener noreferrer"
+        {targetUrl ? (
+          <a href={targetUrl} target="_blank" rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 cursor-pointer"
             style={{
@@ -265,7 +321,11 @@ export default function PulsePage() {
             {getApplyButtonText(update)}
             <ExternalLink size={12} className="shrink-0" />
           </a>
-        ) : <div className="flex-1" />}
+        ) : (
+          <button disabled className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-500 bg-white/5 border border-white/10 opacity-60 cursor-not-allowed">
+            Registration link unavailable
+          </button>
+        )}
         <div className="flex items-center gap-1.5 shrink-0">
           <button onClick={e => { e.stopPropagation(); handleShare(update); }}
             className="p-2.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
@@ -288,8 +348,8 @@ export default function PulsePage() {
           </button>
         </div>
       </div>
-    ) : null
-  );
+    ) : null;
+  };
 
   // ─── META ROW HELPER ─────────────────────────────────────────────────────────
   const MetaRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string | null }) => {
@@ -318,7 +378,7 @@ export default function PulsePage() {
       <article
         key={update.id}
         onClick={() => isLoggedOut && router.push("/login")}
-        className={`group relative rounded-3xl transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-4 fade-in fill-mode-both flex flex-col${isLoggedOut ? " cursor-pointer" : ""}`}
+        className={`group relative rounded-3xl transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-4 fade-in fill-mode-both flex flex-col w-full max-w-full${isLoggedOut ? " cursor-pointer" : ""}`}
         style={{ animationDelay: `${idx * 55}ms`, ...getCardStyle(pinned) }}
         onMouseEnter={e => {
           if (!pinned) {
@@ -436,7 +496,7 @@ export default function PulsePage() {
       <article
         key={update.id}
         onClick={() => isLoggedOut && router.push("/login")}
-        className={`group relative rounded-3xl transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-4 fade-in fill-mode-both flex flex-col${isLoggedOut ? " cursor-pointer" : ""}`}
+        className={`group relative rounded-3xl transition-all duration-500 overflow-hidden animate-in slide-in-from-bottom-4 fade-in fill-mode-both flex flex-col w-full max-w-full${isLoggedOut ? " cursor-pointer" : ""}`}
         style={{ animationDelay: `${idx * 55}ms`, ...getCardStyle(pinned) }}
         onMouseEnter={e => {
           if (!pinned) {
@@ -542,7 +602,7 @@ export default function PulsePage() {
       </div>
 
       {/* ── PAGE WRAPPER ── */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 space-y-10">
+      <div className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 space-y-10 overflow-hidden">
 
         {/* ── HERO HEADER ── */}
         <header className="text-center space-y-5">
@@ -560,7 +620,7 @@ export default function PulsePage() {
           </div>
 
           <h1 className="font-black leading-none"
-            style={{ fontSize: "clamp(3rem, 8vw, 5rem)", letterSpacing: "-0.035em", fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+            style={{ fontSize: "clamp(2.5rem, 7vw, 4.5rem)", letterSpacing: "-0.035em", fontFamily: "'Outfit', 'Inter', sans-serif" }}>
             <span className="text-white">Paperino </span>
             <span style={{
               background: "linear-gradient(135deg, #a78bfa 0%, #818cf8 45%, #60a5fa 100%)",
@@ -574,12 +634,12 @@ export default function PulsePage() {
         </header>
 
         {/* ── CATEGORY FILTER ── */}
-        <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Category filter">
+        <nav className="flex flex-wrap items-center justify-center gap-2 max-w-full overflow-x-auto py-1" aria-label="Category filter">
           {CATEGORIES.map(cat => {
             const active = activeCategory === cat;
             return (
               <button key={cat} onClick={() => setActiveCategory(cat)}
-                className="px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap cursor-pointer"
+                className="px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap cursor-pointer shrink-0"
                 style={active ? {
                   background: "linear-gradient(135deg, rgba(109,40,217,0.85) 0%, rgba(79,70,229,0.85) 100%)",
                   border: "1px solid rgba(167,139,250,0.45)",
@@ -599,7 +659,7 @@ export default function PulsePage() {
         </nav>
 
         {/* ── CARDS GRID ── */}
-        <main className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
+        <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start w-full max-w-full">
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-3xl p-6 animate-pulse space-y-4"

@@ -230,7 +230,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
       
       {/* Admin Content Area */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0 w-full max-w-full">
         {children}
       </div>
 

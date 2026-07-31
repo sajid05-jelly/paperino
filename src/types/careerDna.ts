@@ -43,12 +43,15 @@ export interface CareerOpportunity {
   matchLevel: "High Match" | "Medium Match" | "Stretch Opportunity";
   matchScore: number; // 0-100 match percentage
   matchReasons: string[];
+  matchedSkills?: string[];
+  requiredSkills?: string[];
   missingSkills: string[];
   applyLink: string;
   postedDate?: number;
   deadline?: number;
   verified?: boolean;
   source?: string;
+  sources?: string[];
   eligibilityBreakdown: {
     isEligible: boolean;
     reasons: string[];

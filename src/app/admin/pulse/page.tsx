@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { Radio, Plus, Edit, Trash2, Pin, PinOff, Link as LinkIcon, AlertCircle } from "lucide-react";
+import { Radio, Plus, Edit, Trash2, Pin, PinOff, Link as LinkIcon, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface PulseUpdate {
   id: string;
@@ -17,6 +19,20 @@ interface PulseUpdate {
   createdAt: Timestamp;
   createdBy: string;
   isPinned: boolean;
+}
+
+interface KnowafestSyncInfo {
+  lastSynced: string;
+  httpStatus?: number;
+  foundCardsCount?: number;
+  eventsExtractedCount?: number;
+  eventsImported: number;
+  eventsUpdated: number;
+  eventsSkipped?: number;
+  failedEvents: number;
+  extractedTitles?: string[];
+  failedSelectorReason?: string;
+  error?: string;
 }
 
 const CATEGORIES = [
@@ -35,6 +51,15 @@ export default function AdminPulsePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Knowafest Sync State
+  const [syncInfo, setSyncInfo] = useState<KnowafestSyncInfo>({
+    lastSynced: "Loading...",
+    eventsImported: 0,
+    eventsUpdated: 0,
+    failedEvents: 0,
+  });
+  const [syncing, setSyncing] = useState(false);
+
   // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -43,6 +68,49 @@ export default function AdminPulsePage() {
   const [priority, setPriority] = useState<"normal" | "important" | "pinned">("normal");
   const [location, setLocation] = useState("");
   const [mode, setMode] = useState("Offline");
+
+  // Fetch Knowafest Sync Log
+  const fetchSyncStatus = async () => {
+    try {
+      const res = await fetch("/api/admin/pulse/sync-knowafest");
+      if (res.ok) {
+        const data = await res.json();
+        setSyncInfo(data);
+      }
+    } catch (e) {
+      console.warn("Failed to load sync status:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchSyncStatus();
+  }, []);
+
+  const handleManualSync = async () => {
+    if (!user) return;
+    setSyncing(true);
+    try {
+      const token = await getIdToken(user);
+      const res = await fetch("/api/admin/pulse/sync-knowafest", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSyncInfo(data.data);
+      } else {
+        alert("Sync finished with error: " + (data.error || "Unknown error"));
+      }
+    } catch (e: any) {
+      console.error("Sync trigger error:", e);
+      alert("Failed to connect to Knowafest sync service.");
+    } finally {
+      setSyncing(false);
+      fetchSyncStatus();
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
@@ -176,6 +244,98 @@ export default function AdminPulsePage() {
             <Plus size={20} /> New Update
           </button>
         </div>
+      </div>
+
+      {/* ── Knowafest Sync Control Box ── */}
+      <div className="rounded-2xl p-5 border border-amber-500/30 bg-gradient-to-r from-amber-950/20 via-black/40 to-violet-950/20 backdrop-blur-xl shadow-[0_0_30px_rgba(245,158,11,0.08)] flex flex-col gap-4 w-full max-w-full box-border">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">📍</span>
+              <h3 className="text-base font-bold text-white tracking-wide">Knowafest Auto-Sync Engine</h3>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                Active (Every 6h)
+              </span>
+            </div>
+            <p className="text-xs text-gray-400">
+              Backend scraper extracts and normalizes events directly from Knowafest into Paperino Pulse.
+            </p>
+          </div>
+
+          <button
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+            <span>{syncing ? "Syncing Knowafest..." : "Sync Now"}</span>
+          </button>
+        </div>
+
+        {/* ── Pipeline Diagnostics Bar ── */}
+        <div className="pt-3 border-t border-white/10 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 text-xs w-full max-w-full box-border">
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">HTTP Status</span>
+            <span className={`font-mono font-bold text-sm ${syncInfo.httpStatus === 200 ? "text-emerald-400" : "text-amber-400"}`}>
+              {syncInfo.httpStatus || 200} OK
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Cards Found</span>
+            <span className="font-mono font-bold text-sm text-purple-300">
+              {syncInfo.foundCardsCount || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Extracted</span>
+            <span className="font-mono font-bold text-sm text-cyan-300">
+              {syncInfo.eventsExtractedCount || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Imported</span>
+            <span className="font-mono font-bold text-sm text-emerald-400">
+              {syncInfo.eventsImported || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Updated</span>
+            <span className="font-mono font-bold text-sm text-blue-300">
+              {syncInfo.eventsUpdated || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Skipped / Exists</span>
+            <span className="font-mono font-bold text-sm text-amber-300">
+              {syncInfo.eventsSkipped || 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Failed selector or critical error diagnostic box */}
+        {(syncInfo.failedSelectorReason || syncInfo.error) && (
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+            <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-400" />
+            <div>
+              <strong className="block font-semibold">Sync Diagnostic Warning:</strong>
+              <span>{syncInfo.failedSelectorReason || syncInfo.error}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Extracted Titles Preview */}
+        {syncInfo.extractedTitles && syncInfo.extractedTitles.length > 0 && (
+          <div className="text-[11px] text-gray-400 pt-1">
+            <span className="font-semibold text-gray-300">Recently Extracted Event Titles:</span>{" "}
+            {syncInfo.extractedTitles.slice(0, 4).join(" • ")}
+            {syncInfo.extractedTitles.length > 4 ? ` (+${syncInfo.extractedTitles.length - 4} more)` : ""}
+          </div>
+        )}
       </div>
 
       <div className="glass-panel p-6 rounded-2xl">

@@ -224,17 +224,20 @@ export const INITIAL_INTERNSHIPS: Internship[] = [
 ];
 
 /**
- * Calculates a comprehensive 0-100% match score for a student profile against an Unstop internship opportunity.
+ * Calculates a comprehensive 0-100% match score for a student profile against an internship opportunity.
  */
 export function calculateMatchScore(profile: any, internship: Internship): {
   score: number;
   level: "High Match" | "Medium Match" | "Stretch Opportunity";
   reasons: string[];
+  matchedSkills: string[];
   missingSkills: string[];
   suggestions: string[];
 } {
   const dreamRole = (profile.dreamRole || "").toLowerCase();
-  const studentSkills = new Set(
+  
+  // Aggregate all verified student skills from Profile + Resume + GitHub
+  const studentSkillsSet = new Set<string>(
     [
       ...(profile.languages || []),
       ...(profile.languagesKnown || []),
@@ -245,115 +248,125 @@ export function calculateMatchScore(profile: any, internship: Internship): {
 
   if (profile.resumeText) {
     const textLower = profile.resumeText.toLowerCase();
-    (internship.requiredSkills || []).forEach(sk => {
-      if (textLower.includes(sk.toLowerCase())) {
-        studentSkills.add(sk.toLowerCase());
+    const commonTechs = ["javascript", "typescript", "react", "next.js", "node.js", "express", "python", "java", "c++", "html", "css", "tailwind css", "mongodb", "mysql", "postgresql", "firebase", "docker", "git", "github", "figma", "flutter", "dart"];
+    commonTechs.forEach(sk => {
+      if (textLower.includes(sk)) {
+        studentSkillsSet.add(sk);
       }
     });
   }
 
-  let roleScore = 0;
-  const targetRoles = (internship.targetRoles || []).map(r => r.toLowerCase());
-  const titleLower = internship.title.toLowerCase();
+  // Determine required skills from internship tags/requiredSkills OR extract dynamically from Title & Description
+  let reqSkills = Array.isArray(internship.requiredSkills) ? [...internship.requiredSkills] : [];
+  if (reqSkills.length === 0) {
+    const titleAndDesc = `${internship.title} ${internship.company} ${(internship as any).description || ""}`.toLowerCase();
+    const techDict: Record<string, string> = {
+      "react": "React",
+      "next.js": "Next.js",
+      "nextjs": "Next.js",
+      "node.js": "Node.js",
+      "nodejs": "Node.js",
+      "express": "Express",
+      "python": "Python",
+      "java": "Java",
+      "typescript": "TypeScript",
+      "javascript": "JavaScript",
+      "html": "HTML",
+      "css": "CSS",
+      "tailwind": "Tailwind CSS",
+      "mongodb": "MongoDB",
+      "sql": "SQL",
+      "mysql": "MySQL",
+      "postgresql": "PostgreSQL",
+      "firebase": "Firebase",
+      "docker": "Docker",
+      "git": "Git",
+      "flutter": "Flutter",
+      "figma": "Figma",
+      "ai": "AI / ML",
+      "machine learning": "Machine Learning",
+    };
 
-  if (targetRoles.some(r => dreamRole.includes(r) || r.includes(dreamRole)) || titleLower.includes(dreamRole)) {
-    roleScore = 30;
-  } else if (dreamRole.length > 0) {
-    roleScore = 15;
-  } else {
-    roleScore = 20;
+    Object.entries(techDict).forEach(([key, val]) => {
+      if (titleAndDesc.includes(key)) {
+        if (!reqSkills.includes(val)) reqSkills.push(val);
+      }
+    });
   }
 
-  let matchedSkillsCount = 0;
-  const reqSkills = internship.requiredSkills || [];
+  // Fallback default skills if title is general
+  if (reqSkills.length === 0) {
+    reqSkills = ["Problem Solving", "Git", "Software Fundamentals"];
+  }
+
+  const matchedSkills: string[] = [];
   const missingSkills: string[] = [];
 
   reqSkills.forEach(sk => {
-    if (studentSkills.has(sk.toLowerCase())) {
-      matchedSkillsCount++;
+    const skLower = sk.toLowerCase().trim();
+    let hasMatch = false;
+    studentSkillsSet.forEach(stSk => {
+      if (stSk.includes(skLower) || skLower.includes(stSk)) {
+        hasMatch = true;
+      }
+    });
+
+    if (hasMatch) {
+      matchedSkills.push(sk);
     } else {
       missingSkills.push(sk);
     }
   });
 
-  const skillsScore = reqSkills.length > 0 ? Math.round((matchedSkillsCount / reqSkills.length) * 30) : 25;
+  // Calculate skill score (max 45 pts)
+  const skillRatio = reqSkills.length > 0 ? matchedSkills.length / reqSkills.length : 0.5;
+  const skillsScore = Math.round(skillRatio * 45);
 
-  let deptScore = 0;
-  const studentDept = profile.department || "";
-  const allowedDepts = internship.departmentEligibility || [];
-
-  if (allowedDepts.includes("All") || allowedDepts.some(d => d.toLowerCase() === studentDept.toLowerCase())) {
-    deptScore = 15;
-  } else {
-    deptScore = 8;
+  // Role score (max 30 pts)
+  let roleScore = 15;
+  const titleLower = internship.title.toLowerCase();
+  if (dreamRole && (titleLower.includes(dreamRole) || dreamRole.includes(titleLower))) {
+    roleScore = 30;
+  } else if (dreamRole) {
+    roleScore = 20;
   }
 
-  let yearScore = 0;
-  const currentYear = profile.currentYear || 1;
-  if (currentYear >= internship.minYear) {
-    yearScore = 10;
-  } else {
-    yearScore = 5;
-  }
-
-  let cgpaScore = 0;
+  // Department & CGPA score (max 25 pts)
   const cgpa = profile.cgpa || 8.0;
-  if (cgpa >= internship.minCgpa) {
-    cgpaScore = 10;
-  } else {
-    cgpaScore = 4;
-  }
+  const cgpaScore = cgpa >= (internship.minCgpa || 6.0) ? 15 : 8;
+  const deptScore = 10;
 
-  let locationScore = 5;
-  if (profile.preferredLocation && profile.preferredLocation.toLowerCase() !== "any") {
-    const pref = profile.preferredLocation.toLowerCase();
-    const loc = internship.location.toLowerCase();
-    if (loc.includes(pref) || (pref.includes("remote") && internship.workType === "Remote")) {
-      locationScore = 5;
-    } else {
-      locationScore = 3;
-    }
-  }
-
-  const rawScore = roleScore + skillsScore + deptScore + yearScore + cgpaScore + locationScore;
-  const score = Math.min(100, Math.max(10, rawScore));
+  const rawScore = skillsScore + roleScore + cgpaScore + deptScore;
+  const score = Math.min(98, Math.max(35, rawScore));
 
   let level: "High Match" | "Medium Match" | "Stretch Opportunity" = "Stretch Opportunity";
-  if (score >= 80) {
+  if (score >= 78) {
     level = "High Match";
-  } else if (score >= 65) {
+  } else if (score >= 60) {
     level = "Medium Match";
   }
 
   const reasons: string[] = [];
-  if (roleScore >= 25) {
-    reasons.push(`✔ Target role matches "${internship.title}"`);
+  if (matchedSkills.length > 0) {
+    reasons.push(`Matched ${matchedSkills.length} core skill(s): ${matchedSkills.join(", ")}`);
   }
-  if (matchedSkillsCount > 0) {
-    reasons.push(`✔ Matched ${matchedSkillsCount} required skill(s): ${reqSkills.filter(sk => studentSkills.has(sk.toLowerCase())).join(", ")}`);
+  if (roleScore >= 20) {
+    reasons.push(`Target role alignment with "${internship.title}"`);
   }
-  if (cgpa >= internship.minCgpa) {
-    reasons.push(`✔ CGPA requirement met (${cgpa} / ${internship.minCgpa})`);
-  }
-  if (currentYear >= internship.minYear) {
-    reasons.push(`✔ Year criteria satisfied (${currentYear}th Year Eligible)`);
-  }
-  if (deptScore === 15) {
-    reasons.push(`✔ Open to ${studentDept || "all academic"} departments`);
+  if (cgpa >= (internship.minCgpa || 6.0)) {
+    reasons.push(`CGPA criteria satisfied (${cgpa})`);
   }
 
   const suggestions: string[] = [];
   if (missingSkills.length > 0) {
-    suggestions.push(`Learn ${missingSkills.slice(0, 2).join(" & ")} to boost match percentage`);
-  }
-  if (cgpa < internship.minCgpa) {
-    suggestions.push(`Improve CGPA target above ${internship.minCgpa}`);
+    suggestions.push(`Learn ${missingSkills.slice(0, 2).join(" & ")} to increase match rating`);
   }
 
   return {
     score,
     level,
     reasons,
+    matchedSkills,
     missingSkills,
     suggestions
   };
@@ -370,7 +383,6 @@ export function rankOpportunitiesForUser(profile: any, internships: Internship[]
   return internships
     .filter(i => {
       if (!i.active || (i.deadline && i.deadline <= now)) return false;
-      if (!i.applyUrl || !i.applyUrl.toLowerCase().includes("unstop.com")) return false;
       const uniqueKey = `${(i.company || "").toLowerCase().trim()}_${(i.title || "").toLowerCase().trim()}`;
       if (seenKeys.has(uniqueKey) || seenKeys.has(i.id)) return false;
       seenKeys.add(uniqueKey);
@@ -381,7 +393,9 @@ export function rankOpportunitiesForUser(profile: any, internships: Internship[]
       const match = calculateMatchScore(profile, internship);
       return {
         ...internship,
-        source: "Unstop",
+        source: internship.source || "Paperino Pulse",
+        sources: (internship as any).sources || [internship.source || "Paperino Pulse"],
+        matchedSkills: (internship.requiredSkills || []).filter(sk => !match.missingSkills.includes(sk)),
         matchScore: match.score,
         matchLevel: match.level,
         matchReasons: match.reasons,
@@ -390,7 +404,15 @@ export function rankOpportunitiesForUser(profile: any, internships: Internship[]
       };
     })
     .sort((a, b) => {
+      // Priority 1: Highest Match %
       if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
-      return b.postedDate - a.postedDate;
+      
+      // Priority 2: Nearest Deadline (sooner deadline comes first)
+      const deadlineA = a.deadline || (now + 365 * 24 * 60 * 60 * 1000);
+      const deadlineB = b.deadline || (now + 365 * 24 * 60 * 60 * 1000);
+      if (deadlineA !== deadlineB) return deadlineA - deadlineB;
+
+      // Priority 3: Newest Opportunity
+      return (b.postedDate || 0) - (a.postedDate || 0);
     });
 }
