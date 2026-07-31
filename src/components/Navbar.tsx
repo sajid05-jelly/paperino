@@ -109,6 +109,9 @@ export default function Navbar() {
     if (href === '/pulse') {
       return `${baseClass} border-transparent hover:bg-white/5 menu-pulse-mobile-glow ${isActive ? 'active-mobile' : ''}`;
     }
+    if (href === '/leaderboard') {
+      return `${baseClass} border-transparent hover:bg-white/5 menu-leaderboard-mobile-glow ${isActive ? 'active-mobile' : ''}`;
+    }
 
     if (isActive) {
       return `${baseClass} bg-violet-500/20 text-violet-300 border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]`;

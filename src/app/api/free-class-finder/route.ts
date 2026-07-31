@@ -212,12 +212,41 @@ export async function POST(req: NextRequest) {
       const reportRef = adminDb.collection(COLLECTION_NAME).doc(docId);
       const existingSnap = await reportRef.get();
 
+      // Format server IST timestamp fields
+      const dateObj = new Date(now);
+      const istOptions: Intl.DateTimeFormatOptions = { timeZone: "Asia/Kolkata" };
+
+      const createdDate = dateObj.toLocaleDateString("en-GB", {
+        ...istOptions,
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }); // e.g. "31 July 2026"
+
+      const createdDay = dateObj.toLocaleDateString("en-US", {
+        ...istOptions,
+        weekday: "long"
+      }); // e.g. "Friday"
+
+      const createdTime = dateObj.toLocaleTimeString("en-US", {
+        ...istOptions,
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      }) + " IST"; // e.g. "10:58 AM IST"
+
+      const timezone = "Asia/Kolkata (IST)";
+
       if (existingSnap.exists) {
         const existingData = existingSnap.data() || {};
         await reportRef.update({
           collegeName: cleanCollege,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           createdAtMs: now,
+          createdDate,
+          createdDay,
+          createdTime,
+          timezone,
           expiresAt: expiresAtTimestamp,
           expiresAtMs: expiresAtMs,
           expectedFreeDurationMinutes: durationMinutes,
@@ -239,6 +268,10 @@ export async function POST(req: NextRequest) {
           reporterName: userName,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           createdAtMs: now,
+          createdDate,
+          createdDay,
+          createdTime,
+          timezone,
           expiresAt: expiresAtTimestamp,
           expiresAtMs: expiresAtMs,
           trueVotes: 0,

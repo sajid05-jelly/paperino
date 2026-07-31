@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { 
   Building2, Plus, Search, Filter, Check, X as IconX, 
   Sparkles, Clock, ShieldCheck, Zap, Award, CheckCircle2,
-  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb, Trash2, UserCheck, Radio
+  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb, Trash2, UserCheck, Radio, Calendar
 } from "lucide-react";
 import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { 
   FreeClassReport, FreeClassConfig, DEFAULT_FREE_CLASS_CONFIG, 
-  calculateCommunityConfidence, getRemainingTimeText, formatTimeAgo 
+  calculateCommunityConfidence, getRemainingTimeText, formatTimeAgo, formatTimestampDetails 
 } from "@/lib/freeClassFinder";
 
 function FreeClassFinderContent() {
@@ -171,6 +171,10 @@ function FreeClassFinderContent() {
           reporterName: data.reporterName,
           createdAt,
           createdAtMs: createdAt,
+          createdDate: data.createdDate,
+          createdDay: data.createdDay,
+          createdTime: data.createdTime,
+          timezone: data.timezone,
           expiresAt: expiresAtMs,
           expiresAtMs: expiresAtMs,
           expectedFreeDurationMinutes: durationMin,
@@ -907,6 +911,7 @@ function FreeClassFinderContent() {
                       const timerState = getRemainingTimeText(report.createdAt, report.expectedFreeDurationMinutes || 30, report.expiresAtMs || report.expiresAt);
                       const isReporter = user?.uid === report.reporterUid;
                       const isTargetRoom = searchParams.get("room") === report.roomNumber;
+                      const tsInfo = formatTimestampDetails(report);
 
                       return (
                         <div
@@ -943,15 +948,27 @@ function FreeClassFinderContent() {
                               <h3 className="text-2xl font-black text-white tracking-wide mt-0.5">{report.roomNumber}</h3>
                             </div>
 
-                            {/* Reported Relative Time */}
-                            <div className="flex items-center gap-1 text-[11px] text-gray-400 pt-1">
-                              <Clock size={12} className="text-gray-500" />
-                              <span>Reported by <strong className="text-gray-200 font-semibold">a student</strong> ({formatTimeAgo(report.createdAt)})</span>
-                              {isReporter && (
-                                <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
-                                  Your Report
-                                </span>
-                              )}
+                            {/* Reported Relative & Exact Server IST Timestamp */}
+                            <div className="space-y-1.5 pt-1.5 border-t border-white/5">
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                <Clock size={12} className="text-purple-400" />
+                                <span>Reported by <strong className="text-gray-200 font-semibold">a student</strong> ({formatTimeAgo(report.createdAt)})</span>
+                                {isReporter && (
+                                  <span className="ml-auto text-[10px] text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-semibold">
+                                    Your Report
+                                  </span>
+                                )}
+                              </div>
+                              <div className="p-2 rounded-xl bg-purple-950/20 border border-purple-500/15 space-y-0.5 text-[11px] font-medium text-purple-200/90">
+                                <div className="flex items-center gap-1.5">
+                                  <span>📅</span>
+                                  <span>{tsInfo.day}, {tsInfo.date}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-purple-300">
+                                  <span>🕙</span>
+                                  <span>{tsInfo.time}</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
 
@@ -1110,6 +1127,24 @@ function FreeClassFinderContent() {
                 <span className="font-semibold text-gray-400">Reported By:</span>
                 <span className="font-medium text-gray-200">{selectedTimerReport.reporterName || "Student"} ({formatTimeAgo(selectedTimerReport.createdAt)})</span>
               </div>
+
+              {/* Official Server Timestamp Details */}
+              {(() => {
+                const modalTs = formatTimestampDetails(selectedTimerReport);
+                return (
+                  <div className="p-3.5 rounded-2xl bg-purple-950/20 border border-purple-500/20 space-y-1">
+                    <span className="font-semibold text-purple-300 text-[11px] uppercase tracking-wider block">Official Server Timestamp</span>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-200 font-medium pt-0.5">
+                      <span>📅</span>
+                      <span>{modalTs.day}, {modalTs.date}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-purple-300 font-medium">
+                      <span>🕙</span>
+                      <span>{modalTs.time}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="pt-2 flex justify-end">

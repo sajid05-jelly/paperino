@@ -16,10 +16,49 @@ export interface FreeClassReport {
   expectedFreeDurationMinutes?: number;
   trueVotes: number;
   falseVotes: number;
+  createdDate?: string;
+  createdDay?: string;
+  createdTime?: string;
+  timezone?: string;
   voters?: Record<string, "true" | "false">;
   reporterCount: number;
   confidenceScore?: number;
   status: "active" | "expired" | "flagged";
+}
+
+export function formatTimestampDetails(report: Partial<FreeClassReport>): { day: string; date: string; time: string } {
+  if (report.createdDay && report.createdDate && report.createdTime) {
+    return {
+      day: report.createdDay,
+      date: report.createdDate,
+      time: report.createdTime
+    };
+  }
+
+  const ts = report.createdAtMs || report.createdAt || Date.now();
+  const dateObj = new Date(ts);
+  const istOptions: Intl.DateTimeFormatOptions = { timeZone: "Asia/Kolkata" };
+
+  const date = dateObj.toLocaleDateString("en-GB", {
+    ...istOptions,
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+
+  const day = dateObj.toLocaleDateString("en-US", {
+    ...istOptions,
+    weekday: "long"
+  });
+
+  const time = dateObj.toLocaleTimeString("en-US", {
+    ...istOptions,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  }) + " IST";
+
+  return { day, date, time };
 }
 
 export interface FreeClassConfig {
