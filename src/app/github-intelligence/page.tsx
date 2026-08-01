@@ -29,6 +29,7 @@ import {
   FileText,
   Download,
   HelpCircle,
+  X,
 } from "lucide-react";
 import { GitHubAnalysisResult } from "@/app/api/github-intelligence/route";
 
@@ -41,6 +42,7 @@ export default function GitHubIntelligencePage() {
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<GitHubAnalysisResult | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
+  const [showVerifiedModal, setShowVerifiedModal] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   const handleDownloadReport = async () => {
@@ -380,9 +382,13 @@ export default function GitHubIntelligencePage() {
                         <FolderGit2 size={14} className="text-purple-400" />
                         <strong className="text-white font-bold">{analysis.publicReposCount}</strong> Public Repos
                       </span>
-                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-                        <strong className="font-bold">{(analysis.developerMetrics as any)?.transparencyAudit?.meaningfulProjects ?? 0}</strong> Meaningful Projects
-                      </span>
+                      <button
+                        onClick={() => setShowVerifiedModal(true)}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                      >
+                        <ShieldCheck size={14} className="text-emerald-400" />
+                        <strong className="font-bold">{(analysis.developerMetrics as any)?.transparencyAudit?.meaningfulProjectsCount ?? (analysis.developerMetrics as any)?.transparencyAudit?.meaningfulProjects ?? 0}</strong> Verified Projects →
+                      </button>
                       <span className="flex items-center gap-1.5">
                         <Users size={14} className="text-cyan-400" />
                         <strong className="text-white font-bold">{analysis.followers}</strong> followers
@@ -1456,6 +1462,104 @@ export default function GitHubIntelligencePage() {
             </a>
           </div>
         </section>
+
+        {/* ── VERIFIED & EXCLUDED PROJECTS TRANSPARENCY MODAL ── */}
+        {showVerifiedModal && analysis && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in">
+            <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl bg-[#0d081f] border border-purple-500/40 p-6 md:p-8 space-y-6 shadow-[0_0_60px_rgba(109,40,217,0.3)]">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    <ShieldCheck size={16} />
+                    <span>Verified vs Excluded Repositories</span>
+                  </div>
+                  <h3 className="text-xl font-black text-white">Repository Evidence Breakdown</h3>
+                </div>
+                <button
+                  onClick={() => setShowVerifiedModal(false)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Verified Projects */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    Verified Substantial / Meaningful Projects
+                  </span>
+                  <span className="text-emerald-400 font-mono">
+                    {((analysis.developerMetrics as any)?.transparencyAudit?.verifiedProjectsList || []).length} Verified
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {((analysis.developerMetrics as any)?.transparencyAudit?.verifiedProjectsList || []).length > 0 ? (
+                    ((analysis.developerMetrics as any)?.transparencyAudit?.verifiedProjectsList || []).map((p: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-white block">{p.name}</span>
+                          <span className="text-[10px] text-emerald-300 font-semibold">{p.category}</span>
+                        </div>
+                        <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-mono font-black text-xs border border-emerald-500/40">
+                          RQS: {p.rqs}/100
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-white/5 text-xs text-gray-400 text-center">
+                      No repositories met substantial or meaningful project quality threshold (RQS &ge; 45).
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Excluded Repositories */}
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <AlertCircle size={14} className="text-amber-400" />
+                    Excluded Repositories (0 Direct Score Bonus)
+                  </span>
+                  <span className="text-amber-400 font-mono">
+                    {((analysis.developerMetrics as any)?.transparencyAudit?.excludedProjectsList || []).length} Excluded
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {((analysis.developerMetrics as any)?.transparencyAudit?.excludedProjectsList || []).length > 0 ? (
+                    ((analysis.developerMetrics as any)?.transparencyAudit?.excludedProjectsList || []).map((p: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                        <div className="space-y-0.5 max-w-[70%]">
+                          <span className="font-bold text-gray-200 block truncate">{p.name}</span>
+                          <span className="text-[10px] text-gray-400 block">{p.reason}</span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 text-[10px] font-mono shrink-0">
+                          {p.category}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-white/5 text-xs text-gray-400 text-center">
+                      No repositories excluded.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setShowVerifiedModal(false)}
+                  className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all cursor-pointer"
+                >
+                  Close Audit Transparency
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
