@@ -212,7 +212,7 @@ export interface GitHubAnalysisResult {
   analysisConfidence: "HIGH" | "MEDIUM" | "LOW";
 }
 
-const ANALYSIS_ENGINE_VERSION = "8.1";
+const ANALYSIS_ENGINE_VERSION = "EVIDENCE_ENGINE_V2";
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string; authenticated: boolean }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 
@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
     }
 
     username = username.toLowerCase();
-    const cacheKey = `github-intelligence:v8.1:${username}`;
+    const cacheKey = `github-intelligence:v2:${username}`;
 
     const now = Date.now();
     // ── STEP 5: CACHE CONTAMINATION PREVENTION (v8.1 Versioning + Strict Check) ──
@@ -359,13 +359,31 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // Code Structure & Manifest Triggers
+        // Code Structure & Manifest Triggers across root and nested paths (client, server, frontend, backend, apps, packages)
         const manifestDetected = treeFetched
-          ? fileList.some(f => f === "package.json" || f.endsWith("/package.json") || f === "requirements.txt" || f === "pyproject.toml" || f === "pom.xml" || f === "build.gradle" || f === "cargo.toml" || f === "go.mod")
+          ? fileList.some(f => f === "package.json" || f.endsWith("/package.json") || f === "requirements.txt" || f.endsWith("/requirements.txt") || f === "pyproject.toml" || f.endsWith("/pyproject.toml") || f === "pom.xml" || f.endsWith("/pom.xml") || f === "build.gradle" || f.endsWith("/build.gradle") || f === "cargo.toml" || f.endsWith("/cargo.toml") || f === "go.mod" || f.endsWith("/go.mod"))
           : Boolean(language);
 
         const srcDetected = treeFetched
-          ? fileList.some(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("backend/") || f.startsWith("frontend/") || f.startsWith("api/") || f.startsWith("routes/") || f.startsWith("controllers/") || f.startsWith("models/") || f.startsWith("database/"))
+          ? fileList.some(f => 
+              f.includes("/src/") || f.startsWith("src/") ||
+              f.includes("/app/") || f.startsWith("app/") ||
+              f.includes("/pages/") || f.startsWith("pages/") ||
+              f.includes("/components/") || f.startsWith("components/") ||
+              f.includes("/server/") || f.startsWith("server/") ||
+              f.includes("/backend/") || f.startsWith("backend/") ||
+              f.includes("/frontend/") || f.startsWith("frontend/") ||
+              f.includes("/client/") || f.startsWith("client/") ||
+              f.includes("/api/") || f.startsWith("api/") ||
+              f.includes("/routes/") || f.startsWith("routes/") ||
+              f.includes("/controllers/") || f.startsWith("controllers/") ||
+              f.includes("/models/") || f.startsWith("models/") ||
+              f.includes("/database/") || f.startsWith("database/") ||
+              f.includes("/lib/") || f.startsWith("lib/") ||
+              f.includes("/utils/") || f.startsWith("utils/") ||
+              f.includes("/hooks/") || f.startsWith("hooks/") ||
+              f.includes("/services/") || f.startsWith("services/")
+            )
           : Boolean(sizeKB > 30);
 
         const hasPackageJson = treeFetched
@@ -373,7 +391,7 @@ export async function GET(req: NextRequest) {
           : corpus.includes("package.json") || language === "JavaScript" || language === "TypeScript";
 
         const hasRequirements = treeFetched
-          ? fileList.some(f => f === "requirements.txt" || f === "pyproject.toml" || f === "pom.xml" || f === "build.gradle" || f === "cargo.toml" || f === "go.mod")
+          ? fileList.some(f => f === "requirements.txt" || f.endsWith("/requirements.txt") || f === "pyproject.toml" || f.endsWith("/pyproject.toml") || f === "pom.xml" || f.endsWith("/pom.xml") || f === "build.gradle" || f.endsWith("/build.gradle") || f === "cargo.toml" || f.endsWith("/cargo.toml") || f === "go.mod" || f.endsWith("/go.mod"))
           : corpus.includes("requirements") || corpus.includes("pipfile") || language === "Python" || language === "Go" || language === "Java" || language === "Rust";
 
         const dockerDetected = treeFetched
@@ -385,21 +403,33 @@ export async function GET(req: NextRequest) {
           : corpus.includes("workflow") || corpus.includes("ci/cd") || corpus.includes("github-actions");
 
         const testsDetected = treeFetched
-          ? fileList.some(f => f.includes("test/") || f.includes("tests/") || f.includes("__tests__") || f.includes(".test.") || f.includes(".spec."))
+          ? fileList.some(f => f.includes("/test/") || f.includes("/tests/") || f.startsWith("test/") || f.startsWith("tests/") || f.includes("__tests__") || f.includes(".test.") || f.includes(".spec."))
           : corpus.includes("test") || corpus.includes("spec");
 
         const sourceFileCount = treeFetched
-          ? fileList.filter(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("api/") || f.startsWith("lib/")).length
+          ? fileList.filter(f => 
+              f.includes("/src/") || f.startsWith("src/") ||
+              f.includes("/app/") || f.startsWith("app/") ||
+              f.includes("/pages/") || f.startsWith("pages/") ||
+              f.includes("/components/") || f.startsWith("components/") ||
+              f.includes("/server/") || f.startsWith("server/") ||
+              f.includes("/backend/") || f.startsWith("backend/") ||
+              f.includes("/frontend/") || f.startsWith("frontend/") ||
+              f.includes("/client/") || f.startsWith("client/") ||
+              f.includes("/api/") || f.startsWith("api/") ||
+              f.includes("/lib/") || f.startsWith("lib/") ||
+              f.includes("/services/") || f.startsWith("services/")
+            ).length
           : Math.round(sizeKB / 20);
 
-        const backendDetected = hasRequirements || corpus.includes("node") || corpus.includes("express") || corpus.includes("api") || corpus.includes("backend") || language === "Python" || language === "Go" || language === "Java" || language === "Rust";
-        const databaseDetected = corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db") || (treeFetched && fileList.some(f => f.includes("schema") || f.includes("prisma") || f.includes("migration")));
+        const backendDetected = hasRequirements || corpus.includes("node") || corpus.includes("express") || corpus.includes("api") || corpus.includes("backend") || language === "Python" || language === "Go" || language === "Java" || language === "Rust" || (treeFetched && fileList.some(f => f.includes("/api/") || f.includes("/server/") || f.includes("/backend/") || f.includes("/controllers/") || f.includes("/routes/")));
+        const databaseDetected = corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db") || (treeFetched && fileList.some(f => f.includes("schema") || f.includes("prisma") || f.includes("migration") || f.includes("/models/") || f.includes("/database/")));
 
         // Codebase Capability Signals
         const hasReadme = Boolean(hasDescription || sizeKB >= 5);
         const hasTest = testsDetected;
         const hasCiCd = ciDetected || dockerDetected;
-        const hasFE = hasPackageJson || language === "JavaScript" || language === "TypeScript" || language === "HTML" || corpus.includes("react") || corpus.includes("vue") || corpus.includes("next");
+        const hasFE = hasPackageJson || language === "JavaScript" || language === "TypeScript" || language === "HTML" || corpus.includes("react") || corpus.includes("vue") || corpus.includes("next") || (treeFetched && fileList.some(f => f.includes("/components/") || f.includes("/pages/") || f.includes("/frontend/") || f.includes("/client/")));
         const hasBE = backendDetected;
         const hasDB = databaseDetected;
 
