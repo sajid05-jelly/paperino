@@ -26,6 +26,8 @@ import {
   Terminal,
   Activity,
   Boxes,
+  FileText,
+  Download,
 } from "lucide-react";
 import { GitHubAnalysisResult } from "@/app/api/github-intelligence/route";
 
@@ -34,9 +36,24 @@ const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: fal
 export default function GitHubIntelligencePage() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<GitHubAnalysisResult | null>(null);
   const [imgError, setImgError] = useState(false);
+
+  const handleDownloadReport = async () => {
+    if (!analysis) return;
+    setPdfGenerating(true);
+    try {
+      const { generateDeveloperReportPdf } = await import("@/lib/pdfDeveloperReport");
+      await generateDeveloperReportPdf(analysis);
+    } catch (err: any) {
+      console.error("PDF generation failed:", err);
+      setError("Failed to generate PDF report.");
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
 
   const fetchAnalysis = async (forceRefresh = false) => {
     if (!username.trim()) {
@@ -309,6 +326,19 @@ export default function GitHubIntelligencePage() {
                       Top <strong className="text-cyan-300">{analysis.developerMetrics?.rankPercentile || 12}%</strong> among Paperino developers
                     </span>
                   </div>
+
+                  {/* Download Report Button */}
+                  <button
+                    onClick={handleDownloadReport}
+                    disabled={pdfGenerating}
+                    className="mt-4 w-full sm:w-auto px-5 py-2.5 rounded-2xl font-bold text-xs text-white transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] border border-purple-400/40 hover:scale-[1.02] disabled:opacity-50"
+                    style={{
+                      background: "linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%)",
+                    }}
+                  >
+                    <FileText size={14} className={pdfGenerating ? "animate-pulse text-cyan-300" : "text-white"} />
+                    <span>{pdfGenerating ? "Generating Report..." : "📄 Download Developer Report"}</span>
+                  </button>
                 </div>
               </div>
 
