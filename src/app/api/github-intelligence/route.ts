@@ -212,7 +212,7 @@ export interface GitHubAnalysisResult {
   analysisConfidence: "HIGH" | "MEDIUM" | "LOW";
 }
 
-const ANALYSIS_ENGINE_VERSION = "EVIDENCE_ENGINE_V2";
+const ANALYSIS_ENGINE_VERSION = "RQS_ENGINE_V3";
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string; authenticated: boolean }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 
@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
     }
 
     username = username.toLowerCase();
-    const cacheKey = `github-intelligence:v2:${username}`;
+    const cacheKey = `github-intelligence:v3:${username}`;
 
     const now = Date.now();
     // ── STEP 5: CACHE CONTAMINATION PREVENTION (v8.1 Versioning + Strict Check) ──
@@ -440,57 +440,127 @@ export async function GET(req: NextRequest) {
         const isPracticeKeyword = corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo") || corpus.includes("demo");
         const isAcademicKeyword = corpus.includes("academic") || corpus.includes("college") || corpus.includes("sem-") || corpus.includes("university");
 
-        // ── STEP 3 & 4: CANONICAL REPOSITORY QUALITY SCORE (RQS) / 100 ──
-        // Implementation / Business Logic (0-30) - Requires REAL functional code
-        let implementationDepth = 0;
+        // Filter out vendor, build, generated, lock, and asset files for accurate source file count & codebase size evaluation
+        const excludedPatterns = [
+          "node_modules/", "dist/", "build/", ".next/", "coverage/", "vendor/", ".git/",
+          "package-lock.json", "yarn.lock", "pnpm-lock.yaml", ".DS_Store"
+        ];
+        const isExcludedFile = (p: string) => excludedPatterns.some(pat => p.includes(pat));
+        const filteredFileList = treeFetched ? fileList.filter(f => !isExcludedFile(f)) : [];
+
+        // Count meaningful source files (.js, .ts, .jsx, .tsx, .py, .go, .java, .c, .cpp, .rs, .php, .rb, .sql, etc.)
+        const sourceExtensions = [".js", ".ts", ".jsx", ".tsx", ".py", ".go", ".java", ".c", ".cpp", ".rs", ".php", ".rb", ".sql", ".kt", ".swift", ".cs", ".html", ".vue", ".svelte"];
+        const meaningfulSourceFiles = filteredFileList.filter(f => sourceExtensions.some(ext => f.endsWith(ext)));
+        const meaningfulSourceFileCount = treeFetched ? meaningfulSourceFiles.length : Math.round(sizeKB / 20);
+
+        // 1. PROGRESSIVE IMPLEMENTATION DEPTH (0-30)
+        // A. Meaningful source file count (max 8)
+        let fileCountPoints = 0;
+        if (meaningfulSourceFileCount >= 100) fileCountPoints = 8;
+        else if (meaningfulSourceFileCount >= 41) fileCountPoints = 7;
+        else if (meaningfulSourceFileCount >= 16) fileCountPoints = 5;
+        else if (meaningfulSourceFileCount >= 6) fileCountPoints = 3;
+        else if (meaningfulSourceFileCount >= 1) fileCountPoints = 1;
+
+        // B. Code footprint / LOC (max 8)
+        let footprintPoints = 0;
+        if (sizeKB > 2000) footprintPoints = 8;
+        else if (sizeKB >= 500) footprintPoints = 7;
+        else if (sizeKB >= 150) footprintPoints = 5;
+        else if (sizeKB >= 50) footprintPoints = 3;
+        else if (sizeKB > 0) footprintPoints = 1;
+
+        // C. Actual business-logic modules (max 8)
+        const controllerModules = filteredFileList.filter(f => f.includes("/controllers/") || f.includes("/routes/") || f.includes("/api/") || f.includes("/handlers/")).length;
+        const serviceModules = filteredFileList.filter(f => f.includes("/services/") || f.includes("/lib/") || f.includes("/utils/") || f.includes("/hooks/")).length;
+        const modelModules = filteredFileList.filter(f => f.includes("/models/") || f.includes("/schemas/") || f.includes("/db/") || f.includes("/database/")).length;
+        const uiModules = filteredFileList.filter(f => f.includes("/components/") || f.includes("/pages/") || f.includes("/app/") || f.includes("/views/")).length;
+        
+        let businessLogicPoints = 0;
         if (treeFetched) {
-          if (sourceFileCount >= 15 || sizeKB > 1500) implementationDepth = 30;
-          else if (sourceFileCount >= 8 || sizeKB > 400) implementationDepth = 22;
-          else if (sourceFileCount >= 2 || sizeKB > 50) implementationDepth = 14;
-          else implementationDepth = 6;
-        } else {
-          // If source files were not successfully fetched, do NOT award implementation/architecture/complexity points based on assumptions.
-          implementationDepth = 0;
+          if (controllerModules > 0) businessLogicPoints += 2;
+          if (serviceModules > 0) businessLogicPoints += 2;
+          if (modelModules > 0) businessLogicPoints += 2;
+          if (uiModules > 0) businessLogicPoints += 2;
         }
 
-        // Architecture (0-15) - Requires actual separation (controllers/services/models/modules/components/data)
-        let architecture = 0;
+        // D. Implementation diversity / depth (max 6)
+        let diversityPoints = 0;
         if (treeFetched) {
-          if (hasFE && hasBE) architecture = 15;
-          else if (hasFE || hasBE) architecture = 10;
-          else if (srcDetected) architecture = 5;
+          const totalModules = controllerModules + serviceModules + modelModules + uiModules;
+          if (totalModules >= 15) diversityPoints = 6;
+          else if (totalModules >= 8) diversityPoints = 4;
+          else if (totalModules >= 3) diversityPoints = 2;
+          else if (totalModules >= 1) diversityPoints = 1;
         }
 
-        // Technical Complexity (0-15) - Requires authentication, DB, API, state management, or algorithms
-        let featureComplexity = 0;
-        if (treeFetched) {
-          if (hasDB && (hasFE || hasBE)) featureComplexity = 15;
-          else if (hasDB || (hasFE && hasBE)) featureComplexity = 10;
-          else if (hasFE || hasBE) featureComplexity = 5;
-        }
+        let implementationDepth = treeFetched
+          ? (fileCountPoints + footprintPoints + businessLogicPoints + diversityPoints)
+          : 0;
 
-        // Completeness (0-15) - Coherent application/library footprint
-        let completeness = 0;
-        if (hasReadme && hasDescription && sizeKB > 50) completeness = 15;
-        else if (hasReadme || hasDescription) completeness = 8;
-        else if (sizeKB > 10) completeness = 4;
+        // 2. NON-BINARY ARCHITECTURE (0-15)
+        let archPoints = 0;
+        const hasOrgStructure = treeFetched && (srcDetected || filteredFileList.some(f => f.includes("/")));
+        const hasModuleSep = treeFetched && (uiModules > 0 || serviceModules > 0);
+        const hasFEBESep = hasFE && hasBE;
+        const hasServiceDataLayer = treeFetched && (serviceModules > 0 || modelModules > 0);
+        const hasReusableArch = treeFetched && (serviceModules >= 2 || uiModules >= 5);
+        const hasClearDomainBoundaries = treeFetched && (controllerModules > 0 && modelModules > 0);
 
-        // Engineering Practices (0-10) - Validation, Docker, CI/CD, linting
+        if (hasOrgStructure) archPoints += 3;
+        if (hasModuleSep) archPoints += 3;
+        if (hasFEBESep) archPoints += 3;
+        if (hasServiceDataLayer) archPoints += 2;
+        if (hasReusableArch) archPoints += 2;
+        if (hasClearDomainBoundaries) archPoints += 2;
+        let architecture = treeFetched ? Math.min(15, archPoints) : 0;
+
+        // 3. DISTINCT EVIDENCE COMPLEXITY (0-15)
+        let compPoints = 0;
+        if (hasBE) compPoints += 3; // Real API/backend logic = 3
+        if (hasDB) compPoints += 3; // Real database persistence = 3
+        const hasAuth = treeFetched && fileList.some(f => f.includes("auth") || f.includes("jwt") || f.includes("session") || f.includes("login") || f.includes("passport"));
+        if (hasAuth) compPoints += 2; // Auth = 2
+        const hasStateDataFlow = treeFetched && (uiModules >= 3 && serviceModules >= 1);
+        if (hasStateDataFlow) compPoints += 2; // Complex state/data flow = 2
+        const hasExternalApi = treeFetched && fileList.some(f => f.includes("fetch") || f.includes("axios") || f.includes("http") || f.includes("api"));
+        if (hasExternalApi) compPoints += 1; // External API = 1
+        const hasValidation = treeFetched && fileList.some(f => f.includes("zod") || f.includes("joi") || f.includes("validator") || f.includes("error") || f.includes("middleware"));
+        if (hasValidation) compPoints += 1; // Validation/error handling = 1
+        const hasAdvancedFramework = treeFetched && (corpus.includes("next") || corpus.includes("nest") || corpus.includes("astro") || corpus.includes("fastapi"));
+        if (hasAdvancedFramework) compPoints += 1; // Advanced framework capability = 1
+        const hasAsyncRealtime = treeFetched && fileList.some(f => f.includes("socket") || f.includes("websocket") || f.includes("stream") || f.includes("pubsub") || f.includes("cron"));
+        if (hasAsyncRealtime) compPoints += 1; // Async/realtime = 1
+        const hasNonTrivialEng = treeFetched && (dockerDetected || ciDetected || testsDetected);
+        if (hasNonTrivialEng) compPoints += 1; // Non-trivial engineering = 1
+        let featureComplexity = treeFetched ? Math.min(15, compPoints) : 0;
+
+        // 4. PROGRESSIVE COMPLETENESS (0-15)
+        let completenessPoints = 0;
+        if (srcDetected || meaningfulSourceFileCount >= 3) completenessPoints += 3; // Working app structure = 3
+        if (manifestDetected) completenessPoints += 3; // Configuration completeness = 3
+        if (hasReadme) completenessPoints += 3; // README setup = 3
+        if (hasDescription) completenessPoints += 2; // Repo metadata = 2
+        if (treeFetched && (fileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings")))) completenessPoints += 2; // Env example / config = 2
+        if (hasPages || ciDetected) completenessPoints += 2; // Deployment config / entry point = 2
+        let completeness = Math.min(15, completenessPoints);
+
+        // 5. ENGINEERING PRACTICES (0-10)
         let engPractices = 0;
-        if (ciDetected && dockerDetected) engPractices = 10;
-        else if (ciDetected) engPractices = 6;
-        else if (dockerDetected) engPractices = 4;
+        if (ciDetected) engPractices += 6;
+        if (dockerDetected) engPractices += 4;
+        engPractices = Math.min(10, engPractices);
 
-        // Documentation (0-5)
+        // 6. DOCUMENTATION (0-5)
         let docScore = hasDescription && sizeKB > 20 ? 5 : hasDescription ? 3 : 1;
 
-        // Testing (0-5) - ONLY if actual automated tests exist
+        // 7. TESTING (0-5)
         let testingScore = testsDetected ? 5 : 0;
 
-        // Deployment (0-5) - ONLY if actual deployment/container/build evidence exists
+        // 8. DEPLOYMENT (0-5)
         let deployCi = (hasPages ? 3 : 0) + (ciDetected ? 2 : 0);
 
-        // Max RQS caps for specific repository types (Step 9)
+        // Specific category caps for noise/assignment/forks
         if (isFork) {
           implementationDepth = 0;
           architecture = 0;
@@ -518,15 +588,12 @@ export async function GET(req: NextRequest) {
         }
 
         // ── STRICT IMPLEMENTATION & QUALITY GATES ──
-        // Rule: A repository MUST NOT reach RQS 50 unless meaningful source-code implementation has actually been verified.
         let rawRQS = implementationDepth + architecture + featureComplexity + completeness + engPractices + docScore + testingScore + deployCi;
 
-        // If implementation depth is minimal (< 14), RQS is strictly capped at 44 (below Verified threshold 50)
         if (implementationDepth < 14) {
           rawRQS = Math.min(44, rawRQS);
         }
 
-        // Capping for non-substantial / noise categories:
         if (isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
           rawRQS = Math.min(34, rawRQS);
         } else if (isProfileRepo || sizeKB < 10) {
@@ -543,7 +610,6 @@ export async function GET(req: NextRequest) {
         let isMeaningful = false; // Verified Project requiring RQS >= 50
         const evidenceList: string[] = [];
 
-        // Quality Gate Signals for RQS 65+ (Substantial Project):
         const strongSignalsCount = (hasBE ? 1 : 0) + (hasDB ? 1 : 0) + (hasFE ? 1 : 0) + (testsDetected ? 1 : 0) + (ciDetected || dockerDetected ? 1 : 0);
 
         if (isFork) {
@@ -576,7 +642,6 @@ export async function GET(req: NextRequest) {
             evidenceList.push("Basic academic submission without substantial application implementation");
           }
         } else {
-          // Substantial Project requires RQS >= 65 AND implementationDepth >= 22 AND at least TWO strong engineering signals
           if (rqs >= 65 && implementationDepth >= 22 && strongSignalsCount >= 2) {
             repoCategory = "SUBSTANTIAL_PROJECT";
             isSubstantial = true;
@@ -624,7 +689,7 @@ export async function GET(req: NextRequest) {
           qualityTier,
         };
 
-        const filesInspected = treeFetched ? fileList.slice(0, 12) : [];
+        const filesInspected = treeFetched ? filteredFileList.slice(0, 12) : [];
         const evidenceMissing: string[] = [];
         if (!treeFetched) evidenceMissing.push("Source evidence unavailable (File tree endpoint not inspected)");
         if (!hasTest) evidenceMissing.push("No automated test files detected");
@@ -638,35 +703,59 @@ export async function GET(req: NextRequest) {
               score: implementationDepth,
               max: 30,
               evidence: treeFetched
-                ? [`✓ Verified ${sourceFileCount} source files in codebase (+${implementationDepth}/30 pts)`, `✓ Codebase footprint ${sizeKB} KB`]
+                ? [
+                    `✓ ${meaningfulSourceFileCount} meaningful source files (+${fileCountPoints}/8 pts)`,
+                    `✓ Filtered codebase footprint ${Math.round(sizeKB)} KB (+${footprintPoints}/8 pts)`,
+                    `✓ ${businessLogicPoints > 0 ? (controllerModules + serviceModules + modelModules + uiModules) : 0} business logic modules verified (+${businessLogicPoints}/8 pts)`,
+                    `✓ Module diversity depth (+${diversityPoints}/6 pts)`
+                  ]
                 : ["Source evidence unavailable — 0 pts awarded"],
             },
             architecture: {
               score: architecture,
               max: 15,
               evidence: [
-                hasFE && hasBE ? "✓ Full-Stack domain separation (+15 pts)" : hasFE ? "✓ Frontend UI framework (+10 pts)" : hasBE ? "✓ Backend service (+10 pts)" : "✗ Single-layer structure (+0 pts)",
+                hasOrgStructure ? "✓ Basic organized directory structure (+3 pts)" : "✗ No organized structure (+0 pts)",
+                hasModuleSep ? "✓ Component/module separation (+3 pts)" : "✗ No module separation (+0 pts)",
+                hasFEBESep ? "✓ Frontend/backend separation (+3 pts)" : "✗ No FE/BE separation (+0 pts)",
+                hasServiceDataLayer ? "✓ Service/data layer separation (+2 pts)" : "✗ No service/data layer (+0 pts)",
+                hasReusableArch ? "✓ Reusable architecture modules (+2 pts)" : "✗ No reusable modules (+0 pts)",
+                hasClearDomainBoundaries ? "✓ Clear domain boundaries (+2 pts)" : "✗ No clear domain boundaries (+0 pts)",
               ],
             },
             featureComplexity: {
               score: featureComplexity,
               max: 15,
               evidence: [
-                hasDB && (hasFE || hasBE) ? "✓ Database persistence & application logic (+15 pts)" : hasDB ? "✓ Database persistence layer (+10 pts)" : hasFE || hasBE ? "✓ Application logic (+5 pts)" : "✗ No complexity evidence (+0 pts)",
+                hasBE ? "✓ Verified API/backend logic (+3 pts)" : "✗ No backend logic (+0 pts)",
+                hasDB ? "✓ Verified database persistence (+3 pts)" : "✗ No database persistence (+0 pts)",
+                hasAuth ? "✓ Authentication/authorization (+2 pts)" : "✗ No authentication (+0 pts)",
+                hasStateDataFlow ? "✓ Complex state/data flow (+2 pts)" : "✗ Simple data flow (+0 pts)",
+                hasExternalApi ? "✓ External API integration (+1 pt)" : "✗ No external API integration (+0 pts)",
+                hasValidation ? "✓ Validation/error handling (+1 pt)" : "✗ No validation logic (+0 pts)",
+                hasAdvancedFramework ? "✓ Advanced framework capability (+1 pt)" : "✗ Basic framework (+0 pts)",
+                hasAsyncRealtime ? "✓ Async/realtime functionality (+1 pt)" : "✗ Synchronous logic (+0 pts)",
+                hasNonTrivialEng ? "✓ Non-trivial engineering (+1 pt)" : "✗ Standard setup (+0 pts)",
               ],
             },
             completeness: {
               score: completeness,
               max: 15,
               evidence: [
-                hasReadme && hasDescription && sizeKB > 50 ? "✓ Complete project footprint (+15 pts)" : hasReadme || hasDescription ? "✓ Basic project structure (+8 pts)" : "• Small footprint (+4 pts)",
+                srcDetected || meaningfulSourceFileCount >= 3 ? "✓ Working application structure (+3 pts)" : "✗ Minimal structure (+0 pts)",
+                manifestDetected ? "✓ Configuration completeness (+3 pts)" : "✗ Missing manifest (+0 pts)",
+                hasReadme ? "✓ README setup instructions (+3 pts)" : "✗ Missing README (+0 pts)",
+                hasDescription ? "✓ Repository overview description (+2 pts)" : "✗ Short description (+0 pts)",
+                treeFetched && fileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings")) ? "✓ Environment config (+2 pts)" : "✗ No env config (+0 pts)",
+                hasPages || ciDetected ? "✓ Usable entry point/deployment (+2 pts)" : "✗ No deployment entry (+0 pts)",
               ],
             },
             engineeringPractices: {
               score: engPractices,
               max: 10,
               evidence: [
-                ciDetected && dockerDetected ? "✓ CI/CD workflow & Docker container (+10 pts)" : ciDetected ? "✓ GitHub Actions CI workflow (+6 pts)" : dockerDetected ? "✓ Docker container (+4 pts)" : "✗ No engineering practices (+0 pts)",
+                ciDetected ? "✓ GitHub Actions CI workflow (+6 pts)" : "✗ No CI workflow (+0 pts)",
+                dockerDetected ? "✓ Docker container config (+4 pts)" : "✗ No Docker config (+0 pts)",
               ],
             },
             documentation: {
@@ -687,7 +776,8 @@ export async function GET(req: NextRequest) {
               score: deployCi,
               max: 5,
               evidence: [
-                hasPages && ciDetected ? "✓ Live URL & CI deployment (+5 pts)" : hasPages ? "✓ GitHub Pages live URL (+3 pts)" : ciDetected ? "✓ CI deployment workflow (+2 pts)" : "✗ No deployment evidence (+0 pts)",
+                hasPages ? "✓ GitHub Pages live URL (+3 pts)" : "✗ No live URL (+0 pts)",
+                ciDetected ? "✓ CI deployment pipeline (+2 pts)" : "✗ No CI deployment (+0 pts)",
               ],
             },
           },
