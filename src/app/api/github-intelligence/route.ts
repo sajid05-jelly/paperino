@@ -3,10 +3,26 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 // ─────────────────────────────────────────────────────────────
-// DATA TYPES & INTERFACES (Evidence-Based Engine V4)
+// DATA TYPES & INTERFACES (Evidence Engine V5 - Project First)
 // ─────────────────────────────────────────────────────────────
 
-export interface GitHubRepoInfo {
+export interface ProjectQualityBreakdown {
+  completeness: number; // /15
+  technicalDepth: number; // /15
+  architectureStructure: number; // /15
+  originalityEvidence: number; // /10
+  documentation: number; // /10
+  engineeringPractices: number; // /10
+  testing: number; // /5
+  deployment: number; // /5
+  maintainability: number; // /5
+  usefulness: number; // /5
+  activityHistory: number; // /5
+  totalScore: number; // /100
+  qualityTier: "Minimal" | "Basic" | "Developing" | "Good" | "Strong" | "Excellent" | "Exceptional";
+}
+
+export interface ClassifiedRepoInfo {
   name: string;
   description: string | null;
   language: string | null;
@@ -14,68 +30,85 @@ export interface GitHubRepoInfo {
   forks: number;
   updatedAt: string;
   url: string;
-  hasReadme?: boolean;
-  topics?: string[];
-  selectionReason?: string;
-  repoCategory?: string;
-}
-
-export interface DeveloperBadge {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-  unlockedAt?: string;
-  glowColor: string;
+  topics: string[];
+  repoCategory:
+    | "FLAGSHIP PROJECT"
+    | "SUBSTANTIAL PROJECT"
+    | "STANDARD PROJECT"
+    | "LEARNING PROJECT"
+    | "ASSIGNMENT"
+    | "EXPERIMENT"
+    | "TUTORIAL"
+    | "FORK"
+    | "TEMPLATE"
+    | "PROFILE REPOSITORY"
+    | "ARCHIVED PROJECT"
+    | "MINIMAL PROJECT"
+    | "EMPTY REPOSITORY";
+  projectQualityScore: number; // 0-100
+  projectQualityBreakdown: ProjectQualityBreakdown;
+  selectionReason: string;
+  hasFE: boolean;
+  hasBE: boolean;
+  hasDB: boolean;
+  hasTest: boolean;
+  hasCiCd: boolean;
+  hasPages: boolean;
+  hasReadme: boolean;
 }
 
 export interface SkillConfidenceItem {
-  score: number; // 0-100 or 0 if insufficient
+  score: number; // 0-100
   confidence: "HIGH CONFIDENCE" | "MEDIUM CONFIDENCE" | "LOW CONFIDENCE" | "INSUFFICIENT EVIDENCE";
   evidence: string[];
   reason: string;
+  supportingRepos: string[];
 }
 
 export interface CategoryScoreItem {
-  score: number; // Awarded score
-  max: number; // Category max
-  evidence: string[]; // Exact evidence list responsible for points
+  score: number;
+  max: number;
+  evidence: string[];
 }
 
 export interface CategoryScoreBreakdown {
-  projectQuality: CategoryScoreItem; // /25
-  documentation: CategoryScoreItem; // /15
-  developmentActivity: CategoryScoreItem; // /15
+  projectQuality: CategoryScoreItem; // /35
   technicalDepth: CategoryScoreItem; // /15
-  portfolioQuality: CategoryScoreItem; // /10
-  engineeringPractices: CategoryScoreItem; // /10
+  engineeringPractices: CategoryScoreItem; // /15
+  documentation: CategoryScoreItem; // /10
+  developmentConsistency: CategoryScoreItem; // /10
+  portfolioCompleteness: CategoryScoreItem; // /5
   communityImpact: CategoryScoreItem; // /5
-  technologyBreadth: CategoryScoreItem; // /5
+  technicalBreadth: CategoryScoreItem; // /5
 }
 
-export interface RepoAnalysisAudit {
-  totalPublicRepos: number;
-  reposActuallyInspected: number;
-  originalRepos: number;
+export interface TransparencyAudit {
+  repositoriesDiscovered: number;
+  repositoriesInspected: number;
+  repositoriesDeeplyAnalyzed: number;
+  flagshipProjects: number;
+  substantialProjects: number;
+  standardProjects: number;
+  learningAssignmentRepos: number;
   forks: number;
   archivedRepos: number;
-  profileConfigRepos: number;
-  minimalRepos: number;
-  learningTutorialRepos: number;
-  assignments: number;
-  substantialProjects: number;
-  reposWithMeaningfulReadme: number;
-  reposWithTests: number;
-  reposWithCiCd: number;
-  reposWithDeploymentEvidence: number;
-  reposWithBackendEvidence: number;
-  reposWithDatabaseEvidence: number;
-  reposWithFrontendEvidence: number;
+  minimalEmptyRepos: number;
+  disclaimer: string;
+}
+
+export interface SeparateQualityMetrics {
+  bestProjectQuality: number; // 0 - 100
+  portfolioDepth: number; // 0 - 100
+  engineeringQuality: number; // 0 - 100
+  technicalBreadth: number; // 0 - 100
+  consistency: number; // 0 - 100
 }
 
 export interface DeveloperMetrics {
   score: number; // 0 - 100
+  evidenceConfidence: "LOW" | "MEDIUM" | "HIGH";
+  confidenceReason: string;
+  separateMetrics: SeparateQualityMetrics;
   level: string;
   levelNum: number;
   xpCurrent: number;
@@ -84,10 +117,10 @@ export interface DeveloperMetrics {
   nextLevelRequirements: string[];
   nextRewardBadge: string;
   stars: string;
-  rankPercentile: number | null; // null if no real dataset comparison available
+  rankPercentile: number | null;
   category: string;
   scoreBreakdown: CategoryScoreBreakdown;
-  repoAudit: RepoAnalysisAudit;
+  transparencyAudit: TransparencyAudit;
   scoreExplanation: {
     strengths: string[];
     needsImprovement: string[];
@@ -117,6 +150,16 @@ export interface DeveloperMetrics {
     testing: SkillConfidenceItem;
   };
   badges: DeveloperBadge[];
+}
+
+export interface DeveloperBadge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt?: string;
+  glowColor: string;
 }
 
 export interface DeveloperPersonality {
@@ -187,7 +230,7 @@ export interface GitHubAnalysisResult {
   detectedSkills: string[];
   mostUsedLanguages: { language: string; percentage: number; count: number }[];
   technologyBreakdown: Record<string, number>;
-  bestProjects: GitHubRepoInfo[];
+  bestProjects: ClassifiedRepoInfo[];
   developerMetrics: DeveloperMetrics;
   developerPersonality: DeveloperPersonality;
   developerJourney: DeveloperJourney;
@@ -213,7 +256,7 @@ export interface GitHubAnalysisResult {
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
-// Technology rules for detecting from file names, descriptions, topics, language
+// Technology rules
 const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" | "aiMl" | "devOps" | "cloud" | "testing" | "uiUx"; matchers: (string | RegExp)[] }[] = [
   { name: "TypeScript", category: "frontend", matchers: ["typescript", "ts"] },
   { name: "JavaScript", category: "frontend", matchers: ["javascript", "js"] },
@@ -223,7 +266,6 @@ const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" 
   { name: "CSS", category: "frontend", matchers: ["css", "css3"] },
   { name: "Tailwind CSS", category: "uiUx", matchers: ["tailwind", "tailwindcss"] },
   { name: "Bootstrap", category: "uiUx", matchers: ["bootstrap"] },
-  { name: "Figma", category: "uiUx", matchers: ["figma"] },
   { name: "Node.js", category: "backend", matchers: ["nodejs", "node"] },
   { name: "Express", category: "backend", matchers: ["express", "expressjs"] },
   { name: "Python", category: "backend", matchers: ["python", "py", "django", "flask", "fastapi"] },
@@ -270,7 +312,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ── 1. Fetch User Data ──
+    // ── 1. FETCH REPOSITORIES FIRST ──
     const userRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
       headers: {
         "User-Agent": "Paperino-CareerDNA-App",
@@ -288,7 +330,6 @@ export async function GET(req: NextRequest) {
 
     const userData = await userRes.json();
 
-    // ── 2. Fetch Public Repositories (Up to 100) ──
     const reposRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`, {
       headers: {
         "User-Agent": "Paperino-CareerDNA-App",
@@ -300,25 +341,16 @@ export async function GET(req: NextRequest) {
     const reposData = reposRes.ok ? await reposRes.json() : [];
     const allRepos: any[] = Array.isArray(reposData) ? reposData : [];
 
-    // ── 3. STRICT REPOSITORY DEEP EVIDENCE CLASSIFICATION ──
-    let originalRepos = 0;
+    // ── 2. CLASSIFY EVERY REPOSITORY & COMPUTE INDIVIDUAL PROJECT QUALITY SCORE /100 ──
+    let flagshipProjects = 0;
+    let substantialProjects = 0;
+    let standardProjects = 0;
+    let learningAssignmentRepos = 0;
     let forks = 0;
     let archivedRepos = 0;
-    let profileConfigRepos = 0;
-    let minimalRepos = 0;
-    let learningTutorialRepos = 0;
-    let assignments = 0;
-    let substantialProjects = 0;
+    let minimalEmptyRepos = 0;
 
-    let reposWithMeaningfulReadme = 0;
-    let reposWithTests = 0;
-    let reposWithCiCd = 0;
-    let reposWithDeploymentEvidence = 0;
-    let reposWithBackendEvidence = 0;
-    let reposWithDatabaseEvidence = 0;
-    let reposWithFrontendEvidence = 0;
-
-    const analyzedRepos = allRepos.map(repo => {
+    const classifiedRepos: ClassifiedRepoInfo[] = allRepos.map(repo => {
       const isFork = Boolean(repo.fork);
       const isArchived = Boolean(repo.archived);
       const isProfileRepo = repo.name.toLowerCase() === username.toLowerCase();
@@ -340,371 +372,315 @@ export async function GET(req: NextRequest) {
       const hasBE = Boolean(language === "Python" || language === "Go" || language === "Java" || language === "C++" || language === "C" || language === "Rust" || corpus.includes("node") || corpus.includes("express") || corpus.includes("api") || corpus.includes("backend") || corpus.includes("server"));
       const hasDB = Boolean(corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db") || corpus.includes("database"));
 
-      if (isFork) {
-        forks++;
-      } else {
-        originalRepos++;
-        if (hasReadme) reposWithMeaningfulReadme++;
-        if (hasTest) reposWithTests++;
-        if (hasCiCd) reposWithCiCd++;
-        if (hasPages) reposWithDeploymentEvidence++;
-        if (hasFE) reposWithFrontendEvidence++;
-        if (hasBE) reposWithBackendEvidence++;
-        if (hasDB) reposWithDatabaseEvidence++;
-      }
-
-      let repoCategory = "NORMAL PROJECT";
+      // Categorization
+      let repoCategory: ClassifiedRepoInfo["repoCategory"] = "STANDARD PROJECT";
       if (isFork) {
         repoCategory = "FORK";
+        forks++;
       } else if (isProfileRepo) {
         repoCategory = "PROFILE REPOSITORY";
-        profileConfigRepos++;
+        minimalEmptyRepos++;
       } else if (isArchived) {
-        repoCategory = "ARCHIVED REPOSITORY";
+        repoCategory = "ARCHIVED PROJECT";
         archivedRepos++;
       } else if (sizeKB < 15 && !hasDescription && stars < 5) {
-        repoCategory = "MINIMAL/EMPTY REPOSITORY";
-        minimalRepos++;
+        repoCategory = "MINIMAL PROJECT";
+        minimalEmptyRepos++;
       } else if (corpus.includes("assignment") || corpus.includes("homework") || corpus.includes("lab")) {
         repoCategory = "ASSIGNMENT";
-        assignments++;
+        learningAssignmentRepos++;
       } else if (corpus.includes("awesome") || corpus.includes("tutorial") || corpus.includes("course") || corpus.includes("sample") || corpus.includes("example") || corpus.includes("practice")) {
-        repoCategory = "LEARNING PROJECT";
-        learningTutorialRepos++;
-      } else if ((stars >= 10 || forksCount >= 5 || hasPages || (sizeKB > 500 && (hasBE || hasFE))) && hasDescription) {
+        repoCategory = "TUTORIAL";
+        learningAssignmentRepos++;
+      } else if ((stars >= 100 || forksCount >= 20 || (sizeKB > 1000 && hasBE && hasFE)) && hasDescription) {
+        repoCategory = "FLAGSHIP PROJECT";
+        flagshipProjects++;
+      } else if ((stars >= 5 || forksCount >= 2 || hasPages || (sizeKB > 300 && (hasBE || hasFE))) && hasDescription) {
         repoCategory = "SUBSTANTIAL PROJECT";
         substantialProjects++;
       } else {
-        repoCategory = "NORMAL PROJECT";
+        repoCategory = "STANDARD PROJECT";
+        standardProjects++;
       }
 
-      // Individual Repo Evidence Weight (0 - 100)
-      let repoScore = 0;
-      if (repoCategory === "SUBSTANTIAL PROJECT") repoScore += 45;
-      else if (repoCategory === "NORMAL PROJECT") repoScore += 25;
-      else if (repoCategory === "LEARNING PROJECT") repoScore += 10;
-      else if (repoCategory === "ASSIGNMENT") repoScore += 5;
+      // ── INDIVIDUAL PROJECT QUALITY SCORE /100 ──
+      const completeness = Math.min(15, (hasFE && hasBE ? 15 : hasFE || hasBE ? 10 : 5));
+      const technicalDepth = Math.min(15, (hasFE ? 4 : 0) + (hasBE ? 4 : 0) + (hasDB ? 4 : 0) + (hasCiCd ? 3 : 0));
+      const architectureStructure = Math.min(15, (sizeKB > 500 ? 15 : sizeKB > 100 ? 10 : 5));
+      const originalityEvidence = isFork ? 0 : isProfileRepo ? 2 : 10;
+      const docScore = hasDescription ? 10 : 3;
+      const engPractices = (hasCiCd ? 5 : 0) + (hasTest ? 5 : 0);
+      const testScore = hasTest ? 5 : 0;
+      const deployScore = hasPages ? 5 : 0;
+      const maintainability = Math.min(5, (topics.length >= 2 ? 5 : 2));
+      const usefulness = Math.min(5, Math.round(Math.log10(stars + 1) * 3));
+      const activityHist = Math.min(5, (sizeKB > 50 ? 5 : 2));
 
-      if (hasDescription) repoScore += 15;
-      if (hasPages) repoScore += 20;
-      if (stars > 0) repoScore += Math.min(15, Math.log10(stars + 1) * 10);
-      if (forksCount > 0) repoScore += Math.min(10, Math.log10(forksCount + 1) * 8);
+      const totalScore = Math.min(100, completeness + technicalDepth + architectureStructure + originalityEvidence + docScore + engPractices + testScore + deployScore + maintainability + usefulness + activityHist);
+
+      let qualityTier: ProjectQualityBreakdown["qualityTier"] = "Basic";
+      if (totalScore >= 95) qualityTier = "Exceptional";
+      else if (totalScore >= 85) qualityTier = "Excellent";
+      else if (totalScore >= 70) qualityTier = "Strong";
+      else if (totalScore >= 55) qualityTier = "Good";
+      else if (totalScore >= 40) qualityTier = "Developing";
+      else if (totalScore >= 20) qualityTier = "Basic";
+      else qualityTier = "Minimal";
+
+      const projectQualityBreakdown: ProjectQualityBreakdown = {
+        completeness,
+        technicalDepth,
+        architectureStructure,
+        originalityEvidence,
+        documentation: docScore,
+        engineeringPractices: engPractices,
+        testing: testScore,
+        deployment: deployScore,
+        maintainability,
+        usefulness,
+        activityHistory: activityHist,
+        totalScore,
+        qualityTier,
+      };
+
+      let selectionReason = `Analyzed as a ${repoCategory.toLowerCase()} with quality rating ${totalScore}/100.`;
+      if (hasPages) selectionReason = `Verified project with live web deployment (${totalScore}/100 quality).`;
+      else if (stars >= 5) selectionReason = `Community recognized project with ${stars} star(s) (${totalScore}/100 quality).`;
 
       return {
-        ...repo,
+        name: repo.name,
+        description: repo.description || null,
+        language,
+        stars,
+        forks: forksCount,
+        updatedAt: repo.updated_at ? new Date(repo.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "Recently",
+        url: repo.html_url,
+        topics,
         repoCategory,
-        repoScore: Math.min(100, Math.round(repoScore)),
-        hasDescription,
-        hasPages,
-        isFork,
-        isArchived,
-        isProfileRepo,
+        projectQualityScore: totalScore,
+        projectQualityBreakdown,
+        selectionReason,
         hasFE,
         hasBE,
         hasDB,
         hasTest,
         hasCiCd,
-        corpus,
+        hasPages,
+        hasReadme,
       };
     });
 
-    const repoAudit: RepoAnalysisAudit = {
-      totalPublicRepos: userData.public_repos || allRepos.length,
-      reposActuallyInspected: allRepos.length,
-      originalRepos,
-      forks,
-      archivedRepos,
-      profileConfigRepos,
-      minimalRepos,
-      learningTutorialRepos,
-      assignments,
-      substantialProjects,
-      reposWithMeaningfulReadme,
-      reposWithTests,
-      reposWithCiCd,
-      reposWithDeploymentEvidence,
-      reposWithBackendEvidence,
-      reposWithDatabaseEvidence,
-      reposWithFrontendEvidence,
-    };
+    // ── 3. WEIGHTED PORTFOLIO CALCULATION (QUALITY > QUANTITY) ──
+    const validOriginalProjects = classifiedRepos.filter(
+      r => !r.name.toLowerCase().endsWith(username.toLowerCase()) && r.repoCategory !== "FORK" && r.repoCategory !== "MINIMAL PROJECT" && r.repoCategory !== "PROFILE REPOSITORY"
+    ).sort((a, b) => b.projectQualityScore - a.projectQualityScore);
 
-    // Valid non-fork original projects
-    const validProjects = analyzedRepos.filter(
-      r => !r.isFork && r.repoCategory !== "PROFILE REPOSITORY" && r.repoCategory !== "MINIMAL/EMPTY REPOSITORY"
-    );
+    const bestProj = validOriginalProjects[0];
+    const secondBestProj = validOriginalProjects[1];
+    const thirdBestProj = validOriginalProjects[2];
+    const remainingProjs = validOriginalProjects.slice(3);
 
-    // ── 4. Language & Technology Detection ──
-    const languageCounts: Record<string, number> = {};
+    const bestScore = bestProj ? bestProj.projectQualityScore : 0;
+    const secondBestScore = secondBestProj ? secondBestProj.projectQualityScore : 0;
+    const thirdBestScore = thirdBestProj ? thirdBestProj.projectQualityScore : 0;
+
+    const remainingAvg = remainingProjs.length > 0
+      ? remainingProjs.reduce((acc, r) => acc + r.projectQualityScore, 0) / remainingProjs.length
+      : 0;
+
+    // Engineering consistency check
+    const reposWithTests = validOriginalProjects.filter(r => r.hasTest).length;
+    const reposWithCiCd = validOriginalProjects.filter(r => r.hasCiCd).length;
+    const reposWithDeploy = validOriginalProjects.filter(r => r.hasPages).length;
+    const engConsistencyScore = Math.min(100, (reposWithCiCd > 0 ? 35 : 0) + (reposWithTests > 0 ? 35 : 0) + (reposWithDeploy > 0 ? 30 : 0));
+
+    // WEIGHTED PORTFOLIO FORMULA:
+    // Best Project = 35%, Second Best = 20%, Third Best = 15%, Remaining = 15%, Engineering Consistency = 15%
+    let weightedPortfolioScore = 0;
+    if (validOriginalProjects.length === 1) {
+      // Single project developer formula: Best project carries 70%, consistency carries 30%
+      weightedPortfolioScore = bestScore * 0.75 + engConsistencyScore * 0.25;
+    } else if (validOriginalProjects.length === 2) {
+      weightedPortfolioScore = bestScore * 0.50 + secondBestScore * 0.30 + engConsistencyScore * 0.20;
+    } else {
+      weightedPortfolioScore = (bestScore * 0.35) + (secondBestScore * 0.20) + (thirdBestScore * 0.15) + (remainingAvg * 0.15) + (engConsistencyScore * 0.15);
+    }
+
+    weightedPortfolioScore = Math.min(100, Math.round(weightedPortfolioScore));
+
+    // ── 4. CATEGORY BREAKDOWN WITH DEEP EVIDENCE ──
+    const catAEvid: string[] = [];
+    if (bestProj) catAEvid.push(`Flagship project "${bestProj.name}" quality: ${bestProj.projectQualityScore}/100 (+${Math.round((bestProj.projectQualityScore * 35) / 100)} pts)`);
+    if (secondBestProj) catAEvid.push(`Secondary project "${secondBestProj.name}" quality: ${secondBestProj.projectQualityScore}/100`);
+    if (validOriginalProjects.length === 0) catAEvid.push("No substantial original projects found (0 pts)");
+
+    const catBEvid: string[] = [];
+    const reposWithBE = validOriginalProjects.filter(r => r.hasBE);
+    const reposWithFE = validOriginalProjects.filter(r => r.hasFE);
+    const reposWithDB = validOriginalProjects.filter(r => r.hasDB);
+
+    if (reposWithFE.length > 0) catBEvid.push(`Frontend evidence in ${reposWithFE.length} project(s)`);
+    if (reposWithBE.length > 0) catBEvid.push(`Backend server logic in ${reposWithBE.length} project(s)`);
+    if (reposWithDB.length > 0) catBEvid.push(`Database schemas/queries in ${reposWithDB.length} project(s)`);
+    if (catBEvid.length === 0) catBEvid.push("No verified technical depth evidence in codebase (0 pts)");
+
+    const catCEvid: string[] = [];
+    if (reposWithCiCd > 0) catCEvid.push(`CI/CD or Docker in ${reposWithCiCd} project(s) (+7 pts)`);
+    if (reposWithTests > 0) catCEvid.push(`Automated unit tests in ${reposWithTests} project(s) (+5 pts)`);
+    if (catCEvid.length === 0) catCEvid.push("No automated testing, CI/CD, or container configuration (0 pts)");
+
+    const catDEvid: string[] = [];
+    const reposWithReadme = validOriginalProjects.filter(r => r.hasReadme).length;
+    if (reposWithReadme > 0) catDEvid.push(`${reposWithReadme}/${validOriginalProjects.length} projects have documentation (+7 pts)`);
+    if (userData.bio) catDEvid.push("Profile bio present (+3 pts)");
+    if (catDEvid.length === 0) catDEvid.push("No README documentation found (0 pts)");
+
+    const catEEvid: string[] = [];
+    const daysSinceUpdate = validOriginalProjects[0]?.updatedAt
+      ? Math.floor((now - new Date(allRepos[0]?.updated_at || now).getTime()) / (1000 * 60 * 60 * 24))
+      : 999;
+    if (daysSinceUpdate <= 30) catEEvid.push("Recent development commits within last 30 days (+10 pts)");
+    else if (daysSinceUpdate <= 90) catEEvid.push("Commits within last 90 days (+6 pts)");
+    else catEEvid.push("No recent development activity (0 pts)");
+
+    const catFEvid: string[] = [];
+    if (userData.blog) catFEvid.push(`Linked portfolio site: ${userData.blog} (+3 pts)`);
+    if (reposWithDeploy > 0) catFEvid.push(`${reposWithDeploy} project(s) deployed live (+2 pts)`);
+    if (catFEvid.length === 0) catFEvid.push("No portfolio site or live links (0 pts)");
+
+    const catGEvid: string[] = [];
+    const totalStars = validOriginalProjects.reduce((acc, r) => acc + r.stars, 0);
+    if (totalStars > 100) catGEvid.push(`Community stars: ${totalStars} total (+5 pts)`);
+    else if (totalStars > 0) catGEvid.push(`Community stars: ${totalStars} total (+2 pts)`);
+    else catGEvid.push("No community stars on original repos (0 pts)");
+
+    const catHEvid: string[] = [];
     const detectedSkillsSet = new Set<string>();
-    const techBreakdown: Record<string, number> = {};
-
-    validProjects.forEach(repo => {
-      if (repo.language) {
-        languageCounts[repo.language] = (languageCounts[repo.language] || 0) + 1;
-        techBreakdown[repo.language] = (techBreakdown[repo.language] || 0) + 1;
-        detectedSkillsSet.add(repo.language);
-      }
-
+    validOriginalProjects.forEach(r => {
+      if (r.language) detectedSkillsSet.add(r.language);
       TECH_RULES.forEach(rule => {
         const isMatched = rule.matchers.some(m => {
-          if (m instanceof RegExp) return m.test(repo.corpus);
-          return repo.corpus.includes(m.toLowerCase());
+          if (m instanceof RegExp) return m.test(`${r.name} ${r.description || ""}`.toLowerCase());
+          return `${r.name} ${r.description || ""}`.toLowerCase().includes(m.toLowerCase());
         });
-        if (isMatched) {
-          detectedSkillsSet.add(rule.name);
-          techBreakdown[rule.name] = (techBreakdown[rule.name] || 0) + 1;
-        }
+        if (isMatched) detectedSkillsSet.add(rule.name);
       });
     });
-
-    if (validProjects.length > 0) {
-      detectedSkillsSet.add("Git");
-      detectedSkillsSet.add("GitHub");
-    }
-
-    const totalLangRepos = Object.values(languageCounts).reduce((a, b) => a + b, 0) || 1;
-    const mostUsedLanguages = Object.entries(languageCounts)
-      .map(([language, count]) => ({
-        language,
-        count,
-        percentage: Math.round((count / totalLangRepos) * 100),
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    // ── 5. Select Best Top Projects ──
-    const sortedBestRepos = [...validProjects].sort((a, b) => b.repoScore - a.repoScore);
-
-    const bestProjects: GitHubRepoInfo[] = sortedBestRepos.slice(0, 3).map(r => {
-      let selectionReason = `Selected as a ${r.repoCategory.toLowerCase()} with verified source code.`;
-      if (r.hasPages) {
-        selectionReason = "Selected because this repository contains active web implementation with live deployment.";
-      } else if (r.stargazers_count > 10) {
-        selectionReason = `Selected due to significant community recognition with ${r.stargazers_count} star(s).`;
-      } else if (r.hasDescription) {
-        selectionReason = "Selected because it provides clear project descriptions and source code setup.";
-      }
-
-      return {
-        name: r.name,
-        description: r.description || null,
-        language: r.language || null,
-        stars: r.stargazers_count || 0,
-        forks: r.forks_count || 0,
-        updatedAt: r.updated_at ? new Date(r.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "Recently",
-        url: r.html_url,
-        hasReadme: true,
-        topics: r.topics || [],
-        selectionReason,
-        repoCategory: r.repoCategory,
-      };
-    });
-
-    // ── 6. EIGHT WEIGHTED CATEGORIES DEEP EVIDENCE ENGINE (MAX 100 PTS) ──
-
-    // Category A: Project Quality (Max 25 pts)
-    const catAEvid: string[] = [];
-    let scoreA = 0;
-    if (substantialProjects > 0) {
-      const pts = Math.min(18, substantialProjects * 6);
-      scoreA += pts;
-      catAEvid.push(`${substantialProjects} substantial project(s) detected (+${pts} pts)`);
-    }
-    const normalCount = validProjects.filter(r => r.repoCategory === "NORMAL PROJECT").length;
-    if (normalCount > 0) {
-      const pts = Math.min(7, normalCount * 2.5);
-      scoreA += pts;
-      catAEvid.push(`${normalCount} standard original project(s) (+${Math.round(pts)} pts)`);
-    }
-    if (validProjects.length === 0) {
-      catAEvid.push("No substantial or original project repositories found (0 pts)");
-    }
-    scoreA = Math.min(25, Math.round(scoreA));
-
-    // Category B: Documentation Quality (Max 15 pts)
-    const catBEvid: string[] = [];
-    let scoreB = 0;
-    if (reposWithMeaningfulReadme > 0) {
-      const pts = Math.min(10, Math.round((reposWithMeaningfulReadme / (validProjects.length || 1)) * 10));
-      scoreB += pts;
-      catBEvid.push(`${reposWithMeaningfulReadme}/${validProjects.length} repos have project descriptions (+${pts} pts)`);
-    }
-    if (userData.bio) {
-      scoreB += 3;
-      catBEvid.push("Profile bio configured (+3 pts)");
-    }
-    if (bestProjects.some(p => p.description)) {
-      scoreB += 2;
-      catBEvid.push("Featured showcase projects documented (+2 pts)");
-    }
-    if (scoreB === 0) catBEvid.push("No project documentation or bio provided (0 pts)");
-    scoreB = Math.min(15, Math.round(scoreB));
-
-    // Category C: Development Activity (Max 15 pts)
-    const catCEvid: string[] = [];
-    let scoreC = 0;
-    const daysSinceUpdate = validProjects[0]?.updated_at
-      ? Math.floor((now - new Date(validProjects[0].updated_at).getTime()) / (1000 * 60 * 60 * 24))
-      : 999;
-
-    if (daysSinceUpdate <= 7) {
-      scoreC = 15;
-      catCEvid.push("Code updated within last 7 days (+15 pts)");
-    } else if (daysSinceUpdate <= 30) {
-      scoreC = 11;
-      catCEvid.push("Code updated within last 30 days (+11 pts)");
-    } else if (daysSinceUpdate <= 90) {
-      scoreC = 6;
-      catCEvid.push("Code updated within last 90 days (+6 pts)");
-    } else if (daysSinceUpdate <= 180) {
-      scoreC = 3;
-      catCEvid.push("Code updated within last 180 days (+3 pts)");
-    } else {
-      catCEvid.push("No recent development activity detected (0 pts)");
-    }
-
-    // Category D: Technical Depth (Max 15 pts)
-    const catDEvid: string[] = [];
-    let scoreD = 0;
-    const verifiedFE = reposWithFrontendEvidence > 0;
-    const verifiedBE = reposWithBackendEvidence > 0;
-    const verifiedDB = reposWithDatabaseEvidence > 0;
-    const verifiedDevOps = reposWithCiCd > 0;
-    const verifiedTesting = reposWithTests > 0;
-
-    if (verifiedFE) { scoreD += 4; catDEvid.push(`Frontend code detected in ${reposWithFrontendEvidence} repo(s) (+4 pts)`); }
-    if (verifiedBE) { scoreD += 4; catDEvid.push(`Backend server logic detected in ${reposWithBackendEvidence} repo(s) (+4 pts)`); }
-    if (verifiedDB) { scoreD += 3; catDEvid.push(`Database integration detected in ${reposWithDatabaseEvidence} repo(s) (+3 pts)`); }
-    if (verifiedDevOps) { scoreD += 3; catDEvid.push(`CI/CD or Docker configuration detected (+3 pts)`); }
-    if (verifiedTesting) { scoreD += 1; catDEvid.push(`Automated software test files detected (+1 pt)`); }
-    if (scoreD === 0) catDEvid.push("No verified technical depth evidence found (0 pts)");
-    scoreD = Math.min(15, Math.round(scoreD));
-
-    // Category E: Portfolio Quality (Max 10 pts)
-    const catEEvid: string[] = [];
-    let scoreE = 0;
-    if (userData.blog) { scoreE += 4; catEEvid.push(`Linked portfolio website: ${userData.blog} (+4 pts)`); }
-    if (userData.bio) { scoreE += 3; catEEvid.push("Professional GitHub bio present (+3 pts)"); }
-    if (reposWithDeploymentEvidence > 0) { scoreE += 3; catEEvid.push(`${reposWithDeploymentEvidence} live web deployment(s) verified (+3 pts)`); }
-    if (scoreE === 0) catEEvid.push("No portfolio website or live deployment links (0 pts)");
-    scoreE = Math.min(10, Math.round(scoreE));
-
-    // Category F: Engineering Practices (Max 10 pts)
-    const catFEvid: string[] = [];
-    let scoreF = 0;
-    const descRatio = validProjects.length > 0 ? reposWithMeaningfulReadme / validProjects.length : 0;
-    if (verifiedDevOps) { scoreF += 4; catFEvid.push("CI/CD workflows or Docker container setup (+4 pts)"); }
-    if (verifiedTesting) { scoreF += 3; catFEvid.push("Automated unit/integration testing (+3 pts)"); }
-    if (descRatio >= 0.5 && validProjects.length >= 2) { scoreF += 3; catFEvid.push("Consistent README & documentation practices (+3 pts)"); }
-    if (scoreF === 0) catFEvid.push("No automated tests, CI/CD, or deployment configuration (0 pts)");
-    scoreF = Math.min(10, Math.round(scoreF));
-
-    // Category G: Community Impact (Max 5 pts)
-    const catGEvid: string[] = [];
-    let scoreG = 0;
-    const totalStars = validProjects.reduce((acc, r) => acc + (r.stargazers_count || 0), 0);
-    const totalForks = validProjects.reduce((acc, r) => acc + (r.forks_count || 0), 0);
-
-    if (totalStars >= 1000) { scoreG += 3.5; catGEvid.push(`Significant stars: ${totalStars} total (+3.5 pts)`); }
-    else if (totalStars >= 50) { scoreG += 2.5; catGEvid.push(`Community stars: ${totalStars} total (+2.5 pts)`); }
-    else if (totalStars > 0) { scoreG += 1; catGEvid.push(`Recognized with ${totalStars} star(s) (+1 pt)`); }
-
-    if (totalForks >= 100) { scoreG += 1.5; catGEvid.push(`Extensive forks: ${totalForks} total (+1.5 pts)`); }
-    else if (totalForks > 0) { scoreG += 0.5; catGEvid.push(`Community forks: ${totalForks} total (+0.5 pt)`); }
-
-    if (scoreG === 0) catGEvid.push("No community stars or forks on original repos (0 pts)");
-    scoreG = Math.min(5, Math.round(scoreG * 10) / 10);
-
-    // Category H: Technology Breadth (Max 5 pts)
-    const catHEvid: string[] = [];
-    let scoreH = Math.min(5, Math.floor(detectedSkillsSet.size / 2));
-    catHEvid.push(`${detectedSkillsSet.size} verified tech stack(s) detected (+${scoreH} pts)`);
+    catHEvid.push(`${detectedSkillsSet.size} verified tech stack(s) detected (+${Math.min(5, Math.floor(detectedSkillsSet.size / 2))} pts)`);
 
     // FINAL CALCULATED EVIDENCE DEVELOPER SCORE
+    const scoreA = Math.min(35, Math.round((weightedPortfolioScore * 35) / 100));
+    const scoreB = Math.min(15, (reposWithFE.length > 0 ? 5 : 0) + (reposWithBE.length > 0 ? 5 : 0) + (reposWithDB.length > 0 ? 5 : 0));
+    const scoreC = Math.min(15, (reposWithCiCd > 0 ? 7 : 0) + (reposWithTests > 0 ? 5 : 0) + (reposWithReadme >= 2 ? 3 : 0));
+    const scoreD = Math.min(10, (reposWithReadme > 0 ? 7 : 0) + (userData.bio ? 3 : 0));
+    const scoreE = Math.min(10, daysSinceUpdate <= 30 ? 10 : daysSinceUpdate <= 90 ? 6 : 2);
+    const scoreF = Math.min(5, (userData.blog ? 3 : 0) + (reposWithDeploy > 0 ? 2 : 0));
+    const scoreG = Math.min(5, totalStars > 100 ? 5 : totalStars > 10 ? 3 : totalStars > 0 ? 1 : 0);
+    const scoreH = Math.min(5, Math.floor(detectedSkillsSet.size / 2));
+
     const scoreBreakdown: CategoryScoreBreakdown = {
-      projectQuality: { score: scoreA, max: 25, evidence: catAEvid },
-      documentation: { score: scoreB, max: 15, evidence: catBEvid },
-      developmentActivity: { score: scoreC, max: 15, evidence: catCEvid },
-      technicalDepth: { score: scoreD, max: 15, evidence: catDEvid },
-      portfolioQuality: { score: scoreE, max: 10, evidence: catEEvid },
-      engineeringPractices: { score: scoreF, max: 10, evidence: catFEvid },
-      communityImpact: { score: Math.round(scoreG), max: 5, evidence: catGEvid },
-      technologyBreadth: { score: scoreH, max: 5, evidence: catHEvid },
+      projectQuality: { score: scoreA, max: 35, evidence: catAEvid },
+      technicalDepth: { score: scoreB, max: 15, evidence: catBEvid },
+      engineeringPractices: { score: scoreC, max: 15, evidence: catCEvid },
+      documentation: { score: scoreD, max: 10, evidence: catDEvid },
+      developmentConsistency: { score: scoreE, max: 10, evidence: catEEvid },
+      portfolioCompleteness: { score: scoreF, max: 5, evidence: catFEvid },
+      communityImpact: { score: scoreG, max: 5, evidence: catGEvid },
+      technicalBreadth: { score: scoreH, max: 5, evidence: catHEvid },
     };
 
-    const devScore = Math.min(100, Math.max(0, Math.round(scoreA + scoreB + scoreC + scoreD + scoreE + scoreF + scoreG + scoreH)));
+    const devScore = Math.min(100, Math.max(0, scoreA + scoreB + scoreC + scoreD + scoreE + scoreF + scoreG + scoreH));
 
-    // ── PRINT FULL DEEP SCORING AUDIT IN CONSOLE ──
+    // EVIDENCE CONFIDENCE RATING (LOW / MEDIUM / HIGH)
+    let evidenceConfidence: "LOW" | "MEDIUM" | "HIGH" = "MEDIUM";
+    let confidenceReason = "Analysis based on available public repositories.";
+
+    if (validOriginalProjects.length >= 3 && reposWithReadme >= 2) {
+      evidenceConfidence = "HIGH";
+      confidenceReason = "Verified deep evidence across multiple substantial public repositories.";
+    } else if (validOriginalProjects.length === 1) {
+      evidenceConfidence = "MEDIUM";
+      confidenceReason = "Only 1 substantial public project available, but project quality was deeply inspected.";
+    } else if (validOriginalProjects.length === 0) {
+      evidenceConfidence = "LOW";
+      confidenceReason = "Insufficient public evidence. Repositories are mostly forks, minimal, or empty.";
+    }
+
+    // ── PRINT FULL PROJECT-FIRST SCORING AUDIT CONSOLE ──
     console.log("==================================================");
-    console.log(`GITHUB INTELLIGENCE SCORING AUDIT V4 FOR @${username}`);
+    console.log(`GITHUB INTELLIGENCE V5 (PROJECT-FIRST) AUDIT FOR @${username}`);
     console.log("==================================================");
-    console.log(`• Total Public Repos: ${userData.public_repos || allRepos.length}`);
-    console.log(`• Repos Actually Inspected: ${allRepos.length}`);
-    console.log(`• Original Repos: ${originalRepos} | Forks: ${forks} | Archived: ${archivedRepos}`);
-    console.log(`• Substantial Projects: ${substantialProjects} | Minimal: ${minimalRepos} | Tutorials: ${learningTutorialRepos}`);
-    console.log(`• Repos w/ README: ${reposWithMeaningfulReadme} | Tests: ${reposWithTests} | CI/CD: ${reposWithCiCd} | Deployments: ${reposWithDeploymentEvidence}`);
-    console.log(`• Repos w/ FE: ${reposWithFrontendEvidence} | BE: ${reposWithBackendEvidence} | DB: ${reposWithDatabaseEvidence}`);
+    console.log(`• Total Public Repositories: ${userData.public_repos || allRepos.length}`);
+    console.log(`• Flagship Projects: ${flagshipProjects} | Substantial: ${substantialProjects} | Standard: ${standardProjects}`);
+    console.log(`• Forks: ${forks} | Archived: ${archivedRepos} | Minimal/Empty: ${minimalEmptyRepos}`);
+    console.log(`• Best Project Quality: ${bestScore}/100 ("${bestProj?.name || 'N/A'}")`);
+    console.log(`• Weighted Portfolio Score: ${weightedPortfolioScore}/100`);
+    console.log(`• Evidence Confidence: ${evidenceConfidence} (${confidenceReason})`);
     console.log("--------------------------------------------------");
-    console.log(`1. Project Quality      : ${scoreA}/25 -> ${catAEvid.join(", ")}`);
-    console.log(`2. Documentation        : ${scoreB}/15 -> ${catBEvid.join(", ")}`);
-    console.log(`3. Development Activity : ${scoreC}/15 -> ${catCEvid.join(", ")}`);
-    console.log(`4. Technical Depth      : ${scoreD}/15 -> ${catDEvid.join(", ")}`);
-    console.log(`5. Portfolio Quality    : ${scoreE}/10 -> ${catEEvid.join(", ")}`);
-    console.log(`6. Engineering Practices: ${scoreF}/10 -> ${catFEvid.join(", ")}`);
-    console.log(`7. Community Impact     : ${scoreG}/5 -> ${catGEvid.join(", ")}`);
-    console.log(`8. Technology Breadth   : ${scoreH}/5 -> ${catHEvid.join(", ")}`);
+    console.log(`1. Project Quality          : ${scoreA}/35 -> ${catAEvid.join(", ")}`);
+    console.log(`2. Technical Depth           : ${scoreB}/15 -> ${catBEvid.join(", ")}`);
+    console.log(`3. Engineering Practices    : ${scoreC}/15 -> ${catCEvid.join(", ")}`);
+    console.log(`4. Documentation            : ${scoreD}/10 -> ${catDEvid.join(", ")}`);
+    console.log(`5. Development Consistency  : ${scoreE}/10 -> ${catEEvid.join(", ")}`);
+    console.log(`6. Portfolio Completeness   : ${scoreF}/5  -> ${catFEvid.join(", ")}`);
+    console.log(`7. Community Impact         : ${scoreG}/5  -> ${catGEvid.join(", ")}`);
+    console.log(`8. Technology Breadth       : ${scoreH}/5  -> ${catHEvid.join(", ")}`);
     console.log("--------------------------------------------------");
     console.log(`FINAL EVIDENCE DEVELOPER SCORE: ${devScore}/100`);
     console.log("==================================================");
 
-    // ── 7. CONFIDENCE-BASED SKILL DETECTION ──
-    const getConfidence = (hasEvidence: boolean, repoCount: number, explicitTag: boolean): SkillConfidenceItem => {
+    // ── 5. CONFIDENCE SKILL EVIDENCE SYSTEM ──
+    const getConfidence = (hasEvidence: boolean, repoList: ClassifiedRepoInfo[], explicitTag: boolean): SkillConfidenceItem => {
+      const supportingRepos = repoList.map(r => r.name);
       if (!hasEvidence && !explicitTag) {
         return {
           score: 0,
           confidence: "INSUFFICIENT EVIDENCE",
           evidence: [],
           reason: "No code implementation or dependency detected in public repositories.",
+          supportingRepos: [],
         };
       }
-      if (repoCount >= 2 && explicitTag) {
+      if (repoList.length >= 2 && explicitTag) {
         return {
-          score: Math.min(95, 60 + repoCount * 8),
+          score: Math.min(95, 60 + repoList.length * 8),
           confidence: "HIGH CONFIDENCE",
-          evidence: ["Explicit codebase files", "Multiple project implementations"],
-          reason: "Verified through multiple repository source codes.",
+          evidence: ["Verified source code files", "Multiple project implementations"],
+          reason: `Verified in ${repoList.length} repository codebase(s).`,
+          supportingRepos,
         };
       }
       if (explicitTag || hasEvidence) {
         return {
-          score: Math.min(75, 45 + repoCount * 10),
+          score: Math.min(75, 45 + repoList.length * 10),
           confidence: "MEDIUM CONFIDENCE",
-          evidence: ["Repository language or framework tags"],
+          evidence: ["Framework tags or repository language metadata"],
           reason: "Detected from repository structure.",
+          supportingRepos,
         };
       }
       return {
         score: 35,
         confidence: "LOW CONFIDENCE",
-        evidence: ["Basic repository keywords"],
-        reason: "Limited evidence found in repository metadata.",
+        evidence: ["Basic keyword signal"],
+        reason: "Limited evidence found.",
+        supportingRepos,
       };
     };
 
-    const feConf = getConfidence(verifiedFE, reposWithFrontendEvidence, detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js"));
-    const beConf = getConfidence(verifiedBE, reposWithBackendEvidence, detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("Express") || detectedSkillsSet.has("Python") || detectedSkillsSet.has("Go"));
-    const dbConf = getConfidence(verifiedDB, reposWithDatabaseEvidence, detectedSkillsSet.has("MongoDB") || detectedSkillsSet.has("MySQL") || detectedSkillsSet.has("PostgreSQL") || detectedSkillsSet.has("Firebase"));
-    const aiConf = getConfidence(detectedSkillsSet.has("TensorFlow"), validProjects.filter(r => r.corpus.includes("machine") || r.corpus.includes("tensor")).length, detectedSkillsSet.has("TensorFlow"));
-    const devOpsConf = getConfidence(verifiedDevOps, validProjects.filter(r => r.hasCiCd).length, detectedSkillsSet.has("Docker") || detectedSkillsSet.has("GitHub Workflows") || detectedSkillsSet.has("Nix / SaltStack"));
-    const cloudConf = getConfidence(detectedSkillsSet.has("Firebase") || reposWithDeploymentEvidence > 0, reposWithDeploymentEvidence, detectedSkillsSet.has("Firebase"));
-    const psConf = getConfidence(substantialProjects >= 1, substantialProjects, substantialProjects >= 2);
-    const docConf = getConfidence(reposWithMeaningfulReadme > 0, reposWithMeaningfulReadme, descRatio >= 0.5);
-    const uiUxConf = getConfidence(detectedSkillsSet.has("Tailwind CSS") || detectedSkillsSet.has("Figma"), validProjects.filter(r => r.corpus.includes("css") || r.corpus.includes("tailwind")).length, detectedSkillsSet.has("Tailwind CSS"));
-    const testConf = getConfidence(verifiedTesting, reposWithTests, verifiedTesting);
+    const feConf = getConfidence(reposWithFE.length > 0, reposWithFE, detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js"));
+    const beConf = getConfidence(reposWithBE.length > 0, reposWithBE, detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("Express") || detectedSkillsSet.has("Python") || detectedSkillsSet.has("Go"));
+    const dbConf = getConfidence(reposWithDB.length > 0, reposWithDB, detectedSkillsSet.has("MongoDB") || detectedSkillsSet.has("MySQL") || detectedSkillsSet.has("PostgreSQL") || detectedSkillsSet.has("Firebase"));
+    const aiConf = getConfidence(detectedSkillsSet.has("TensorFlow"), validOriginalProjects.filter(r => r.name.includes("tensor")), detectedSkillsSet.has("TensorFlow"));
+    const devOpsConf = getConfidence(reposWithCiCd > 0, validOriginalProjects.filter(r => r.hasCiCd), detectedSkillsSet.has("Docker") || detectedSkillsSet.has("GitHub Workflows") || detectedSkillsSet.has("Nix / SaltStack"));
+    const cloudConf = getConfidence(detectedSkillsSet.has("Firebase") || reposWithDeploy > 0, validOriginalProjects.filter(r => r.hasPages), detectedSkillsSet.has("Firebase"));
+    const psConf = getConfidence(validOriginalProjects.length >= 1, validOriginalProjects, validOriginalProjects.length >= 2);
+    const docConf = getConfidence(reposWithReadme > 0, validOriginalProjects.filter(r => r.hasReadme), reposWithReadme >= 2);
+    const uiUxConf = getConfidence(detectedSkillsSet.has("Tailwind CSS") || detectedSkillsSet.has("Figma"), validOriginalProjects.filter(r => r.name.includes("tailwind") || r.name.includes("css")), detectedSkillsSet.has("Tailwind CSS"));
+    const testConf = getConfidence(reposWithTests > 0, validOriginalProjects.filter(r => r.hasTest), reposWithTests > 0);
 
-    // ── 8. STRICT NON-INFLATED CAREER LABELING & READINESS ──
-    // "Strong Full Stack Developer" CAN ONLY BE DISPLAYED IF VERIFIED EVIDENCE FOR ALL 5 MAJOR REQUIREMENTS:
-    const isFullStackVerified = verifiedFE && verifiedBE && (verifiedDB || reposWithBackendEvidence >= 2) && substantialProjects >= 1;
+    // ── 6. CAREER LABELING & TRANSPARENT READINESS ──
+    const isFullStackVerified = reposWithFE.length > 0 && reposWithBE.length > 0 && (reposWithDB.length > 0 || reposWithBE.length >= 2) && validOriginalProjects.length >= 1;
 
     let devLevel = "Developing Profile";
     let devCategory = "Software Developer";
@@ -713,17 +689,13 @@ export async function GET(req: NextRequest) {
       devLevel = isFullStackVerified ? "Master Full Stack Architect" : "Exceptional Systems Architect";
       devCategory = "Senior Software Architect";
     } else if (devScore >= 70) {
-      devLevel = isFullStackVerified ? "Strong Full Stack Developer" : verifiedBE ? "Backend Systems Specialist" : verifiedFE ? "Frontend Specialist" : "Software Engineer";
+      devLevel = isFullStackVerified ? "Strong Full Stack Developer" : reposWithBE.length > 0 ? "Backend Systems Specialist" : reposWithFE.length > 0 ? "Frontend Specialist" : "Software Engineer";
       devCategory = isFullStackVerified ? "Full Stack Engineer" : "Software Developer";
     } else if (devScore >= 45) {
       devLevel = isFullStackVerified ? "Junior Full Stack Developer" : "Good Foundation Developer";
       devCategory = "Junior Developer";
-    } else {
-      devLevel = "Developing Profile";
-      devCategory = "Building Developer";
     }
 
-    // Star rating mathematically derived from score
     let devStars = "☆☆☆☆☆";
     if (devScore >= 85) devStars = "★★★★★";
     else if (devScore >= 70) devStars = "★★★★☆";
@@ -731,26 +703,25 @@ export async function GET(req: NextRequest) {
     else if (devScore >= 30) devStars = "★★☆☆☆";
     else if (devScore >= 15) devStars = "★☆☆☆☆";
 
-    // Readiness Status
     let readinessStatus = "BUILDING FOUNDATIONS";
-    if (isFullStackVerified && reposWithDeploymentEvidence > 0) {
+    if (isFullStackVerified && reposWithDeploy > 0) {
       readinessStatus = "STRONG INTERNSHIP PROFILE";
     } else if (isFullStackVerified) {
       readinessStatus = "INTERNSHIP READY";
-    } else if (verifiedFE || verifiedBE) {
+    } else if (reposWithFE.length > 0 || reposWithBE.length > 0) {
       readinessStatus = "INTERNSHIP PREPARATION";
-    } else if (validProjects.length >= 1) {
+    } else if (validOriginalProjects.length >= 1) {
       readinessStatus = "DEVELOPING PORTFOLIO";
     }
 
-    const startupLevel = isFullStackVerified ? "Strong" : validProjects.length >= 1 ? "Moderate" : "Developing";
-    const enterpriseLevel = verifiedDevOps && verifiedTesting ? "Strong" : verifiedDevOps ? "Moderate" : "Needs Evidence";
-    const freelancerLevel = verifiedFE && userData.blog ? "Strong" : verifiedFE ? "Moderate" : "Developing";
+    const startupLevel = isFullStackVerified ? "Strong" : validOriginalProjects.length >= 1 ? "Moderate" : "Developing";
+    const enterpriseLevel = reposWithCiCd > 0 && reposWithTests > 0 ? "Strong" : reposWithCiCd > 0 ? "Moderate" : "Needs Evidence";
+    const freelancerLevel = reposWithFE.length > 0 && userData.blog ? "Strong" : reposWithFE.length > 0 ? "Moderate" : "Developing";
 
     const developerPersonality: DeveloperPersonality = {
-      archetype: isFullStackVerified ? "Full Stack Creator" : verifiedBE ? "Backend Systems Engineer" : verifiedFE ? "Frontend Developer" : "Software Developer",
+      archetype: isFullStackVerified ? "Full Stack Creator" : reposWithBE.length > 0 ? "Backend Systems Engineer" : reposWithFE.length > 0 ? "Frontend Developer" : "Software Developer",
       title: devCategory,
-      bestCareerPath: isFullStackVerified ? "Full Stack Software Engineering" : verifiedBE ? "Backend / Systems Engineering" : "Software Development",
+      bestCareerPath: isFullStackVerified ? "Full Stack Software Engineering" : reposWithBE.length > 0 ? "Backend / Systems Engineering" : "Software Development",
       readinessScores: {
         startupReadiness: startupLevel === "Strong" ? 80 : startupLevel === "Moderate" ? 55 : 30,
         enterpriseReadiness: enterpriseLevel === "Strong" ? 85 : enterpriseLevel === "Moderate" ? 50 : 25,
@@ -764,16 +735,39 @@ export async function GET(req: NextRequest) {
         leadershipPotential: "Developing",
       },
       developerStyleTraits: [
-        validProjects.length >= 2
-          ? "You focus on building practical applications and publishing code to GitHub."
+        validOriginalProjects.length >= 1
+          ? `Your flagship project "${bestProj?.name || ''}" achieved quality rating ${bestScore}/100.`
           : "You are currently building your foundational repository portfolio.",
-        verifiedBE
-          ? "You demonstrate clear backend server logic evidence in your repositories."
+        reposWithBE.length > 0
+          ? "Verified backend server logic detected in your codebase."
           : "Backend REST API implementation is an area to develop.",
       ],
     };
 
-    // ── 9. DEVELOPER JOURNEY ──
+    // ── 7. DATA TRANSPARENCY AUDIT ──
+    const transparencyAudit: TransparencyAudit = {
+      repositoriesDiscovered: userData.public_repos || allRepos.length,
+      repositoriesInspected: allRepos.length,
+      repositoriesDeeplyAnalyzed: validOriginalProjects.length,
+      flagshipProjects,
+      substantialProjects,
+      standardProjects,
+      learningAssignmentRepos,
+      forks,
+      archivedRepos,
+      minimalEmptyRepos,
+      disclaimer: "This assessment is based only on publicly accessible GitHub evidence and should not be interpreted as a complete measurement of the developer's abilities.",
+    };
+
+    const separateMetrics: SeparateQualityMetrics = {
+      bestProjectQuality: bestScore,
+      portfolioDepth: Math.min(100, validOriginalProjects.length * 25),
+      engineeringQuality: engConsistencyScore,
+      technicalBreadth: Math.min(100, detectedSkillsSet.size * 15),
+      consistency: daysSinceUpdate <= 30 ? 90 : daysSinceUpdate <= 90 ? 60 : 30,
+    };
+
+    // ── 8. DEVELOPER JOURNEY ──
     const timeline: DeveloperTimelineMilestone[] = [];
     timeline.push({
       title: "Joined GitHub",
@@ -783,48 +777,64 @@ export async function GET(req: NextRequest) {
       badgeText: "Account Created",
     });
 
-    const oldestRepo = [...validProjects].sort((a, b) => new Date(a.created_at || a.updated_at).getTime() - new Date(b.created_at || b.updated_at).getTime())[0];
-    if (oldestRepo) {
+    if (bestProj) {
       timeline.push({
-        title: "First Original Repository",
-        subtitle: `Published "${oldestRepo.name}"`,
-        date: oldestRepo.created_at ? new Date(oldestRepo.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Early Milestone",
-        icon: "🚀",
-        badgeText: "First Project",
+        title: `Flagship Project: ${bestProj.name}`,
+        subtitle: `Quality rating: ${bestProj.projectQualityScore}/100 (${bestProj.repoCategory})`,
+        date: "Key Project",
+        icon: "🏆",
+        badgeText: "Flagship",
       });
     }
 
     timeline.push({
       title: `Current Level: ${devLevel}`,
-      subtitle: `Analyzed ${validProjects.length} original project(s) & ${detectedSkillsSet.size} verified tech stack(s)`,
+      subtitle: `Analyzed ${validOriginalProjects.length} original project(s) & ${detectedSkillsSet.size} verified tech stack(s)`,
       date: "Present",
-      icon: "🏆",
+      icon: "⭐",
       badgeText: "Current Level",
     });
+
+    const techBreakdown: Record<string, number> = {};
+    validOriginalProjects.forEach(r => {
+      if (r.language) techBreakdown[r.language] = (techBreakdown[r.language] || 0) + 1;
+    });
+
+    const mostUsedLanguages: { language: string; percentage: number; count: number }[] = Object.entries(techBreakdown)
+      .map(([language, count]) => ({
+        language,
+        count: Number(count),
+        percentage: Math.round((Number(count) / (validOriginalProjects.length || 1)) * 100),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const sortedBestRepos = [...validOriginalProjects].sort((a, b) => b.projectQualityScore - a.projectQualityScore);
 
     const growth: ProjectGrowthMetrics = {
       reposCreatedCount: allRepos.length,
       technologiesLearnedCount: detectedSkillsSet.size,
       activityTrend: daysSinceUpdate <= 30 ? "Active Development 📈" : "Steady Profile 🏗️",
-      mostProductiveMonth: validProjects[0]?.updated_at ? new Date(validProjects[0].updated_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "Recent Months",
-      latestProject: validProjects[0] ? { name: validProjects[0].name, url: validProjects[0].html_url, date: new Date(validProjects[0].updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) } : null,
-      mostSuccessfulProject: sortedBestRepos[0] ? { name: sortedBestRepos[0].name, url: sortedBestRepos[0].html_url, stars: sortedBestRepos[0].stargazers_count || 0 } : null,
+      mostProductiveMonth: validOriginalProjects[0]?.updatedAt || "Recent Months",
+      latestProject: validOriginalProjects[0] ? { name: validOriginalProjects[0].name, url: validOriginalProjects[0].url, date: validOriginalProjects[0].updatedAt } : null,
+      mostSuccessfulProject: sortedBestRepos[0] ? { name: sortedBestRepos[0].name, url: sortedBestRepos[0].url, stars: sortedBestRepos[0].stars } : null,
     };
 
-    // Explanations for Score
+    // Explanations for Score (Why did this person receive this score?)
     const scoreStrengths: string[] = [];
     const scoreNeedsImp: string[] = [];
 
-    if (substantialProjects > 0) scoreStrengths.push(`${substantialProjects} substantial original project(s) verified`);
+    if (bestProj) scoreStrengths.push(`Flagship project "${bestProj.name}" achieved high quality rating (${bestScore}/100)`);
     if (detectedSkillsSet.size > 0) scoreStrengths.push(`${detectedSkillsSet.size} verified technology stack(s) detected in codebase`);
     if (daysSinceUpdate <= 30) scoreStrengths.push("Active repository updates within the last 30 days");
-    if (verifiedDevOps) scoreStrengths.push("DevOps or configuration automation files detected (Docker/CI/CD)");
+    if (reposWithCiCd > 0) scoreStrengths.push("DevOps or configuration automation files detected (Docker/CI/CD)");
 
-    if (!reposWithMeaningfulReadme) scoreNeedsImp.push("Repositories lack detailed README documentation and setup instructions");
+    if (validOriginalProjects.length <= 1) scoreNeedsImp.push("Only 1 substantial public project available (limited portfolio depth)");
+    if (!reposWithReadme) scoreNeedsImp.push("Repositories lack detailed README documentation and setup instructions");
     if (!userData.blog) scoreNeedsImp.push("No portfolio website linked to GitHub profile");
-    if (!reposWithDeploymentEvidence) scoreNeedsImp.push("No visible live web deployments detected");
-    if (!verifiedTesting) scoreNeedsImp.push("No automated software testing frameworks detected");
-    if (forks > originalRepos) scoreNeedsImp.push("High proportion of forked repositories compared to original projects");
+    if (!reposWithDeploy) scoreNeedsImp.push("No visible live web deployments detected");
+    if (!reposWithTests) scoreNeedsImp.push("No automated software testing frameworks detected");
+    if (forks > validOriginalProjects.length) scoreNeedsImp.push("High proportion of forked repositories compared to original projects");
 
     // XP System DERIVED STRICTLY FROM FINAL EVIDENCE SCORE
     const totalXP = devScore * 10;
@@ -834,9 +844,9 @@ export async function GET(req: NextRequest) {
     const xpPercentage = Math.min(100, Math.round((xpCurrent / xpMax) * 100));
 
     const nextLevelRequirements: string[] = [];
-    if (substantialProjects < 3) nextLevelRequirements.push("+1 Substantial Original Project");
-    if (!reposWithMeaningfulReadme) nextLevelRequirements.push("+2 README Improvements");
-    if (!reposWithDeploymentEvidence) nextLevelRequirements.push("+1 Live Project Deployment");
+    if (validOriginalProjects.length < 3) nextLevelRequirements.push("+1 Substantial Original Project");
+    if (!reposWithReadme) nextLevelRequirements.push("+2 README Improvements");
+    if (!reposWithDeploy) nextLevelRequirements.push("+1 Live Project Deployment");
     if (nextLevelRequirements.length === 0) nextLevelRequirements.push("+1 Testing or CI/CD Setup");
 
     const badges: DeveloperBadge[] = [
@@ -853,7 +863,7 @@ export async function GET(req: NextRequest) {
         name: "Frontend Builder",
         description: "Mastered core web technologies (HTML, CSS, JS/TS)",
         icon: "🎨",
-        unlocked: verifiedFE,
+        unlocked: reposWithFE.length > 0,
         glowColor: "rgba(168,85,247,0.5)",
       },
       {
@@ -861,7 +871,7 @@ export async function GET(req: NextRequest) {
         name: "Backend Engineer",
         description: "Created robust backend API servers and logic",
         icon: "⚙️",
-        unlocked: verifiedBE,
+        unlocked: reposWithBE.length > 0,
         glowColor: "rgba(34,197,94,0.5)",
       },
       {
@@ -877,7 +887,7 @@ export async function GET(req: NextRequest) {
         name: "DevOps & Infrastructure",
         description: "Configured Nix, SaltStack, or Docker workflows",
         icon: "🐳",
-        unlocked: verifiedDevOps,
+        unlocked: reposWithCiCd > 0,
         glowColor: "rgba(14,165,233,0.5)",
       },
       {
@@ -893,7 +903,7 @@ export async function GET(req: NextRequest) {
         name: "Open Source Contributor",
         description: "Maintained active open source repositories and forks",
         icon: "🌐",
-        unlocked: totalStars >= 50 || validProjects.length >= 2,
+        unlocked: totalStars >= 50 || validOriginalProjects.length >= 2,
         glowColor: "rgba(99,102,241,0.5)",
       },
       {
@@ -909,13 +919,16 @@ export async function GET(req: NextRequest) {
         name: "Documentation Master",
         description: "Maintained clear descriptions across repositories",
         icon: "📝",
-        unlocked: reposWithMeaningfulReadme >= 2,
+        unlocked: reposWithReadme >= 2,
         glowColor: "rgba(16,185,129,0.5)",
       },
     ];
 
     const developerMetrics: DeveloperMetrics = {
       score: devScore,
+      evidenceConfidence,
+      confidenceReason,
+      separateMetrics,
       level: devLevel,
       levelNum,
       xpCurrent,
@@ -924,10 +937,10 @@ export async function GET(req: NextRequest) {
       nextLevelRequirements,
       nextRewardBadge: "Elite Builder Badge",
       stars: devStars,
-      rankPercentile: null, // REMOVED percentile ranking because no dataset exists
+      rankPercentile: null,
       category: devCategory,
       scoreBreakdown,
-      repoAudit,
+      transparencyAudit,
       scoreExplanation: {
         strengths: scoreStrengths,
         needsImprovement: scoreNeedsImp,
@@ -991,7 +1004,7 @@ export async function GET(req: NextRequest) {
       detectedSkills: Array.from(detectedSkillsSet),
       mostUsedLanguages,
       technologyBreakdown: techBreakdown,
-      bestProjects,
+      bestProjects: sortedBestRepos.slice(0, 3),
       developerMetrics,
       developerPersonality,
       developerJourney: { timeline, growth },
@@ -1000,7 +1013,7 @@ export async function GET(req: NextRequest) {
         areasToImprove: scoreNeedsImp.length > 0 ? scoreNeedsImp : ["Add README descriptions to all repositories"],
         overallImpression: isFullStackVerified
           ? "Demonstrates verified full stack implementation capabilities across frontend, backend, and project repositories."
-          : "Demonstrates practical coding initiative. Building one complete full stack project with live deployment and tests will significantly strengthen recruiter evaluation.",
+          : `Demonstrates practical coding initiative. Best flagship project quality rated at ${bestScore}/100.`,
         readinessStatus,
       },
       actionPlan,
@@ -1011,14 +1024,14 @@ export async function GET(req: NextRequest) {
         healthLevelText: devScore >= 80 ? "Exceptional Profile" : devScore >= 60 ? "Strong Profile" : devScore >= 40 ? "Good Foundation" : "Developing Profile",
       },
       activityInsights: {
-        lastUpdatedRepo: validProjects[0]?.name || null,
+        lastUpdatedRepo: validOriginalProjects[0]?.name || null,
         mostActiveLanguage: mostUsedLanguages[0]?.language || null,
         recentActivityStatus: daysSinceUpdate <= 30 ? `Actively updated ${daysSinceUpdate === 0 ? "Today" : `${daysSinceUpdate} days ago`}` : "Limited recent activity",
         isInactive: daysSinceUpdate > 90,
       },
       aiRecommendations: [
-        !verifiedBE ? "Build a Node.js/Python backend REST API server." : "Add database persistence using MongoDB or PostgreSQL.",
-        !reposWithDeploymentEvidence ? "Deploy web applications live to Vercel/Netlify." : "Write automated unit tests using Jest/Vitest.",
+        reposWithBE.length === 0 ? "Build a Node.js/Python backend REST API server." : "Add database persistence using MongoDB or PostgreSQL.",
+        !reposWithDeploy ? "Deploy web applications live to Vercel/Netlify." : "Write automated unit tests using Jest/Vitest.",
         "Include architecture diagrams and API docs in repository READMEs.",
         "Pin your top 3 best projects on your GitHub profile overview.",
       ],
@@ -1028,7 +1041,7 @@ export async function GET(req: NextRequest) {
     cache.set(username, { data: result, timestamp: now });
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error("[GitHub Intelligence V4 API Error]:", err);
+    console.error("[GitHub Intelligence V5 API Error]:", err);
     return NextResponse.json({ error: err.message || "Failed to analyze GitHub profile" }, { status: 500 });
   }
 }

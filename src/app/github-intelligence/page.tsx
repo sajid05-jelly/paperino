@@ -396,12 +396,12 @@ export default function GitHubIntelligencePage() {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {[
-                      { label: "Project Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.projectQuality, max: 25 },
-                      { label: "Documentation", item: (analysis.developerMetrics as any)?.scoreBreakdown?.documentation, max: 15 },
-                      { label: "Development Activity", item: (analysis.developerMetrics as any)?.scoreBreakdown?.developmentActivity, max: 15 },
+                      { label: "Project Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.projectQuality, max: 35 },
                       { label: "Technical Depth", item: (analysis.developerMetrics as any)?.scoreBreakdown?.technicalDepth, max: 15 },
-                      { label: "Portfolio Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.portfolioQuality, max: 10 },
-                      { label: "Engineering Practices", item: (analysis.developerMetrics as any)?.scoreBreakdown?.engineeringPractices, max: 10 },
+                      { label: "Engineering Practices", item: (analysis.developerMetrics as any)?.scoreBreakdown?.engineeringPractices, max: 15 },
+                      { label: "Documentation", item: (analysis.developerMetrics as any)?.scoreBreakdown?.documentation, max: 10 },
+                      { label: "Dev Consistency", item: (analysis.developerMetrics as any)?.scoreBreakdown?.developmentConsistency, max: 10 },
+                      { label: "Portfolio Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.portfolioCompleteness, max: 5 },
                       { label: "Community Impact", item: (analysis.developerMetrics as any)?.scoreBreakdown?.communityImpact, max: 5 },
                       { label: "Technology Breadth", item: (analysis.developerMetrics as any)?.scoreBreakdown?.technologyBreadth, max: 5 },
                     ].map((entry) => {
@@ -435,52 +435,46 @@ export default function GitHubIntelligencePage() {
                   </div>
                 </div>
 
-                {/* Repository Classification Audit Box */}
+                {/* Data Transparency Audit Box */}
                 <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 space-y-4 flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Repository Quality Audit</span>
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Data Transparency Audit</span>
                     <span className="text-xs font-mono font-bold text-gray-300">
-                      {(analysis.developerMetrics as any)?.repoAudit?.totalPublicRepos ?? analysis.publicReposCount} Repositories
+                      {(analysis.developerMetrics as any)?.transparencyAudit?.repositoriesInspected ?? (analysis.developerMetrics as any)?.repoAudit?.totalPublicRepos ?? analysis.publicReposCount} Repos Inspected
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
+                      <span className="text-emerald-200 font-medium">Flagship / Substantial</span>
+                      <span className="font-mono font-bold text-emerald-300">
+                        {((analysis.developerMetrics as any)?.transparencyAudit?.flagshipProjects ?? 0) + ((analysis.developerMetrics as any)?.transparencyAudit?.substantialProjects ?? (analysis.developerMetrics as any)?.repoAudit?.substantialProjects ?? 0)}
+                      </span>
+                    </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Original Repos</span>
-                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.repoAudit?.originalRepos ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Standard Projects</span>
+                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.transparencyAudit?.standardProjects ?? (analysis.developerMetrics as any)?.repoAudit?.originalRepos ?? 0}</span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex justify-between items-center">
                       <span className="text-amber-200 font-medium">Forks</span>
-                      <span className="font-mono font-bold text-amber-300">{(analysis.developerMetrics as any)?.repoAudit?.forks ?? 0}</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
-                      <span className="text-emerald-200 font-medium">Substantial Projects</span>
-                      <span className="font-mono font-bold text-emerald-300">{(analysis.developerMetrics as any)?.repoAudit?.substantialProjects ?? 0}</span>
+                      <span className="font-mono font-bold text-amber-300">{(analysis.developerMetrics as any)?.transparencyAudit?.forks ?? (analysis.developerMetrics as any)?.repoAudit?.forks ?? 0}</span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Tutorial / Learning Repos</span>
-                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.repoAudit?.learningTutorialRepos ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Learning / Assignments</span>
+                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.transparencyAudit?.learningAssignmentRepos ?? 0}</span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Repos with README</span>
-                      <span className="font-mono font-bold text-cyan-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithMeaningfulReadme ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Archived Repos</span>
+                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.transparencyAudit?.archivedRepos ?? 0}</span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Repos with CI/CD / Docker</span>
-                      <span className="font-mono font-bold text-cyan-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithCiCd ?? 0}</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Repos with Backend</span>
-                      <span className="font-mono font-bold text-purple-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithBackendEvidence ?? 0}</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Repos with Frontend</span>
-                      <span className="font-mono font-bold text-purple-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithFrontendEvidence ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Minimal / Empty Repos</span>
+                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.transparencyAudit?.minimalEmptyRepos ?? 0}</span>
                     </div>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-[11px] text-gray-400 leading-relaxed">
-                    ℹ️ <strong>Evidence Rule:</strong> Forks and profile configurations do not contribute to core developer quality scores to ensure 100% evidence accuracy.
+                    ℹ️ <strong>Data Transparency:</strong> {(analysis.developerMetrics as any)?.transparencyAudit?.disclaimer || "Assessment is based on publicly accessible GitHub evidence and should not be interpreted as a complete measurement of developer abilities."}
                   </div>
                 </div>
               </div>
