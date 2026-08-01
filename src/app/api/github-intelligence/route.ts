@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 // ─────────────────────────────────────────────────────────────
-// DATA TYPES & INTERFACES (Evidence Engine V6 - Strict Quality First)
+// DATA TYPES & INTERFACES (Evidence Engine V6 - Achievement Badges Upgrade)
 // ─────────────────────────────────────────────────────────────
 
 export interface ProjectQualityBreakdown {
@@ -113,6 +113,20 @@ export interface SeparateQualityMetrics {
   maintenance: number; // 0 - 100 (Separate project quality from maintenance)
 }
 
+export interface DeveloperBadge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt?: string;
+  glowColor: string;
+  evidenceList: string[];
+  unlockReason: string;
+  suggestion?: string;
+  requirementsChecklist: { text: string; satisfied: boolean }[];
+}
+
 export interface DeveloperMetrics {
   score: number; // 0 - 100
   evidenceConfidence: "LOW" | "MEDIUM" | "HIGH";
@@ -159,16 +173,6 @@ export interface DeveloperMetrics {
     testing: SkillConfidenceItem;
   };
   badges: DeveloperBadge[];
-}
-
-export interface DeveloperBadge {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-  unlockedAt?: string;
-  glowColor: string;
 }
 
 export interface DeveloperPersonality {
@@ -503,7 +507,7 @@ export async function GET(req: NextRequest) {
         ? Math.floor((now - new Date(repo.updated_at).getTime()) / (1000 * 60 * 60 * 24))
         : 999;
       let maintenanceScore = daysSinceUpdate <= 30 ? 100 : daysSinceUpdate <= 90 ? 70 : daysSinceUpdate <= 180 ? 40 : 15;
-      if (sizeKB < 15 && daysSinceUpdate <= 7) maintenanceScore = 30; // Single trivial commit yesterday is NOT highly maintained
+      if (sizeKB < 15 && daysSinceUpdate <= 7) maintenanceScore = 30;
 
       const maintenanceStatus = daysSinceUpdate <= 30
         ? "Actively Maintained 🟢"
@@ -540,7 +544,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Valid Original Projects (Excluding Forks, Empty, Profile Configs)
+    // Valid Original Projects
     const validOriginalProjects = classifiedRepos.filter(
       r => r.repoCategory !== "FORK" && r.repoCategory !== "EMPTY" && r.repoCategory !== "MINIMAL" && r.repoCategory !== "PROFILE_CONFIG"
     ).sort((a, b) => b.projectQualityScore - a.projectQualityScore);
@@ -570,7 +574,7 @@ export async function GET(req: NextRequest) {
     const reposWithDeploy = validOriginalProjects.filter(r => r.hasPages).length;
     const engPracticesScore = Math.min(100, (reposWithCiCd > 0 ? 40 : 0) + (reposWithTests > 0 ? 35 : 0) + (reposWithDeploy > 0 ? 25 : 0));
 
-    // Portfolio Depth (How many MEANINGFUL projects exist?)
+    // Portfolio Depth
     const meaningfulCount = flagshipCount + strongCount + standardCount;
     const portfolioDepthScore = Math.min(100, meaningfulCount >= 3 ? 100 : meaningfulCount === 2 ? 70 : meaningfulCount === 1 ? 40 : 15);
 
@@ -589,14 +593,6 @@ export async function GET(req: NextRequest) {
     const collabScore = Math.min(100, totalStars > 100 ? 100 : totalStars > 10 ? 60 : totalStars > 0 ? 30 : 10);
 
     // ── STRICT DEVELOPER SCORE FORMULA /100 ──
-    // BEST PROJECT QUALITY             30%
-    // OVERALL PROJECT QUALITY          20%
-    // TECHNICAL DEPTH                  15%
-    // ENGINEERING PRACTICES            10%
-    // PORTFOLIO DEPTH                  10%
-    // DOCUMENTATION                     5%
-    // MAINTENANCE & CONSISTENCY         5%
-    // COLLABORATION / OPEN SOURCE       5%
     const scoreA = Math.min(30, Math.round((bestScore * 30) / 100));
     const scoreB = Math.min(20, Math.round((overallAvgScore * 20) / 100));
     const scoreC = Math.min(15, Math.round((techDepthScore * 15) / 100));
@@ -608,13 +604,10 @@ export async function GET(req: NextRequest) {
 
     let devScore = Math.min(100, Math.max(0, scoreA + scoreB + scoreC + scoreD + scoreE + scoreF + scoreG + scoreH));
 
-    // REQUIREMENTS FOR 90+ ENFORCEMENT:
-    // A profile must NOT receive 90+ simply because it has repos/followers/stars/age.
-    // Must demonstrate: at least one flagship/strong project (bestScore >= 75), FE+BE+DB evidence, CI/CD or testing, and >= 2 meaningful projects.
     if (devScore >= 90) {
       const has90PlusEvidence = bestScore >= 75 && (reposWithFE.length > 0 && reposWithBE.length > 0) && (reposWithCiCd > 0 || reposWithTests > 0) && meaningfulCount >= 2;
       if (!has90PlusEvidence) {
-        devScore = Math.min(88, devScore); // Cap at 88 if strict 90+ evidence is missing
+        devScore = Math.min(88, devScore);
       }
     }
 
@@ -652,7 +645,6 @@ export async function GET(req: NextRequest) {
       collaborationOpenSource: { score: scoreH, max: 5, evidence: catHEvid },
     };
 
-    // ── 4. STRICT SCORE BANDS ──
     let devLevel = "Beginner Portfolio";
     if (devScore >= 95) devLevel = "Elite Engineering Profile";
     else if (devScore >= 90) devLevel = "Exceptional Developer";
@@ -671,7 +663,6 @@ export async function GET(req: NextRequest) {
     else if (devScore >= 35) devStars = "★★☆☆☆";
     else if (devScore >= 20) devStars = "★☆☆☆☆";
 
-    // Evidence Confidence
     let evidenceConfidence: "LOW" | "MEDIUM" | "HIGH" = "MEDIUM";
     let confidenceReason = "Analysis based on available public repositories.";
     if (validOriginalProjects.length >= 3 && reposWithReadme >= 2) {
@@ -685,30 +676,6 @@ export async function GET(req: NextRequest) {
       confidenceReason = "Insufficient public evidence. Repositories are mostly forks, minimal, or empty.";
     }
 
-    // PRINT FULL AUDIT LOG TO DEVELOPER CONSOLE
-    console.log("==================================================");
-    console.log(`GITHUB INTELLIGENCE SCORING AUDIT V6 FOR @${username}`);
-    console.log("==================================================");
-    console.log(`• Total Public Repositories: ${userData.public_repos || allRepos.length}`);
-    console.log(`• Meaningful Projects: ${meaningfulCount} | Academic: ${academicCount} | Assignments: ${assignmentCount}`);
-    console.log(`• Tutorials: ${tutorialCount} | Practice: ${practiceCount} | Forks: ${forkCount} | Empty/Minimal: ${minimalCount + emptyCount}`);
-    console.log(`• Best Project Quality: ${bestScore}/100 ("${bestProj?.name || 'N/A'}")`);
-    console.log(`• Overall Average Quality: ${Math.round(overallAvgScore)}/100`);
-    console.log(`• Evidence Confidence: ${evidenceConfidence}`);
-    console.log("--------------------------------------------------");
-    console.log(`1. Best Project Quality     : ${scoreA}/30 -> ${catAEvid.join(", ")}`);
-    console.log(`2. Overall Project Quality  : ${scoreB}/20 -> ${catBEvid.join(", ")}`);
-    console.log(`3. Technical Depth          : ${scoreC}/15 -> ${catCEvid.join(", ")}`);
-    console.log(`4. Engineering Practices   : ${scoreD}/10 -> ${catDEvid.join(", ")}`);
-    console.log(`5. Portfolio Depth         : ${scoreE}/10 -> ${catEEvid.join(", ")}`);
-    console.log(`6. Documentation            : ${scoreF}/5  -> ${catFEvid.join(", ")}`);
-    console.log(`7. Maintenance & Consistency: ${scoreG}/5  -> ${catGEvid.join(", ")}`);
-    console.log(`8. Collaboration / OpenSource: ${scoreH}/5  -> ${catHEvid.join(", ")}`);
-    console.log("--------------------------------------------------");
-    console.log(`FINAL DEVELOPER SCORE: ${devScore}/100 (${devLevel})`);
-    console.log("==================================================");
-
-    // ── 5. TRANSPARENCY AUDIT & SEPARATE METRICS ──
     const transparencyAudit: TransparencyAudit = {
       totalPublicRepos: userData.public_repos || allRepos.length,
       repositoriesInspected: allRepos.length,
@@ -732,7 +699,6 @@ export async function GET(req: NextRequest) {
       maintenance: maintenanceScore,
     };
 
-    // Explanations (Why you received this score)
     const scoreStrengths: string[] = [];
     const scoreNeedsImp: string[] = [];
 
@@ -800,32 +766,261 @@ export async function GET(req: NextRequest) {
 
     const isFullStackVerified = reposWithFE.length > 0 && reposWithBE.length > 0 && (reposWithDB.length > 0 || reposWithBE.length >= 2) && meaningfulCount >= 1;
 
-    const startupLevel = isFullStackVerified ? "Strong" : meaningfulCount >= 1 ? "Moderate" : "Developing";
-    const enterpriseLevel = reposWithCiCd > 0 && reposWithTests > 0 ? "Strong" : reposWithCiCd > 0 ? "Moderate" : "Needs Evidence";
-    const freelancerLevel = reposWithFE.length > 0 && userData.blog ? "Strong" : reposWithFE.length > 0 ? "Moderate" : "Developing";
+    // ─────────────────────────────────────────────────────────────
+    // EXACT TOP 10 ACHIEVEMENTS BADGE EVALUATION SYSTEM
+    // ─────────────────────────────────────────────────────────────
 
-    const developerPersonality: DeveloperPersonality = {
-      archetype: isFullStackVerified ? "Full Stack Creator" : reposWithBE.length > 0 ? "Backend Systems Engineer" : reposWithFE.length > 0 ? "Frontend Developer" : "Software Developer",
-      title: isFullStackVerified ? "Full Stack Engineer" : "Software Developer",
-      bestCareerPath: isFullStackVerified ? "Full Stack Software Engineering" : "Software Development",
-      readinessScores: {
-        startupReadiness: startupLevel === "Strong" ? 80 : startupLevel === "Moderate" ? 55 : 30,
-        enterpriseReadiness: enterpriseLevel === "Strong" ? 85 : enterpriseLevel === "Moderate" ? 50 : 25,
-        freelancerPotential: freelancerLevel === "Strong" ? 85 : freelancerLevel === "Moderate" ? 55 : 30,
-        leadershipPotential: totalStars > 50 ? 70 : 40,
-      },
-      readinessLevels: {
-        startupReadiness: startupLevel,
-        enterpriseReadiness: enterpriseLevel,
-        freelancerPotential: freelancerLevel,
-        leadershipPotential: "Developing",
-      },
-      developerStyleTraits: [
-        meaningfulCount >= 1
-          ? `Best project "${bestProj?.name || ''}" rated at ${bestScore}/100 quality.`
-          : "Currently building initial portfolio projects.",
+    // 1. Frontend Developer ⚛️ (Requires meaningful FE project)
+    const feProjects = validOriginalProjects.filter(r => r.hasFE && r.projectQualityScore >= 30);
+    const isFrontendUnlocked = feProjects.length > 0;
+    const feBadge: DeveloperBadge = {
+      id: "frontend-developer",
+      name: "Frontend Developer",
+      description: "Build & publish meaningful frontend web applications",
+      icon: "⚛️",
+      unlocked: isFrontendUnlocked,
+      glowColor: "rgba(56,189,248,0.6)",
+      evidenceList: isFrontendUnlocked
+        ? feProjects.map(r => `• ${r.name}: Frontend UI code verified (${r.projectQualityScore}/100 quality)`)
+        : ["No meaningful frontend application project detected."],
+      unlockReason: isFrontendUnlocked
+        ? "Verified frontend application implementation in your public repositories."
+        : "Requires at least one meaningful frontend project (React, Next.js, Vue, or modern JS/TS).",
+      suggestion: "Build and publish a standalone frontend web application with interactive components.",
+      requirementsChecklist: [
+        { text: "Frontend framework / JS/TS codebase detected", satisfied: reposWithFE.length > 0 },
+        { text: "Meaningful project quality (Score >= 30)", satisfied: feProjects.length > 0 },
       ],
     };
+
+    // 2. Backend Engineer ⚙️ (Requires meaningful BE server/API)
+    const beProjects = validOriginalProjects.filter(r => r.hasBE && r.projectQualityScore >= 30);
+    const isBackendUnlocked = beProjects.length > 0;
+    const beBadge: DeveloperBadge = {
+      id: "backend-engineer",
+      name: "Backend Engineer",
+      description: "Create robust backend API servers and application logic",
+      icon: "⚙️",
+      unlocked: isBackendUnlocked,
+      glowColor: "rgba(34,197,94,0.6)",
+      evidenceList: isBackendUnlocked
+        ? beProjects.map(r => `• ${r.name}: Backend server/API code verified (${r.projectQualityScore}/100 quality)`)
+        : ["No backend API implementation detected in public repos."],
+      unlockReason: isBackendUnlocked
+        ? "Meaningful backend/server implementation was detected in your public repositories."
+        : "Requires a backend API server (Node/Express, Python/FastAPI/Django, Go, Java, etc.).",
+      suggestion: "Build a REST API server connecting request endpoints with business logic.",
+      requirementsChecklist: [
+        { text: "Backend framework / API server implementation", satisfied: reposWithBE.length > 0 },
+        { text: "Meaningful project quality (Score >= 30)", satisfied: beProjects.length > 0 },
+      ],
+    };
+
+    // 3. Full-Stack Builder 🚀 (Requires FE + BE in a single project)
+    const fullStackProjects = validOriginalProjects.filter(r => r.hasFE && r.hasBE && r.projectQualityScore >= 35);
+    const isFullStackUnlocked = fullStackProjects.length > 0;
+    const fullStackBadge: DeveloperBadge = {
+      id: "full-stack-builder",
+      name: "Full-Stack Builder",
+      description: "Build complete end-to-end applications connecting frontend & backend",
+      icon: "🚀",
+      unlocked: isFullStackUnlocked,
+      glowColor: "rgba(168,85,247,0.7)",
+      evidenceList: isFullStackUnlocked
+        ? fullStackProjects.map(r => `• ${r.name}: Integrated FE + BE codebase verified (${r.projectQualityScore}/100 quality)`)
+        : ["No single project combines both frontend and backend logic."],
+      unlockReason: isFullStackUnlocked
+        ? "Meaningful full-stack project combining frontend UI and backend API detected."
+        : "Requires at least one single meaningful project containing BOTH frontend and backend.",
+      suggestion: "Connect your frontend application to your backend API server in a single project repository.",
+      requirementsChecklist: [
+        { text: "Frontend project codebase detected", satisfied: reposWithFE.length > 0 },
+        { text: "Backend project codebase detected", satisfied: reposWithBE.length > 0 },
+        { text: "Single repository combines FE + BE", satisfied: isFullStackUnlocked },
+      ],
+    };
+
+    // 4. Database Architect 🗄️ (Requires DB integration in real app)
+    const dbProjects = validOriginalProjects.filter(r => r.hasDB && r.projectQualityScore >= 25);
+    const isDbUnlocked = dbProjects.length > 0;
+    const dbBadge: DeveloperBadge = {
+      id: "database-architect",
+      name: "Database Architect",
+      description: "Integrate database schemas and data persistence layers",
+      icon: "🗄️",
+      unlocked: isDbUnlocked,
+      glowColor: "rgba(20,184,166,0.6)",
+      evidenceList: isDbUnlocked
+        ? dbProjects.map(r => `• ${r.name}: Database persistence verified (${r.projectQualityScore}/100 quality)`)
+        : ["No database schemas or client queries detected in public codebases."],
+      unlockReason: isDbUnlocked
+        ? "Database persistence layers (MongoDB, PostgreSQL, MySQL, Firebase, Prisma, etc.) verified."
+        : "Requires database integration (MongoDB, Postgres, MySQL, Firebase/Firestore, Prisma, etc.).",
+      suggestion: "Integrate a database persistence layer to store and query application data.",
+      requirementsChecklist: [
+        { text: "Database ORM / driver / query integration", satisfied: isDbUnlocked },
+        { text: "Meaningful application project", satisfied: dbProjects.length > 0 },
+      ],
+    };
+
+    // 5. AI / ML Builder 🧠 (Requires real ML/AI API/Model implementation)
+    const aiProjects = validOriginalProjects.filter(r => (r.name.toLowerCase().includes("tensor") || r.name.toLowerCase().includes("ai") || r.name.toLowerCase().includes("ml") || r.topics.includes("ai")) && r.projectQualityScore >= 30);
+    const isAiUnlocked = aiProjects.length > 0 || detectedSkillsSet.has("TensorFlow");
+    const aiBadge: DeveloperBadge = {
+      id: "ai-ml-builder",
+      name: "AI / ML Builder",
+      description: "Implement Machine Learning models, Computer Vision, or AI integrations",
+      icon: "🧠",
+      unlocked: isAiUnlocked,
+      glowColor: "rgba(236,72,153,0.6)",
+      evidenceList: isAiUnlocked
+        ? aiProjects.map(r => `• ${r.name}: AI/ML implementation verified (${r.projectQualityScore}/100 quality)`)
+        : ["No AI/ML model training or API implementation detected in codebase."],
+      unlockReason: isAiUnlocked
+        ? "Verified AI/ML libraries or API integrations in your project repository."
+        : "Requires implementing Machine Learning models or AI API integrations in a real app.",
+      suggestion: "Build a project using PyTorch, TensorFlow, Scikit-learn, or OpenAI/AI API integrations.",
+      requirementsChecklist: [
+        { text: "AI/ML codebase or API integration", satisfied: isAiUnlocked },
+        { text: "Non-trivial project implementation", satisfied: aiProjects.length > 0 },
+      ],
+    };
+
+    // 6. API Architect 🔗 (Requires REST/GraphQL API endpoints creation)
+    const apiProjects = validOriginalProjects.filter(r => (r.hasBE || r.name.toLowerCase().includes("api")) && r.projectQualityScore >= 30);
+    const isApiUnlocked = apiProjects.length > 0;
+    const apiBadge: DeveloperBadge = {
+      id: "api-architect",
+      name: "API Architect",
+      description: "Design & implement RESTful or GraphQL backend API services",
+      icon: "🔗",
+      unlocked: isApiUnlocked,
+      glowColor: "rgba(99,102,241,0.6)",
+      evidenceList: isApiUnlocked
+        ? apiProjects.map(r => `• ${r.name}: REST API routes & endpoints verified (${r.projectQualityScore}/100 quality)`)
+        : ["No REST/GraphQL backend route definitions found in public repos."],
+      unlockReason: isApiUnlocked
+        ? "RESTful/GraphQL backend API routes and service architecture verified."
+        : "Requires designing and publishing backend API routes/endpoints.",
+      suggestion: "Create structured REST API endpoints (GET, POST, PUT, DELETE) in a backend project.",
+      requirementsChecklist: [
+        { text: "Backend REST/GraphQL route definitions", satisfied: isApiUnlocked },
+        { text: "Meaningful API service architecture", satisfied: apiProjects.length > 0 },
+      ],
+    };
+
+    // 7. Deployment Ready ☁️ (Requires Vercel/Netlify/Pages or Docker/CI-CD)
+    const deployProjects = validOriginalProjects.filter(r => r.hasPages || r.hasCiCd);
+    const isDeployUnlocked = deployProjects.length > 0;
+    const deployBadge: DeveloperBadge = {
+      id: "deployment-ready",
+      name: "Deployment Ready",
+      description: "Deploy live applications or configure cloud deployment pipelines",
+      icon: "☁️",
+      unlocked: isDeployUnlocked,
+      glowColor: "rgba(14,165,233,0.6)",
+      evidenceList: isDeployUnlocked
+        ? deployProjects.map(r => `• ${r.name}: ${r.hasPages ? "Live web URL verified" : "CI/CD & Docker config verified"}`)
+        : ["No live web URL, Vercel/Netlify links, or Docker/CI-CD setup found."],
+      unlockReason: isDeployUnlocked
+        ? "Live application URL deployment or automated CI/CD container configuration verified."
+        : "Requires deploying a web app live (Vercel/Netlify/Render) or adding Docker/CI-CD.",
+      suggestion: "Deploy your project live to Vercel, Netlify, or GitHub Pages and add the URL to your repo header.",
+      requirementsChecklist: [
+        { text: "Live web application homepage URL", satisfied: reposWithDeploy > 0 },
+        { text: "Docker / GitHub Actions pipeline", satisfied: reposWithCiCd > 0 },
+      ],
+    };
+
+    // 8. Documentation Pro 📚 (Requires multiple repos with strong README)
+    const readmeProjects = validOriginalProjects.filter(r => r.hasReadme);
+    const isDocUnlocked = readmeProjects.length >= 2;
+    const docBadge: DeveloperBadge = {
+      id: "documentation-pro",
+      name: "Documentation Pro",
+      description: "Maintain comprehensive README documentation across repositories",
+      icon: "📚",
+      unlocked: isDocUnlocked,
+      glowColor: "rgba(16,185,129,0.6)",
+      evidenceList: isDocUnlocked
+        ? readmeProjects.map(r => `• ${r.name}: Complete README documentation verified`)
+        : [`Only ${readmeProjects.length} repository has detailed README documentation.`],
+      unlockReason: isDocUnlocked
+        ? "Comprehensive README documentation verified across multiple repositories."
+        : "Requires detailed README documentation (setup, tech stack, screenshots) across at least 2 projects.",
+      suggestion: "Add clear setup steps, tech stack details, and feature descriptions to your project READMEs.",
+      requirementsChecklist: [
+        { text: "First repository README documentation", satisfied: readmeProjects.length >= 1 },
+        { text: "Second repository README documentation", satisfied: readmeProjects.length >= 2 },
+      ],
+    };
+
+    // 9. Open Source Contributor 🌐 (Requires real community stars/forks on original repos)
+    const isCollabUnlocked = totalStars >= 25 || (userData.public_repos > 5 && validOriginalProjects.length >= 3);
+    const collabBadge: DeveloperBadge = {
+      id: "open-source-contributor",
+      name: "Open Source Contributor",
+      description: "Publish open source repositories with verified community recognition",
+      icon: "🌐",
+      unlocked: isCollabUnlocked,
+      glowColor: "rgba(245,158,11,0.6)",
+      evidenceList: isCollabUnlocked
+        ? [`• ${totalStars} total community stars across original repositories`, `• ${validOriginalProjects.length} published original repositories`]
+        : ["No public collaboration or community star recognition yet."],
+      unlockReason: isCollabUnlocked
+        ? "Verified open source publications with community recognition."
+        : "Requires publishing meaningful original repositories with community stars or PR contributions.",
+      suggestion: "Share your original projects on developer communities to earn stargazers and contributors.",
+      requirementsChecklist: [
+        { text: "Published original open source projects", satisfied: validOriginalProjects.length >= 2 },
+        { text: "Community stargazers or PR contributions", satisfied: totalStars >= 25 },
+      ],
+    };
+
+    // 10. Elite Builder 👑 (HARDEST: Dev Score >= 90 AND Best Proj >= 85 AND >= 3 badges)
+    const preUnlockedBadges = [feBadge, beBadge, fullStackBadge, dbBadge, aiBadge, apiBadge, deployBadge, docBadge, collabBadge].filter(b => b.unlocked).length;
+    const isEliteUnlocked = devScore >= 90 && bestScore >= 85 && preUnlockedBadges >= 3;
+    const eliteBadge: DeveloperBadge = {
+      id: "elite-builder",
+      name: "Elite Builder",
+      description: "Master level developer profile demonstrating top-tier software engineering",
+      icon: "👑",
+      unlocked: isEliteUnlocked,
+      glowColor: "rgba(250,204,21,0.8)",
+      evidenceList: isEliteUnlocked
+        ? [
+            `• Developer Score: ${devScore}/100 (Required: >= 90)`,
+            `• Best Project Quality: ${bestScore}/100 (Required: >= 85)`,
+            `• Unlocked Badges: ${preUnlockedBadges} (Required: >= 3)`,
+          ]
+        : [
+            `• Current Developer Score: ${devScore}/100 (Required: >= 90)`,
+            `• Best Project Quality: ${bestScore}/100 (Required: >= 85)`,
+            `• Unlocked Badges: ${preUnlockedBadges}/10 (Required: >= 3)`,
+          ],
+      unlockReason: isEliteUnlocked
+        ? "Elite engineering portfolio status achieved with top-tier project quality and score >= 90."
+        : "Requires Developer Score >= 90, Flagship Project Quality >= 85, and at least 3 other unlocked badges.",
+      suggestion: "Build a flagship production-level project with unit tests, CI/CD, database, and live deployment to reach Elite status.",
+      requirementsChecklist: [
+        { text: "Developer Score >= 90", satisfied: devScore >= 90 },
+        { text: "Flagship Project Quality >= 85", satisfied: bestScore >= 85 },
+        { text: "At least 3 other achievements unlocked", satisfied: preUnlockedBadges >= 3 },
+      ],
+    };
+
+    const badges: DeveloperBadge[] = [
+      feBadge,
+      beBadge,
+      fullStackBadge,
+      dbBadge,
+      aiBadge,
+      apiBadge,
+      deployBadge,
+      docBadge,
+      collabBadge,
+      eliteBadge,
+    ];
 
     const techBreakdown: Record<string, number> = {};
     validOriginalProjects.forEach(r => {
@@ -853,7 +1048,6 @@ export async function GET(req: NextRequest) {
     };
 
     const totalXP = devScore * 10;
-    const levelNum = Math.max(1, Math.floor(devScore / 10) + 1);
 
     const developerMetrics: DeveloperMetrics = {
       score: devScore,
@@ -861,7 +1055,7 @@ export async function GET(req: NextRequest) {
       confidenceReason,
       separateMetrics,
       level: devLevel,
-      levelNum,
+      levelNum: Math.max(1, Math.floor(devScore / 10) + 1),
       xpCurrent: Math.round(totalXP % 100),
       xpMax: 100,
       xpPercentage: Math.min(100, Math.round(((totalXP % 100) / 100) * 100)),
@@ -900,23 +1094,33 @@ export async function GET(req: NextRequest) {
         uiUx: uiUxConf,
         testing: testConf,
       },
-      badges: [
-        {
-          id: "react-dev",
-          name: "React Developer",
-          description: "Published React/Next.js projects",
-          icon: "⚛️",
-          unlocked: detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js"),
-          glowColor: "rgba(56,189,248,0.5)",
-        },
-        {
-          id: "backend-dev",
-          name: "Backend Engineer",
-          description: "Created backend API servers",
-          icon: "⚙️",
-          unlocked: reposWithBE.length > 0,
-          glowColor: "rgba(34,197,94,0.5)",
-        },
+      badges,
+    };
+
+    const startupLevel = isFullStackVerified ? "Strong" : meaningfulCount >= 1 ? "Moderate" : "Developing";
+    const enterpriseLevel = reposWithCiCd > 0 && reposWithTests > 0 ? "Strong" : reposWithCiCd > 0 ? "Moderate" : "Needs Evidence";
+    const freelancerLevel = reposWithFE.length > 0 && userData.blog ? "Strong" : reposWithFE.length > 0 ? "Moderate" : "Developing";
+
+    const developerPersonality: DeveloperPersonality = {
+      archetype: isFullStackVerified ? "Full Stack Creator" : reposWithBE.length > 0 ? "Backend Systems Engineer" : reposWithFE.length > 0 ? "Frontend Developer" : "Software Developer",
+      title: isFullStackVerified ? "Full Stack Engineer" : "Software Developer",
+      bestCareerPath: isFullStackVerified ? "Full Stack Software Engineering" : "Software Development",
+      readinessScores: {
+        startupReadiness: startupLevel === "Strong" ? 80 : startupLevel === "Moderate" ? 55 : 30,
+        enterpriseReadiness: enterpriseLevel === "Strong" ? 85 : enterpriseLevel === "Moderate" ? 50 : 25,
+        freelancerPotential: freelancerLevel === "Strong" ? 85 : freelancerLevel === "Moderate" ? 55 : 30,
+        leadershipPotential: totalStars > 50 ? 70 : 40,
+      },
+      readinessLevels: {
+        startupReadiness: startupLevel,
+        enterpriseReadiness: enterpriseLevel,
+        freelancerPotential: freelancerLevel,
+        leadershipPotential: "Developing",
+      },
+      developerStyleTraits: [
+        meaningfulCount >= 1
+          ? `Best project "${bestProj?.name || ''}" rated at ${bestScore}/100 quality.`
+          : "Currently building initial portfolio projects.",
       ],
     };
 

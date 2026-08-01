@@ -39,6 +39,7 @@ export default function GitHubIntelligencePage() {
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<GitHubAnalysisResult | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [imgError, setImgError] = useState(false);
 
   const handleDownloadReport = async () => {
@@ -559,56 +560,187 @@ export default function GitHubIntelligencePage() {
               </div>
             </section>
 
-            {/* ── GAMIFIED DEVELOPER BADGES SECTION ── */}
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-sm uppercase tracking-wider">
-                  <Award size={18} className="text-amber-400" />
-                  <span>Developer Achievement Badges</span>
+            {/* ── DEVELOPER ACHIEVEMENT BADGES SECTION ── */}
+            <section className="space-y-5">
+              {/* Progress Header & Progress Bar */}
+              <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-amber-300 font-bold text-sm uppercase tracking-wider">
+                      <Award size={20} className="text-amber-400" />
+                      <span>DEVELOPER ACHIEVEMENT BADGES</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">Evidence-backed developer progression & milestone achievements</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-500/20 px-3.5 py-1.5 rounded-xl border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                      {(analysis.developerMetrics?.badges || []).filter(b => b.unlocked).length} / {(analysis.developerMetrics?.badges || []).length || 10} UNLOCKED
+                    </span>
+                  </div>
                 </div>
-                <span className="text-xs text-purple-300 font-bold bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30">
-                  {analysis.developerMetrics?.badges?.filter(b => b.unlocked).length || 0} / {analysis.developerMetrics?.badges?.length || 10} Unlocked
-                </span>
+
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-purple-300">
+                      Next Achievement Goal:{" "}
+                      <strong className="text-cyan-300">
+                        {(analysis.developerMetrics?.badges || []).find(b => !b.unlocked)?.name || "Master Engineer"}
+                      </strong>
+                    </span>
+                    <span className="text-gray-400 font-mono">
+                      {Math.round(
+                        (((analysis.developerMetrics?.badges || []).filter(b => b.unlocked).length || 0) /
+                          ((analysis.developerMetrics?.badges || []).length || 10)) *
+                          100
+                      )}
+                      % Completed
+                    </span>
+                  </div>
+                  <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden p-0.5 border border-white/10">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-purple-500 via-fuchsia-500 to-cyan-400 transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                      style={{
+                        width: `${Math.max(
+                          10,
+                          (((analysis.developerMetrics?.badges || []).filter(b => b.unlocked).length || 0) /
+                            ((analysis.developerMetrics?.badges || []).length || 10)) *
+                            100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* 10 Badges Responsive Grid (Desktop: 5 per row x 2 rows, Mobile/Tablet: 2-3 cols) */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 {(analysis.developerMetrics?.badges || []).map((badge) => (
                   <div
                     key={badge.id}
-                    className={`p-4 rounded-3xl border transition-all duration-500 flex flex-col items-center text-center space-y-2 relative overflow-hidden ${
+                    onClick={() => setSelectedBadge(badge)}
+                    className={`p-4 rounded-3xl border transition-all duration-300 flex flex-col items-center text-center space-y-2.5 relative overflow-hidden cursor-pointer ${
                       badge.unlocked
-                        ? "bg-white/[0.04] border-purple-500/40 hover:scale-[1.03] shadow-[0_0_25px_rgba(168,85,247,0.2)]"
-                        : "bg-white/[0.015] border-white/5 opacity-50 blur-[0.6px] grayscale hover:grayscale-0 hover:blur-0 transition-all"
+                        ? "bg-white/[0.04] border-purple-500/40 hover:scale-[1.03] shadow-[0_0_25px_rgba(168,85,247,0.25)]"
+                        : "bg-white/[0.015] border-white/5 opacity-55 hover:opacity-85 hover:border-white/20"
                     }`}
                     style={badge.unlocked ? { boxShadow: `0 0 25px ${badge.glowColor}` } : {}}
                   >
+                    {/* Badge Icon */}
                     <div
                       className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-transform duration-300 ${
-                        badge.unlocked ? "animate-bounce-subtle" : ""
+                        badge.unlocked ? "animate-bounce-subtle bg-white/10" : "grayscale opacity-60 bg-white/5"
                       }`}
                     >
                       {badge.icon}
                     </div>
 
-                    <div className="space-y-0.5">
+                    {/* Title & Short Description */}
+                    <div className="space-y-1">
                       <h5 className={`font-extrabold text-xs ${badge.unlocked ? "text-white" : "text-gray-400"}`}>
                         {badge.name}
                       </h5>
                       <p className="text-[10px] text-gray-400 leading-tight line-clamp-2">{badge.description}</p>
                     </div>
 
+                    {/* Unlocked / Locked Pill */}
                     <span
-                      className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full mt-auto ${
+                      className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mt-auto tracking-wider ${
                         badge.unlocked
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
                           : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
                       }`}
                     >
-                      {badge.unlocked ? "✓ Unlocked" : "🔒 Locked"}
+                      {badge.unlocked ? "✓ UNLOCKED" : "🔒 LOCKED"}
                     </span>
                   </div>
                 ))}
               </div>
+
+              {/* Badge Details Modal Dialog */}
+              {selectedBadge && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+                  onClick={() => setSelectedBadge(null)}
+                >
+                  <div
+                    className="p-6 md:p-8 rounded-3xl bg-slate-900 border border-purple-500/30 max-w-lg w-full space-y-5 relative shadow-[0_0_50px_rgba(168,85,247,0.3)]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => setSelectedBadge(null)}
+                      className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 text-lg font-bold"
+                    >
+                      ✕
+                    </button>
+
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-4xl border border-white/10 shrink-0">
+                        {selectedBadge.icon}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-lg font-black text-white">{selectedBadge.name}</h4>
+                          <span
+                            className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                              selectedBadge.unlocked
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                            }`}
+                          >
+                            {selectedBadge.unlocked ? "✓ UNLOCKED" : "🔒 LOCKED"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">{selectedBadge.description}</p>
+                      </div>
+                    </div>
+
+                    {/* Explanation */}
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2 text-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 block">
+                        {selectedBadge.unlocked ? "Unlocked Reason" : "Lock Reason & Guidance"}
+                      </span>
+                      <p className="text-gray-200 leading-relaxed font-medium">{selectedBadge.unlockReason}</p>
+                      {selectedBadge.suggestion && (
+                        <p className="text-cyan-300 pt-1 text-[11px] leading-normal font-semibold">
+                          💡 <strong>How to unlock:</strong> {selectedBadge.suggestion}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Evidence or Requirements Checklist */}
+                    <div className="space-y-2 text-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                        {selectedBadge.unlocked ? "Evidence Detected in Repositories" : "Requirements Checklist"}
+                      </span>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {selectedBadge.unlocked
+                          ? (selectedBadge.evidenceList || []).map((ev: string, idx: number) => (
+                              <div key={idx} className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px]">
+                                {ev}
+                              </div>
+                            ))
+                          : (selectedBadge.requirementsChecklist || []).map((req: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 text-[11px]">
+                                <span className={req.satisfied ? "text-emerald-300" : "text-gray-400"}>{req.text}</span>
+                                <span className={req.satisfied ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                                  {req.satisfied ? "✓ Satisfied" : "✗ Missing"}
+                                </span>
+                              </div>
+                            ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedBadge(null)}
+                      className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white transition-colors"
+                    >
+                      Close Window
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* ── AI DEVELOPER PERSONALITY SECTION ── */}
