@@ -249,13 +249,13 @@ export default function GitHubIntelligencePage() {
 
           <h1
             className="font-black leading-tight text-white tracking-tight"
-            style={{ fontSize: "clamp(2rem, 5vw, 3.8rem)", fontFamily: "'Outfit', 'Inter', sans-serif" }}
+            style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)", fontFamily: "'Outfit', 'Inter', sans-serif" }}
           >
-            Understand Your GitHub Beyond Repository Counts
+            GitHub <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-300 to-cyan-400">Intelligence</span>
           </h1>
 
-          <p className="text-gray-300 text-base leading-relaxed font-normal max-w-2xl mx-auto">
-            Paperino GitHub Intelligence analyzes publicly available GitHub information to help students and developers understand the quality of their developer portfolio. Instead of judging developers only by repository counts, followers or stars, the system focuses on meaningful project evidence, technical depth, documentation, engineering practices and portfolio quality.
+          <p className="text-gray-300 text-base md:text-lg leading-relaxed font-light">
+            Analyze your GitHub profile and discover your real developer strengths.
           </p>
 
           {/* Search Box Input */}
@@ -1357,115 +1357,6 @@ export default function GitHubIntelligencePage() {
             </section>
           </main>
         ) : null}
-
-        {/* ── CRAWLABLE SEO INFORMATIONAL & FAQ SECTIONS FOR GITHUB INTELLIGENCE ── */}
-        <section className="w-full mt-20 space-y-12 border-t border-purple-500/20 pt-12 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* What GitHub Intelligence Analyzes */}
-            <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <FolderGit2 className="text-purple-400" size={20} />
-                What GitHub Intelligence Analyzes
-              </h2>
-              <ul className="space-y-2 text-xs text-gray-300 list-disc list-inside leading-relaxed">
-                <li>Meaningful projects vs learning repos</li>
-                <li>Repository quality score (/100)</li>
-                <li>Technical depth (Frontend, Backend, Database)</li>
-                <li>Programming languages & frameworks</li>
-                <li>Documentation (README quality)</li>
-                <li>Engineering practices (CI/CD, Tests)</li>
-                <li>Portfolio depth & repo categorization</li>
-                <li>Development activity & maintenance</li>
-                <li>Public collaboration evidence</li>
-              </ul>
-            </div>
-
-            {/* Quality Over Quantity */}
-            <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="text-emerald-400" size={20} />
-                Quality Over Quantity
-              </h2>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Having many repositories does not automatically indicate a stronger developer portfolio. Paperino GitHub Intelligence focuses on the quality and evidence available in public projects. A student with 1 complete, well-architected full-stack project receives a significantly higher quality rating than someone with 100 empty or tutorial repos.
-              </p>
-            </div>
-
-            {/* Developer Report */}
-            <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <FileText className="text-cyan-400" size={20} />
-                Developer Report
-              </h2>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Students can generate a downloadable PDF developer report containing their complete GitHub analysis, project strengths, portfolio observations, engineering audit, and actionable growth recommendations.
-              </p>
-            </div>
-          </div>
-
-          {/* Frequently Asked Questions */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <HelpCircle className="text-fuchsia-400" size={20} />
-              Frequently Asked Questions
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm">
-              <div className="space-y-2">
-                <h3 className="font-bold text-purple-300 text-sm">What is a GitHub profile analyzer?</h3>
-                <p className="text-gray-400 leading-relaxed">
-                  A GitHub profile analyzer inspects public GitHub repositories to evaluate code quality, technical depth, project completeness, documentation, and overall software engineering practices.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-bold text-purple-300 text-sm">How does Paperino GitHub Intelligence score a profile?</h3>
-                <p className="text-gray-400 leading-relaxed">
-                  Paperino GitHub Intelligence evaluates profiles using an evidence-based engine across 8 categories: Best Project Quality (30%), Overall Project Quality (20%), Technical Depth (15%), Engineering Practices (10%), Portfolio Depth (10%), Documentation (5%), Maintenance (5%), and Collaboration (5%).
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-bold text-purple-300 text-sm">Does having more repositories increase my score?</h3>
-                <p className="text-gray-400 leading-relaxed">
-                  No. Raw repository counts, follower counts, and account age contribute ZERO direct points to the developer score. Quality of meaningful engineering work is prioritized over quantity.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-bold text-purple-300 text-sm">Are GitHub followers used to determine developer skill?</h3>
-                <p className="text-gray-400 leading-relaxed">
-                  No. Followers and repository counts are treated purely as context metadata and do not directly inflate the Developer Score.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-bold text-purple-300 text-sm">What does GitHub Intelligence analyze?</h3>
-                <p className="text-gray-400 leading-relaxed">
-                  GitHub Intelligence inspects frontend, backend, database, testing, CI/CD pipelines, documentation quality, repository classifications, and engineering depth.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="font-bold text-purple-300 text-sm">Can I download my GitHub developer report?</h3>
-                <p className="text-gray-400 leading-relaxed">
-                  Yes! Students can generate and download a comprehensive multi-page PDF developer report containing their profile quality breakdown, strengths, and actionable growth plan.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Internal Link Banner */}
-          <div className="p-6 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-            <div className="space-y-1">
-              <h4 className="font-bold text-white text-sm">Build a complete career profile with Career DNA</h4>
-              <p className="text-gray-400">Combine your GitHub intelligence with your resume, skills, and academic CGPA.</p>
-            </div>
-            <a href="/career-dna" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold transition-all shrink-0">
-              Build Career DNA →
-            </a>
-          </div>
-        </section>
       </div>
     </div>
   );
