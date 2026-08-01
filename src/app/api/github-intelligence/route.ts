@@ -38,6 +38,22 @@ export type RepoCategoryType =
   | "FORK"
   | "UNKNOWN_INSUFFICIENT_EVIDENCE";
 
+export interface ClassifiedRepoAuditDetails {
+  categoryScores: {
+    implementationDepth: { score: number; max: number; evidence: string[] };
+    architecture: { score: number; max: number; evidence: string[] };
+    featureComplexity: { score: number; max: number; evidence: string[] };
+    completeness: { score: number; max: number; evidence: string[] };
+    engineeringPractices: { score: number; max: number; evidence: string[] };
+    documentation: { score: number; max: number; evidence: string[] };
+    testing: { score: number; max: number; evidence: string[] };
+    deploymentUsability: { score: number; max: number; evidence: string[] };
+  };
+  filesInspected: string[];
+  evidenceMissing: string[];
+  analysisConfidence: "HIGH" | "MEDIUM" | "LOW";
+}
+
 export interface ClassifiedRepoInfo {
   name: string;
   description: string | null;
@@ -52,6 +68,7 @@ export interface ClassifiedRepoInfo {
   isMeaningful: boolean; // RQS >= 45
   rqs: number; // Repository Quality Score (0-100)
   projectQualityBreakdown: ProjectQualityBreakdown;
+  auditDetails: ClassifiedRepoAuditDetails;
   evidenceList: string[];
   rejectionReason?: string;
   selectionReason: string;
@@ -100,7 +117,13 @@ export interface TransparencyAudit {
   forksCount: number;
   configProfileCount: number;
   minimalEmptyCount: number;
-  verifiedProjectsList: { name: string; rqs: number; category: string; isSubstantial: boolean }[];
+  verifiedProjectsList: {
+    name: string;
+    rqs: number;
+    category: string;
+    isSubstantial: boolean;
+    auditDetails: ClassifiedRepoAuditDetails;
+  }[];
   excludedProjectsList: { name: string; category: string; reason: string }[];
   disclaimer: string;
   analysisCoverage: string;
@@ -525,16 +548,110 @@ export async function GET(req: NextRequest) {
           qualityTier,
         };
 
+        const filesInspected = treeFetched ? fileList.slice(0, 12) : (language ? [`${language.toLowerCase()} codebase`] : []);
+        const evidenceMissing: string[] = [];
+        if (!treeFetched) evidenceMissing.push("Full file tree endpoint not fetched (Corpus metadata mode)");
+        if (!hasTest) evidenceMissing.push("No automated test files detected");
+        if (!hasCiCd && !dockerDetected) evidenceMissing.push("No deployment/CI-CD configuration detected");
+        if (!hasDB) evidenceMissing.push("No database persistence layer detected");
+        if (!hasFE && !hasBE) evidenceMissing.push("No full-stack UI/API framework structure detected");
+
+        const auditDetails: ClassifiedRepoAuditDetails = {
+          categoryScores: {
+            implementationDepth: {
+              score: implementationDepth,
+              max: 30,
+              evidence: treeFetched
+                ? [`✓ Verified ${sourceFileCount} source files in codebase (+${implementationDepth}/30 pts)`, `✓ Repositories codebase size ${sizeKB} KB`]
+                : ["Source evidence unavailable (Metadata analysis mode)", `• Repo size ${sizeKB} KB (+${implementationDepth}/30 pts)`],
+            },
+            architecture: {
+              score: architecture,
+              max: 15,
+              evidence: [
+                hasFE && hasBE ? "✓ Full-Stack (FE UI + BE API) domain separation (+15 pts)" : hasFE ? "✓ Frontend UI framework architecture (+10 pts)" : hasBE ? "✓ Backend service architecture (+10 pts)" : "✗ Simple single-layer codebase (+4 pts)",
+              ],
+            },
+            featureComplexity: {
+              score: featureComplexity,
+              max: 15,
+              evidence: [
+                hasDB ? "✓ Database persistence layer (+7 pts)" : "✗ No database persistence (+0 pts)",
+                hasFE ? "✓ Interactive UI components (+4 pts)" : "✗ No UI components (+0 pts)",
+                hasBE ? "✓ Backend logic / API endpoints (+4 pts)" : "✗ No backend endpoints (+0 pts)",
+              ],
+            },
+            completeness: {
+              score: completeness,
+              max: 15,
+              evidence: [
+                hasReadme ? "✓ README file documentation (+5 pts)" : "✗ Missing README file",
+                hasDescription ? "✓ Repository overview description (+5 pts)" : "✗ Short/Missing repository description",
+                sizeKB > 50 ? "✓ Complete project footprint (>50 KB) (+5 pts)" : "• Small project footprint (+2 pts)",
+              ],
+            },
+            engineeringPractices: {
+              score: engPractices,
+              max: 10,
+              evidence: [
+                ciDetected ? "✓ GitHub Actions / CI workflow detected (+6 pts)" : "✗ No CI/CD workflow files",
+                dockerDetected ? "✓ Dockerfile / Docker-compose configuration (+4 pts)" : "✗ No Docker configuration",
+              ],
+            },
+            documentation: {
+              score: docScore,
+              max: 5,
+              evidence: [
+                hasDescription && sizeKB > 20 ? "✓ Complete repository description & README (+5 pts)" : hasDescription ? "✓ Basic description (+3 pts)" : "✗ Minimal documentation (+1 pt)",
+              ],
+            },
+            testing: {
+              score: testingScore,
+              max: 5,
+              evidence: [
+                hasTest ? "✓ Automated testing suite files detected (+5 pts)" : "✗ No automated test files detected (+0 pts)",
+              ],
+            },
+            deploymentUsability: {
+              score: deployCi,
+              max: 5,
+              evidence: [
+                hasPages ? "✓ GitHub Pages / Live application URL (+3 pts)" : "✗ No live deployment URL",
+                hasCiCd ? "✓ Automated CI/CD deployment pipeline (+2 pts)" : "✗ No CI deployment pipeline",
+              ],
+            },
+          },
+          filesInspected,
+          evidenceMissing,
+          analysisConfidence: treeFetched ? "HIGH" : (isMeaningful ? "MEDIUM" : "LOW"),
+        };
+
+        // ── DEV-ONLY CONSOLE OBJECT ──
+        console.log("PAPERINO_RQS_AUDIT", {
+          repository: repo.name,
+          classification: repoCategory,
+          rqs,
+          categoryScores: {
+            implementationDepth: `${implementationDepth}/30`,
+            architecture: `${architecture}/15`,
+            featureComplexity: `${featureComplexity}/15`,
+            completeness: `${completeness}/15`,
+            engineeringPractices: `${engPractices}/10`,
+            documentation: `${docScore}/5`,
+            testing: `${testingScore}/5`,
+            deploymentUsability: `${deployCi}/5`,
+          },
+          evidence: evidenceList,
+          filesInspected,
+          missingEvidence: evidenceMissing,
+          analysisConfidence: auditDetails.analysisConfidence,
+        });
+
         const selectionReason = isSubstantial
           ? `Verified substantial project with RQS ${rqs}/100`
           : isMeaningful
           ? `Verified valid project with RQS ${rqs}/100`
           : `Excluded from score calculations (${evidenceList[0]})`;
-
-        // ── STEP 19: DEBUG MODE LOG FOR CANDIDATES ──
-        if (deepInspectedNames.has(repo.name) || isMeaningful) {
-          console.log(`[GitHub Intelligence Debug Repo] repo: ${repo.name} | treeFetched: ${treeFetched} | fileCount: ${fileList.length} | sourceFileCount: ${sourceFileCount} | manifestDetected: ${manifestDetected} | srcDetected: ${srcDetected} | backendDetected: ${backendDetected} | databaseDetected: ${databaseDetected} | testsDetected: ${testsDetected} | dockerDetected: ${dockerDetected} | ciDetected: ${ciDetected} | RQS: ${rqs} | classification: ${repoCategory} | rejectionReason: ${isMeaningful ? "None" : evidenceList[0]}`);
-        }
 
         return {
           name: repo.name,
@@ -550,6 +667,7 @@ export async function GET(req: NextRequest) {
           isMeaningful,
           rqs,
           projectQualityBreakdown,
+          auditDetails,
           evidenceList,
           selectionReason,
           hasFE,
@@ -572,6 +690,7 @@ export async function GET(req: NextRequest) {
       rqs: r.rqs,
       category: r.repoCategory.replace(/_/g, " "),
       isSubstantial: r.isSubstantial,
+      auditDetails: r.auditDetails,
     }));
 
     const excludedProjectsList = classifiedRepos.filter(r => !r.isMeaningful).map(r => ({

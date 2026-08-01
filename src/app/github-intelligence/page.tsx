@@ -43,6 +43,7 @@ export default function GitHubIntelligencePage() {
   const [analysis, setAnalysis] = useState<GitHubAnalysisResult | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [showVerifiedModal, setShowVerifiedModal] = useState(false);
+  const [selectedProjectAudit, setSelectedProjectAudit] = useState<any | null>(null);
   const [imgError, setImgError] = useState(false);
 
   const handleDownloadReport = async () => {
@@ -1498,15 +1499,22 @@ export default function GitHubIntelligencePage() {
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {((analysis.developerMetrics as any)?.transparencyAudit?.verifiedProjectsList || []).length > 0 ? (
                     ((analysis.developerMetrics as any)?.transparencyAudit?.verifiedProjectsList || []).map((p: any, idx: number) => (
-                      <div key={idx} className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between text-xs">
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedProjectAudit(p)}
+                        className="w-full text-left p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-between text-xs transition-all cursor-pointer group"
+                      >
                         <div className="space-y-0.5">
-                          <span className="font-bold text-white block">{p.name}</span>
-                          <span className="text-[10px] text-emerald-300 font-semibold">{p.category}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white group-hover:text-emerald-300 transition-colors">{p.name}</span>
+                            <span className="text-[10px] text-emerald-400 font-semibold opacity-75 group-hover:opacity-100">🔍 Click to Audit →</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-300 font-semibold block">{p.category}</span>
                         </div>
-                        <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-mono font-black text-xs border border-emerald-500/40">
+                        <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-mono font-black text-xs border border-emerald-500/40 shrink-0">
                           RQS: {p.rqs}/100
                         </span>
-                      </div>
+                      </button>
                     ))
                   ) : (
                     <div className="p-4 rounded-2xl bg-white/5 text-xs text-gray-400 text-center">
@@ -1555,6 +1563,131 @@ export default function GitHubIntelligencePage() {
                   className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all cursor-pointer"
                 >
                   Close Audit Transparency
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PROJECT EVIDENCE AUDIT MODAL ── */}
+        {selectedProjectAudit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-2xl animate-fade-in">
+            <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl bg-[#090514] border border-emerald-500/40 p-6 md:p-8 space-y-6 shadow-[0_0_80px_rgba(16,185,129,0.25)]">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    <Code2 size={16} />
+                    <span>Project Evidence Audit</span>
+                  </div>
+                  <h3 className="text-2xl font-black text-white">{selectedProjectAudit.name}</h3>
+                  <div className="flex items-center gap-3 text-xs text-gray-400 pt-0.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      {selectedProjectAudit.category}
+                    </span>
+                    <span>Confidence: <strong className="text-white">{selectedProjectAudit.auditDetails?.analysisConfidence || "HIGH"}</strong></span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedProjectAudit(null)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* RQS Final Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-purple-950/40 border border-emerald-500/30 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Final Repository Quality Score</span>
+                  <p className="text-xs text-gray-300">Sum of 8 verified technical evidence categories</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-3xl font-black font-mono text-emerald-300">
+                    {selectedProjectAudit.rqs}
+                  </span>
+                  <span className="text-xs text-gray-400"> / 100</span>
+                </div>
+              </div>
+
+              {/* Category Breakdown */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">EXACT RQS CATEGORY CALCULATION</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {Object.entries(selectedProjectAudit.auditDetails?.categoryScores || {}).map(([key, cat]: [string, any], idx: number) => {
+                    const titles: Record<string, string> = {
+                      implementationDepth: "Implementation Depth",
+                      architecture: "Architecture / Structure",
+                      featureComplexity: "Technical Complexity",
+                      completeness: "Completeness",
+                      engineeringPractices: "Engineering Practices",
+                      documentation: "Documentation",
+                      testing: "Testing",
+                      deploymentUsability: "Deployment / Usability",
+                    };
+                    return (
+                      <div key={idx} className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="text-white">{titles[key] || key}</span>
+                          <span className="font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                            {cat.score} / {cat.max}
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-[11px] text-gray-300">
+                          {(cat.evidence || []).map((ev: string, evIdx: number) => (
+                            <div key={evIdx} className={`leading-relaxed ${ev.startsWith("✓") ? "text-emerald-300" : ev.startsWith("✗") ? "text-red-400/80" : "text-gray-400"}`}>
+                              {ev}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Files Inspected & Missing Evidence */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/10 text-xs">
+                {/* Files Inspected */}
+                <div className="space-y-2">
+                  <span className="font-bold text-gray-300 uppercase tracking-wider text-[10px] block">FILES INSPECTED</span>
+                  <div className="p-3 rounded-2xl bg-black/40 border border-white/5 space-y-1 font-mono text-[11px] max-h-36 overflow-y-auto">
+                    {(selectedProjectAudit.auditDetails?.filesInspected || []).length > 0 ? (
+                      selectedProjectAudit.auditDetails.filesInspected.map((file: string, fIdx: number) => (
+                        <div key={fIdx} className="text-emerald-400/90 truncate">
+                          ✓ {file}
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-gray-500 italic">Source evidence unavailable (Metadata mode)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Evidence Missing */}
+                <div className="space-y-2">
+                  <span className="font-bold text-gray-300 uppercase tracking-wider text-[10px] block">EVIDENCE MISSING</span>
+                  <div className="p-3 rounded-2xl bg-black/40 border border-white/5 space-y-1 font-mono text-[11px] max-h-36 overflow-y-auto">
+                    {(selectedProjectAudit.auditDetails?.evidenceMissing || []).length > 0 ? (
+                      selectedProjectAudit.auditDetails.evidenceMissing.map((missing: string, mIdx: number) => (
+                        <div key={mIdx} className="text-amber-400/80 truncate">
+                          ✗ {missing}
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-emerald-400 italic">All key engineering evidence present</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setSelectedProjectAudit(null)}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer"
+                >
+                  Close Project Audit
                 </button>
               </div>
             </div>
