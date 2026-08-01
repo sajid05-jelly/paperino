@@ -176,10 +176,7 @@ export default function GitHubIntelligencePage() {
                       <span>Analyzing...</span>
                     </>
                   ) : (
-                    <>
-                      <Zap size={14} className="text-amber-300" />
-                      <span>Analyze Profile</span>
-                    </>
+                    <span>Analyze Profile</span>
                   )}
                 </button>
 
