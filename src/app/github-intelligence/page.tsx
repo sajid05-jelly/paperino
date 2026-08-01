@@ -344,16 +344,16 @@ export default function GitHubIntelligencePage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Award size={18} className="text-amber-400" />
-                    <span className="text-sm font-black text-white">Developer Level {analysis.developerMetrics?.levelNum || 12}</span>
+                    <span className="text-sm font-black text-white">Developer Level {analysis.developerMetrics?.levelNum || 1}</span>
                     <span className="text-xs text-amber-300 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                      XP {analysis.developerMetrics?.xpCurrent || 820} / {analysis.developerMetrics?.xpMax || 1000}
+                      XP {analysis.developerMetrics?.xpCurrent || 0} / {analysis.developerMetrics?.xpMax || 100}
                     </span>
                   </div>
 
                   <div className="text-xs text-gray-400 font-semibold flex items-center gap-1.5">
                     <span>Next Reward:</span>
                     <span className="text-purple-300 font-bold bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
-                      🎁 {analysis.developerMetrics?.nextRewardBadge || "Elite Builder Badge"}
+                      {analysis.developerMetrics?.nextRewardBadge || "Elite Builder Badge"}
                     </span>
                   </div>
                 </div>
@@ -362,7 +362,7 @@ export default function GitHubIntelligencePage() {
                 <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden border border-white/10">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-amber-400 via-purple-500 to-cyan-400 transition-all duration-1000 ease-out"
-                    style={{ width: `${analysis.developerMetrics?.xpPercentage || 82}%` }}
+                    style={{ width: `${analysis.developerMetrics?.xpPercentage || 0}%` }}
                   />
                 </div>
 
@@ -374,6 +374,105 @@ export default function GitHubIntelligencePage() {
                       {req}
                     </span>
                   ))}
+                </div>
+              </div>
+
+              {/* ── SCORE BREAKDOWN & REPOSITORY AUDIT SECTION ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                {/* Score Breakdown Box */}
+                <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <span className="text-xs font-black uppercase tracking-wider text-purple-300">Evidence-Based Score Breakdown</span>
+                    <span className="text-xs font-mono font-bold text-white bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/30">
+                      {analysis.developerMetrics?.score || 0} / 100
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      { label: "Project Quality", val: (analysis.developerMetrics as any)?.scoreBreakdown?.projectQuality ?? 0, max: 25 },
+                      { label: "Documentation", val: (analysis.developerMetrics as any)?.scoreBreakdown?.documentation ?? 0, max: 15 },
+                      { label: "Development Activity", val: (analysis.developerMetrics as any)?.scoreBreakdown?.developmentActivity ?? 0, max: 15 },
+                      { label: "Technical Depth", val: (analysis.developerMetrics as any)?.scoreBreakdown?.technicalDepth ?? 0, max: 15 },
+                      { label: "Portfolio Quality", val: (analysis.developerMetrics as any)?.scoreBreakdown?.portfolioQuality ?? 0, max: 10 },
+                      { label: "Engineering Practices", val: (analysis.developerMetrics as any)?.scoreBreakdown?.engineeringPractices ?? 0, max: 10 },
+                      { label: "Community Impact", val: (analysis.developerMetrics as any)?.scoreBreakdown?.communityImpact ?? 0, max: 5 },
+                      { label: "Technology Breadth", val: (analysis.developerMetrics as any)?.scoreBreakdown?.technologyBreadth ?? 0, max: 5 },
+                    ].map((item) => (
+                      <div key={item.label} className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                        <span className="text-gray-300 font-medium">{item.label}</span>
+                        <span className="font-mono font-bold text-cyan-300">{item.val} / {item.max}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Why this score? */}
+                  <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Why this score?</span>
+                    <div className="space-y-1.5">
+                      {analysis.developerMetrics?.scoreExplanation?.strengths?.map((s, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-emerald-300">
+                          <CheckCircle2 size={13} className="shrink-0 text-emerald-400" />
+                          <span>{s}</span>
+                        </div>
+                      ))}
+                      {analysis.developerMetrics?.scoreExplanation?.needsImprovement?.map((imp, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-amber-300">
+                          <AlertCircle size={13} className="shrink-0 text-amber-400" />
+                          <span>{imp}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Repository Classification Audit Box */}
+                <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 space-y-4 flex flex-col justify-between">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Repository Quality Audit</span>
+                    <span className="text-xs font-mono font-bold text-gray-300">
+                      {(analysis.developerMetrics as any)?.repoAudit?.repositoriesAnalyzed ?? analysis.publicReposCount} Analyzed
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
+                      <span className="text-emerald-200 font-medium">Substantial Projects</span>
+                      <span className="font-mono font-bold text-emerald-300">{(analysis.developerMetrics as any)?.repoAudit?.substantialProjects ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Normal Projects</span>
+                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.repoAudit?.normalProjects ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Learning / Tutorial Repos</span>
+                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.repoAudit?.learningBasicRepos ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Assignments / Labs</span>
+                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.repoAudit?.assignments ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex justify-between items-center">
+                      <span className="text-amber-200 font-medium">Forks</span>
+                      <span className="font-mono font-bold text-amber-300">{(analysis.developerMetrics as any)?.repoAudit?.forks ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Archived Repos</span>
+                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.repoAudit?.archivedRepos ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Minimal / Empty Repos</span>
+                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.repoAudit?.minimalEmptyRepos ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex justify-between items-center">
+                      <span className="text-purple-200 font-medium">Repositories Skipped</span>
+                      <span className="font-mono font-bold text-purple-300">{(analysis.developerMetrics as any)?.repoAudit?.repositoriesSkipped ?? 0}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-[11px] text-gray-400 leading-relaxed">
+                    ℹ️ <strong>Evidence Rule:</strong> Forks, profile configurations, and empty repositories are skipped from core developer quality calculations to ensure realistic scoring.
+                  </div>
                 </div>
               </div>
 
