@@ -320,47 +320,36 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
 
   y += 5;
 
-  // 10 Skill Breakdown Progress Cards
+  // 10 Skill Breakdown Progress Cards with Evidence Confidence Labels
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text("DEVELOPER SKILLS MATRIX (0-100)", margin, y);
+  doc.text("EVIDENCE-BASED SKILLS MATRIX & CONFIDENCE", margin, y);
 
   y += 6;
 
-  const breakdown = analysis.developerMetrics?.skillsBreakdown || {
-    frontend: 80,
-    backend: 70,
-    database: 65,
-    aiMl: 40,
-    devOps: 50,
-    cloud: 55,
-    problemSolving: 75,
-    documentation: 60,
-    uiUx: 70,
-    testing: 45,
-  };
+  const confMap: Record<string, any> = (analysis.developerMetrics as any)?.skillsConfidence || {};
 
   const skillPairs = [
     [
-      { label: "Frontend Development", val: breakdown.frontend },
-      { label: "Backend Architecture", val: breakdown.backend },
+      { label: "Frontend", key: "frontend" },
+      { label: "Backend", key: "backend" },
     ],
     [
-      { label: "Database Management", val: breakdown.database },
-      { label: "AI / Machine Learning", val: breakdown.aiMl },
+      { label: "Database", key: "database" },
+      { label: "AI / ML", key: "aiMl" },
     ],
     [
-      { label: "DevOps & CI/CD", val: breakdown.devOps },
-      { label: "Cloud Infrastructure", val: breakdown.cloud },
+      { label: "DevOps", key: "devOps" },
+      { label: "Cloud", key: "cloud" },
     ],
     [
-      { label: "Problem Solving", val: breakdown.problemSolving },
-      { label: "Documentation Quality", val: breakdown.documentation },
+      { label: "Problem Solving", key: "problemSolving" },
+      { label: "Documentation", key: "documentation" },
     ],
     [
-      { label: "UI / UX Design", val: breakdown.uiUx },
-      { label: "Software Testing", val: breakdown.testing },
+      { label: "UI / UX", key: "uiUx" },
+      { label: "Software Testing", key: "testing" },
     ],
   ];
 
@@ -369,6 +358,8 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
   skillPairs.forEach((pair) => {
     pair.forEach((item, colIdx) => {
       const px = margin + colIdx * (colW + 6);
+      const confItem = confMap[item.key] || { score: 0, confidence: "INSUFFICIENT EVIDENCE" };
+      const isInsuff = confItem.confidence === "INSUFFICIENT EVIDENCE";
 
       doc.setFillColor(bgCard[0], bgCard[1], bgCard[2]);
       doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
@@ -379,9 +370,10 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
       doc.setTextColor(textDark[0], textDark[1], textDark[2]);
       doc.text(item.label, px + 5, y + 8);
 
-      doc.setFontSize(8);
-      doc.setTextColor(purpleDark[0], purpleDark[1], purpleDark[2]);
-      doc.text(`${item.val}/100`, px + colW - 5, y + 8, { align: "right" });
+      doc.setFontSize(7.5);
+      doc.setTextColor(isInsuff ? 156 : purpleDark[0], isInsuff ? 163 : purpleDark[1], isInsuff ? 175 : purpleDark[2]);
+      const valStr = isInsuff ? "NO EVIDENCE" : `${confItem.score}/100`;
+      doc.text(valStr, px + colW - 5, y + 8, { align: "right" });
     });
     y += 16;
   });
@@ -459,7 +451,8 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(55, 65, 81);
-      doc.text(`Reason: Strong activity signals with ${proj.stars} star(s) and structured code repository setup.`, margin + 11, y + 41.5);
+      const reasonText = proj.selectionReason || `Selected as a ${proj.repoCategory || "standard project"} with valid repository code structure.`;
+      doc.text(`Reason: ${reasonText}`, margin + 11, y + 41.5);
 
       y += 54;
     });

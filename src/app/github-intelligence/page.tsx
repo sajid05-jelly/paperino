@@ -377,43 +377,72 @@ export default function GitHubIntelligencePage() {
                 </div>
               </div>
 
-              {/* Bottom Row: 10 Animated Skill Progress Bars */}
+              {/* Bottom Row: 10 Animated Skill Progress Bars with Confidence Labels */}
               <div className="pt-6 border-t border-white/10 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-300">
                     <Zap size={14} className="text-amber-400 animate-pulse" />
-                    <span>Real Repository Skill Matrix (10 Core Competencies)</span>
+                    <span>Evidence-Based Skill Matrix (10 Core Competencies)</span>
                   </div>
-                  <span className="text-[10px] text-gray-400 font-semibold">Calculated from GitHub Code & Activity</span>
+                  <span className="text-[10px] text-gray-400 font-semibold">Strictly Verified from Code & Dependencies</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
-                  {/* Skill Item Helper */}
                   {[
-                    { label: "Frontend", val: analysis.developerMetrics?.skillsBreakdown?.frontend || 85, color: "from-purple-500 to-indigo-500" },
-                    { label: "Backend", val: analysis.developerMetrics?.skillsBreakdown?.backend || 78, color: "from-blue-500 to-cyan-500" },
-                    { label: "Database", val: analysis.developerMetrics?.skillsBreakdown?.database || 72, color: "from-emerald-500 to-teal-500" },
-                    { label: "AI / ML", val: analysis.developerMetrics?.skillsBreakdown?.aiMl || 65, color: "from-fuchsia-500 to-pink-500" },
-                    { label: "DevOps", val: analysis.developerMetrics?.skillsBreakdown?.devOps || 70, color: "from-amber-500 to-orange-500" },
-                    { label: "Cloud", val: analysis.developerMetrics?.skillsBreakdown?.cloud || 68, color: "from-cyan-500 to-blue-500" },
-                    { label: "Problem Solving", val: analysis.developerMetrics?.skillsBreakdown?.problemSolving || 88, color: "from-purple-500 to-fuchsia-500" },
-                    { label: "Documentation", val: analysis.developerMetrics?.skillsBreakdown?.documentation || 80, color: "from-emerald-400 to-cyan-400" },
-                    { label: "UI / UX", val: analysis.developerMetrics?.skillsBreakdown?.uiUx || 82, color: "from-pink-500 to-purple-500" },
-                    { label: "Testing", val: analysis.developerMetrics?.skillsBreakdown?.testing || 60, color: "from-indigo-500 to-purple-500" },
-                  ].map((skillItem) => (
-                    <div key={skillItem.label} className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1.5">
-                      <div className="flex justify-between items-center text-[11px] font-semibold">
-                        <span className="text-gray-300">{skillItem.label}</span>
-                        <span className="text-white font-mono">{skillItem.val}%</span>
+                    { label: "Frontend", key: "frontend", color: "from-purple-500 to-indigo-500" },
+                    { label: "Backend", key: "backend", color: "from-blue-500 to-cyan-500" },
+                    { label: "Database", key: "database", color: "from-emerald-500 to-teal-500" },
+                    { label: "AI / ML", key: "aiMl", color: "from-fuchsia-500 to-pink-500" },
+                    { label: "DevOps", key: "devOps", color: "from-amber-500 to-orange-500" },
+                    { label: "Cloud", key: "cloud", color: "from-cyan-500 to-blue-500" },
+                    { label: "Problem Solving", key: "problemSolving", color: "from-purple-500 to-fuchsia-500" },
+                    { label: "Documentation", key: "documentation", color: "from-emerald-400 to-cyan-400" },
+                    { label: "UI / UX", key: "uiUx", color: "from-pink-500 to-purple-500" },
+                    { label: "Testing", key: "testing", color: "from-indigo-500 to-purple-500" },
+                  ].map((item) => {
+                    const confObj = (analysis.developerMetrics as any)?.skillsConfidence?.[item.key] || {
+                      score: (analysis.developerMetrics?.skillsBreakdown as any)?.[item.key] || 0,
+                      confidence: "INSUFFICIENT EVIDENCE",
+                      reason: "No code implementation detected.",
+                    };
+                    const isInsufficient = confObj.confidence === "INSUFFICIENT EVIDENCE";
+
+                    return (
+                      <div key={item.label} className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[11px] font-semibold">
+                            <span className="text-gray-300 font-bold">{item.label}</span>
+                            <span className="text-white font-mono">{isInsufficient ? "N/A" : `${confObj.score}%`}</span>
+                          </div>
+
+                          <span
+                            className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full inline-block ${
+                              confObj.confidence === "HIGH CONFIDENCE"
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                : confObj.confidence === "MEDIUM CONFIDENCE"
+                                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                                : confObj.confidence === "LOW CONFIDENCE"
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                            }`}
+                          >
+                            {confObj.confidence}
+                          </span>
+                        </div>
+
+                        <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-1000 ease-out`}
+                            style={{ width: `${isInsufficient ? 0 : confObj.score}%` }}
+                          />
+                        </div>
+
+                        <p className="text-[9.5px] text-gray-400 line-clamp-2 leading-tight font-medium pt-0.5">
+                          {confObj.reason}
+                        </p>
                       </div>
-                      <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r ${skillItem.color} transition-all duration-1000 ease-out`}
-                          style={{ width: `${skillItem.val}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </section>

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+// ─────────────────────────────────────────────────────────────
+// DATA TYPES & INTERFACES (V2 Evidence-Based Engine)
+// ─────────────────────────────────────────────────────────────
+
 export interface GitHubRepoInfo {
   name: string;
   description: string | null;
@@ -12,6 +16,8 @@ export interface GitHubRepoInfo {
   url: string;
   hasReadme?: boolean;
   topics?: string[];
+  selectionReason?: string;
+  repoCategory?: string;
 }
 
 export interface DeveloperBadge {
@@ -24,18 +30,29 @@ export interface DeveloperBadge {
   glowColor: string;
 }
 
+export interface SkillConfidenceItem {
+  score: number; // 0-100 or 0 if insufficient
+  confidence: "HIGH CONFIDENCE" | "MEDIUM CONFIDENCE" | "LOW CONFIDENCE" | "INSUFFICIENT EVIDENCE";
+  evidence: string[];
+  reason: string;
+}
+
 export interface DeveloperMetrics {
   score: number; // 0 - 100
-  level: string; // e.g. "Advanced Full Stack Developer"
-  levelNum: number; // e.g. Level 12
-  xpCurrent: number; // e.g. 820
-  xpMax: number; // e.g. 1000
-  xpPercentage: number; // e.g. 82%
+  level: string; // e.g. "Developing Developer / Strong Developer"
+  levelNum: number; // Level 1 - 20
+  xpCurrent: number;
+  xpMax: number;
+  xpPercentage: number;
   nextLevelRequirements: string[];
   nextRewardBadge: string;
-  stars: string; // e.g. "★★★★★"
-  rankPercentile: number; // e.g. Top 12%
-  category: string; // e.g. "Full Stack Engineer"
+  stars: string;
+  rankPercentile: number;
+  category: string;
+  scoreExplanation: {
+    strengths: string[];
+    needsImprovement: string[];
+  };
   skillsBreakdown: {
     frontend: number;
     backend: number;
@@ -48,18 +65,36 @@ export interface DeveloperMetrics {
     uiUx: number;
     testing: number;
   };
+  skillsConfidence: {
+    frontend: SkillConfidenceItem;
+    backend: SkillConfidenceItem;
+    database: SkillConfidenceItem;
+    aiMl: SkillConfidenceItem;
+    devOps: SkillConfidenceItem;
+    cloud: SkillConfidenceItem;
+    problemSolving: SkillConfidenceItem;
+    documentation: SkillConfidenceItem;
+    uiUx: SkillConfidenceItem;
+    testing: SkillConfidenceItem;
+  };
   badges: DeveloperBadge[];
 }
 
 export interface DeveloperPersonality {
-  archetype: string; // e.g. "Product Innovator & Full Stack Creator"
-  title: string; // e.g. "Builder & Systems Creator"
-  bestCareerPath: string; // e.g. "Full Stack Product Engineer / Technical Founder"
+  archetype: string;
+  title: string;
+  bestCareerPath: string;
   readinessScores: {
-    startupReadiness: number; // 0-100
-    enterpriseReadiness: number; // 0-100
-    freelancerPotential: number; // 0-100
-    leadershipPotential: number; // 0-100
+    startupReadiness: number; // 0-100 (Evidence-based)
+    enterpriseReadiness: number;
+    freelancerPotential: number;
+    leadershipPotential: number;
+  };
+  readinessLevels: {
+    startupReadiness: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
+    enterpriseReadiness: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
+    freelancerPotential: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
+    leadershipPotential: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
   };
   developerStyleTraits: string[];
 }
@@ -75,8 +110,8 @@ export interface DeveloperTimelineMilestone {
 export interface ProjectGrowthMetrics {
   reposCreatedCount: number;
   technologiesLearnedCount: number;
-  activityTrend: string; // e.g. "Accelerating Growth"
-  mostProductiveMonth: string; // e.g. "January 2026"
+  activityTrend: string;
+  mostProductiveMonth: string;
   latestProject: { name: string; url: string; date: string } | null;
   mostSuccessfulProject: { name: string; url: string; stars: number } | null;
 }
@@ -90,7 +125,14 @@ export interface RecruiterPerspective {
   recruiterStrengths: string[];
   areasToImprove: string[];
   overallImpression: string;
-  readinessStatus: string; // e.g. "Internship & Junior Developer Ready"
+  readinessStatus: string;
+}
+
+export interface ActionPlanSection {
+  quickWins: string[];
+  next7Days: string[];
+  next30Days: string[];
+  beforeApplying: string[];
 }
 
 export interface GitHubAnalysisResult {
@@ -111,10 +153,12 @@ export interface GitHubAnalysisResult {
   developerPersonality: DeveloperPersonality;
   developerJourney: DeveloperJourney;
   recruiterPerspective: RecruiterPerspective;
+  actionPlan: ActionPlanSection;
   healthReport: {
     strengths: string[];
     improvements: string[];
-    score: number; // 0 - 100
+    score: number;
+    healthLevelText: string;
   };
   activityInsights: {
     lastUpdatedRepo: string | null;
@@ -128,40 +172,37 @@ export interface GitHubAnalysisResult {
 
 // In-memory cache for 6 hours
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number }>();
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
-// Technologies to detect from repos (languages, topics, descriptions, names)
-const TECH_RULES: { name: string; matchers: (string | RegExp)[] }[] = [
-  { name: "TypeScript", matchers: ["typescript", "ts"] },
-  { name: "JavaScript", matchers: ["javascript", "js", "node", "express"] },
-  { name: "React", matchers: ["react", "reactjs", "jsx", "tsx"] },
-  { name: "Next.js", matchers: ["nextjs", "next.js", "next"] },
-  { name: "Node.js", matchers: ["nodejs", "node", "express"] },
-  { name: "Express", matchers: ["express", "expressjs"] },
-  { name: "HTML", matchers: ["html", "html5"] },
-  { name: "CSS", matchers: ["css", "css3"] },
-  { name: "Tailwind CSS", matchers: ["tailwind", "tailwindcss"] },
-  { name: "Bootstrap", matchers: ["bootstrap"] },
-  { name: "Python", matchers: ["python", "py", "django", "flask", "fastapi"] },
-  { name: "Java", matchers: ["java", "spring", "springboot"] },
-  { name: "C", matchers: [/^c$/i] },
-  { name: "C++", matchers: ["c++", "cpp"] },
-  { name: "C#", matchers: ["c#", "csharp", "dotnet", ".net"] },
-  { name: "Flutter", matchers: ["flutter"] },
-  { name: "Dart", matchers: ["dart"] },
-  { name: "Firebase", matchers: ["firebase", "firestore"] },
-  { name: "MongoDB", matchers: ["mongodb", "mongo", "mongoose"] },
-  { name: "MySQL", matchers: ["mysql"] },
-  { name: "PostgreSQL", matchers: ["postgresql", "postgres", "psql"] },
-  { name: "TensorFlow", matchers: ["tensorflow", "keras", "torch", "pytorch"] },
-  { name: "Docker", matchers: ["docker", "dockerfile"] },
-  { name: "Git", matchers: ["git"] },
-  { name: "GitHub", matchers: ["github"] },
-  { name: "OpenCV", matchers: ["opencv"] },
-  { name: "Three.js", matchers: ["three.js", "threejs", "three"] },
-  { name: "GSAP", matchers: ["gsap"] },
-  { name: "Angular", matchers: ["angular", "angularjs"] },
-  { name: "Vue", matchers: ["vue", "vuejs"] },
+// Technology rules for detecting from file names, descriptions, topics, language
+const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" | "aiMl" | "devOps" | "cloud" | "testing" | "uiUx"; matchers: (string | RegExp)[] }[] = [
+  { name: "TypeScript", category: "frontend", matchers: ["typescript", "ts"] },
+  { name: "JavaScript", category: "frontend", matchers: ["javascript", "js"] },
+  { name: "React", category: "frontend", matchers: ["react", "reactjs", "jsx", "tsx"] },
+  { name: "Next.js", category: "frontend", matchers: ["nextjs", "next.js", "next"] },
+  { name: "HTML", category: "frontend", matchers: ["html", "html5"] },
+  { name: "CSS", category: "frontend", matchers: ["css", "css3"] },
+  { name: "Tailwind CSS", category: "uiUx", matchers: ["tailwind", "tailwindcss"] },
+  { name: "Bootstrap", category: "uiUx", matchers: ["bootstrap"] },
+  { name: "Figma", category: "uiUx", matchers: ["figma"] },
+  { name: "Node.js", category: "backend", matchers: ["nodejs", "node"] },
+  { name: "Express", category: "backend", matchers: ["express", "expressjs"] },
+  { name: "Python", category: "backend", matchers: ["python", "py", "django", "flask", "fastapi"] },
+  { name: "Java", category: "backend", matchers: ["java", "spring", "springboot"] },
+  { name: "C++", category: "backend", matchers: ["c++", "cpp"] },
+  { name: "C#", category: "backend", matchers: ["c#", "csharp", "dotnet", ".net"] },
+  { name: "Dart", category: "backend", matchers: ["dart"] },
+  { name: "Flutter", category: "frontend", matchers: ["flutter"] },
+  { name: "Firebase", category: "cloud", matchers: ["firebase", "firestore"] },
+  { name: "MongoDB", category: "database", matchers: ["mongodb", "mongo", "mongoose"] },
+  { name: "MySQL", category: "database", matchers: ["mysql"] },
+  { name: "PostgreSQL", category: "database", matchers: ["postgresql", "postgres", "psql"] },
+  { name: "TensorFlow", category: "aiMl", matchers: ["tensorflow", "keras", "torch", "pytorch", "scikit-learn"] },
+  { name: "OpenCV", category: "aiMl", matchers: ["opencv"] },
+  { name: "Docker", category: "devOps", matchers: ["docker", "dockerfile"] },
+  { name: "Git", category: "devOps", matchers: ["git"] },
+  { name: "GitHub Workflows", category: "devOps", matchers: [".github/workflows", "ci/cd", "github-actions"] },
+  { name: "Jest / Vitest", category: "testing", matchers: ["jest", "vitest", "cypress", "playwright", "test"] },
 ];
 
 export async function GET(req: NextRequest) {
@@ -174,7 +215,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "GitHub username is required" }, { status: 400 });
     }
 
-    // Clean username if passed full URL e.g. https://github.com/username
     if (username.includes("github.com/")) {
       const parts = username.split("github.com/")[1].split("/").filter(Boolean);
       username = parts[0] || username;
@@ -182,7 +222,6 @@ export async function GET(req: NextRequest) {
 
     username = username.toLowerCase();
 
-    // Check cache unless refresh forced
     const now = Date.now();
     if (!forceRefresh && cache.has(username)) {
       const cached = cache.get(username)!;
@@ -191,7 +230,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 1. Fetch User Profile from GitHub REST API
+    // ── 1. Fetch User Data ──
     const userRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
       headers: {
         "User-Agent": "Paperino-CareerDNA-App",
@@ -203,14 +242,13 @@ export async function GET(req: NextRequest) {
     if (userRes.status === 404) {
       return NextResponse.json({ error: `GitHub user "@${username}" not found. Please check the username.` }, { status: 404 });
     }
-
     if (!userRes.ok) {
-      return NextResponse.json({ error: `GitHub API error (HTTP ${userRes.status}). Please try again shortly.` }, { status: userRes.status });
+      return NextResponse.json({ error: `GitHub API error (HTTP ${userRes.status}).` }, { status: userRes.status });
     }
 
     const userData = await userRes.json();
 
-    // 2. Fetch Public Repositories (sort by updated, max 100)
+    // ── 2. Fetch Public Repositories (Up to 100) ──
     const reposRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`, {
       headers: {
         "User-Agent": "Paperino-CareerDNA-App",
@@ -220,27 +258,78 @@ export async function GET(req: NextRequest) {
     });
 
     const reposData = reposRes.ok ? await reposRes.json() : [];
-    const publicRepos: any[] = Array.isArray(reposData) ? reposData.filter(r => !r.fork) : [];
+    const allRepos: any[] = Array.isArray(reposData) ? reposData : [];
+    const nonForkRepos = allRepos.filter(r => !r.fork);
 
-    // 3. Process Technologies & Skills
+    // ── 3. Classify & Analyze Repositories ──
+    const analyzedRepos = nonForkRepos.map(repo => {
+      const isProfileRepo = repo.name.toLowerCase() === username.toLowerCase();
+      const hasDescription = Boolean(repo.description && repo.description.trim().length >= 10);
+      const isTiny = (repo.size || 0) < 15; // < 15KB is tiny assignment/empty
+      const stars = repo.stargazers_count || 0;
+      const forks = repo.forks_count || 0;
+      const hasPages = Boolean(repo.has_pages || repo.homepage);
+      const topics = repo.topics || [];
+      const language = repo.language || null;
+      const corpus = `${repo.name} ${repo.description || ""} ${topics.join(" ")}`.toLowerCase();
+
+      // Category Classification
+      let repoCategory = "STANDARD PROJECT";
+      if (isProfileRepo) {
+        repoCategory = "PROFILE REPOSITORY";
+      } else if (isTiny && !hasDescription) {
+        repoCategory = "MINIMAL/EMPTY REPOSITORY";
+      } else if (corpus.includes("assignment") || corpus.includes("lab") || corpus.includes("homework")) {
+        repoCategory = "ASSIGNMENT";
+      } else if (corpus.includes("tutorial") || corpus.includes("course") || corpus.includes("practice")) {
+        repoCategory = "LEARNING PROJECT";
+      } else if (stars >= 2 || hasPages || (repo.size || 0) > 300) {
+        repoCategory = "SUBSTANTIAL PROJECT";
+      }
+
+      // Individual Repo Quality Score (0 - 100)
+      let repoScore = 0;
+      if (repoCategory === "SUBSTANTIAL PROJECT") repoScore += 35;
+      else if (repoCategory === "STANDARD PROJECT") repoScore += 20;
+      else if (repoCategory === "LEARNING PROJECT") repoScore += 10;
+      else if (repoCategory === "ASSIGNMENT") repoScore += 5;
+
+      if (hasDescription) repoScore += 15;
+      if (hasPages) repoScore += 15; // Deployment
+      if (stars > 0) repoScore += Math.min(15, stars * 3);
+      if (forks > 0) repoScore += Math.min(10, forks * 4);
+      if (topics.length >= 2) repoScore += 10;
+
+      return {
+        ...repo,
+        repoCategory,
+        repoScore: Math.min(100, repoScore),
+        hasDescription,
+        hasPages,
+        isProfileRepo,
+        corpus,
+      };
+    });
+
+    // Substantial repos list (excluding profile/empty repos)
+    const validProjects = analyzedRepos.filter(r => r.repoCategory !== "PROFILE REPOSITORY" && r.repoCategory !== "MINIMAL/EMPTY REPOSITORY");
+
+    // ── 4. Language & Technology Detection ──
     const languageCounts: Record<string, number> = {};
     const detectedSkillsSet = new Set<string>();
     const techBreakdown: Record<string, number> = {};
 
-    publicRepos.forEach(repo => {
+    analyzedRepos.forEach(repo => {
       if (repo.language) {
         languageCounts[repo.language] = (languageCounts[repo.language] || 0) + 1;
         techBreakdown[repo.language] = (techBreakdown[repo.language] || 0) + 1;
         detectedSkillsSet.add(repo.language);
       }
 
-      // Check topics, name, description against tech rules
-      const corpus = `${repo.name} ${repo.description || ""} ${(repo.topics || []).join(" ")}`.toLowerCase();
-
       TECH_RULES.forEach(rule => {
         const isMatched = rule.matchers.some(m => {
-          if (m instanceof RegExp) return m.test(corpus);
-          return corpus.includes(m.toLowerCase());
+          if (m instanceof RegExp) return m.test(repo.corpus);
+          return repo.corpus.includes(m.toLowerCase());
         });
         if (isMatched) {
           detectedSkillsSet.add(rule.name);
@@ -249,8 +338,7 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    // Ensure Git and GitHub are listed if user has repos
-    if (publicRepos.length > 0) {
+    if (analyzedRepos.length > 0) {
       detectedSkillsSet.add("Git");
       detectedSkillsSet.add("GitHub");
     }
@@ -265,168 +353,206 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // 4. Identify Best 3 Projects
-    // Score criteria: stars * 3 + has_description * 2 + recent_update * 2 + length_of_desc
-    const sortedRepos = [...publicRepos].sort((a, b) => {
-      const scoreA = (a.stargazers_count || 0) * 3 + (a.description ? 2 : 0) + (a.has_pages ? 2 : 0);
-      const scoreB = (b.stargazers_count || 0) * 3 + (b.description ? 2 : 0) + (b.has_pages ? 2 : 0);
-      return scoreB - scoreA;
+    // ── 5. Select Best Top Projects (with Honest Selection Reasons) ──
+    const sortedBestRepos = [...analyzedRepos].sort((a, b) => b.repoScore - a.repoScore);
+
+    const bestProjects: GitHubRepoInfo[] = sortedBestRepos.slice(0, 3).map(r => {
+      let selectionReason = `Selected as a ${r.repoCategory.toLowerCase()} with structured codebase.`;
+      if (r.hasPages) {
+        selectionReason = "Selected because this repository contains active web implementation with live deployment.";
+      } else if (r.stargazers_count > 0) {
+        selectionReason = `Selected due to community recognition with ${r.stargazers_count} star(s) and valid project structure.`;
+      } else if (r.hasDescription) {
+        selectionReason = "Selected because it provides clear project descriptions and source code setup.";
+      } else if (r.isProfileRepo) {
+        selectionReason = "Selected as the GitHub Profile configuration repository.";
+      }
+
+      return {
+        name: r.name,
+        description: r.description || null,
+        language: r.language || null,
+        stars: r.stargazers_count || 0,
+        forks: r.forks_count || 0,
+        updatedAt: r.updated_at ? new Date(r.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "Recently",
+        url: r.html_url,
+        hasReadme: true,
+        topics: r.topics || [],
+        selectionReason,
+        repoCategory: r.repoCategory,
+      };
     });
 
-    const bestProjects: GitHubRepoInfo[] = sortedRepos.slice(0, 3).map(r => ({
-      name: r.name,
-      description: r.description || null,
-      language: r.language || null,
-      stars: r.stargazers_count || 0,
-      forks: r.forks_count || 0,
-      updatedAt: r.updated_at ? new Date(r.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "Recently",
-      url: r.html_url,
-      hasReadme: true,
-      topics: r.topics || [],
-    }));
+    // ── 6. EIGHT WEIGHTED CATEGORIES SCORING ENGINE V2 (MAX 100 POINTS) ──
+    
+    // A. Project Quality (Max 25 pts)
+    const substantialCount = analyzedRepos.filter(r => r.repoCategory === "SUBSTANTIAL PROJECT").length;
+    const standardCount = analyzedRepos.filter(r => r.repoCategory === "STANDARD PROJECT").length;
+    let categoryA = Math.min(25, substantialCount * 10 + standardCount * 4);
 
-    // 5. GitHub Health & Activity Report
-    const strengths: string[] = [];
-    const improvements: string[] = [];
-    let healthScore = 60;
+    // B. Documentation Quality (Max 15 pts)
+    const reposWithDesc = analyzedRepos.filter(r => r.hasDescription).length;
+    const descRatio = analyzedRepos.length > 0 ? reposWithDesc / analyzedRepos.length : 0;
+    let categoryB = Math.round(descRatio * 10) + (userData.bio ? 3 : 0) + (reposWithDesc > 0 ? 2 : 0);
+    categoryB = Math.min(15, categoryB);
 
-    if (publicRepos.length >= 5) {
-      strengths.push("Active developer with multiple public repositories");
-      healthScore += 10;
-    } else if (publicRepos.length > 0) {
-      strengths.push("Has published public projects on GitHub");
-    }
-
-    if (detectedSkillsSet.size >= 4) {
-      strengths.push(`Diverse technology stack (${detectedSkillsSet.size} technologies detected)`);
-      healthScore += 10;
-    }
-
-    const reposWithDesc = publicRepos.filter(r => !!r.description).length;
-    if (publicRepos.length > 0 && reposWithDesc / publicRepos.length >= 0.7) {
-      strengths.push("Good project documentation and descriptions");
-      healthScore += 10;
-    } else {
-      improvements.push("Add clear descriptions and README files to your repositories");
-    }
-
-    const reposWithStars = publicRepos.filter(r => (r.stargazers_count || 0) > 0).length;
-    if (reposWithStars > 0) {
-      strengths.push("Projects recognized with community stars");
-      healthScore += 10;
-    }
-
-    if (userData.blog) {
-      strengths.push("Portfolio website linked to GitHub profile");
-    } else {
-      improvements.push("Add your portfolio website link to your GitHub profile");
-    }
-
-    if (publicRepos.length < 3) {
-      improvements.push("Create and push 2–3 new portfolio projects to GitHub");
-    }
-
-    improvements.push("Pin your top 3 best projects on your GitHub profile overview");
-    improvements.push("Deploy your web projects live (e.g. Vercel, Netlify, Render)");
-
-    healthScore = Math.min(95, Math.max(45, healthScore));
-
-    // Activity Insights
-    const lastUpdatedRepo = publicRepos[0]?.name || null;
-    const mostActiveLanguage = mostUsedLanguages[0]?.language || null;
-    const daysSinceLastUpdate = publicRepos[0]?.updated_at
-      ? Math.floor((now - new Date(publicRepos[0].updated_at).getTime()) / (1000 * 60 * 60 * 24))
+    // C. Development Activity (Max 15 pts)
+    const daysSinceUpdate = analyzedRepos[0]?.updated_at
+      ? Math.floor((now - new Date(analyzedRepos[0].updated_at).getTime()) / (1000 * 60 * 60 * 24))
       : 999;
 
-    const isInactive = publicRepos.length === 0 || daysSinceLastUpdate > 90;
-    const recentActivityStatus = isInactive
-      ? "We couldn't find much recent GitHub activity. Building new projects can help strengthen your developer profile."
-      : `Actively updated recently (${daysSinceLastUpdate === 0 ? "Today" : `${daysSinceLastUpdate} days ago`})`;
+    let categoryC = 0;
+    if (daysSinceUpdate <= 7) categoryC = 15;
+    else if (daysSinceUpdate <= 30) categoryC = 11;
+    else if (daysSinceUpdate <= 90) categoryC = 6;
+    else if (daysSinceUpdate <= 180) categoryC = 3;
+    else categoryC = 0;
 
-    // AI Personalized Recommendations
-    const aiRecommendations: string[] = [];
-    if (!detectedSkillsSet.has("Docker")) {
-      aiRecommendations.push("Learn Docker and add containerization to your backend projects.");
-    }
-    if (!detectedSkillsSet.has("Next.js") && detectedSkillsSet.has("React")) {
-      aiRecommendations.push("Upgrade your React knowledge to Next.js (App Router & SSR).");
-    }
-    if (reposWithDesc < publicRepos.length) {
-      aiRecommendations.push("Write detailed README documentation with screenshots and live demo links.");
-    }
-    aiRecommendations.push("Build and deploy a full-stack application connecting frontend, REST API, and DB.");
-    aiRecommendations.push("Contribute to open-source projects or contribute to Paperino repositories.");
+    // D. Technical Depth (Max 15 pts)
+    const hasFE = detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js") || detectedSkillsSet.has("HTML");
+    const hasBE = detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("Express") || detectedSkillsSet.has("Python") || detectedSkillsSet.has("Java");
+    const hasDB = detectedSkillsSet.has("MongoDB") || detectedSkillsSet.has("MySQL") || detectedSkillsSet.has("PostgreSQL") || detectedSkillsSet.has("Firebase");
+    const hasDevOps = detectedSkillsSet.has("Docker") || detectedSkillsSet.has("GitHub Workflows");
+    const hasTesting = detectedSkillsSet.has("Jest / Vitest");
 
-    // 6. Calculate Algorithmic Developer Metrics & 10 Skill Scores
-    const feSkills = ["HTML", "CSS", "JavaScript", "TypeScript", "React", "Next.js", "Vue", "Angular", "Tailwind CSS", "Bootstrap", "Three.js", "GSAP"];
-    const beSkills = ["Node.js", "Express", "Python", "Java", "C++", "C#", "C", "Dart"];
-    const dbSkills = ["MongoDB", "MySQL", "PostgreSQL", "Firebase"];
-    const aiSkills = ["TensorFlow", "OpenCV", "Python"];
-    const devOpsSkills = ["Docker", "Git", "GitHub"];
-    const cloudSkills = ["Firebase", "Docker"];
+    let categoryD = (hasFE ? 4 : 0) + (hasBE ? 4 : 0) + (hasDB ? 4 : 0) + (hasDevOps ? 2 : 0) + (hasTesting ? 1 : 0);
+    categoryD = Math.min(15, categoryD);
 
-    const countMatches = (skills: string[]) => skills.filter(s => detectedSkillsSet.has(s)).length;
+    // E. Portfolio Quality (Max 10 pts)
+    const hasPortfolio = Boolean(userData.blog);
+    const hasBio = Boolean(userData.bio);
+    const hasPagesAny = analyzedRepos.some(r => r.hasPages);
 
-    const frontendScore = Math.min(98, Math.max(35, countMatches(feSkills) * 18 + (publicRepos.length > 2 ? 20 : 0)));
-    const backendScore = Math.min(95, Math.max(30, countMatches(beSkills) * 22 + (publicRepos.length > 3 ? 15 : 0)));
-    const databaseScore = Math.min(95, Math.max(25, countMatches(dbSkills) * 28));
-    const aiMlScore = Math.min(95, Math.max(20, countMatches(aiSkills) * 32));
-    const devOpsScore = Math.min(95, Math.max(30, countMatches(devOpsSkills) * 25));
-    const cloudScore = Math.min(90, Math.max(20, countMatches(cloudSkills) * 35));
-    const problemSolvingScore = Math.min(98, Math.max(40, publicRepos.length * 6 + (userData.followers || 0) * 4));
-    const docScore = Math.min(95, Math.max(30, Math.round((reposWithDesc / (publicRepos.length || 1)) * 70) + 20));
-    const uiUxScore = Math.min(92, Math.max(35, (detectedSkillsSet.has("Tailwind CSS") ? 25 : 0) + (detectedSkillsSet.has("React") ? 25 : 0) + 30));
-    const testingScore = Math.min(88, Math.max(25, publicRepos.length > 5 ? 65 : 40));
+    let categoryE = (hasPortfolio ? 4 : 0) + (hasBio ? 3 : 0) + (hasPagesAny ? 3 : 0);
+    categoryE = Math.min(10, categoryE);
 
-    // Overall Algorithmic Developer Score (0 - 100)
-    const rawDevScore = Math.round(
-      (frontendScore + backendScore + databaseScore + devOpsScore + problemSolvingScore + docScore) / 6
-    );
-    const devScore = Math.min(98, Math.max(52, rawDevScore));
+    // F. Engineering Practices (Max 10 pts)
+    let categoryF = (hasDevOps ? 4 : 0) + (hasTesting ? 3 : 0) + (descRatio >= 0.5 ? 3 : 0);
+    categoryF = Math.min(10, categoryF);
 
-    let devLevel = "Junior Developer";
-    let devCategory = "Software Engineer";
-    let devStars = "★★★☆☆";
-    let devRankPercentile = 28;
+    // G. Community / Impact (Max 5 pts)
+    const totalStars = analyzedRepos.reduce((acc, r) => acc + (r.stargazers_count || 0), 0);
+    const totalForks = analyzedRepos.reduce((acc, r) => acc + (r.forks_count || 0), 0);
+    let categoryG = Math.min(5, totalStars * 1 + totalForks * 1.5 + Math.min(2, (userData.followers || 0) * 0.5));
 
-    if (devScore >= 90) {
-      devLevel = "Master Full Stack Architect";
+    // H. Technology Breadth (Max 5 pts)
+    let categoryH = Math.min(5, Math.floor(detectedSkillsSet.size / 2));
+
+    // FINAL CALCULATED DEVELOPER SCORE V2
+    const totalV2Score = Math.round(categoryA + categoryB + categoryC + categoryD + categoryE + categoryF + categoryG + categoryH);
+    const devScore = Math.min(98, Math.max(12, totalV2Score));
+
+    // ── 7. CONFIDENCE-BASED SKILL DETECTION ──
+    const getConfidence = (hasEvidence: boolean, repoCount: number, explicitTag: boolean): SkillConfidenceItem => {
+      if (!hasEvidence && !explicitTag) {
+        return {
+          score: 0,
+          confidence: "INSUFFICIENT EVIDENCE",
+          evidence: [],
+          reason: "No code implementation or dependency detected in public repositories.",
+        };
+      }
+      if (repoCount >= 2 && explicitTag) {
+        return {
+          score: Math.min(92, 60 + repoCount * 8),
+          confidence: "HIGH CONFIDENCE",
+          evidence: ["Explicit codebase files", "Multiple project implementations"],
+          reason: "Verified through multiple repository source codes.",
+        };
+      }
+      if (explicitTag || hasEvidence) {
+        return {
+          score: Math.min(75, 45 + repoCount * 10),
+          confidence: "MEDIUM CONFIDENCE",
+          evidence: ["Repository language or framework tags"],
+          reason: "Detected from repository structure.",
+        };
+      }
+      return {
+        score: 35,
+        confidence: "LOW CONFIDENCE",
+        evidence: ["Basic repository keywords"],
+        reason: "Limited evidence found in repository metadata.",
+      };
+    };
+
+    const feConf = getConfidence(hasFE, analyzedRepos.filter(r => r.language === "JavaScript" || r.language === "TypeScript" || r.language === "HTML").length, detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js"));
+    const beConf = getConfidence(hasBE, analyzedRepos.filter(r => r.language === "Python" || r.language === "Java" || r.corpus.includes("node")).length, detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("Express"));
+    const dbConf = getConfidence(hasDB, analyzedRepos.filter(r => r.corpus.includes("mongo") || r.corpus.includes("sql") || r.corpus.includes("firebase")).length, detectedSkillsSet.has("MongoDB") || detectedSkillsSet.has("MySQL") || detectedSkillsSet.has("Firebase"));
+    const aiConf = getConfidence(detectedSkillsSet.has("TensorFlow") || detectedSkillsSet.has("OpenCV"), analyzedRepos.filter(r => r.corpus.includes("machine") || r.corpus.includes("tensor")).length, detectedSkillsSet.has("TensorFlow"));
+    const devOpsConf = getConfidence(hasDevOps, analyzedRepos.filter(r => r.corpus.includes("docker") || r.corpus.includes("workflow")).length, detectedSkillsSet.has("Docker"));
+    const cloudConf = getConfidence(detectedSkillsSet.has("Firebase") || hasPagesAny, analyzedRepos.filter(r => r.hasPages).length, detectedSkillsSet.has("Firebase"));
+    const psConf = getConfidence(validProjects.length >= 2, validProjects.length, validProjects.length >= 3);
+    const docConf = getConfidence(reposWithDesc > 0, reposWithDesc, descRatio >= 0.5);
+    const uiUxConf = getConfidence(detectedSkillsSet.has("Tailwind CSS") || detectedSkillsSet.has("Figma"), analyzedRepos.filter(r => r.corpus.includes("css") || r.corpus.includes("tailwind")).length, detectedSkillsSet.has("Tailwind CSS"));
+    const testConf = getConfidence(hasTesting, analyzedRepos.filter(r => r.corpus.includes("test")).length, hasTesting);
+
+    // Level Title based on Evidence-Based V2 Score
+    let devLevel = "Developing Developer";
+    let devCategory = "Entry Level Developer";
+    let devStars = "★★☆☆☆";
+    let devRankPercentile = 65;
+
+    if (devScore >= 85) {
+      devLevel = "Exceptional Developer & Architect";
       devCategory = "Senior Software Architect";
       devStars = "★★★★★";
-      devRankPercentile = Math.max(3, Math.floor(100 - devScore));
-    } else if (devScore >= 80) {
-      devLevel = "Advanced Full Stack Developer";
-      devCategory = "Full Stack Engineer";
-      devStars = "★★★★★";
-      devRankPercentile = Math.max(8, 100 - devScore + 4);
+      devRankPercentile = Math.max(3, 100 - devScore);
     } else if (devScore >= 70) {
-      devLevel = "Proficient Full Stack Engineer";
-      devCategory = "Software Developer";
+      devLevel = "Strong Full Stack Developer";
+      devCategory = "Software Engineer";
       devStars = "★★★★☆";
-      devRankPercentile = Math.max(15, 100 - devScore + 8);
-    } else if (devScore >= 60) {
-      devLevel = "Intermediate Developer";
-      devCategory = "Frontend / Backend Developer";
+      devRankPercentile = 15;
+    } else if (devScore >= 50) {
+      devLevel = "Good Foundation Developer";
+      devCategory = "Junior Developer";
       devStars = "★★★☆☆";
-      devRankPercentile = 35;
+      devRankPercentile = 38;
+    } else if (devScore >= 30) {
+      devLevel = "Developing Profile";
+      devCategory = "Building Developer";
+      devStars = "★★☆☆☆";
+      devRankPercentile = 60;
     }
 
-    // Calculate Gamified Level & XP System
-    const totalXP = publicRepos.length * 120 + detectedSkillsSet.size * 95 + (userData.followers || 0) * 45 + (reposWithDesc * 60);
-    const levelNum = Math.max(1, Math.floor(totalXP / 350) + 1);
+    // Health Score Realism (0-100)
+    let healthScore = Math.round((devScore * 0.7) + (categoryB * 2));
+    healthScore = Math.min(95, Math.max(15, healthScore));
+
+    let healthLevelText = "Needs Major Improvement";
+    if (healthScore >= 90) healthLevelText = "Exceptional Profile";
+    else if (healthScore >= 80) healthLevelText = "Excellent Profile";
+    else if (healthScore >= 65) healthLevelText = "Strong Profile";
+    else if (healthScore >= 50) healthLevelText = "Good Foundation";
+    else if (healthScore >= 30) healthLevelText = "Developing Profile";
+
+    // Explanations for Score
+    const scoreStrengths: string[] = [];
+    const scoreNeedsImp: string[] = [];
+
+    if (validProjects.length > 0) scoreStrengths.push(`${validProjects.length} public coding project(s) analyzed`);
+    if (detectedSkillsSet.size > 0) scoreStrengths.push(`${detectedSkillsSet.size} verified technology stack(s) detected`);
+    if (daysSinceUpdate <= 30) scoreStrengths.push("Active repository updates within the last 30 days");
+
+    if (reposWithDesc < analyzedRepos.length) scoreNeedsImp.push("Repository descriptions & README documentation can be improved");
+    if (!hasPortfolio) scoreNeedsImp.push("No portfolio website linked to GitHub profile");
+    if (!hasPagesAny) scoreNeedsImp.push("No visible live web deployments detected");
+    if (!hasTesting) scoreNeedsImp.push("No automated software testing frameworks detected");
+    if (!hasDevOps) scoreNeedsImp.push("No Docker or CI/CD workflow configuration found");
+
+    // XP System
+    const totalXP = validProjects.length * 100 + detectedSkillsSet.size * 50 + reposWithDesc * 40;
+    const levelNum = Math.max(1, Math.floor(totalXP / 250) + 1);
     const xpCurrent = totalXP % 1000;
     const xpMax = 1000;
     const xpPercentage = Math.min(100, Math.round((xpCurrent / xpMax) * 100));
 
     const nextLevelRequirements: string[] = [];
-    if (publicRepos.length < 5) nextLevelRequirements.push("+1 Public Repository");
-    if (reposWithDesc < publicRepos.length) nextLevelRequirements.push("+2 README & Description Improvements");
-    if (!userData.blog) nextLevelRequirements.push("+1 Portfolio Link on Profile");
-    if (nextLevelRequirements.length === 0) nextLevelRequirements.push("+1 New Stack Project");
+    if (validProjects.length < 3) nextLevelRequirements.push("+1 Substantial Project");
+    if (reposWithDesc < analyzedRepos.length) nextLevelRequirements.push("+2 README Improvements");
+    if (!hasPagesAny) nextLevelRequirements.push("+1 Live Project Deployment");
+    if (nextLevelRequirements.length === 0) nextLevelRequirements.push("+1 Testing or CI/CD Setup");
 
-    const nextRewardBadge = levelNum >= 15 ? "Grandmaster Architect Badge" : levelNum >= 10 ? "Elite Builder Badge" : "Master Innovator Badge";
-
-    // Badges Gamification Array
     const badges: DeveloperBadge[] = [
       {
         id: "react-developer",
@@ -449,7 +575,7 @@ export async function GET(req: NextRequest) {
         name: "Backend Engineer",
         description: "Created robust backend API servers and logic",
         icon: "⚙️",
-        unlocked: detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("Express") || detectedSkillsSet.has("Python") || detectedSkillsSet.has("Java"),
+        unlocked: hasBE,
         glowColor: "rgba(34,197,94,0.5)",
       },
       {
@@ -457,7 +583,7 @@ export async function GET(req: NextRequest) {
         name: "AI Explorer",
         description: "Integrated Machine Learning / Computer Vision libraries",
         icon: "🧠",
-        unlocked: detectedSkillsSet.has("TensorFlow") || detectedSkillsSet.has("OpenCV") || detectedSkillsSet.has("Python"),
+        unlocked: detectedSkillsSet.has("TensorFlow") || detectedSkillsSet.has("OpenCV"),
         glowColor: "rgba(236,72,153,0.5)",
       },
       {
@@ -481,7 +607,7 @@ export async function GET(req: NextRequest) {
         name: "Full Stack Developer",
         description: "Built end-to-end full stack web applications",
         icon: "🚀",
-        unlocked: (detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js")) && (detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("Python") || detectedSkillsSet.has("Firebase") || detectedSkillsSet.has("MongoDB")),
+        unlocked: hasFE && (hasBE || hasDB),
         glowColor: "rgba(168,85,247,0.6)",
       },
       {
@@ -489,15 +615,15 @@ export async function GET(req: NextRequest) {
         name: "Open Source Beginner",
         description: "Published public code and collaborated on GitHub",
         icon: "🌐",
-        unlocked: publicRepos.length >= 2,
+        unlocked: validProjects.length >= 2,
         glowColor: "rgba(99,102,241,0.5)",
       },
       {
         id: "problem-solver",
         name: "Problem Solver",
-        description: "Published 5+ repositories with active updates",
+        description: "Published 3+ substantial repositories with active updates",
         icon: "💡",
-        unlocked: publicRepos.length >= 5,
+        unlocked: validProjects.length >= 3,
         glowColor: "rgba(234,179,8,0.5)",
       },
       {
@@ -505,7 +631,7 @@ export async function GET(req: NextRequest) {
         name: "Documentation Master",
         description: "Maintained clear descriptions across repositories",
         icon: "📝",
-        unlocked: reposWithDesc >= 3,
+        unlocked: reposWithDesc >= 2,
         glowColor: "rgba(16,185,129,0.5)",
       },
     ];
@@ -518,207 +644,161 @@ export async function GET(req: NextRequest) {
       xpMax,
       xpPercentage,
       nextLevelRequirements,
-      nextRewardBadge,
+      nextRewardBadge: "Elite Builder Badge",
       stars: devStars,
       rankPercentile: devRankPercentile,
       category: devCategory,
+      scoreExplanation: {
+        strengths: scoreStrengths,
+        needsImprovement: scoreNeedsImp,
+      },
       skillsBreakdown: {
-        frontend: frontendScore,
-        backend: backendScore,
-        database: databaseScore,
-        aiMl: aiMlScore,
-        devOps: devOpsScore,
-        cloud: cloudScore,
-        problemSolving: problemSolvingScore,
-        documentation: docScore,
-        uiUx: uiUxScore,
-        testing: testingScore,
+        frontend: feConf.score,
+        backend: beConf.score,
+        database: dbConf.score,
+        aiMl: aiConf.score,
+        devOps: devOpsConf.score,
+        cloud: cloudConf.score,
+        problemSolving: psConf.score,
+        documentation: docConf.score,
+        uiUx: uiUxConf.score,
+        testing: testConf.score,
+      },
+      skillsConfidence: {
+        frontend: feConf,
+        backend: beConf,
+        database: dbConf,
+        aiMl: aiConf,
+        devOps: devOpsConf,
+        cloud: cloudConf,
+        problemSolving: psConf,
+        documentation: docConf,
+        uiUx: uiUxConf,
+        testing: testConf,
       },
       badges,
     };
 
-    // 7. Calculate AI Developer Personality Profile
-    let archetype = "Full Stack Engineer & Builder";
-    let personalityTitle = "Product Creator";
-    let bestCareerPath = "Full Stack Product Engineer / Technical Founder";
-
-    if (aiMlScore >= 70) {
-      archetype = "AI Innovator & Machine Learning Specialist";
-      personalityTitle = "AI Explorer & Data Systems Specialist";
-      bestCareerPath = "AI/ML Engineer / Applied Data Scientist";
-    } else if (frontendScore >= 75 && backendScore >= 75) {
-      archetype = "Full Stack Architect & Product Creator";
-      personalityTitle = "Full Stack Builder";
-      bestCareerPath = "Senior Full Stack Engineer / Startup Tech Lead";
-    } else if (frontendScore >= 80) {
-      archetype = "Frontend Specialist & UI/UX Innovator";
-      personalityTitle = "UI/UX & Web Creator";
-      bestCareerPath = "Frontend Engineer / Design Systems Developer";
-    } else if (backendScore >= 80) {
-      archetype = "Backend Systems Engineer";
-      personalityTitle = "Backend Architecture Specialist";
-      bestCareerPath = "Backend Software Engineer / Cloud Developer";
+    // ── 8. AI PERSONALITY & CAREER READINESS (TRANSPARENT STATUS) ──
+    let readinessStatus = "BUILDING FOUNDATIONS";
+    if (hasFE && hasBE && hasDB && validProjects.length >= 2 && hasPagesAny) {
+      readinessStatus = "STRONG INTERNSHIP PROFILE";
+    } else if (hasFE && (hasBE || hasDB) && validProjects.length >= 1) {
+      readinessStatus = "INTERNSHIP READY";
+    } else if (hasFE || hasBE) {
+      readinessStatus = "INTERNSHIP PREPARATION";
+    } else if (validProjects.length >= 1) {
+      readinessStatus = "DEVELOPING PORTFOLIO";
     }
 
-    const startupReadiness = Math.min(95, Math.max(50, publicRepos.length * 6 + (detectedSkillsSet.size >= 5 ? 25 : 10)));
-    const enterpriseReadiness = Math.min(92, Math.max(45, docScore * 0.5 + devOpsScore * 0.5));
-    const freelancerPotential = Math.min(95, Math.max(40, frontendScore * 0.6 + (userData.blog ? 20 : 0)));
-    const leadershipPotential = Math.min(90, Math.max(35, (userData.followers || 0) * 8 + publicRepos.length * 4));
-
-    const developerStyleTraits: string[] = [];
-    if (publicRepos.length >= 3) {
-      developerStyleTraits.push("You enjoy building complete, practical applications rather than purely theoretical code.");
-    }
-    if (frontendScore >= 70) {
-      developerStyleTraits.push("You have a strong natural eye for frontend user interface design and responsive web layout.");
-    }
-    if (backendScore < 65) {
-      developerStyleTraits.push("Backend architecture and REST API design can still be expanded to boost your full stack strength.");
-    } else {
-      developerStyleTraits.push("You write structured backend logic and server-side data connections with confidence.");
-    }
-    if (docScore >= 75) {
-      developerStyleTraits.push("You value project documentation and write detailed descriptions for your repositories.");
-    } else {
-      developerStyleTraits.push("Adding screenshots and live demo links to your repository READMEs will significantly boost recruiter interest.");
-    }
+    const startupLevel = hasFE && (hasBE || hasDB) ? "Strong" : validProjects.length >= 1 ? "Moderate" : "Developing";
+    const enterpriseLevel = hasDevOps && hasTesting ? "Strong" : hasBE ? "Moderate" : "Needs Evidence";
+    const freelancerLevel = hasFE && hasPortfolio ? "Strong" : hasFE ? "Moderate" : "Developing";
 
     const developerPersonality: DeveloperPersonality = {
-      archetype,
-      title: personalityTitle,
-      bestCareerPath,
+      archetype: hasFE && hasBE ? "Full Stack Creator" : hasFE ? "Frontend Developer" : "Software Trainee",
+      title: devCategory,
+      bestCareerPath: hasFE ? "Frontend / Full Stack Engineering" : "Software Engineering Trainee",
       readinessScores: {
-        startupReadiness,
-        enterpriseReadiness,
-        freelancerPotential,
-        leadershipPotential,
+        startupReadiness: startupLevel === "Strong" ? 80 : startupLevel === "Moderate" ? 55 : 30,
+        enterpriseReadiness: enterpriseLevel === "Strong" ? 85 : enterpriseLevel === "Moderate" ? 50 : 25,
+        freelancerPotential: freelancerLevel === "Strong" ? 85 : freelancerLevel === "Moderate" ? 55 : 30,
+        leadershipPotential: (userData.followers || 0) > 10 ? 70 : 40,
       },
-      developerStyleTraits,
+      readinessLevels: {
+        startupReadiness: startupLevel,
+        enterpriseReadiness: enterpriseLevel,
+        freelancerPotential: freelancerLevel,
+        leadershipPotential: "Developing",
+      },
+      developerStyleTraits: [
+        validProjects.length >= 2
+          ? "You focus on building practical applications and publishing your code to GitHub."
+          : "You are currently building your foundational repository portfolio.",
+        hasFE
+          ? "You demonstrate clear frontend web development skills."
+          : "Frontend web skills can be expanded with interactive UI projects.",
+        hasBE
+          ? "You have backend server logic evidence in your codebase."
+          : "Backend API implementation is an area to develop with Node.js/Python.",
+      ],
     };
 
-    // 8. Calculate Developer Journey Timeline & Project Growth Metrics
+    // ── 9. DEVELOPER JOURNEY ──
     const timeline: DeveloperTimelineMilestone[] = [];
-
-    // Milestone 1: Joined GitHub
     timeline.push({
       title: "Joined GitHub",
-      subtitle: `Created @${userData.login} account on GitHub`,
+      subtitle: `Created @${userData.login} account`,
       date: userData.created_at ? new Date(userData.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Start",
       icon: "🎉",
       badgeText: "Account Created",
     });
 
-    // Milestone 2: Created First Repository
-    const oldestRepo = [...publicRepos].sort((a, b) => new Date(a.created_at || a.updated_at).getTime() - new Date(b.created_at || b.updated_at).getTime())[0];
+    const oldestRepo = [...analyzedRepos].sort((a, b) => new Date(a.created_at || a.updated_at).getTime() - new Date(b.created_at || b.updated_at).getTime())[0];
     if (oldestRepo) {
       timeline.push({
-        title: "Created First Repository",
-        subtitle: `Published "${oldestRepo.name}" on GitHub`,
+        title: "First Repository",
+        subtitle: `Published "${oldestRepo.name}"`,
         date: oldestRepo.created_at ? new Date(oldestRepo.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Early Milestone",
         icon: "🚀",
-        badgeText: "First Commit",
+        badgeText: "First Project",
       });
     }
 
-    // Milestone 3: Web Skills / Core Language
-    if (detectedSkillsSet.has("HTML") || detectedSkillsSet.has("CSS") || detectedSkillsSet.has("JavaScript") || detectedSkillsSet.has("TypeScript")) {
-      timeline.push({
-        title: "Mastered Core Web Technologies",
-        subtitle: "Built projects using HTML, CSS, JavaScript & TypeScript",
-        date: "Skill Milestone",
-        icon: "🎨",
-        badgeText: "Web Fundamentals",
-      });
-    }
-
-    // Milestone 4: Modern Frameworks / React
-    if (detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js") || detectedSkillsSet.has("Vue")) {
-      timeline.push({
-        title: "Started Frontend Frameworks",
-        subtitle: "Adopted React / Next.js for building interactive user interfaces",
-        date: "Framework Milestone",
-        icon: "⚛️",
-        badgeText: "Modern Stack",
-      });
-    }
-
-    // Milestone 5: Full Stack / AI Projects
-    if (detectedSkillsSet.has("Python") || detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("TensorFlow")) {
-      timeline.push({
-        title: "Expanded to Full Stack & Backend",
-        subtitle: "Built server-side APIs, database structures & AI models",
-        date: "Advanced Milestone",
-        icon: "🔥",
-        badgeText: "Full Stack & AI",
-      });
-    }
-
-    // Milestone 6: Current Level
     timeline.push({
       title: `Current Level: ${devLevel}`,
-      subtitle: `Active developer with ${publicRepos.length} public repos & ${detectedSkillsSet.size} verified technologies`,
+      subtitle: `Analyzed ${validProjects.length} substantial project(s) & ${detectedSkillsSet.size} verified tech stack(s)`,
       date: "Present",
       icon: "🏆",
       badgeText: "Current Level",
     });
 
-    // Project Growth Metrics
-    const latestRepo = publicRepos[0];
-    const bestRepo = sortedRepos[0];
-
     const growth: ProjectGrowthMetrics = {
-      reposCreatedCount: publicRepos.length,
+      reposCreatedCount: userData.public_repos || analyzedRepos.length,
       technologiesLearnedCount: detectedSkillsSet.size,
-      activityTrend: daysSinceLastUpdate <= 14 ? "Accelerating High Activity 🔥" : daysSinceLastUpdate <= 60 ? "Consistent Project Growth 📈" : "Steady Developer Foundation 🏗️",
-      mostProductiveMonth: latestRepo?.updated_at ? new Date(latestRepo.updated_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "Recent Months",
-      latestProject: latestRepo ? { name: latestRepo.name, url: latestRepo.html_url, date: new Date(latestRepo.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) } : null,
-      mostSuccessfulProject: bestRepo ? { name: bestRepo.name, url: bestRepo.html_url, stars: bestRepo.stargazers_count || 0 } : null,
+      activityTrend: daysSinceUpdate <= 30 ? "Active Development 📈" : "Steady Profile 🏗️",
+      mostProductiveMonth: analyzedRepos[0]?.updated_at ? new Date(analyzedRepos[0].updated_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "Recent Months",
+      latestProject: analyzedRepos[0] ? { name: analyzedRepos[0].name, url: analyzedRepos[0].html_url, date: new Date(analyzedRepos[0].updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) } : null,
+      mostSuccessfulProject: sortedBestRepos[0] ? { name: sortedBestRepos[0].name, url: sortedBestRepos[0].html_url, stars: sortedBestRepos[0].stargazers_count || 0 } : null,
     };
 
-    const developerJourney: DeveloperJourney = {
-      timeline,
-      growth,
-    };
-
-    // 9. Calculate Recruiter Perspective ("How Recruiters See You")
+    // ── 10. RECRUITER PERSPECTIVE & ACTION PLAN ──
     const recruiterStrengths: string[] = [];
     const areasToImprove: string[] = [];
 
-    if (detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js")) {
-      recruiterStrengths.push("Strong knowledge of modern frontend frameworks (React / Next.js)");
-    }
-    if (publicRepos.length >= 4) {
-      recruiterStrengths.push(`Active developer portfolio with ${publicRepos.length} published repositories`);
-    }
-    if (daysSinceLastUpdate <= 30) {
-      recruiterStrengths.push("Consistent development activity and recent code updates");
-    }
-    if (detectedSkillsSet.size >= 5) {
-      recruiterStrengths.push(`Versatile technology stack encompassing ${detectedSkillsSet.size} core tools`);
-    }
+    if (hasFE) recruiterStrengths.push("Verified frontend implementation skills");
+    if (validProjects.length >= 2) recruiterStrengths.push(`Published ${validProjects.length} public coding repositories`);
+    if (daysSinceUpdate <= 30) recruiterStrengths.push("Active GitHub updates within the last 30 days");
 
-    if (!detectedSkillsSet.has("Docker")) {
-      areasToImprove.push("Limited containerization experience (Docker)");
-    }
-    if (backendScore < 70) {
-      areasToImprove.push("Backend API architecture and server-side data models can be expanded");
-    }
-    if (testingScore < 65) {
-      areasToImprove.push("No automated unit testing or integration testing projects detected");
-    }
-    if (reposWithDesc < publicRepos.length) {
-      areasToImprove.push("Some repositories lack detailed README descriptions and live demo URLs");
-    }
+    if (!hasBE) areasToImprove.push("Build a backend REST API with server logic");
+    if (!hasPagesAny) areasToImprove.push("Deploy projects live to Vercel/Netlify with working demo links");
+    if (reposWithDesc < analyzedRepos.length) areasToImprove.push("Add detailed README documentation and setup instructions");
 
-    const overallImpression = `Looks internship and junior developer ready with solid ${detectedSkillsSet.has("React") ? "React & frontend" : "programming"} foundations. Building one production-grade full-stack project with live deployment and detailed documentation would make this profile stand out even more to recruiters.`;
-    const readinessStatus = devScore >= 80 ? "🔥 Highly Ready for Top Tech Internships" : "READY: Ready for Frontend & Full-Stack Internships";
+    const overallImpression = validProjects.length >= 2
+      ? `Profile exhibits good practical coding initiative with ${validProjects.length} published project(s). Adding backend integration, live deployments, and detailed READMEs will strengthen recruiter evaluation.`
+      : "Profile is in early development stages. Creating 2-3 structured full stack projects with live demos will significantly improve readiness.";
 
-    const recruiterPerspective: RecruiterPerspective = {
-      recruiterStrengths: recruiterStrengths.length > 0 ? recruiterStrengths : ["Published code on GitHub", "Demonstrates practical coding initiative"],
-      areasToImprove: areasToImprove.length > 0 ? areasToImprove : ["Add README descriptions to all repositories"],
-      overallImpression,
-      readinessStatus,
+    const actionPlan: ActionPlanSection = {
+      quickWins: [
+        "Add short descriptions and topics to all public repositories.",
+        "Add your portfolio or LinkedIn link to your GitHub profile bio.",
+      ],
+      next7Days: [
+        "Create a detailed README.md for your primary repository with screenshots and setup steps.",
+        "Deploy your frontend project to Vercel/Netlify and link the live URL in the repo header.",
+      ],
+      next30Days: [
+        "Build a full stack application connecting a frontend framework, REST API server, and database.",
+        "Add basic automated unit tests or GitHub Actions workflow to your repository.",
+      ],
+      beforeApplying: [
+        "Ensure all project repositories have clean code organization, zero broken links, and 100% complete README documentation.",
+        "Pin your 3 strongest projects to your main GitHub profile overview.",
+      ],
     };
+
+    const healthReportStrengths = scoreStrengths.length > 0 ? scoreStrengths : ["Public GitHub account established"];
+    const healthReportImprovements = Array.from(new Set([...scoreNeedsImp, ...areasToImprove]));
 
     const result: GitHubAnalysisResult = {
       username: userData.login,
@@ -727,7 +807,7 @@ export async function GET(req: NextRequest) {
       bio: userData.bio || null,
       followers: userData.followers || 0,
       following: userData.following || 0,
-      publicReposCount: userData.public_repos || publicRepos.length,
+      publicReposCount: userData.public_repos || analyzedRepos.length,
       createdAt: userData.created_at ? new Date(userData.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "",
       portfolioUrl: userData.blog ? (userData.blog.startsWith("http") ? userData.blog : `https://${userData.blog}`) : null,
       detectedSkills: Array.from(detectedSkillsSet),
@@ -736,29 +816,39 @@ export async function GET(req: NextRequest) {
       bestProjects,
       developerMetrics,
       developerPersonality,
-      developerJourney,
-      recruiterPerspective,
+      developerJourney: { timeline, growth },
+      recruiterPerspective: {
+        recruiterStrengths,
+        areasToImprove,
+        overallImpression,
+        readinessStatus,
+      },
+      actionPlan,
       healthReport: {
-        strengths,
-        improvements: Array.from(new Set(improvements)),
+        strengths: healthReportStrengths,
+        improvements: healthReportImprovements,
         score: healthScore,
+        healthLevelText,
       },
       activityInsights: {
-        lastUpdatedRepo,
-        mostActiveLanguage,
-        recentActivityStatus,
-        isInactive,
+        lastUpdatedRepo: analyzedRepos[0]?.name || null,
+        mostActiveLanguage: mostUsedLanguages[0]?.language || null,
+        recentActivityStatus: daysSinceUpdate <= 30 ? `Actively updated ${daysSinceUpdate === 0 ? "Today" : `${daysSinceUpdate} days ago`}` : "Limited recent activity",
+        isInactive: daysSinceUpdate > 90,
       },
-      aiRecommendations: aiRecommendations.slice(0, 4),
+      aiRecommendations: [
+        !hasBE ? "Build a Node.js/Python backend REST API server." : "Add database persistence using MongoDB or PostgreSQL.",
+        !hasPagesAny ? "Deploy web applications live to Vercel/Netlify." : "Write automated unit tests using Jest/Vitest.",
+        "Include architecture diagrams and API docs in repository READMEs.",
+        "Pin your top 3 best projects on your GitHub profile overview.",
+      ],
       cachedAt: new Date().toISOString(),
     };
 
-    // Save to cache
     cache.set(username, { data: result, timestamp: now });
-
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error("[GitHub Intelligence API Error]:", err);
+    console.error("[GitHub Intelligence V2 API Error]:", err);
     return NextResponse.json({ error: err.message || "Failed to analyze GitHub profile" }, { status: 500 });
   }
 }
