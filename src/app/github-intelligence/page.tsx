@@ -1246,13 +1246,13 @@ export default function GitHubIntelligencePage() {
                 </div>
 
                 <div className="space-y-3 text-xs">
-                  {analysis.healthReport.strengths.map((s, idx) => (
+                  {analysis.healthReport.strengths.map((s: string, idx: number) => (
                     <div key={idx} className="flex items-start gap-2.5 text-emerald-200 font-medium">
                       <CheckCircle2 size={15} className="text-emerald-400 shrink-0 mt-0.5" />
                       <span>{s}</span>
                     </div>
                   ))}
-                  {analysis.healthReport.improvements.map((imp, idx) => (
+                  {analysis.healthReport.improvements.map((imp: string, idx: number) => (
                     <div key={idx} className="flex items-start gap-2.5 text-amber-200 font-medium">
                       <TrendingUp size={15} className="text-amber-400 shrink-0 mt-0.5" />
                       <span>{imp}</span>

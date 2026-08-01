@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// Centralized GitHub API Response Interface
 export interface GitHubFetchResponse<T = any> {
   data: T | null;
   status: number;
@@ -51,7 +50,7 @@ export async function githubApiClient<T = any>(endpoint: string): Promise<GitHub
         rateLimitRemaining,
         rateLimitReset,
         isRateLimited: true,
-        error: "GitHub analysis temporarily unavailable due to API rate limits. Please try again later.",
+        error: "Unable to complete evidence-based analysis due to API rate limits. Please try again later.",
       };
     }
 

@@ -4,25 +4,39 @@ import { githubApiClient } from "@/lib/githubApiClient";
 export const dynamic = "force-dynamic";
 
 // ─────────────────────────────────────────────────────────────
-// DATA TYPES & INTERFACES (Evidence Engine V8.1 - Complete Debug & Pagination Fix)
+// DATA TYPES & INTERFACES (Evidence Engine V8.2 - Final Accuracy Rebuild)
 // ─────────────────────────────────────────────────────────────
 
 export interface ProjectQualityBreakdown {
-  implementationDepth: number; // /25
+  implementationDepth: number; // /30
   architecture: number; // /15
   featureComplexity: number; // /15
-  engineeringPractices: number; // /15
-  testing: number; // /10
-  documentation: number; // /8
-  deploymentCi: number; // /7
-  maintainability: number; // /5
+  completeness: number; // /15
+  engineeringPractices: number; // /10
+  documentation: number; // /5
+  testing: number; // /5
+  deploymentUsability: number; // /5
   totalScore: number; // /100 (Repository Quality Score - RQS)
   qualityTier:
-    | "Minimal/Weak (<25)"
-    | "Academic/Practice (25-44)"
-    | "Meaningful Project (45-69)"
-    | "Flagship/Substantial (70+)";
+    | "Empty/Config/Noise (0-14)"
+    | "Basic Practice (15-29)"
+    | "Small/Learning Project (30-44)"
+    | "Valid Project (45-59)"
+    | "Substantial Project (60-74)"
+    | "Strong Engineering Project (75-89)"
+    | "Exceptional Project (90-100)";
 }
+
+export type RepoCategoryType =
+  | "SUBSTANTIAL_PROJECT"
+  | "VALID_SMALL_PROJECT"
+  | "ACADEMIC_PROJECT"
+  | "ASSIGNMENT_LAB"
+  | "TUTORIAL_PRACTICE"
+  | "CONFIG_PROFILE"
+  | "EMPTY_MINIMAL"
+  | "FORK"
+  | "UNKNOWN_INSUFFICIENT_EVIDENCE";
 
 export interface ClassifiedRepoInfo {
   name: string;
@@ -33,17 +47,9 @@ export interface ClassifiedRepoInfo {
   updatedAt: string;
   url: string;
   topics: string[];
-  repoCategory:
-    | "FLAGSHIP_PROJECT"
-    | "MEANINGFUL_PROJECT"
-    | "ACADEMIC_PROJECT"
-    | "ASSIGNMENT_LAB"
-    | "TUTORIAL_PRACTICE"
-    | "CONFIG_PROFILE"
-    | "MINIMAL_EMPTY"
-    | "FORK";
+  repoCategory: RepoCategoryType;
   isSubstantial: boolean;
-  isMeaningful: boolean;
+  isMeaningful: boolean; // RQS >= 45
   rqs: number; // Repository Quality Score (0-100)
   projectQualityBreakdown: ProjectQualityBreakdown;
   evidenceList: string[];
@@ -73,14 +79,14 @@ export interface CategoryScoreItem {
 }
 
 export interface CategoryScoreBreakdown {
-  bestProjectQuality: CategoryScoreItem;
-  overallProjectQuality: CategoryScoreItem;
-  technicalDepth: CategoryScoreItem;
-  engineeringPractices: CategoryScoreItem;
-  codebaseMaturity: CategoryScoreItem;
-  documentation: CategoryScoreItem;
-  maintenanceConsistency: CategoryScoreItem;
-  collaborationOpenSource: CategoryScoreItem;
+  bestProjectQuality: CategoryScoreItem; // /35
+  otherVerifiedProjects: CategoryScoreItem; // /20
+  engineeringDepth: CategoryScoreItem; // /15
+  engineeringPractices: CategoryScoreItem; // /10
+  documentation: CategoryScoreItem; // /5
+  testingCI: CategoryScoreItem; // /5
+  projectDiversity: CategoryScoreItem; // /5
+  maintenance: CategoryScoreItem; // /5
 }
 
 export interface TransparencyAudit {
@@ -180,40 +186,12 @@ export interface GitHubAnalysisResult {
   engineVersion: string;
   analysisComplete: boolean;
   authenticated: boolean;
+  analysisConfidence: "HIGH" | "MEDIUM" | "LOW";
 }
 
 const ANALYSIS_ENGINE_VERSION = "8.1";
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string; authenticated: boolean }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
-
-const TECH_RULES: { name: string; category: string; matchers: (string | RegExp)[] }[] = [
-  { name: "TypeScript", category: "frontend", matchers: ["typescript", "ts"] },
-  { name: "JavaScript", category: "frontend", matchers: ["javascript", "js"] },
-  { name: "React", category: "frontend", matchers: ["react", "reactjs", "jsx", "tsx"] },
-  { name: "Next.js", category: "frontend", matchers: ["nextjs", "next.js", "next"] },
-  { name: "HTML", category: "frontend", matchers: ["html", "html5"] },
-  { name: "CSS", category: "frontend", matchers: ["css", "css3"] },
-  { name: "Tailwind CSS", category: "uiUx", matchers: ["tailwind", "tailwindcss"] },
-  { name: "Bootstrap", category: "uiUx", matchers: ["bootstrap"] },
-  { name: "Node.js", category: "backend", matchers: ["nodejs", "node"] },
-  { name: "Express", category: "backend", matchers: ["express", "expressjs"] },
-  { name: "Python", category: "backend", matchers: ["python", "py", "django", "flask", "fastapi"] },
-  { name: "Go", category: "backend", matchers: ["go", "golang"] },
-  { name: "Rust", category: "backend", matchers: ["rust", "rs"] },
-  { name: "Java", category: "backend", matchers: ["java", "spring", "springboot"] },
-  { name: "C++", category: "backend", matchers: ["c++", "cpp"] },
-  { name: "C", category: "backend", matchers: ["c", "c-lang"] },
-  { name: "C#", category: "backend", matchers: ["c#", "csharp", "dotnet", ".net"] },
-  { name: "Firebase", category: "cloud", matchers: ["firebase", "firestore"] },
-  { name: "MongoDB", category: "database", matchers: ["mongodb", "mongo", "mongoose"] },
-  { name: "MySQL", category: "database", matchers: ["mysql"] },
-  { name: "PostgreSQL", category: "database", matchers: ["postgresql", "postgres", "psql"] },
-  { name: "TensorFlow", category: "aiMl", matchers: ["tensorflow", "keras", "torch", "pytorch", "scikit-learn"] },
-  { name: "Docker", category: "devOps", matchers: ["docker", "dockerfile"] },
-  { name: "Git", category: "devOps", matchers: ["git"] },
-  { name: "GitHub Workflows", category: "devOps", matchers: [".github/workflows", "ci/cd", "github-actions"] },
-  { name: "Jest / Vitest", category: "testing", matchers: ["jest", "vitest", "cypress", "playwright", "test"] },
-];
 
 export async function GET(req: NextRequest) {
   let apiRequestsUsed = 0;
@@ -237,13 +215,14 @@ export async function GET(req: NextRequest) {
     const cacheKey = `github-intelligence:v8.1:${username}`;
 
     const now = Date.now();
-    // ── 5. FIX CACHE CONTAMINATION (v8.1 Versioning + Strict Check) ──
+    // ── STEP 5: CACHE CONTAMINATION PREVENTION (v8.1 Versioning + Strict Check) ──
     if (!forceFresh && cache.has(cacheKey)) {
       const cached = cache.get(cacheKey)!;
       if (
         cached.version === ANALYSIS_ENGINE_VERSION &&
         cached.authenticated === isAuthenticatedToken &&
         cached.data.analysisComplete === true &&
+        cached.data.analysisConfidence !== "LOW" &&
         (now - cached.timestamp < CACHE_TTL_MS)
       ) {
         console.log(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${isAuthenticatedToken} | Rate limit: N/A | Remaining: N/A | API Requests Used: 0 | Cache hit: true`);
@@ -251,14 +230,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ── 1. FETCH GITHUB USER PROFILE VIA CENTRALIZED CLIENT ──
+    // ── STEP 1: FETCH REAL REPOSITORY EVIDENCE VIA CENTRALIZED CLIENT ──
     apiRequestsUsed++;
     const userFetch = await githubApiClient<any>(`/users/${encodeURIComponent(username)}`);
 
-    if (userFetch.isRateLimited) {
-      console.warn(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${isAuthenticatedToken} | Rate limit: ${userFetch.rateLimitLimit} | Remaining: ${userFetch.rateLimitRemaining} | API Requests Used: ${apiRequestsUsed} | Cache hit: false | RATE LIMITED`);
+    if (userFetch.isRateLimited || userFetch.status === 403) {
+      console.warn(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${isAuthenticatedToken} | API Requests Used: ${apiRequestsUsed} | RATE LIMITED`);
       return NextResponse.json({
-        error: "GitHub analysis temporarily unavailable due to API rate limits. Please try again later.",
+        error: "Unable to complete evidence-based analysis due to API rate limits. Please try again later.",
+        analysisConfidence: "LOW",
+        analysisComplete: false,
       }, { status: 403 });
     }
 
@@ -269,18 +250,20 @@ export async function GET(req: NextRequest) {
     const userData = userFetch.data;
     const totalPublicReposCount = userData.public_repos || 0;
 
-    // ── 2. PAGINATED REPOSITORY DISCOVERY (Fetch ALL public repos) ──
+    // Fetch ALL public repos (Pagination support)
     let allRepos: any[] = [];
     let page = 1;
     const maxPages = totalPublicReposCount > 0 ? Math.ceil(totalPublicReposCount / 100) : 1;
 
-    while (page <= Math.min(maxPages, 5)) { // Fetch up to 500 repos cleanly
+    while (page <= Math.min(maxPages, 5)) {
       apiRequestsUsed++;
       const reposFetch = await githubApiClient<any[]>(`/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100&page=${page}`);
       
-      if (reposFetch.isRateLimited) {
+      if (reposFetch.isRateLimited || reposFetch.status === 403) {
         return NextResponse.json({
-          error: "GitHub analysis temporarily unavailable due to API rate limits. Please try again later.",
+          error: "Unable to complete evidence-based analysis due to API rate limits. Please try again later.",
+          analysisConfidence: "LOW",
+          analysisComplete: false,
         }, { status: 403 });
       }
 
@@ -293,23 +276,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    if (allRepos.length === 0 && totalPublicReposCount > 0) {
+      return NextResponse.json({
+        error: "Analysis incomplete — repository contents could not be fully verified.",
+        analysisConfidence: "LOW",
+        analysisComplete: false,
+      }, { status: 500 });
+    }
+
     const nonForkRepos = allRepos.filter(r => !r.fork);
     const lightScannedReposCount = allRepos.length;
 
-    // ── 3. CANDIDATE SELECTION FOR DEEP ANALYSIS BASED ON CODE SIGNALS ──
-    // Candidates are non-fork repos with non-zero size, prioritized by code signals rather than stars/followers alone
+    // Candidate Selection based on Code Evidence Signals
     let candidateRepos = nonForkRepos.filter(r => (r.size || 0) > 0);
-    
-    // Sort candidate selection based on actual code complexity indicators (size, language, topics)
     candidateRepos.sort((a, b) => {
       const aScore = (a.size || 0) + (a.language ? 500 : 0) + (a.description ? 200 : 0);
       const bScore = (b.size || 0) + (b.language ? 500 : 0) + (b.description ? 200 : 0);
       return bScore - aScore;
     });
 
-    // Deep inspect up to 5 top candidate repos using repository git tree endpoint if API quota permits (> 10 remaining)
-    const shouldDeepInspect = reposFetchRateRemaining(userFetch.rateLimitRemaining) > 10;
-    const deepCandidateList = shouldDeepInspect ? candidateRepos.slice(0, 5) : [];
+    const deepCandidateList = candidateRepos.slice(0, 8); // Top candidates deep inspected
     const deepInspectedNames = new Set(deepCandidateList.map(r => r.name));
 
     let deepAnalyzedRepoCount = 0;
@@ -339,7 +325,7 @@ export async function GET(req: NextRequest) {
         let treeFetched = false;
         let fileList: string[] = [];
 
-        // Deep tree inspection for candidate repos
+        // Deep tree inspection via GitHub API for candidate repositories
         if (deepInspectedNames.has(repo.name) && !isFork && sizeKB > 15) {
           apiRequestsUsed++;
           const treeFetch = await githubApiClient<any>(`/repos/${encodeURIComponent(username)}/${encodeURIComponent(repo.name)}/git/trees/${repo.default_branch || "main"}?recursive=1`);
@@ -356,7 +342,7 @@ export async function GET(req: NextRequest) {
           : Boolean(language);
 
         const srcDetected = treeFetched
-          ? fileList.some(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("api/") || f.startsWith("lib/"))
+          ? fileList.some(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("backend/") || f.startsWith("frontend/") || f.startsWith("api/") || f.startsWith("routes/") || f.startsWith("controllers/") || f.startsWith("models/") || f.startsWith("database/"))
           : Boolean(sizeKB > 30);
 
         const hasPackageJson = treeFetched
@@ -401,41 +387,58 @@ export async function GET(req: NextRequest) {
         const isPracticeKeyword = corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo") || corpus.includes("demo");
         const isAcademicKeyword = corpus.includes("academic") || corpus.includes("college") || corpus.includes("sem-") || corpus.includes("university");
 
-        // ── CALCULATE REPOSITORY QUALITY SCORE (RQS) /100 ──
+        // ── STEP 4: REPOSITORY QUALITY SCORE (RQS) / 100 ──
+        // Implementation Depth (0-30)
         let implementationDepth = 0;
         if (treeFetched) {
-          if (sourceFileCount >= 15 || sizeKB > 1200) implementationDepth = 25;
-          else if (sourceFileCount >= 6 || sizeKB > 300) implementationDepth = 18;
-          else if (sourceFileCount >= 2 || sizeKB > 50) implementationDepth = 12;
-          else implementationDepth = 5;
+          if (sourceFileCount >= 15 || sizeKB > 1200) implementationDepth = 30;
+          else if (sourceFileCount >= 8 || sizeKB > 300) implementationDepth = 22;
+          else if (sourceFileCount >= 2 || sizeKB > 50) implementationDepth = 14;
+          else implementationDepth = 6;
         } else {
-          if (sizeKB > 500 && (hasFE || hasBE)) implementationDepth = 22;
-          else if (sizeKB > 150 && (hasFE || hasBE)) implementationDepth = 16;
-          else if (sizeKB > 30) implementationDepth = 10;
+          if (sizeKB > 500 && (hasFE || hasBE)) implementationDepth = 26;
+          else if (sizeKB > 150 && (hasFE || hasBE)) implementationDepth = 18;
+          else if (sizeKB > 30) implementationDepth = 12;
           else implementationDepth = 4;
         }
 
+        // Architecture/Structure (0-15)
         let architecture = (hasFE && hasBE ? 15 : (hasFE || hasBE) ? 10 : 4);
-        let featureComplexity = (hasDB ? 7 : 0) + (hasFE ? 4 : 0) + (hasBE ? 4 : 0);
-        let engPractices = (hasCiCd ? 8 : 0) + (hasTest ? 7 : 0);
-        let testing = hasTest ? 10 : 0;
-        let docScore = hasDescription && sizeKB > 20 ? 8 : hasDescription ? 4 : 2;
-        let deployCi = (hasPages ? 4 : 0) + (hasCiCd ? 3 : 0);
-        let maintainability = sizeKB > 40 ? 5 : 2;
 
+        // Technical Complexity (0-15)
+        let featureComplexity = (hasDB ? 7 : 0) + (hasFE ? 4 : 0) + (hasBE ? 4 : 0);
+
+        // Completeness (0-15)
+        let completeness = (hasReadme ? 5 : 0) + (hasDescription ? 5 : 0) + (sizeKB > 50 ? 5 : 2);
+
+        // Engineering Practices (0-10)
+        let engPractices = (hasCiCd ? 6 : 0) + (dockerDetected ? 4 : 0);
+
+        // Documentation (0-5)
+        let docScore = hasDescription && sizeKB > 20 ? 5 : hasDescription ? 3 : 1;
+
+        // Testing (0-5)
+        let testingScore = hasTest ? 5 : 0;
+
+        // Deployment/Usability (0-5)
+        let deployCi = (hasPages ? 3 : 0) + (hasCiCd ? 2 : 0);
+
+        // Weak evidence penalty (Categories D-I contribute zero or small RQS)
         if (isFork || isProfileRepo || sizeKB < 10 || isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
-          implementationDepth = Math.min(5, implementationDepth);
-          architecture = Math.min(4, architecture);
-          featureComplexity = Math.min(3, featureComplexity);
+          implementationDepth = Math.min(4, implementationDepth);
+          architecture = Math.min(3, architecture);
+          featureComplexity = Math.min(2, featureComplexity);
+          completeness = Math.min(3, completeness);
           engPractices = 0;
-          testing = 0;
-          deployCi = Math.min(2, deployCi);
+          testingScore = 0;
+          deployCi = 0;
         }
 
-        const rqs = Math.min(100, implementationDepth + architecture + featureComplexity + engPractices + testing + docScore + deployCi + maintainability);
+        // Strictly NO RQS points awarded for Stars, Followers, Repo Count, or Account Age
+        const rqs = Math.min(100, implementationDepth + architecture + featureComplexity + completeness + engPractices + docScore + testingScore + deployCi);
 
-        // Classification
-        let repoCategory: ClassifiedRepoInfo["repoCategory"] = "TUTORIAL_PRACTICE";
+        // ── STEP 2 & 3: CATEGORIZATION & VERIFICATION GATE ──
+        let repoCategory: RepoCategoryType = "TUTORIAL_PRACTICE";
         let isSubstantial = false;
         let isMeaningful = false;
         const evidenceList: string[] = [];
@@ -449,7 +452,7 @@ export async function GET(req: NextRequest) {
           configProfileCount++;
           evidenceList.push("GitHub profile README / configuration repository (Excluded)");
         } else if (sizeKB === 0 || (sizeKB < 10 && !hasDescription && stars === 0)) {
-          repoCategory = "MINIMAL_EMPTY";
+          repoCategory = "EMPTY_MINIMAL";
           minimalEmptyCount++;
           evidenceList.push("Minimal or empty repository with no substantial codebase (Excluded)");
         } else if (isTaskKeyword) {
@@ -474,9 +477,9 @@ export async function GET(req: NextRequest) {
             evidenceList.push("Basic academic submission without substantial application implementation");
           }
         } else {
-          // Fair project validation for student projects (does NOT penalize 0 stars/0 forks)
-          if (rqs >= 65 || (sizeKB >= 150 && (hasFE || hasBE))) {
-            repoCategory = "FLAGSHIP_PROJECT";
+          // Verification Gate (RQS >= 45 for VERIFIED_PROJECT, RQS >= 60 for SUBSTANTIAL_PROJECT)
+          if (rqs >= 60) {
+            repoCategory = "SUBSTANTIAL_PROJECT";
             isSubstantial = true;
             isMeaningful = true;
             substantialCount++;
@@ -487,48 +490,48 @@ export async function GET(req: NextRequest) {
             if (hasDB) evidenceList.push("✓ Database integration detected");
             if (hasCiCd) evidenceList.push("✓ CI/CD workflow / Docker configuration detected");
             if (hasTest) evidenceList.push("✓ Automated testing suite verified");
-          } else if (rqs >= 40 || (sizeKB >= 40 && (hasFE || hasBE))) {
-            repoCategory = "MEANINGFUL_PROJECT";
+          } else if (rqs >= 45) {
+            repoCategory = "VALID_SMALL_PROJECT";
             isMeaningful = true;
             meaningfulCount++;
-            evidenceList.push(`✓ Verified meaningful application implementation (RQS: ${rqs}/100)`);
+            evidenceList.push(`✓ Verified valid application implementation (RQS: ${rqs}/100)`);
             if (hasFE) evidenceList.push("✓ Frontend UI component codebase detected");
             if (hasBE) evidenceList.push("✓ Backend service / API implementation detected");
           } else {
             repoCategory = "TUTORIAL_PRACTICE";
             tutorialCount++;
-            evidenceList.push(`Small practice repository or starter boilerplate (RQS: ${rqs}/100 < 40)`);
+            evidenceList.push(`Small practice repository or starter boilerplate (RQS: ${rqs}/100 < 45)`);
           }
         }
 
-        let qualityTier: ProjectQualityBreakdown["qualityTier"] = "Minimal/Weak (<25)";
-        if (rqs >= 70) qualityTier = "Flagship/Substantial (70+)";
-        else if (rqs >= 45) qualityTier = "Meaningful Project (45-69)";
-        else if (rqs >= 25) qualityTier = "Academic/Practice (25-44)";
+        let qualityTier: ProjectQualityBreakdown["qualityTier"] = "Empty/Config/Noise (0-14)";
+        if (rqs >= 90) qualityTier = "Exceptional Project (90-100)";
+        else if (rqs >= 75) qualityTier = "Strong Engineering Project (75-89)";
+        else if (rqs >= 60) qualityTier = "Substantial Project (60-74)";
+        else if (rqs >= 45) qualityTier = "Valid Project (45-59)";
+        else if (rqs >= 30) qualityTier = "Small/Learning Project (30-44)";
+        else if (rqs >= 15) qualityTier = "Basic Practice (15-29)";
 
         const projectQualityBreakdown: ProjectQualityBreakdown = {
           implementationDepth,
           architecture,
           featureComplexity,
+          completeness,
           engineeringPractices: engPractices,
-          testing,
           documentation: docScore,
-          deploymentCi: deployCi,
-          maintainability,
+          testing: testingScore,
+          deploymentUsability: deployCi,
           totalScore: rqs,
           qualityTier,
         };
 
-        const daysSinceUpdate = repo.updated_at
-          ? Math.floor((now - new Date(repo.updated_at).getTime()) / (1000 * 60 * 60 * 24))
-          : 999;
         const selectionReason = isSubstantial
-          ? `Verified flagship project with RQS ${rqs}/100`
+          ? `Verified substantial project with RQS ${rqs}/100`
           : isMeaningful
-          ? `Verified meaningful project with RQS ${rqs}/100`
+          ? `Verified valid project with RQS ${rqs}/100`
           : `Excluded from score calculations (${evidenceList[0]})`;
 
-        // ── 4. SERVER-SIDE DEBUGGING LOG FOR EACH CANDIDATE ──
+        // ── STEP 19: DEBUG MODE LOG FOR CANDIDATES ──
         if (deepInspectedNames.has(repo.name) || isMeaningful) {
           console.log(`[GitHub Intelligence Debug Repo] repo: ${repo.name} | treeFetched: ${treeFetched} | fileCount: ${fileList.length} | sourceFileCount: ${sourceFileCount} | manifestDetected: ${manifestDetected} | srcDetected: ${srcDetected} | backendDetected: ${backendDetected} | databaseDetected: ${databaseDetected} | testsDetected: ${testsDetected} | dockerDetected: ${dockerDetected} | ciDetected: ${ciDetected} | RQS: ${rqs} | classification: ${repoCategory} | rejectionReason: ${isMeaningful ? "None" : evidenceList[0]}`);
         }
@@ -560,11 +563,11 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    // ── 3. SORT & FILTER REPOSITORIES BY VERIFIED RQS ──
+    // ── STEP 3: SORT & FILTER VERIFIED PROJECTS ──
     const substantialProjects = classifiedRepos.filter(r => r.isSubstantial).sort((a, b) => b.rqs - a.rqs);
-    const meaningfulProjects = classifiedRepos.filter(r => r.isMeaningful).sort((a, b) => b.rqs - a.rqs);
+    const verifiedProjects = classifiedRepos.filter(r => r.isMeaningful).sort((a, b) => b.rqs - a.rqs);
 
-    const verifiedProjectsList = meaningfulProjects.map(r => ({
+    const verifiedProjectsList = verifiedProjects.map(r => ({
       name: r.name,
       rqs: r.rqs,
       category: r.repoCategory.replace(/_/g, " "),
@@ -574,173 +577,157 @@ export async function GET(req: NextRequest) {
     const excludedProjectsList = classifiedRepos.filter(r => !r.isMeaningful).map(r => ({
       name: r.name,
       category: r.repoCategory.replace(/_/g, " "),
-      reason: r.evidenceList[0] || "Did not meet substantial RQS threshold (<40)",
+      reason: r.evidenceList[0] || "Did not meet verified RQS threshold (<45)",
     }));
 
-    // ── 4. DEVELOPER SCORE (0-100 POINTS) EXACT CATEGORIES ──
-    const bestProj = meaningfulProjects[0] || classifiedRepos.sort((a, b) => b.rqs - a.rqs)[0];
-    const bestRQS = bestProj ? bestProj.rqs : 0;
+    // ── STEP 6: PROFILE SCORE CALCULATION (0-100 EXACT SUM) ──
+    const bestProj = verifiedProjects[0] || null;
+    const bestRQS = bestProj ? bestProj.rqs : (classifiedRepos.sort((a, b) => b.rqs - a.rqs)[0]?.rqs || 0);
 
-    // 1. Flagship Project Quality (30 Points Max)
-    let flagshipPts = 0;
-    if (bestRQS >= 85) flagshipPts = 30;
-    else if (bestRQS >= 70) flagshipPts = 26 + Math.round(((bestRQS - 70) / 15) * 3); // 26-29
-    else if (bestRQS >= 50) flagshipPts = 21 + Math.round(((bestRQS - 50) / 20) * 4); // 21-25
-    else if (bestRQS >= 30) flagshipPts = 14 + Math.round(((bestRQS - 30) / 20) * 6); // 14-20
-    else if (bestRQS >= 15) flagshipPts = 5 + Math.round(((bestRQS - 15) / 15) * 8); // 5-13
-    else flagshipPts = Math.min(4, Math.round(bestRQS / 4));
+    // 1. BEST PROJECT QUALITY — 35 Points Max
+    const bestProjectQualityScore = Math.round((bestRQS / 100) * 35);
 
-    // 2. Portfolio Quality (15 Points Max)
-    let portfolioPts = 0;
-    if (substantialProjects.length >= 2) portfolioPts = 15;
-    else if (substantialProjects.length === 1 && meaningfulProjects.length >= 2) portfolioPts = 12;
-    else if (substantialProjects.length === 1) portfolioPts = 10;
-    else if (meaningfulProjects.length >= 2) portfolioPts = 8;
-    else if (meaningfulProjects.length === 1) portfolioPts = 5;
-    else portfolioPts = Math.min(3, Math.round(classifiedRepos.length > 0 ? 1 : 0));
+    // 2. OTHER VERIFIED PROJECTS — 20 Points Max (Top 4 additional verified projects)
+    const otherProjects = verifiedProjects.slice(1, 5);
+    const weights = [8, 5, 4, 3];
+    let otherVerifiedProjectsScore = 0;
+    otherProjects.forEach((p, idx) => {
+      otherVerifiedProjectsScore += Math.round((p.rqs / 100) * weights[idx]);
+    });
+    otherVerifiedProjectsScore = Math.min(20, otherVerifiedProjectsScore);
 
-    // 3. Technical Depth (15 Points Max)
-    const validFE = meaningfulProjects.some(r => r.hasFE);
-    const validBE = meaningfulProjects.some(r => r.hasBE);
-    const validDB = meaningfulProjects.some(r => r.hasDB);
-    let techDepthPts = (validFE ? 5 : 0) + (validBE ? 5 : 0) + (validDB ? 5 : 0);
+    // 3. ENGINEERING DEPTH — 15 Points Max
+    const validFE = verifiedProjects.some(r => r.hasFE);
+    const validBE = verifiedProjects.some(r => r.hasBE);
+    const validDB = verifiedProjects.some(r => r.hasDB);
+    let engineeringDepthScore = (validFE ? 5 : 0) + (validBE ? 5 : 0) + (validDB ? 5 : 0);
 
-    // 4. Engineering Practices (15 Points Max)
-    const validCiCd = meaningfulProjects.some(r => r.hasCiCd);
-    const validTest = meaningfulProjects.some(r => r.hasTest);
-    let engPracticesPts = (validCiCd ? 8 : 0) + (validTest ? 7 : 0);
+    // 4. ENGINEERING PRACTICES — 10 Points Max
+    const validCiCd = verifiedProjects.some(r => r.hasCiCd);
+    const validDocker = verifiedProjects.some(r => r.evidenceList.some(e => e.includes("Docker")));
+    let engineeringPracticesScore = (validCiCd ? 6 : 0) + (validDocker ? 4 : 0);
 
-    // 5. Codebase Maturity (10 Points Max)
-    let codebaseMaturityPts = 0;
-    if (bestRQS >= 70) codebaseMaturityPts = 10;
-    else if (bestRQS >= 45) codebaseMaturityPts = 6;
-    else if (bestRQS >= 25) codebaseMaturityPts = 3;
-    else codebaseMaturityPts = 1;
+    // 5. DOCUMENTATION — 5 Points Max
+    const validReadmeCount = verifiedProjects.filter(r => r.hasReadme).length;
+    let documentationScore = Math.min(5, (validReadmeCount >= 2 ? 3 : validReadmeCount === 1 ? 2 : 0) + (userData.bio ? 2 : 0));
 
-    // 6. Documentation (5 Points Max)
-    const validReadmeCount = meaningfulProjects.filter(r => r.hasReadme).length;
-    let docPts = Math.min(5, (validReadmeCount >= 2 ? 3 : validReadmeCount === 1 ? 2 : 0) + (userData.bio ? 2 : 0));
+    // 6. TESTING / CI — 5 Points Max
+    const validTest = verifiedProjects.some(r => r.hasTest);
+    let testingCIScore = validTest ? 5 : 0;
 
-    // 7. Activity & Maintenance (5 Points Max)
+    // 7. PROJECT DIVERSITY — 5 Points Max
+    const distinctLangs = new Set(verifiedProjects.map(r => r.language).filter(Boolean)).size;
+    let projectDiversityScore = Math.min(5, distinctLangs >= 3 ? 5 : distinctLangs >= 2 ? 3 : verifiedProjects.length >= 1 ? 2 : 0);
+
+    // 8. CONSISTENCY / MAINTENANCE — 5 Points Max (Max 5 points limit)
     const daysSinceUpdate = bestProj?.updatedAt
       ? Math.floor((now - new Date(allRepos[0]?.updated_at || now).getTime()) / (1000 * 60 * 60 * 24))
       : 999;
-    let maintenancePts = daysSinceUpdate <= 30 ? 5 : daysSinceUpdate <= 90 ? 3 : 1;
+    let maintenanceScore = daysSinceUpdate <= 30 ? 5 : daysSinceUpdate <= 90 ? 3 : 1;
 
-    // 8. Open Source / Collaboration (5 Points Max)
-    const totalStars = classifiedRepos.reduce((acc, r) => acc + r.stars, 0);
-    let openSourcePts = totalStars >= 100 ? 5 : totalStars >= 20 ? 3 : totalStars > 0 ? 2 : 1;
+    let rawScore = bestProjectQualityScore + otherVerifiedProjectsScore + engineeringDepthScore + engineeringPracticesScore + documentationScore + testingCIScore + projectDiversityScore + maintenanceScore;
 
-    let rawScore = flagshipPts + portfolioPts + techDepthPts + engPracticesPts + codebaseMaturityPts + docPts + maintenancePts + openSourcePts;
+    // ── STEP 5: ANTI-INFLATION SCORE CAPS ──
+    const appliedScoreCaps: string[] = [];
 
-    // ── 5. STRICT CRITICAL SCORE HARD CAPS (ANTI-GAMING) ──
-    if (meaningfulProjects.length === 0) {
+    if (verifiedProjects.length === 0) {
       rawScore = Math.min(25, rawScore);
+      appliedScoreCaps.push("0 Verified Projects -> Max 25");
     }
-    if (meaningfulProjects.length === 0 && classifiedRepos.every(r => r.repoCategory === "CONFIG_PROFILE" || r.repoCategory === "MINIMAL_EMPTY" || r.repoCategory === "FORK")) {
-      rawScore = Math.min(15, rawScore);
+    if (substantialProjects.length === 0) {
+      rawScore = Math.min(45, rawScore);
+      appliedScoreCaps.push("0 Substantial Projects (RQS < 60) -> Max 45");
     }
-    if (meaningfulProjects.length === 0 && classifiedRepos.some(r => r.repoCategory === "TUTORIAL_PRACTICE" || r.repoCategory === "ASSIGNMENT_LAB")) {
-      rawScore = Math.min(35, rawScore);
-    }
-    if (bestRQS < 40) {
+    if (bestRQS < 45) {
       rawScore = Math.min(40, rawScore);
+      appliedScoreCaps.push("Best RQS < 45 -> Max 40");
     }
-    if (bestRQS < 65) {
-      rawScore = Math.min(69, rawScore);
-    }
-    if (rawScore >= 80 && (bestRQS < 65 || engPracticesPts < 7)) {
-      rawScore = Math.min(79, rawScore);
-    }
-    if (rawScore >= 90 && (substantialProjects.length < 2 || bestRQS < 80 || engPracticesPts < 12)) {
-      rawScore = Math.min(89, rawScore);
-    }
-    if (rawScore >= 95 && (substantialProjects.length < 3 || bestRQS < 90)) {
-      rawScore = Math.min(94, rawScore);
+    if (bestRQS < 30) {
+      rawScore = Math.min(30, rawScore);
+      appliedScoreCaps.push("Best RQS < 30 -> Max 30");
     }
 
     const finalDevScore = Math.min(100, Math.max(0, rawScore));
 
+    // Category Score Breakdown (Exact Sum = finalDevScore)
     const scoreBreakdown: CategoryScoreBreakdown = {
       bestProjectQuality: {
-        score: flagshipPts,
-        max: 30,
-        evidence: bestProj && bestProj.isMeaningful
-          ? [`Flagship project "${bestProj.name}" quality RQS: ${bestRQS}/100 (+${flagshipPts} pts)`]
-          : ["No verified flagship project found with RQS >= 65"],
+        score: bestProjectQualityScore,
+        max: 35,
+        evidence: bestProj
+          ? [`Best project "${bestProj.name}" RQS: ${bestRQS}/100 -> +${bestProjectQualityScore}/35 pts`]
+          : ["No verified project found"],
       },
-      overallProjectQuality: {
-        score: portfolioPts,
-        max: 15,
-        evidence: [`${substantialProjects.length} substantial & ${meaningfulProjects.length} meaningful projects verified (+${portfolioPts} pts)`],
+      otherVerifiedProjects: {
+        score: otherVerifiedProjectsScore,
+        max: 20,
+        evidence: [`${otherProjects.length} additional verified projects weighted by RQS -> +${otherVerifiedProjectsScore}/20 pts`],
       },
-      technicalDepth: {
-        score: techDepthPts,
+      engineeringDepth: {
+        score: engineeringDepthScore,
         max: 15,
         evidence: [
-          validFE ? "✓ Verified Frontend implementation (+5 pts)" : "✗ No verified Frontend codebase",
-          validBE ? "✓ Verified Backend API implementation (+5 pts)" : "✗ No verified Backend service",
-          validDB ? "✓ Verified Database persistence (+5 pts)" : "✗ No verified Database integration",
+          validFE ? "✓ Verified Frontend UI (+5 pts)" : "✗ No verified Frontend codebase",
+          validBE ? "✓ Verified Backend Service (+5 pts)" : "✗ No verified Backend service",
+          validDB ? "✓ Verified Database Persistence (+5 pts)" : "✗ No verified Database integration",
         ],
       },
       engineeringPractices: {
-        score: engPracticesPts,
-        max: 15,
+        score: engineeringPracticesScore,
+        max: 10,
         evidence: [
-          validCiCd ? "✓ Verified CI/CD workflows / Docker (+8 pts)" : "✗ No CI/CD or Docker verified",
-          validTest ? "✓ Verified Automated Testing suite (+7 pts)" : "✗ No automated unit tests verified",
+          validCiCd ? "✓ Verified CI/CD Workflow (+6 pts)" : "✗ No CI/CD workflow",
+          validDocker ? "✓ Verified Docker Config (+4 pts)" : "✗ No Docker config",
         ],
       },
-      codebaseMaturity: {
-        score: codebaseMaturityPts,
-        max: 10,
-        evidence: [`Codebase architecture maturity rated based on RQS ${bestRQS}/100 (+${codebaseMaturityPts} pts)`],
-      },
       documentation: {
-        score: docPts,
+        score: documentationScore,
         max: 5,
-        evidence: [`${validReadmeCount} verified meaningful projects with README (+${docPts} pts)`],
+        evidence: [`${validReadmeCount} verified projects with README (+${documentationScore}/5 pts)`],
       },
-      maintenanceConsistency: {
-        score: maintenancePts,
+      testingCI: {
+        score: testingCIScore,
         max: 5,
-        evidence: [`Updated within ${daysSinceUpdate <= 30 ? "30 days" : `${daysSinceUpdate} days`} (+${maintenancePts} pts)`],
+        evidence: [validTest ? "✓ Automated Testing suite verified (+5 pts)" : "✗ No automated tests"],
       },
-      collaborationOpenSource: {
-        score: openSourcePts,
+      projectDiversity: {
+        score: projectDiversityScore,
         max: 5,
-        evidence: [`${totalStars} stargazers across public repositories (+${openSourcePts} pts)`],
+        evidence: [`${distinctLangs} distinct tech stacks verified (+${projectDiversityScore}/5 pts)`],
+      },
+      maintenance: {
+        score: maintenanceScore,
+        max: 5,
+        evidence: [`Last active ${daysSinceUpdate <= 30 ? "within 30 days" : `${daysSinceUpdate} days ago`} (+${maintenanceScore}/5 pts)`],
       },
     };
 
-    let devLevel = "Beginner Portfolio";
-    if (finalDevScore >= 95) devLevel = "Elite Engineering Profile";
-    else if (finalDevScore >= 90) devLevel = "Exceptional Developer";
+    // ── STEP 14: DEVELOPER LABELS ──
+    let devLevel = "Limited Public Evidence";
+    if (finalDevScore >= 90) devLevel = "Exceptional Developer";
     else if (finalDevScore >= 80) devLevel = "Advanced Developer";
-    else if (finalDevScore >= 70) devLevel = "Strong Developer";
-    else if (finalDevScore >= 55) devLevel = "Capable Developer";
-    else if (finalDevScore >= 40) devLevel = "Good Foundation Developer";
-    else if (finalDevScore >= 25) devLevel = "Developing Developer";
-    else devLevel = "Beginner Portfolio";
+    else if (finalDevScore >= 65) devLevel = "Strong Developer";
+    else if (finalDevScore >= 50) devLevel = "Capable Developer";
+    else if (finalDevScore >= 35) devLevel = "Emerging Developer";
+    else if (finalDevScore >= 20) devLevel = "Developing Developer";
+    else devLevel = "Limited Public Evidence";
 
     let devStars = "☆☆☆☆☆";
     if (finalDevScore >= 80) devStars = "★★★★★";
-    else if (finalDevScore >= 70) devStars = "★★★★☆";
+    else if (finalDevScore >= 65) devStars = "★★★★☆";
     else if (finalDevScore >= 50) devStars = "★★★☆☆";
-    else if (finalDevScore >= 30) devStars = "★★☆☆☆";
-    else if (finalDevScore >= 15) devStars = "★☆☆☆☆";
+    else if (finalDevScore >= 35) devStars = "★★☆☆☆";
+    else if (finalDevScore >= 20) devStars = "★☆☆☆☆";
 
-    let evidenceConfidence: "LOW" | "MEDIUM" | "HIGH" = "MEDIUM";
-    let confidenceReason = "Analysis based on public GitHub repository inspection.";
-    if (substantialProjects.length >= 1 && shouldDeepInspect) {
-      evidenceConfidence = "HIGH";
-      confidenceReason = "Verified deep source code file tree evidence across top public repositories.";
-    } else if (meaningfulProjects.length >= 1) {
-      evidenceConfidence = "MEDIUM";
-      confidenceReason = "Verified public repository metadata and primary language structures.";
-    } else {
-      evidenceConfidence = "LOW";
-      confidenceReason = "Limited Evidence — Repositories are mostly forks, assignments, minimal, or empty.";
+    // ── STEP 10: EVIDENCE CONFIDENCE (HIGH / MEDIUM / LOW) ──
+    let analysisConfidence: "HIGH" | "MEDIUM" | "LOW" = "HIGH";
+    let confidenceReason = "Verified deep source code file tree evidence across public repositories.";
+    if (deepAnalyzedRepoCount === 0 && verifiedProjects.length > 0) {
+      analysisConfidence = "MEDIUM";
+      confidenceReason = "Verified repository metadata and code structure.";
+    } else if (allRepos.length === 0) {
+      analysisConfidence = "LOW";
+      confidenceReason = "Insufficient repository evidence inspected.";
     }
 
     const transparencyAudit: TransparencyAudit = {
@@ -756,17 +743,17 @@ export async function GET(req: NextRequest) {
       minimalEmptyCount,
       verifiedProjectsList,
       excludedProjectsList,
-      disclaimer: "This assessment is based only on publicly accessible GitHub evidence and should not be interpreted as a complete measurement of the developer's abilities.",
+      disclaimer: "This assessment is based strictly on publicly accessible GitHub code evidence.",
       analysisCoverage: `${allRepos.length} / ${totalPublicReposCount} repositories scanned`,
-      deepAnalysisInfo: `${deepCandidateList.length} candidate repositories inspected deeply`,
+      deepAnalysisInfo: `${deepAnalyzedRepoCount} candidate repositories inspected deeply`,
     };
 
     const separateMetrics: SeparateQualityMetrics = {
       bestProjectQuality: bestRQS,
       portfolioDepth: Math.min(100, meaningfulCount * 35),
-      engineeringQuality: Math.round((engPracticesPts / 15) * 100),
-      technicalBreadth: Math.round((techDepthPts / 15) * 100),
-      maintenance: Math.round((maintenancePts / 5) * 100),
+      engineeringQuality: Math.round(((engineeringPracticesScore + testingCIScore) / 15) * 100),
+      technicalBreadth: Math.round((engineeringDepthScore / 15) * 100),
+      maintenance: Math.round((maintenanceScore / 5) * 100),
     };
 
     const scoreStrengths: string[] = [];
@@ -776,87 +763,34 @@ export async function GET(req: NextRequest) {
     if (validFE && validBE) scoreStrengths.push("Verified full-stack implementation evidence (Frontend UI + Backend Service)");
     if (validCiCd || validTest) scoreStrengths.push("Verified engineering practices (Automated Testing / CI-CD / Docker)");
 
-    if (meaningfulProjects.length === 0) scoreNeedsImp.push("No verified substantial or meaningful software projects found");
-    else if (substantialProjects.length === 0) scoreNeedsImp.push("No flagship project with RQS >= 65 discovered");
+    if (verifiedProjects.length === 0) scoreNeedsImp.push("No verified substantial or valid software projects found");
+    else if (substantialProjects.length === 0) scoreNeedsImp.push("No flagship project with RQS >= 60 discovered");
     if (!validTest) scoreNeedsImp.push("No automated unit testing suite detected in public repositories");
 
-    // Skill Confidence
-    const detectedSkillsSet = new Set<string>();
-    meaningfulProjects.forEach(r => {
-      if (r.language) detectedSkillsSet.add(r.language);
-      TECH_RULES.forEach(rule => {
-        const isMatched = rule.matchers.some(m => {
-          if (m instanceof RegExp) return m.test(`${r.name} ${r.description || ""}`.toLowerCase());
-          return `${r.name} ${r.description || ""}`.toLowerCase().includes(m.toLowerCase());
-        });
-        if (isMatched) detectedSkillsSet.add(rule.name);
-      });
-    });
+    const totalStars = classifiedRepos.reduce((acc, r) => acc + r.stars, 0);
 
-    const getConfidence = (hasEvidence: boolean, repoList: ClassifiedRepoInfo[], explicitTag: boolean): SkillConfidenceItem => {
-      const supportingRepos = repoList.map(r => r.name);
-      if (!hasEvidence && !explicitTag) {
-        return {
-          score: 0,
-          confidence: "INSUFFICIENT EVIDENCE",
-          evidence: ["Not enough public evidence detected"],
-          reason: "No code implementation detected in public repositories.",
-          supportingRepos: [],
-        };
-      }
-      if (repoList.length >= 2 && explicitTag) {
-        return {
-          score: Math.min(95, 60 + repoList.length * 8),
-          confidence: "HIGH CONFIDENCE",
-          evidence: ["Verified source code files", "Multiple project implementations"],
-          reason: `Verified in ${repoList.length} repository codebase(s).`,
-          supportingRepos,
-        };
-      }
-      return {
-        score: 55,
-        confidence: "MEDIUM CONFIDENCE",
-        evidence: ["Repository structure or framework tag"],
-        reason: "Detected from repository structure.",
-        supportingRepos,
-      };
-    };
-
-    const feConf = getConfidence(validFE, meaningfulProjects.filter(r => r.hasFE), detectedSkillsSet.has("React") || detectedSkillsSet.has("Next.js"));
-    const beConf = getConfidence(validBE, meaningfulProjects.filter(r => r.hasBE), detectedSkillsSet.has("Node.js") || detectedSkillsSet.has("Express") || detectedSkillsSet.has("Python") || detectedSkillsSet.has("Go"));
-    const dbConf = getConfidence(validDB, meaningfulProjects.filter(r => r.hasDB), detectedSkillsSet.has("MongoDB") || detectedSkillsSet.has("MySQL") || detectedSkillsSet.has("PostgreSQL") || detectedSkillsSet.has("Firebase"));
-    const aiConf = getConfidence(detectedSkillsSet.has("TensorFlow"), meaningfulProjects.filter(r => r.name.includes("tensor")), detectedSkillsSet.has("TensorFlow"));
-    const devOpsConf = getConfidence(validCiCd, meaningfulProjects.filter(r => r.hasCiCd), detectedSkillsSet.has("Docker") || detectedSkillsSet.has("GitHub Workflows") || detectedSkillsSet.has("Nix / SaltStack"));
-    const cloudConf = getConfidence(detectedSkillsSet.has("Firebase") || meaningfulProjects.some(r => r.hasPages), meaningfulProjects.filter(r => r.hasPages), detectedSkillsSet.has("Firebase"));
-    const psConf = getConfidence(meaningfulProjects.length >= 1, meaningfulProjects, meaningfulProjects.length >= 2);
-    const docConf = getConfidence(validReadmeCount > 0, meaningfulProjects.filter(r => r.hasReadme), validReadmeCount >= 2);
-    const uiUxConf = getConfidence(detectedSkillsSet.has("Tailwind CSS"), meaningfulProjects.filter(r => r.name.includes("tailwind")), detectedSkillsSet.has("Tailwind CSS"));
-    const testConf = getConfidence(validTest, meaningfulProjects.filter(r => r.hasTest), validTest);
-
-    const isFullStackVerified = validFE && validBE && (validDB || meaningfulProjects.length >= 2);
-
-    // Badges System
-    const feProjects = meaningfulProjects.filter(r => r.hasFE);
+    // ── STEP 15: BADGES SYSTEM REQUIRING CODE EVIDENCE ──
+    const feProjects = verifiedProjects.filter(r => r.hasFE);
     const feBadge: DeveloperBadge = {
       id: "frontend-developer",
       name: "Frontend Developer",
-      description: "Build & publish meaningful frontend web applications",
+      description: "Build & publish valid frontend web applications",
       icon: "⚛️",
       unlocked: feProjects.length > 0,
       glowColor: "rgba(56,189,248,0.6)",
       evidenceList: feProjects.length > 0
         ? feProjects.map(r => `• ${r.name}: Verified frontend UI code (RQS: ${r.rqs}/100)`)
-        : ["No verified meaningful frontend application project detected."],
+        : ["No verified frontend application project detected."],
       unlockReason: feProjects.length > 0
         ? "Verified frontend application implementation in public repositories."
-        : "Requires at least one meaningful frontend project.",
+        : "Requires at least one verified frontend project.",
       requirementsChecklist: [
         { text: "Frontend framework / JS/TS codebase detected", satisfied: validFE },
-        { text: "Verified meaningful project", satisfied: feProjects.length > 0 },
+        { text: "Verified project (RQS >= 45)", satisfied: feProjects.length > 0 },
       ],
     };
 
-    const beProjects = meaningfulProjects.filter(r => r.hasBE);
+    const beProjects = verifiedProjects.filter(r => r.hasBE);
     const beBadge: DeveloperBadge = {
       id: "backend-engineer",
       name: "Backend Engineer",
@@ -868,15 +802,15 @@ export async function GET(req: NextRequest) {
         ? beProjects.map(r => `• ${r.name}: Verified backend server/API code (RQS: ${r.rqs}/100)`)
         : ["No backend API implementation detected in public repos."],
       unlockReason: beProjects.length > 0
-        ? "Meaningful backend/server implementation verified."
+        ? "Valid backend/server implementation verified."
         : "Requires a backend API server (Node, Python, Go, Java, etc.).",
       requirementsChecklist: [
         { text: "Backend framework / API server implementation", satisfied: validBE },
-        { text: "Verified meaningful project", satisfied: beProjects.length > 0 },
+        { text: "Verified project (RQS >= 45)", satisfied: beProjects.length > 0 },
       ],
     };
 
-    const fullStackProjects = meaningfulProjects.filter(r => r.hasFE && r.hasBE);
+    const fullStackProjects = verifiedProjects.filter(r => r.hasFE && r.hasBE);
     const fullStackBadge: DeveloperBadge = {
       id: "full-stack-builder",
       name: "Full-Stack Builder",
@@ -888,7 +822,7 @@ export async function GET(req: NextRequest) {
         ? fullStackProjects.map(r => `• ${r.name}: Integrated FE + BE codebase verified (RQS: ${r.rqs}/100)`)
         : ["No single project combines both frontend and backend logic."],
       unlockReason: fullStackProjects.length > 0
-        ? "Meaningful full-stack project combining frontend UI and backend API detected."
+        ? "Verified full-stack project combining frontend UI and backend API detected."
         : "Requires at least one single project containing BOTH frontend and backend.",
       requirementsChecklist: [
         { text: "Frontend codebase detected", satisfied: validFE },
@@ -897,7 +831,7 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    const dbProjects = meaningfulProjects.filter(r => r.hasDB);
+    const dbProjects = verifiedProjects.filter(r => r.hasDB);
     const dbBadge: DeveloperBadge = {
       id: "database-architect",
       name: "Database Architect",
@@ -913,11 +847,11 @@ export async function GET(req: NextRequest) {
         : "Requires database integration.",
       requirementsChecklist: [
         { text: "Database ORM / driver / query integration", satisfied: dbProjects.length > 0 },
-        { text: "Meaningful application project", satisfied: dbProjects.length > 0 },
+        { text: "Verified project (RQS >= 45)", satisfied: dbProjects.length > 0 },
       ],
     };
 
-    const aiProjects = meaningfulProjects.filter(r => (r.name.toLowerCase().includes("tensor") || r.name.toLowerCase().includes("ai") || r.name.toLowerCase().includes("ml") || r.topics.includes("ai")));
+    const aiProjects = verifiedProjects.filter(r => (r.name.toLowerCase().includes("tensor") || r.name.toLowerCase().includes("ai") || r.name.toLowerCase().includes("ml") || r.topics.includes("ai")));
     const aiBadge: DeveloperBadge = {
       id: "ai-ml-builder",
       name: "AI / ML Builder",
@@ -937,7 +871,7 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    const apiProjects = meaningfulProjects.filter(r => r.hasBE || r.name.toLowerCase().includes("api"));
+    const apiProjects = verifiedProjects.filter(r => r.hasBE || r.name.toLowerCase().includes("api"));
     const apiBadge: DeveloperBadge = {
       id: "api-architect",
       name: "API Architect",
@@ -953,11 +887,11 @@ export async function GET(req: NextRequest) {
         : "Requires designing and publishing backend API routes/endpoints.",
       requirementsChecklist: [
         { text: "Backend REST/GraphQL route definitions", satisfied: apiProjects.length > 0 },
-        { text: "Meaningful API service architecture", satisfied: apiProjects.length > 0 },
+        { text: "Verified API service architecture", satisfied: apiProjects.length > 0 },
       ],
     };
 
-    const deployProjects = meaningfulProjects.filter(r => r.hasPages || r.hasCiCd);
+    const deployProjects = verifiedProjects.filter(r => r.hasPages || r.hasCiCd);
     const deployBadge: DeveloperBadge = {
       id: "deployment-ready",
       name: "Deployment Ready",
@@ -972,7 +906,7 @@ export async function GET(req: NextRequest) {
         ? "Live application URL deployment or automated CI/CD container configuration verified."
         : "Requires deploying a web app live or adding Docker/CI-CD.",
       requirementsChecklist: [
-        { text: "Live web application homepage URL", satisfied: meaningfulProjects.some(r => r.hasPages) },
+        { text: "Live web application homepage URL", satisfied: verifiedProjects.some(r => r.hasPages) },
         { text: "Docker / GitHub Actions pipeline", satisfied: validCiCd },
       ],
     };
@@ -982,10 +916,10 @@ export async function GET(req: NextRequest) {
       name: "Documentation Pro",
       description: "Maintain comprehensive README documentation across repositories",
       icon: "📚",
-      unlocked: validReadmeCount >= 2 && meaningfulProjects.length >= 1,
+      unlocked: validReadmeCount >= 2 && verifiedProjects.length >= 1,
       glowColor: "rgba(16,185,129,0.6)",
       evidenceList: validReadmeCount >= 2
-        ? meaningfulProjects.filter(r => r.hasReadme).map(r => `• ${r.name}: Complete README documentation verified`)
+        ? verifiedProjects.filter(r => r.hasReadme).map(r => `• ${r.name}: Complete README documentation verified`)
         : [`Only ${validReadmeCount} repository has detailed README documentation.`],
       unlockReason: validReadmeCount >= 2
         ? "Comprehensive README documentation verified across multiple repositories."
@@ -1001,16 +935,16 @@ export async function GET(req: NextRequest) {
       name: "Open Source Contributor",
       description: "Publish open source repositories with verified community recognition",
       icon: "🌐",
-      unlocked: totalStars >= 25 && meaningfulProjects.length >= 2,
+      unlocked: totalStars >= 25 && verifiedProjects.length >= 2,
       glowColor: "rgba(245,158,11,0.6)",
       evidenceList: totalStars >= 25
-        ? [`• ${totalStars} total community stars across original repositories`, `• ${meaningfulProjects.length} published meaningful repositories`]
+        ? [`• ${totalStars} total community stars across original repositories`, `• ${verifiedProjects.length} published verified repositories`]
         : ["No public collaboration or community star recognition yet."],
       unlockReason: totalStars >= 25
         ? "Verified open source publications with community recognition."
-        : "Requires publishing meaningful original repositories with community stars.",
+        : "Requires publishing verified original repositories with community stars.",
       requirementsChecklist: [
-        { text: "Published original open source projects", satisfied: meaningfulProjects.length >= 2 },
+        { text: "Published original open source projects", satisfied: verifiedProjects.length >= 2 },
         { text: "Community stargazers or PR contributions", satisfied: totalStars >= 25 },
       ],
     };
@@ -1058,16 +992,16 @@ export async function GET(req: NextRequest) {
       .map(([language, count]) => ({
         language,
         count: Number(count),
-        percentage: Math.round((Number(count) / (meaningfulProjects.length || 1)) * 100),
+        percentage: Math.round((Number(count) / (meaningfulCount || 1)) * 100),
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
     const sortedBestRepos = [...classifiedRepos].sort((a, b) => b.rqs - a.rqs);
 
-    const growth: ProjectGrowthMetrics = {
+    const growth = {
       reposCreatedCount: allRepos.length,
-      technologiesLearnedCount: detectedSkillsSet.size,
+      technologiesLearnedCount: Object.keys(techBreakdown).length,
       activityTrend: daysSinceUpdate <= 30 ? "Active Development 📈" : "Steady Profile 🏗️",
       mostProductiveMonth: bestProj?.updatedAt || "Recent Months",
       latestProject: sortedBestRepos[0] ? { name: sortedBestRepos[0].name, url: sortedBestRepos[0].url, date: sortedBestRepos[0].updatedAt } : null,
@@ -1078,7 +1012,7 @@ export async function GET(req: NextRequest) {
 
     const developerMetrics: DeveloperMetrics = {
       score: finalDevScore,
-      evidenceConfidence,
+      evidenceConfidence: analysisConfidence,
       confidenceReason,
       separateMetrics,
       level: devLevel,
@@ -1086,11 +1020,11 @@ export async function GET(req: NextRequest) {
       xpCurrent: Math.round(totalXP % 100),
       xpMax: 100,
       xpPercentage: Math.min(100, Math.round(((totalXP % 100) / 100) * 100)),
-      nextLevelRequirements: ["+1 Substantial Project with RQS >= 65"],
+      nextLevelRequirements: ["+1 Substantial Project with RQS >= 60"],
       nextRewardBadge: "Master Engineer Badge",
       stars: devStars,
       rankPercentile: null,
-      category: isFullStackVerified ? "Full Stack Engineer" : "Software Developer",
+      category: validFE && validBE ? "Full Stack Engineer" : "Software Developer",
       scoreBreakdown,
       transparencyAudit,
       scoreExplanation: {
@@ -1098,81 +1032,20 @@ export async function GET(req: NextRequest) {
         needsImprovement: scoreNeedsImp,
       },
       skillsBreakdown: {
-        frontend: feConf.score,
-        backend: beConf.score,
-        database: dbConf.score,
-        aiMl: aiConf.score,
-        devOps: devOpsConf.score,
-        cloud: cloudConf.score,
-        problemSolving: psConf.score,
-        documentation: docConf.score,
-        uiUx: uiUxConf.score,
-        testing: testConf.score,
+        frontend: validFE ? 80 : 0,
+        backend: validBE ? 80 : 0,
+        database: validDB ? 75 : 0,
+        devOps: validCiCd ? 70 : 0,
+        testing: validTest ? 70 : 0,
+        documentation: validReadmeCount > 0 ? 65 : 0,
       },
-      skillsConfidence: {
-        frontend: feConf,
-        backend: beConf,
-        database: dbConf,
-        aiMl: aiConf,
-        devOps: devOpsConf,
-        cloud: cloudConf,
-        problemSolving: psConf,
-        documentation: docConf,
-        uiUx: uiUxConf,
-        testing: testConf,
-      },
+      skillsConfidence: {},
       badges,
       analysisVersion: ANALYSIS_ENGINE_VERSION,
       analyzedAt: new Date().toISOString(),
       analysisComplete: true,
       authenticated: isAuthenticatedToken,
       deepAnalyzedRepoCount,
-    };
-
-    const startupLevel = isFullStackVerified ? "Strong" : meaningfulProjects.length >= 1 ? "Moderate" : "Developing";
-    const enterpriseLevel = validCiCd && validTest ? "Strong" : validCiCd ? "Moderate" : "Needs Evidence";
-    const freelancerLevel = validFE && userData.blog ? "Strong" : validFE ? "Moderate" : "Developing";
-
-    const developerPersonality: DeveloperPersonality = {
-      archetype: isFullStackVerified ? "Full Stack Creator" : validBE ? "Backend Systems Engineer" : validFE ? "Frontend Developer" : "Software Developer",
-      title: isFullStackVerified ? "Full Stack Engineer" : "Software Developer",
-      bestCareerPath: isFullStackVerified ? "Full Stack Software Engineering" : "Software Development",
-      readinessScores: {
-        startupReadiness: startupLevel === "Strong" ? 80 : startupLevel === "Moderate" ? 55 : 30,
-        enterpriseReadiness: enterpriseLevel === "Strong" ? 85 : enterpriseLevel === "Moderate" ? 50 : 25,
-        freelancerPotential: freelancerLevel === "Strong" ? 85 : freelancerLevel === "Moderate" ? 55 : 30,
-        leadershipPotential: totalStars > 50 ? 70 : 40,
-      },
-      readinessLevels: {
-        startupReadiness: startupLevel,
-        enterpriseReadiness: enterpriseLevel,
-        freelancerPotential: freelancerLevel,
-        leadershipPotential: "Developing",
-      },
-      developerStyleTraits: [
-        meaningfulProjects.length >= 1
-          ? `Best project "${bestProj?.name || ''}" verified with RQS ${bestRQS}/100.`
-          : "Currently building initial portfolio projects.",
-      ],
-    };
-
-    const actionPlan: ActionPlanSection = {
-      quickWins: [
-        "Add short descriptions and topics to all public repositories.",
-        "Add your portfolio or LinkedIn link to your GitHub profile bio.",
-      ],
-      next7Days: [
-        "Create a detailed README.md for your primary repository with screenshots and setup steps.",
-        "Deploy your web project to Vercel/Netlify and link the live URL in the repo header.",
-      ],
-      next30Days: [
-        "Build a full stack application connecting a frontend framework, REST API server, and database.",
-        "Add basic automated unit tests or GitHub Actions workflow to your repository.",
-      ],
-      beforeApplying: [
-        "Ensure all project repositories have clean code organization, zero broken links, and 100% complete README documentation.",
-        "Pin your 3 strongest projects to your main GitHub profile overview.",
-      ],
     };
 
     const result: GitHubAnalysisResult = {
@@ -1185,12 +1058,31 @@ export async function GET(req: NextRequest) {
       publicReposCount: totalPublicReposCount,
       createdAt: userData.created_at ? new Date(userData.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "",
       portfolioUrl: userData.blog ? (userData.blog.startsWith("http") ? userData.blog : `https://${userData.blog}`) : null,
-      detectedSkills: Array.from(detectedSkillsSet),
+      detectedSkills: Object.keys(techBreakdown),
       mostUsedLanguages,
       technologyBreakdown: techBreakdown,
       bestProjects: sortedBestRepos.slice(0, 3),
       developerMetrics,
-      developerPersonality,
+      developerPersonality: {
+        archetype: validFE && validBE ? "Full Stack Creator" : validBE ? "Backend Systems Engineer" : validFE ? "Frontend Developer" : "Software Developer",
+        title: validFE && validBE ? "Full Stack Engineer" : "Software Developer",
+        bestCareerPath: validFE && validBE ? "Full Stack Software Engineering" : "Software Development",
+        readinessScores: {
+          startupReadiness: validFE && validBE ? 80 : 50,
+          enterpriseReadiness: validCiCd && validTest ? 85 : 45,
+          freelancerPotential: validFE ? 75 : 40,
+          leadershipPotential: 50,
+        },
+        readinessLevels: {
+          startupReadiness: validFE && validBE ? "Strong" : "Moderate",
+          enterpriseReadiness: validCiCd && validTest ? "Strong" : "Moderate",
+          freelancerPotential: validFE ? "Strong" : "Moderate",
+          leadershipPotential: "Developing",
+        },
+        developerStyleTraits: [
+          bestProj ? `Best project "${bestProj.name}" verified with RQS ${bestRQS}/100.` : "Building portfolio",
+        ],
+      },
       developerJourney: {
         timeline: [
           {
@@ -1202,7 +1094,7 @@ export async function GET(req: NextRequest) {
           },
           {
             title: `Current Band: ${devLevel}`,
-            subtitle: `Analyzed ${meaningfulProjects.length} verified project(s)`,
+            subtitle: `Analyzed ${verifiedProjects.length} verified project(s)`,
             date: "Present",
             icon: "🏆",
             badgeText: "Current Band",
@@ -1214,9 +1106,14 @@ export async function GET(req: NextRequest) {
         recruiterStrengths: scoreStrengths.length > 0 ? scoreStrengths : ["Published code on GitHub"],
         areasToImprove: scoreNeedsImp.length > 0 ? scoreNeedsImp : ["Add README descriptions to all repositories"],
         overallImpression: `Verified developer evidence. Best project quality score: ${bestRQS}/100.`,
-        readinessStatus: isFullStackVerified ? "INTERNSHIP READY" : "DEVELOPING PORTFOLIO",
+        readinessStatus: validFE && validBE ? "INTERNSHIP READY" : "DEVELOPING PORTFOLIO",
       },
-      actionPlan,
+      actionPlan: {
+        quickWins: ["Add short descriptions and topics to all public repositories."],
+        next7Days: ["Create a detailed README.md for your primary repository."],
+        next30Days: ["Build a full stack application connecting frontend, backend API, and database."],
+        beforeApplying: ["Pin your strongest projects to your main GitHub profile overview."],
+      },
       healthReport: {
         strengths: scoreStrengths.length > 0 ? scoreStrengths : ["Public GitHub account established"],
         improvements: Array.from(new Set([...scoreNeedsImp])),
@@ -1231,27 +1128,26 @@ export async function GET(req: NextRequest) {
       },
       aiRecommendations: [
         !validBE ? "Build a Node.js/Python backend REST API server." : "Add database persistence using MongoDB or PostgreSQL.",
-        !meaningfulProjects.some(r => r.hasPages) ? "Deploy web applications live to Vercel/Netlify." : "Write automated unit tests using Jest/Vitest.",
-        "Include architecture diagrams and API docs in repository READMEs.",
-        "Pin your top 3 best projects on your GitHub profile overview.",
+        !verifiedProjects.some(r => r.hasPages) ? "Deploy web applications live to Vercel/Netlify." : "Write automated unit tests using Jest/Vitest.",
       ],
       cachedAt: new Date().toISOString(),
       engineVersion: ANALYSIS_ENGINE_VERSION,
       analysisComplete: true,
       authenticated: isAuthenticatedToken,
+      analysisConfidence,
     };
 
-    // ── 4. SERVER-SIDE DEBUGGING SUMMARY LOG ──
-    console.log(`[GitHub Intelligence Debug] username: @${username} | totalRepos: ${totalPublicReposCount} | nonForkRepos: ${nonForkRepos.length} | lightScannedRepos: ${lightScannedReposCount} | candidateRepos: ${candidateRepos.length} | deepAnalyzedRepos: ${deepAnalyzedRepoCount} | verifiedProjects: ${meaningfulProjects.length} | rejectedRepos: ${excludedProjectsList.length} | githubAuthenticated: ${isAuthenticatedToken} | apiRequestsUsed: ${apiRequestsUsed} | cacheHit: false`);
+    // ── STEP 19: DEBUG MODE LOG (ALL CATEGORIES MUST EXACTLY EQUAL finalDevScore) ──
+    console.log(`[GitHub Intelligence Debug] username: @${username} | totalRepos: ${totalPublicReposCount} | nonForkRepos: ${nonForkRepos.length} | lightScannedRepos: ${lightScannedReposCount} | candidateRepos: ${candidateRepos.length} | deepAnalyzedRepos: ${deepAnalyzedRepoCount} | verifiedProjects: ${verifiedProjects.length} | rejectedRepos: ${excludedProjectsList.length} | githubAuthenticated: ${isAuthenticatedToken} | apiRequestsUsed: ${apiRequestsUsed} | cacheHit: false | finalScore: ${finalDevScore} | appliedCaps: ${appliedScoreCaps.join(", ") || "None"}`);
 
     cache.set(cacheKey, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION, authenticated: isAuthenticatedToken });
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error("[GitHub Intelligence V8.1 Error]:", err);
-    return NextResponse.json({ error: err.message || "Failed to analyze GitHub profile" }, { status: 500 });
+    console.error("[GitHub Intelligence V8.2 Rebuild Error]:", err);
+    return NextResponse.json({
+      error: "Unable to complete evidence-based analysis. Please retry.",
+      analysisConfidence: "LOW",
+      analysisComplete: false,
+    }, { status: 500 });
   }
-}
-
-function reposFetchRateRemaining(remaining: number): number {
-  return typeof remaining === "number" ? remaining : 60;
 }

@@ -518,7 +518,7 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
   ];
 
   let strY = y + 21;
-  strengths.forEach((str) => {
+  strengths.forEach((str: string) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(22, 101, 52);
@@ -551,7 +551,7 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
   ];
 
   let impY = y + 21;
-  improvements.forEach((imp) => {
+  improvements.forEach((imp: string) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(153, 27, 27);
