@@ -392,40 +392,21 @@ export async function GET(req: NextRequest) {
         let hasDeepFiles = false;
         let fileList: string[] = [];
 
-        // Deep inspection via GitHub API tree endpoint for candidate repos
-        if (deepInspectedNames.has(repo.name) && !isFork && sizeKB > 30) {
-          try {
-            const treeRes = await fetch(`https://api.github.com/repos/${encodeURIComponent(username)}/${encodeURIComponent(repo.name)}/git/trees/${repo.default_branch || "main"}?recursive=1`, {
-              headers,
-              next: { revalidate: 0 },
-            });
-            if (treeRes.ok) {
-              const treeData = await treeRes.json();
-              if (treeData.tree && Array.isArray(treeData.tree)) {
-                fileList = treeData.tree.map((f: any) => f.path.toLowerCase());
-                hasDeepFiles = true;
-              }
-            }
-          } catch (err) {
-            // Fall back to corpus inspection safely
-          }
-        }
-
-        // File-level evidence triggers
-        const hasPackageJson = fileList.some(f => f === "package.json" || f.endsWith("/package.json"));
-        const hasRequirements = fileList.some(f => f === "requirements.txt" || f === "pyproject.toml" || f === "pom.xml" || f === "build.gradle" || f === "cargo.toml" || f === "go.mod");
-        const hasDockerfile = fileList.some(f => f.includes("dockerfile") || f.includes("docker-compose"));
-        const hasCiWorkflow = fileList.some(f => f.includes(".github/workflows/"));
-        const hasTestsDir = fileList.some(f => f.includes("test/") || f.includes("tests/") || f.includes("__tests__") || f.includes(".test.") || f.includes(".spec."));
-        const srcFileCount = fileList.filter(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("api/") || f.startsWith("lib/")).length;
+        // File-level evidence triggers via corpus & language metadata
+        const hasPackageJson = corpus.includes("package.json") || language === "JavaScript" || language === "TypeScript";
+        const hasRequirements = corpus.includes("requirements") || corpus.includes("pipfile") || language === "Python" || language === "Go" || language === "Java" || language === "Rust";
+        const hasDockerfile = corpus.includes("docker");
+        const hasCiWorkflow = corpus.includes("workflow") || corpus.includes("ci/cd") || corpus.includes("github-actions");
+        const hasTestsDir = corpus.includes("test") || corpus.includes("spec");
+        const srcFileCount = Math.round(sizeKB / 25);
 
         // Codebase Capability Signals
-        const hasReadme = Boolean(hasDescription || sizeKB >= 5 || fileList.some(f => f.includes("readme")));
+        const hasReadme = Boolean(hasDescription || sizeKB >= 5);
         const hasTest = hasTestsDir || corpus.includes("test") || corpus.includes("jest") || corpus.includes("vitest") || corpus.includes("cypress") || corpus.includes("pytest");
         const hasCiCd = hasCiWorkflow || hasDockerfile || corpus.includes("ci") || corpus.includes("workflow") || corpus.includes("docker") || corpus.includes("github-actions");
         const hasFE = hasPackageJson || language === "JavaScript" || language === "TypeScript" || language === "HTML" || corpus.includes("react") || corpus.includes("vue") || corpus.includes("next");
         const hasBE = hasRequirements || language === "Python" || language === "Go" || language === "Java" || language === "Rust" || corpus.includes("node") || corpus.includes("express") || corpus.includes("api") || corpus.includes("backend");
-        const hasDB = corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db") || fileList.some(f => f.includes("schema") || f.includes("prisma") || f.includes("migration"));
+        const hasDB = corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db");
 
         // Keyword triggers for low-value / academic repositories
         const isTaskKeyword = corpus.includes("bharatintern") || corpus.includes("codesoft") || corpus.includes("prodigy") || corpus.includes("internship") || corpus.includes("task-1") || corpus.includes("task1") || corpus.includes("task-2") || corpus.includes("task2") || corpus.includes("web-development-task");
