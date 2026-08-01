@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { githubApiClient } from "@/lib/githubApiClient";
 
 export const dynamic = "force-dynamic";
 
@@ -260,9 +261,9 @@ export interface GitHubAnalysisResult {
   cachedAt: string;
 }
 
-const ANALYSIS_ENGINE_VERSION = "EVIDENCE_ENGINE_V8_REBUILD";
+const ANALYSIS_ENGINE_VERSION = "EVIDENCE_ENGINE_V8_AUTHENTICATED";
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string }>();
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 
 const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" | "aiMl" | "devOps" | "cloud" | "testing" | "uiUx"; matchers: (string | RegExp)[] }[] = [
   { name: "TypeScript", category: "frontend", matchers: ["typescript", "ts"] },
@@ -295,10 +296,10 @@ const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" 
 ];
 
 export async function GET(req: NextRequest) {
+  let apiRequestsUsed = 0;
   try {
     const { searchParams } = new URL(req.url);
     let username = searchParams.get("username")?.trim().replace(/^@/, "");
-    const forceRefresh = searchParams.get("refresh") === "true";
 
     if (!username) {
       return NextResponse.json({ error: "GitHub username is required" }, { status: 400 });
@@ -312,73 +313,47 @@ export async function GET(req: NextRequest) {
     username = username.toLowerCase();
 
     const now = Date.now();
-    if (!forceRefresh && cache.has(username)) {
+    // ── 6. CACHING ENGINE (6-HOUR TTL) ──
+    if (cache.has(username)) {
       const cached = cache.get(username)!;
       if (cached.version === ANALYSIS_ENGINE_VERSION && (now - cached.timestamp < CACHE_TTL_MS)) {
+        console.log(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${Boolean(process.env.GITHUB_TOKEN)} | Rate limit: N/A | Remaining: N/A | API Requests Used: 0 | Cache hit: true`);
         return NextResponse.json({ ...cached.data, fromCache: true });
       }
     }
 
-    // GitHub API headers with optional token to avoid rate limits
-    const headers: Record<string, string> = {
-      "User-Agent": "Paperino-CareerDNA-App",
-      "Accept": "application/vnd.github.v3+json",
-    };
-    if (process.env.GITHUB_TOKEN) {
-      headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
+    // ── 1. FETCH GITHUB USER PROFILE VIA CENTRALIZED CLIENT ──
+    apiRequestsUsed++;
+    const userFetch = await githubApiClient<any>(`/users/${encodeURIComponent(username)}`);
+
+    if (userFetch.isRateLimited) {
+      console.warn(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${Boolean(process.env.GITHUB_TOKEN)} | Rate limit: ${userFetch.rateLimitLimit} | Remaining: ${userFetch.rateLimitRemaining} | API Requests Used: ${apiRequestsUsed} | Cache hit: false | RATE LIMITED`);
+      return NextResponse.json({ error: userFetch.error }, { status: 403 });
     }
 
-    // ── 1. FETCH GITHUB USER PROFILE ──
-    const userRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
-      headers,
-      next: { revalidate: 0 },
-    });
-
-    let userData: any = null;
-    let isRateLimited = false;
-
-    if (userRes.status === 404) {
+    if (userFetch.status === 404 || !userFetch.data) {
       return NextResponse.json({ error: `GitHub user "@${username}" not found. Please check the username.` }, { status: 404 });
     }
 
-    if (userRes.status === 403) {
-      isRateLimited = true;
-      // Synthetic fallback user data if rate limited
-      userData = {
-        login: username,
-        name: username,
-        avatar_url: `https://github.com/${username}.png`,
-        bio: "GitHub Profile",
-        followers: 0,
-        following: 0,
-        public_repos: 5,
-        created_at: new Date().toISOString(),
-        blog: "",
-      };
-    } else if (!userRes.ok) {
-      return NextResponse.json({ error: `GitHub API error (HTTP ${userRes.status}).` }, { status: userRes.status });
-    } else {
-      userData = await userRes.json();
+    const userData = userFetch.data;
+
+    // ── 2. FETCH REPOSITORIES (UP TO 100) VIA CENTRALIZED CLIENT ──
+    apiRequestsUsed++;
+    const reposFetch = await githubApiClient<any[]>(`/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`);
+
+    if (reposFetch.isRateLimited) {
+      return NextResponse.json({ error: reposFetch.error }, { status: 403 });
     }
 
-    // ── 2. FETCH REPOSITORIES (UP TO 100) ──
-    let allRepos: any[] = [];
-    if (!isRateLimited) {
-      const reposRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`, {
-        headers,
-        next: { revalidate: 0 },
-      });
-      allRepos = reposRes.ok ? await reposRes.json() : [];
-      if (!Array.isArray(allRepos)) allRepos = [];
-    }
+    const allRepos: any[] = Array.isArray(reposFetch.data) ? reposFetch.data : [];
 
     // Prioritize lightweight pre-filtering
     let candidateRepos = allRepos.filter(r => !r.fork && r.size > 0);
-    // Sort candidates by size & stargazers to inspect most substantial projects first
     candidateRepos.sort((a, b) => (b.size + (b.stargazers_count || 0) * 100) - (a.size + (a.stargazers_count || 0) * 100));
 
-    // Deep inspect top 5 candidate repos only (to prevent 403 Rate Limit)
-    const deepInspectedNames = new Set(candidateRepos.slice(0, 5).map(r => r.name));
+    // Deep inspect top 5 candidate repos only if rate limit remaining requests > 10
+    const shouldDeepInspect = reposFetch.rateLimitRemaining > 10;
+    const deepInspectedNames = shouldDeepInspect ? new Set(candidateRepos.slice(0, 5).map(r => r.name)) : new Set<string>();
 
     let substantialCount = 0;
     let meaningfulCount = 0;
@@ -406,13 +381,40 @@ export async function GET(req: NextRequest) {
         let hasDeepFiles = false;
         let fileList: string[] = [];
 
-        // File-level evidence triggers via corpus & language metadata
-        const hasPackageJson = corpus.includes("package.json") || language === "JavaScript" || language === "TypeScript";
-        const hasRequirements = corpus.includes("requirements") || corpus.includes("pipfile") || language === "Python" || language === "Go" || language === "Java" || language === "Rust";
-        const hasDockerfile = corpus.includes("docker");
-        const hasCiWorkflow = corpus.includes("workflow") || corpus.includes("ci/cd") || corpus.includes("github-actions");
-        const hasTestsDir = corpus.includes("test") || corpus.includes("spec");
-        const srcFileCount = Math.round(sizeKB / 25);
+        // Single recursive tree endpoint for candidate repos
+        if (deepInspectedNames.has(repo.name) && !isFork && sizeKB > 30) {
+          apiRequestsUsed++;
+          const treeFetch = await githubApiClient<any>(`/repos/${encodeURIComponent(username)}/${encodeURIComponent(repo.name)}/git/trees/${repo.default_branch || "main"}?recursive=1`);
+          if (treeFetch.data && Array.isArray(treeFetch.data.tree)) {
+            fileList = treeFetch.data.tree.map((f: any) => f.path.toLowerCase());
+            hasDeepFiles = true;
+          }
+        }
+
+        // File-level evidence triggers
+        const hasPackageJson = hasDeepFiles
+          ? fileList.some(f => f === "package.json" || f.endsWith("/package.json"))
+          : corpus.includes("package.json") || language === "JavaScript" || language === "TypeScript";
+
+        const hasRequirements = hasDeepFiles
+          ? fileList.some(f => f === "requirements.txt" || f === "pyproject.toml" || f === "pom.xml" || f === "build.gradle" || f === "cargo.toml" || f === "go.mod")
+          : corpus.includes("requirements") || corpus.includes("pipfile") || language === "Python" || language === "Go" || language === "Java" || language === "Rust";
+
+        const hasDockerfile = hasDeepFiles
+          ? fileList.some(f => f.includes("dockerfile") || f.includes("docker-compose"))
+          : corpus.includes("docker");
+
+        const hasCiWorkflow = hasDeepFiles
+          ? fileList.some(f => f.includes(".github/workflows/"))
+          : corpus.includes("workflow") || corpus.includes("ci/cd") || corpus.includes("github-actions");
+
+        const hasTestsDir = hasDeepFiles
+          ? fileList.some(f => f.includes("test/") || f.includes("tests/") || f.includes("__tests__") || f.includes(".test.") || f.includes(".spec."))
+          : corpus.includes("test") || corpus.includes("spec");
+
+        const srcFileCount = hasDeepFiles
+          ? fileList.filter(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("api/") || f.startsWith("lib/")).length
+          : Math.round(sizeKB / 25);
 
         // Codebase Capability Signals
         const hasReadme = Boolean(hasDescription || sizeKB >= 5);
@@ -756,7 +758,7 @@ export async function GET(req: NextRequest) {
 
     let evidenceConfidence: "LOW" | "MEDIUM" | "HIGH" = "MEDIUM";
     let confidenceReason = "Analysis based on public GitHub repository inspection.";
-    if (substantialProjects.length >= 1 && deepInspectedNames.size >= 3) {
+    if (substantialProjects.length >= 1 && shouldDeepInspect) {
       evidenceConfidence = "HIGH";
       confidenceReason = "Verified deep source code file tree evidence across top public repositories.";
     } else if (meaningfulProjects.length >= 1) {
@@ -857,7 +859,7 @@ export async function GET(req: NextRequest) {
 
     const isFullStackVerified = validFE && validBE && (validDB || meaningfulProjects.length >= 2);
 
-    // Badges System (V8 Rebuild)
+    // Badges System
     const feProjects = meaningfulProjects.filter(r => r.hasFE);
     const feBadge: DeveloperBadge = {
       id: "frontend-developer",
@@ -1256,6 +1258,9 @@ export async function GET(req: NextRequest) {
       ],
       cachedAt: new Date().toISOString(),
     };
+
+    // ── 11. SERVER LOGS ──
+    console.log(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${Boolean(process.env.GITHUB_TOKEN)} | Rate limit: ${userFetch.rateLimitLimit} | Remaining: ${userFetch.rateLimitRemaining} | API Requests Used: ${apiRequestsUsed} | Cache hit: false`);
 
     cache.set(username, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION });
     return NextResponse.json(result);
