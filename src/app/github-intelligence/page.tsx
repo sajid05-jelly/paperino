@@ -263,7 +263,10 @@ export default function GitHubIntelligencePage() {
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs text-gray-400 pt-1 font-medium">
                       <span className="flex items-center gap-1.5">
                         <FolderGit2 size={14} className="text-purple-400" />
-                        <strong className="text-white font-bold">{analysis.publicReposCount}</strong> repos
+                        <strong className="text-white font-bold">{analysis.publicReposCount}</strong> Public Repos
+                      </span>
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                        <strong className="font-bold">{(analysis.developerMetrics as any)?.transparencyAudit?.meaningfulProjects ?? 0}</strong> Meaningful Projects
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Users size={14} className="text-cyan-400" />

@@ -400,16 +400,33 @@ export async function GET(req: NextRequest) {
       } else if (sizeKB < 15 && !hasDescription && stars < 5) {
         repoCategory = "MINIMAL";
         minimalCount++;
-      } else if (corpus.includes("internship") || corpus.includes("task-1") || corpus.includes("task1") || corpus.includes("task-2")) {
+      } else if (
+        corpus.includes("bharatintern") ||
+        corpus.includes("codesoft") ||
+        corpus.includes("prodigy") ||
+        corpus.includes("internship") ||
+        corpus.includes("task-1") ||
+        corpus.includes("task1") ||
+        corpus.includes("task-2") ||
+        corpus.includes("task2") ||
+        corpus.includes("internship-task") ||
+        corpus.includes("web-development-task")
+      ) {
         repoCategory = "INTERNSHIP_TASK";
         internshipCount++;
-      } else if (corpus.includes("assignment") || corpus.includes("homework") || corpus.includes("lab")) {
+      } else if (
+        corpus.includes("assignment") ||
+        corpus.includes("homework") ||
+        corpus.includes("lab") ||
+        corpus.includes("dsa") ||
+        corpus.includes("leetcode")
+      ) {
         repoCategory = "ASSIGNMENT";
         assignmentCount++;
       } else if (corpus.includes("tutorial") || corpus.includes("course") || corpus.includes("awesome") || corpus.includes("sample")) {
         repoCategory = "TUTORIAL";
         tutorialCount++;
-      } else if (corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo")) {
+      } else if (corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo") || corpus.includes("demo")) {
         repoCategory = "PRACTICE";
         practiceCount++;
       } else if (corpus.includes("academic") || corpus.includes("college") || corpus.includes("sem-") || corpus.includes("university")) {
