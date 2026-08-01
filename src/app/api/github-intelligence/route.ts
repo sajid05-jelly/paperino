@@ -410,79 +410,118 @@ export async function GET(req: NextRequest) {
         const isPracticeKeyword = corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo") || corpus.includes("demo");
         const isAcademicKeyword = corpus.includes("academic") || corpus.includes("college") || corpus.includes("sem-") || corpus.includes("university");
 
-        // ── STEP 4: REPOSITORY QUALITY SCORE (RQS) / 100 ──
-        // Implementation Depth (0-30)
+        // ── STEP 3 & 4: CANONICAL REPOSITORY QUALITY SCORE (RQS) / 100 ──
+        // Implementation / Business Logic (0-30) - Requires REAL functional code
         let implementationDepth = 0;
         if (treeFetched) {
-          if (sourceFileCount >= 15 || sizeKB > 1200) implementationDepth = 30;
-          else if (sourceFileCount >= 8 || sizeKB > 300) implementationDepth = 22;
+          if (sourceFileCount >= 15 || sizeKB > 1500) implementationDepth = 30;
+          else if (sourceFileCount >= 8 || sizeKB > 400) implementationDepth = 22;
           else if (sourceFileCount >= 2 || sizeKB > 50) implementationDepth = 14;
           else implementationDepth = 6;
         } else {
-          if (sizeKB > 500 && (hasFE || hasBE)) implementationDepth = 26;
-          else if (sizeKB > 150 && (hasFE || hasBE)) implementationDepth = 18;
-          else if (sizeKB > 30) implementationDepth = 12;
-          else implementationDepth = 4;
+          // If source files were not successfully fetched, do NOT award implementation/architecture/complexity points based on assumptions.
+          implementationDepth = 0;
         }
 
-        // Architecture/Structure (0-15)
-        let architecture = (hasFE && hasBE ? 15 : (hasFE || hasBE) ? 10 : 4);
+        // Architecture (0-15) - Requires actual separation (controllers/services/models/modules/components/data)
+        let architecture = 0;
+        if (treeFetched) {
+          if (hasFE && hasBE) architecture = 15;
+          else if (hasFE || hasBE) architecture = 10;
+          else if (srcDetected) architecture = 5;
+        }
 
-        // Technical Complexity (0-15)
-        let featureComplexity = (hasDB ? 7 : 0) + (hasFE ? 4 : 0) + (hasBE ? 4 : 0);
+        // Technical Complexity (0-15) - Requires authentication, DB, API, state management, or algorithms
+        let featureComplexity = 0;
+        if (treeFetched) {
+          if (hasDB && (hasFE || hasBE)) featureComplexity = 15;
+          else if (hasDB || (hasFE && hasBE)) featureComplexity = 10;
+          else if (hasFE || hasBE) featureComplexity = 5;
+        }
 
-        // Completeness (0-15)
-        let completeness = (hasReadme ? 5 : 0) + (hasDescription ? 5 : 0) + (sizeKB > 50 ? 5 : 2);
+        // Completeness (0-15) - Coherent application/library footprint
+        let completeness = 0;
+        if (hasReadme && hasDescription && sizeKB > 50) completeness = 15;
+        else if (hasReadme || hasDescription) completeness = 8;
+        else if (sizeKB > 10) completeness = 4;
 
-        // Engineering Practices (0-10)
-        let engPractices = (hasCiCd ? 6 : 0) + (dockerDetected ? 4 : 0);
+        // Engineering Practices (0-10) - Validation, Docker, CI/CD, linting
+        let engPractices = 0;
+        if (ciDetected && dockerDetected) engPractices = 10;
+        else if (ciDetected) engPractices = 6;
+        else if (dockerDetected) engPractices = 4;
 
         // Documentation (0-5)
         let docScore = hasDescription && sizeKB > 20 ? 5 : hasDescription ? 3 : 1;
 
-        // Testing (0-5)
-        let testingScore = hasTest ? 5 : 0;
+        // Testing (0-5) - ONLY if actual automated tests exist
+        let testingScore = testsDetected ? 5 : 0;
 
-        // Deployment/Usability (0-5)
-        let deployCi = (hasPages ? 3 : 0) + (hasCiCd ? 2 : 0);
+        // Deployment (0-5) - ONLY if actual deployment/container/build evidence exists
+        let deployCi = (hasPages ? 3 : 0) + (ciDetected ? 2 : 0);
 
-        // Weak evidence penalty (Categories D-I contribute zero or small RQS)
-        if (isFork || isProfileRepo || sizeKB < 10 || isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
-          implementationDepth = Math.min(4, implementationDepth);
-          architecture = Math.min(3, architecture);
-          featureComplexity = Math.min(2, featureComplexity);
+        // Max RQS caps for specific repository types (Step 9)
+        if (isFork) {
+          implementationDepth = 0;
+          architecture = 0;
+          featureComplexity = 0;
+          completeness = 0;
+          engPractices = 0;
+          testingScore = 0;
+          deployCi = 0;
+        } else if (isProfileRepo || sizeKB < 10) {
+          implementationDepth = Math.min(2, implementationDepth);
+          architecture = 0;
+          featureComplexity = 0;
           completeness = Math.min(3, completeness);
+          engPractices = 0;
+          testingScore = 0;
+          deployCi = 0;
+        } else if (isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
+          implementationDepth = Math.min(10, implementationDepth);
+          architecture = Math.min(8, architecture);
+          featureComplexity = Math.min(6, featureComplexity);
+          completeness = Math.min(6, completeness);
           engPractices = 0;
           testingScore = 0;
           deployCi = 0;
         }
 
-        // Strictly NO RQS points awarded for Stars, Followers, Repo Count, or Account Age
-        const rqs = Math.min(100, implementationDepth + architecture + featureComplexity + completeness + engPractices + docScore + testingScore + deployCi);
+        let rawRQS = implementationDepth + architecture + featureComplexity + completeness + engPractices + docScore + testingScore + deployCi;
 
-        // ── STEP 2 & 3: CATEGORIZATION & VERIFICATION GATE ──
+        // Step 9 Max Caps for non-substantial categories:
+        if (isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
+          rawRQS = Math.min(34, rawRQS);
+        } else if (isProfileRepo || sizeKB < 10) {
+          rawRQS = Math.min(15, rawRQS);
+        } else if (isFork) {
+          rawRQS = Math.min(10, rawRQS);
+        }
+
+        const rqs = Math.min(100, Math.max(0, rawRQS));
+
+        // ── STEP 4 & 5: PROJECT CLASSIFICATION & QUALITY GATES ──
         let repoCategory: RepoCategoryType = "TUTORIAL_PRACTICE";
         let isSubstantial = false;
-        let isMeaningful = false;
+        let isMeaningful = false; // Verified Project requiring RQS >= 50
         const evidenceList: string[] = [];
+
+        // Quality Gate Signals:
+        const strongSignalsCount = (hasBE ? 1 : 0) + (hasDB ? 1 : 0) + (hasFE ? 1 : 0) + (testsDetected ? 1 : 0) + (ciDetected || dockerDetected ? 1 : 0);
 
         if (isFork) {
           repoCategory = "FORK";
           forkCount++;
-          evidenceList.push("Forked repository owned by external developer (Excluded)");
+          evidenceList.push("Forked repository without verified original changes (Excluded)");
         } else if (isProfileRepo) {
           repoCategory = "CONFIG_PROFILE";
           configProfileCount++;
           evidenceList.push("GitHub profile README / configuration repository (Excluded)");
-        } else if (sizeKB === 0 || (sizeKB < 10 && !hasDescription && stars === 0)) {
+        } else if (sizeKB === 0 || sizeKB < 10) {
           repoCategory = "EMPTY_MINIMAL";
           minimalEmptyCount++;
           evidenceList.push("Minimal or empty repository with no substantial codebase (Excluded)");
-        } else if (isTaskKeyword) {
-          repoCategory = "ASSIGNMENT_LAB";
-          assignmentCount++;
-          evidenceList.push("Internship task / basic assignment clone repository (Excluded)");
-        } else if (isAssignmentKeyword) {
+        } else if (isTaskKeyword || isAssignmentKeyword) {
           repoCategory = "ASSIGNMENT_LAB";
           assignmentCount++;
           evidenceList.push("Lab exercise / assignment / DSA problem repository (Excluded)");
@@ -493,15 +532,15 @@ export async function GET(req: NextRequest) {
         } else if (isAcademicKeyword) {
           repoCategory = "ACADEMIC_PROJECT";
           academicCount++;
-          if (rqs >= 45) {
+          if (rqs >= 50) {
             isMeaningful = true;
             evidenceList.push(`Academic sem project with verified codebase (RQS: ${rqs}/100)`);
           } else {
             evidenceList.push("Basic academic submission without substantial application implementation");
           }
         } else {
-          // Verification Gate (RQS >= 45 for VERIFIED_PROJECT, RQS >= 60 for SUBSTANTIAL_PROJECT)
-          if (rqs >= 60) {
+          // Substantial Project requires RQS >= 65 AND at least TWO strong engineering signals
+          if (rqs >= 65 && strongSignalsCount >= 2) {
             repoCategory = "SUBSTANTIAL_PROJECT";
             isSubstantial = true;
             isMeaningful = true;
@@ -513,7 +552,7 @@ export async function GET(req: NextRequest) {
             if (hasDB) evidenceList.push("✓ Database integration detected");
             if (hasCiCd) evidenceList.push("✓ CI/CD workflow / Docker configuration detected");
             if (hasTest) evidenceList.push("✓ Automated testing suite verified");
-          } else if (rqs >= 45) {
+          } else if (rqs >= 50) {
             repoCategory = "VALID_SMALL_PROJECT";
             isMeaningful = true;
             meaningfulCount++;
@@ -523,17 +562,17 @@ export async function GET(req: NextRequest) {
           } else {
             repoCategory = "TUTORIAL_PRACTICE";
             tutorialCount++;
-            evidenceList.push(`Small practice repository or starter boilerplate (RQS: ${rqs}/100 < 45)`);
+            evidenceList.push(`Small practice repository or starter boilerplate (RQS: ${rqs}/100 < 50)`);
           }
         }
 
         let qualityTier: ProjectQualityBreakdown["qualityTier"] = "Empty/Config/Noise (0-14)";
         if (rqs >= 90) qualityTier = "Exceptional Project (90-100)";
-        else if (rqs >= 75) qualityTier = "Strong Engineering Project (75-89)";
-        else if (rqs >= 60) qualityTier = "Substantial Project (60-74)";
-        else if (rqs >= 45) qualityTier = "Valid Project (45-59)";
-        else if (rqs >= 30) qualityTier = "Small/Learning Project (30-44)";
-        else if (rqs >= 15) qualityTier = "Basic Practice (15-29)";
+        else if (rqs >= 80) qualityTier = "Strong Engineering Project (75-89)";
+        else if (rqs >= 65) qualityTier = "Substantial Project (60-74)";
+        else if (rqs >= 50) qualityTier = "Valid Project (45-59)";
+        else if (rqs >= 35) qualityTier = "Small/Learning Project (30-44)";
+        else if (rqs >= 20) qualityTier = "Basic Practice (15-29)";
 
         const projectQualityBreakdown: ProjectQualityBreakdown = {
           implementationDepth,
@@ -548,9 +587,9 @@ export async function GET(req: NextRequest) {
           qualityTier,
         };
 
-        const filesInspected = treeFetched ? fileList.slice(0, 12) : (language ? [`${language.toLowerCase()} codebase`] : []);
+        const filesInspected = treeFetched ? fileList.slice(0, 12) : [];
         const evidenceMissing: string[] = [];
-        if (!treeFetched) evidenceMissing.push("Full file tree endpoint not fetched (Corpus metadata mode)");
+        if (!treeFetched) evidenceMissing.push("Source evidence unavailable (File tree endpoint not inspected)");
         if (!hasTest) evidenceMissing.push("No automated test files detected");
         if (!hasCiCd && !dockerDetected) evidenceMissing.push("No deployment/CI-CD configuration detected");
         if (!hasDB) evidenceMissing.push("No database persistence layer detected");
@@ -562,71 +601,65 @@ export async function GET(req: NextRequest) {
               score: implementationDepth,
               max: 30,
               evidence: treeFetched
-                ? [`✓ Verified ${sourceFileCount} source files in codebase (+${implementationDepth}/30 pts)`, `✓ Repositories codebase size ${sizeKB} KB`]
-                : ["Source evidence unavailable (Metadata analysis mode)", `• Repo size ${sizeKB} KB (+${implementationDepth}/30 pts)`],
+                ? [`✓ Verified ${sourceFileCount} source files in codebase (+${implementationDepth}/30 pts)`, `✓ Codebase footprint ${sizeKB} KB`]
+                : ["Source evidence unavailable — 0 pts awarded"],
             },
             architecture: {
               score: architecture,
               max: 15,
               evidence: [
-                hasFE && hasBE ? "✓ Full-Stack (FE UI + BE API) domain separation (+15 pts)" : hasFE ? "✓ Frontend UI framework architecture (+10 pts)" : hasBE ? "✓ Backend service architecture (+10 pts)" : "✗ Simple single-layer codebase (+4 pts)",
+                hasFE && hasBE ? "✓ Full-Stack domain separation (+15 pts)" : hasFE ? "✓ Frontend UI framework (+10 pts)" : hasBE ? "✓ Backend service (+10 pts)" : "✗ Single-layer structure (+0 pts)",
               ],
             },
             featureComplexity: {
               score: featureComplexity,
               max: 15,
               evidence: [
-                hasDB ? "✓ Database persistence layer (+7 pts)" : "✗ No database persistence (+0 pts)",
-                hasFE ? "✓ Interactive UI components (+4 pts)" : "✗ No UI components (+0 pts)",
-                hasBE ? "✓ Backend logic / API endpoints (+4 pts)" : "✗ No backend endpoints (+0 pts)",
+                hasDB && (hasFE || hasBE) ? "✓ Database persistence & application logic (+15 pts)" : hasDB ? "✓ Database persistence layer (+10 pts)" : hasFE || hasBE ? "✓ Application logic (+5 pts)" : "✗ No complexity evidence (+0 pts)",
               ],
             },
             completeness: {
               score: completeness,
               max: 15,
               evidence: [
-                hasReadme ? "✓ README file documentation (+5 pts)" : "✗ Missing README file",
-                hasDescription ? "✓ Repository overview description (+5 pts)" : "✗ Short/Missing repository description",
-                sizeKB > 50 ? "✓ Complete project footprint (>50 KB) (+5 pts)" : "• Small project footprint (+2 pts)",
+                hasReadme && hasDescription && sizeKB > 50 ? "✓ Complete project footprint (+15 pts)" : hasReadme || hasDescription ? "✓ Basic project structure (+8 pts)" : "• Small footprint (+4 pts)",
               ],
             },
             engineeringPractices: {
               score: engPractices,
               max: 10,
               evidence: [
-                ciDetected ? "✓ GitHub Actions / CI workflow detected (+6 pts)" : "✗ No CI/CD workflow files",
-                dockerDetected ? "✓ Dockerfile / Docker-compose configuration (+4 pts)" : "✗ No Docker configuration",
+                ciDetected && dockerDetected ? "✓ CI/CD workflow & Docker container (+10 pts)" : ciDetected ? "✓ GitHub Actions CI workflow (+6 pts)" : dockerDetected ? "✓ Docker container (+4 pts)" : "✗ No engineering practices (+0 pts)",
               ],
             },
             documentation: {
               score: docScore,
               max: 5,
               evidence: [
-                hasDescription && sizeKB > 20 ? "✓ Complete repository description & README (+5 pts)" : hasDescription ? "✓ Basic description (+3 pts)" : "✗ Minimal documentation (+1 pt)",
+                hasDescription && sizeKB > 20 ? "✓ Detailed documentation (+5 pts)" : hasDescription ? "✓ Basic description (+3 pts)" : "✗ Minimal documentation (+1 pt)",
               ],
             },
             testing: {
               score: testingScore,
               max: 5,
               evidence: [
-                hasTest ? "✓ Automated testing suite files detected (+5 pts)" : "✗ No automated test files detected (+0 pts)",
+                testsDetected ? "✓ Automated unit test files detected (+5 pts)" : "✗ No automated test files detected (+0 pts)",
               ],
             },
             deploymentUsability: {
               score: deployCi,
               max: 5,
               evidence: [
-                hasPages ? "✓ GitHub Pages / Live application URL (+3 pts)" : "✗ No live deployment URL",
-                hasCiCd ? "✓ Automated CI/CD deployment pipeline (+2 pts)" : "✗ No CI deployment pipeline",
+                hasPages && ciDetected ? "✓ Live URL & CI deployment (+5 pts)" : hasPages ? "✓ GitHub Pages live URL (+3 pts)" : ciDetected ? "✓ CI deployment workflow (+2 pts)" : "✗ No deployment evidence (+0 pts)",
               ],
             },
           },
           filesInspected,
           evidenceMissing,
-          analysisConfidence: treeFetched ? "HIGH" : (isMeaningful ? "MEDIUM" : "LOW"),
+          analysisConfidence: treeFetched ? "HIGH" : "LOW",
         };
 
-        // ── DEV-ONLY CONSOLE OBJECT ──
+        // DEV-ONLY RQS AUDIT LOG
         console.log("PAPERINO_RQS_AUDIT", {
           repository: repo.name,
           classification: repoCategory,
@@ -681,7 +714,7 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    // ── STEP 3: SORT & FILTER VERIFIED PROJECTS ──
+    // ── STEP 4: SORT & FILTER VERIFIED PROJECTS (RQS >= 50) ──
     const substantialProjects = classifiedRepos.filter(r => r.isSubstantial).sort((a, b) => b.rqs - a.rqs);
     const verifiedProjects = classifiedRepos.filter(r => r.isMeaningful).sort((a, b) => b.rqs - a.rqs);
 
@@ -696,99 +729,108 @@ export async function GET(req: NextRequest) {
     const excludedProjectsList = classifiedRepos.filter(r => !r.isMeaningful).map(r => ({
       name: r.name,
       category: r.repoCategory.replace(/_/g, " "),
-      reason: r.evidenceList[0] || "Did not meet verified RQS threshold (<45)",
+      reason: r.evidenceList[0] || "Did not meet verified RQS threshold (<50)",
     }));
 
-    // ── STEP 6: PROFILE SCORE CALCULATION (0-100 EXACT SUM) ──
-    const bestProj = verifiedProjects[0] || null;
-    const bestRQS = bestProj ? bestProj.rqs : (classifiedRepos.sort((a, b) => b.rqs - a.rqs)[0]?.rqs || 0);
+    // ── STEP 6: CANONICAL PROFILE SCORE CALCULATION (0-100 EXACT SUM) ──
+    // Top 3 verified repositories ONLY directly contribute project-quality points
+    const proj1 = verifiedProjects[0] || null;
+    const proj2 = verifiedProjects[1] || null;
+    const proj3 = verifiedProjects[2] || null;
 
-    // 1. BEST PROJECT QUALITY — 35 Points Max
-    const bestProjectQualityScore = Math.round((bestRQS / 100) * 35);
+    const bestRQS = proj1 ? proj1.rqs : 0;
+    const secondRQS = proj2 ? proj2.rqs : 0;
+    const thirdRQS = proj3 ? proj3.rqs : 0;
 
-    // 2. OTHER VERIFIED PROJECTS — 20 Points Max (Top 4 additional verified projects)
-    const otherProjects = verifiedProjects.slice(1, 5);
-    const weights = [8, 5, 4, 3];
-    let otherVerifiedProjectsScore = 0;
-    otherProjects.forEach((p, idx) => {
-      otherVerifiedProjectsScore += Math.round((p.rqs / 100) * weights[idx]);
-    });
-    otherVerifiedProjectsScore = Math.min(20, otherVerifiedProjectsScore);
+    // 1. BEST PROJECT QUALITY — 40 Points Max
+    const bestProjectQualityScore = Math.round((bestRQS / 100) * 40);
 
-    // 3. ENGINEERING DEPTH — 15 Points Max
+    // 2. SECOND BEST PROJECT — 15 Points Max
+    const secondBestProjectScore = Math.round((secondRQS / 100) * 15);
+
+    // 3. THIRD BEST PROJECT — 10 Points Max
+    const thirdBestProjectScore = Math.round((thirdRQS / 100) * 10);
+
+    // 4. ENGINEERING BREADTH — 10 Points Max
     const validFE = verifiedProjects.some(r => r.hasFE);
     const validBE = verifiedProjects.some(r => r.hasBE);
     const validDB = verifiedProjects.some(r => r.hasDB);
-    let engineeringDepthScore = (validFE ? 5 : 0) + (validBE ? 5 : 0) + (validDB ? 5 : 0);
+    let engineeringBreadthScore = (validFE ? 3 : 0) + (validBE ? 4 : 0) + (validDB ? 3 : 0);
 
-    // 4. ENGINEERING PRACTICES — 10 Points Max
+    // 5. ENGINEERING PRACTICES — 10 Points Max
     const validCiCd = verifiedProjects.some(r => r.hasCiCd);
     const validDocker = verifiedProjects.some(r => r.evidenceList.some(e => e.includes("Docker")));
     let engineeringPracticesScore = (validCiCd ? 6 : 0) + (validDocker ? 4 : 0);
 
-    // 5. DOCUMENTATION — 5 Points Max
+    // 6. TESTING / CI / DEPLOYMENT — 5 Points Max
+    const validTest = verifiedProjects.some(r => r.hasTest);
+    const validPages = verifiedProjects.some(r => r.hasPages);
+    let testingCIDeployScore = validTest ? 5 : (validPages ? 3 : 0);
+
+    // 7. DOCUMENTATION — 5 Points Max
     const validReadmeCount = verifiedProjects.filter(r => r.hasReadme).length;
     let documentationScore = Math.min(5, (validReadmeCount >= 2 ? 3 : validReadmeCount === 1 ? 2 : 0) + (userData.bio ? 2 : 0));
 
-    // 6. TESTING / CI — 5 Points Max
-    const validTest = verifiedProjects.some(r => r.hasTest);
-    let testingCIScore = validTest ? 5 : 0;
-
-    // 7. PROJECT DIVERSITY — 5 Points Max
-    const distinctLangs = new Set(verifiedProjects.map(r => r.language).filter(Boolean)).size;
-    let projectDiversityScore = Math.min(5, distinctLangs >= 3 ? 5 : distinctLangs >= 2 ? 3 : verifiedProjects.length >= 1 ? 2 : 0);
-
-    // 8. CONSISTENCY / MAINTENANCE — 5 Points Max (Max 5 points limit)
-    const daysSinceUpdate = bestProj?.updatedAt
+    // 8. MAINTENANCE / CONSISTENCY — 5 Points Max (Max 5 points limit)
+    const daysSinceUpdate = proj1?.updatedAt
       ? Math.floor((now - new Date(allRepos[0]?.updated_at || now).getTime()) / (1000 * 60 * 60 * 24))
       : 999;
     let maintenanceScore = daysSinceUpdate <= 30 ? 5 : daysSinceUpdate <= 90 ? 3 : 1;
 
-    let rawScore = bestProjectQualityScore + otherVerifiedProjectsScore + engineeringDepthScore + engineeringPracticesScore + documentationScore + testingCIScore + projectDiversityScore + maintenanceScore;
+    let rawProfileScore = bestProjectQualityScore + secondBestProjectScore + thirdBestProjectScore + engineeringBreadthScore + engineeringPracticesScore + testingCIDeployScore + documentationScore + maintenanceScore;
 
-    // ── STEP 5: ANTI-INFLATION SCORE CAPS ──
+    // ── STEP 7: MANDATORY SCORE CAPS ──
     const appliedScoreCaps: string[] = [];
 
     if (verifiedProjects.length === 0) {
-      rawScore = Math.min(25, rawScore);
+      rawProfileScore = Math.min(25, rawProfileScore);
       appliedScoreCaps.push("0 Verified Projects -> Max 25");
     }
     if (substantialProjects.length === 0) {
-      rawScore = Math.min(45, rawScore);
-      appliedScoreCaps.push("0 Substantial Projects (RQS < 60) -> Max 45");
+      rawProfileScore = Math.min(49, rawProfileScore);
+      appliedScoreCaps.push("0 Substantial Projects (RQS < 65) -> Max 49");
+    } else if (substantialProjects.length === 1 && bestRQS < 80) {
+      rawProfileScore = Math.min(69, rawProfileScore);
+      appliedScoreCaps.push("Exactly 1 Substantial Project (RQS < 80) -> Max 69");
     }
-    if (bestRQS < 45) {
-      rawScore = Math.min(40, rawScore);
-      appliedScoreCaps.push("Best RQS < 45 -> Max 40");
-    }
-    if (bestRQS < 30) {
-      rawScore = Math.min(30, rawScore);
-      appliedScoreCaps.push("Best RQS < 30 -> Max 30");
+    if (bestRQS < 80) {
+      rawProfileScore = Math.min(79, rawProfileScore);
+      appliedScoreCaps.push("No project with RQS >= 80 -> Max 79");
     }
 
-    const finalDevScore = Math.min(100, Math.max(0, rawScore));
+    const finalDevScore = Math.min(100, Math.max(0, rawProfileScore));
+
+    // ── STEP 13: FINAL SCORE VALIDATION ──
+    const sumOfComponents = bestProjectQualityScore + secondBestProjectScore + thirdBestProjectScore + engineeringBreadthScore + engineeringPracticesScore + testingCIDeployScore + documentationScore + maintenanceScore;
+    if (process.env.NODE_ENV !== "production") {
+      console.assert(finalDevScore >= 0 && finalDevScore <= 100, `Score out of bounds: ${finalDevScore}`);
+      console.assert(rawProfileScore === sumOfComponents, `Profile score sum mismatch: ${rawProfileScore} !== ${sumOfComponents}`);
+    }
 
     // Category Score Breakdown (Exact Sum = finalDevScore)
     const scoreBreakdown: CategoryScoreBreakdown = {
       bestProjectQuality: {
         score: bestProjectQualityScore,
-        max: 35,
-        evidence: bestProj
-          ? [`Best project "${bestProj.name}" RQS: ${bestRQS}/100 -> +${bestProjectQualityScore}/35 pts`]
+        max: 40,
+        evidence: proj1
+          ? [`Best project "${proj1.name}" RQS: ${bestRQS}/100 -> +${bestProjectQualityScore}/40 pts`]
           : ["No verified project found"],
       },
       otherVerifiedProjects: {
-        score: otherVerifiedProjectsScore,
-        max: 20,
-        evidence: [`${otherProjects.length} additional verified projects weighted by RQS -> +${otherVerifiedProjectsScore}/20 pts`],
+        score: secondBestProjectScore + thirdBestProjectScore,
+        max: 25,
+        evidence: [
+          proj2 ? `2nd Best "${proj2.name}" RQS: ${secondRQS}/100 -> +${secondBestProjectScore}/15 pts` : "No 2nd verified project",
+          proj3 ? `3rd Best "${proj3.name}" RQS: ${thirdRQS}/100 -> +${thirdBestProjectScore}/10 pts` : "No 3rd verified project",
+        ],
       },
       engineeringDepth: {
-        score: engineeringDepthScore,
-        max: 15,
+        score: engineeringBreadthScore,
+        max: 10,
         evidence: [
-          validFE ? "✓ Verified Frontend UI (+5 pts)" : "✗ No verified Frontend codebase",
-          validBE ? "✓ Verified Backend Service (+5 pts)" : "✗ No verified Backend service",
-          validDB ? "✓ Verified Database Persistence (+5 pts)" : "✗ No verified Database integration",
+          validFE ? "✓ Verified Frontend UI (+3 pts)" : "✗ No verified Frontend codebase",
+          validBE ? "✓ Verified Backend Service (+4 pts)" : "✗ No verified Backend service",
+          validDB ? "✓ Verified Database Persistence (+3 pts)" : "✗ No verified Database integration",
         ],
       },
       engineeringPractices: {
@@ -805,14 +847,14 @@ export async function GET(req: NextRequest) {
         evidence: [`${validReadmeCount} verified projects with README (+${documentationScore}/5 pts)`],
       },
       testingCI: {
-        score: testingCIScore,
+        score: testingCIDeployScore,
         max: 5,
-        evidence: [validTest ? "✓ Automated Testing suite verified (+5 pts)" : "✗ No automated tests"],
+        evidence: [validTest ? "✓ Automated Testing suite (+5 pts)" : validPages ? "✓ Live URL (+3 pts)" : "✗ No test/deploy evidence"],
       },
       projectDiversity: {
-        score: projectDiversityScore,
-        max: 5,
-        evidence: [`${distinctLangs} distinct tech stacks verified (+${projectDiversityScore}/5 pts)`],
+        score: 0,
+        max: 0,
+        evidence: ["Merged into Engineering Breadth"],
       },
       maintenance: {
         score: maintenanceScore,
@@ -870,20 +912,20 @@ export async function GET(req: NextRequest) {
     const separateMetrics: SeparateQualityMetrics = {
       bestProjectQuality: bestRQS,
       portfolioDepth: Math.min(100, meaningfulCount * 35),
-      engineeringQuality: Math.round(((engineeringPracticesScore + testingCIScore) / 15) * 100),
-      technicalBreadth: Math.round((engineeringDepthScore / 15) * 100),
+      engineeringQuality: Math.round(((engineeringPracticesScore + testingCIDeployScore) / 15) * 100),
+      technicalBreadth: Math.round((engineeringBreadthScore / 10) * 100),
       maintenance: Math.round((maintenanceScore / 5) * 100),
     };
 
     const scoreStrengths: string[] = [];
     const scoreNeedsImp: string[] = [];
 
-    if (bestProj && bestProj.isMeaningful) scoreStrengths.push(`Flagship project "${bestProj.name}" verified with RQS ${bestRQS}/100 (${bestProj.projectQualityBreakdown.qualityTier})`);
+    if (proj1 && proj1.isMeaningful) scoreStrengths.push(`Flagship project "${proj1.name}" verified with RQS ${bestRQS}/100 (${proj1.projectQualityBreakdown.qualityTier})`);
     if (validFE && validBE) scoreStrengths.push("Verified full-stack implementation evidence (Frontend UI + Backend Service)");
     if (validCiCd || validTest) scoreStrengths.push("Verified engineering practices (Automated Testing / CI-CD / Docker)");
 
     if (verifiedProjects.length === 0) scoreNeedsImp.push("No verified substantial or valid software projects found");
-    else if (substantialProjects.length === 0) scoreNeedsImp.push("No flagship project with RQS >= 60 discovered");
+    else if (substantialProjects.length === 0) scoreNeedsImp.push("No flagship project with RQS >= 65 discovered");
     if (!validTest) scoreNeedsImp.push("No automated unit testing suite detected in public repositories");
 
     const totalStars = classifiedRepos.reduce((acc, r) => acc + r.stars, 0);
@@ -1122,7 +1164,7 @@ export async function GET(req: NextRequest) {
       reposCreatedCount: allRepos.length,
       technologiesLearnedCount: Object.keys(techBreakdown).length,
       activityTrend: daysSinceUpdate <= 30 ? "Active Development 📈" : "Steady Profile 🏗️",
-      mostProductiveMonth: bestProj?.updatedAt || "Recent Months",
+      mostProductiveMonth: proj1?.updatedAt || "Recent Months",
       latestProject: sortedBestRepos[0] ? { name: sortedBestRepos[0].name, url: sortedBestRepos[0].url, date: sortedBestRepos[0].updatedAt } : null,
       mostSuccessfulProject: sortedBestRepos[0] ? { name: sortedBestRepos[0].name, url: sortedBestRepos[0].url, stars: sortedBestRepos[0].stars } : null,
     };
@@ -1199,7 +1241,7 @@ export async function GET(req: NextRequest) {
           leadershipPotential: "Developing",
         },
         developerStyleTraits: [
-          bestProj ? `Best project "${bestProj.name}" verified with RQS ${bestRQS}/100.` : "Building portfolio",
+          proj1 ? `Best project "${proj1.name}" verified with RQS ${bestRQS}/100.` : "Building portfolio",
         ],
       },
       developerJourney: {
