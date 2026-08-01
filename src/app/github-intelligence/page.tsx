@@ -337,7 +337,7 @@ export default function GitHubIntelligencePage() {
                     }}
                   >
                     <FileText size={14} className={pdfGenerating ? "animate-pulse text-cyan-300" : "text-white"} />
-                    <span>{pdfGenerating ? "Generating Report..." : "📄 Download Developer Report"}</span>
+                    <span>{pdfGenerating ? "Generating Report..." : "Download Developer Report"}</span>
                   </button>
                 </div>
               </div>
