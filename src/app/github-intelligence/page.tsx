@@ -1358,16 +1358,16 @@ export default function GitHubIntelligencePage() {
           </main>
         ) : null}
 
-        {/* ── CRAWLABLE ELEGANT SEO INFORMATIONAL & FAQ SECTION (BOTTOM PLACEMENT) ── */}
+        {/* ── CRAWLABLE ELEGANT INFORMATIONAL & FAQ SECTION ── */}
         <section className="w-full mt-24 pt-12 border-t border-purple-500/20 space-y-12 relative z-10">
-          <div className="text-center space-y-2 max-w-xl mx-auto">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
-              Developer Knowledge & SEO Index
+          <div className="text-center space-y-4 max-w-2xl mx-auto px-4">
+            <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest text-purple-300 bg-purple-500/10 px-3.5 py-1 rounded-full border border-purple-500/20">
+              Developer Knowledge & Overview
             </span>
-            <h2 className="text-2xl font-black text-white tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug pt-1">
               GitHub Profile Analytics & Engineering Standards
             </h2>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 leading-relaxed max-w-lg mx-auto">
               Understanding evidence-based developer scoring, repository quality metrics, and portfolio optimization.
             </p>
           </div>
