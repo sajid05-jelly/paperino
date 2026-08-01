@@ -396,14 +396,14 @@ export default function GitHubIntelligencePage() {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {[
-                      { label: "Project Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.projectQuality, max: 35 },
+                      { label: "Best Project Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.bestProjectQuality, max: 30 },
+                      { label: "Overall Projects", item: (analysis.developerMetrics as any)?.scoreBreakdown?.overallProjectQuality, max: 20 },
                       { label: "Technical Depth", item: (analysis.developerMetrics as any)?.scoreBreakdown?.technicalDepth, max: 15 },
-                      { label: "Engineering Practices", item: (analysis.developerMetrics as any)?.scoreBreakdown?.engineeringPractices, max: 15 },
-                      { label: "Documentation", item: (analysis.developerMetrics as any)?.scoreBreakdown?.documentation, max: 10 },
-                      { label: "Dev Consistency", item: (analysis.developerMetrics as any)?.scoreBreakdown?.developmentConsistency, max: 10 },
-                      { label: "Portfolio Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.portfolioCompleteness, max: 5 },
-                      { label: "Community Impact", item: (analysis.developerMetrics as any)?.scoreBreakdown?.communityImpact, max: 5 },
-                      { label: "Technology Breadth", item: (analysis.developerMetrics as any)?.scoreBreakdown?.technologyBreadth, max: 5 },
+                      { label: "Engineering Practices", item: (analysis.developerMetrics as any)?.scoreBreakdown?.engineeringPractices, max: 10 },
+                      { label: "Portfolio Depth", item: (analysis.developerMetrics as any)?.scoreBreakdown?.portfolioDepth, max: 10 },
+                      { label: "Documentation", item: (analysis.developerMetrics as any)?.scoreBreakdown?.documentation, max: 5 },
+                      { label: "Maintenance", item: (analysis.developerMetrics as any)?.scoreBreakdown?.maintenanceConsistency, max: 5 },
+                      { label: "Collaboration", item: (analysis.developerMetrics as any)?.scoreBreakdown?.collaborationOpenSource, max: 5 },
                     ].map((entry) => {
                       const scoreVal = typeof entry.item === "number" ? entry.item : (entry.item?.score ?? 0);
                       return (
@@ -415,10 +415,13 @@ export default function GitHubIntelligencePage() {
                     })}
                   </div>
 
-                  {/* Why this score? */}
-                  <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Why this score?</span>
-                    <div className="space-y-1.5">
+                  {/* Expandable Why this score? */}
+                  <details className="group space-y-2 pt-2 border-t border-white/10 text-xs">
+                    <summary className="cursor-pointer font-bold text-purple-300 hover:text-purple-200 flex items-center justify-between py-1 transition-colors">
+                      <span className="text-[11px] uppercase tracking-wider">Why this score?</span>
+                      <span className="text-[10px] text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="space-y-1.5 pt-1">
                       {analysis.developerMetrics?.scoreExplanation?.strengths?.map((s, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-emerald-300">
                           <CheckCircle2 size={13} className="shrink-0 text-emerald-400" />
@@ -432,44 +435,48 @@ export default function GitHubIntelligencePage() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 </div>
 
                 {/* Data Transparency Audit Box */}
                 <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 space-y-4 flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Data Transparency Audit</span>
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Portfolio & Repository Audit</span>
                     <span className="text-xs font-mono font-bold text-gray-300">
-                      {(analysis.developerMetrics as any)?.transparencyAudit?.repositoriesInspected ?? (analysis.developerMetrics as any)?.repoAudit?.totalPublicRepos ?? analysis.publicReposCount} Repos Inspected
+                      {(analysis.developerMetrics as any)?.transparencyAudit?.repositoriesInspected ?? analysis.publicReposCount} Public Repos
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
-                      <span className="text-emerald-200 font-medium">Flagship / Substantial</span>
+                      <span className="text-emerald-200 font-medium">Meaningful Projects</span>
                       <span className="font-mono font-bold text-emerald-300">
-                        {((analysis.developerMetrics as any)?.transparencyAudit?.flagshipProjects ?? 0) + ((analysis.developerMetrics as any)?.transparencyAudit?.substantialProjects ?? (analysis.developerMetrics as any)?.repoAudit?.substantialProjects ?? 0)}
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.meaningfulProjects ?? 0}
                       </span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Standard Projects</span>
-                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.transparencyAudit?.standardProjects ?? (analysis.developerMetrics as any)?.repoAudit?.originalRepos ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Academic Projects</span>
+                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.transparencyAudit?.academicProjects ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Assignments / Labs</span>
+                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.transparencyAudit?.assignments ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Tutorials & Practice</span>
+                      <span className="font-mono font-bold text-gray-300">
+                        {((analysis.developerMetrics as any)?.transparencyAudit?.tutorials ?? 0) + ((analysis.developerMetrics as any)?.transparencyAudit?.practiceRepos ?? 0)}
+                      </span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex justify-between items-center">
                       <span className="text-amber-200 font-medium">Forks</span>
-                      <span className="font-mono font-bold text-amber-300">{(analysis.developerMetrics as any)?.transparencyAudit?.forks ?? (analysis.developerMetrics as any)?.repoAudit?.forks ?? 0}</span>
+                      <span className="font-mono font-bold text-amber-300">{(analysis.developerMetrics as any)?.transparencyAudit?.forks ?? 0}</span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Learning / Assignments</span>
-                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.transparencyAudit?.learningAssignmentRepos ?? 0}</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Archived Repos</span>
-                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.transparencyAudit?.archivedRepos ?? 0}</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Minimal / Empty Repos</span>
-                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.transparencyAudit?.minimalEmptyRepos ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Minimal / Empty / Config</span>
+                      <span className="font-mono font-bold text-gray-400">
+                        {((analysis.developerMetrics as any)?.transparencyAudit?.minimalEmptyRepos ?? 0) + ((analysis.developerMetrics as any)?.transparencyAudit?.profileConfigRepos ?? 0)}
+                      </span>
                     </div>
                   </div>
 
