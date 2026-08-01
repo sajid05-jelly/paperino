@@ -566,47 +566,59 @@ export default function GitHubIntelligencePage() {
                 {/* Data Transparency Audit Box */}
                 <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 space-y-4 flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Portfolio & Repository Audit</span>
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Portfolio & Repository Audit Statistics</span>
                     <span className="text-xs font-mono font-bold text-gray-300">
-                      {(analysis.developerMetrics as any)?.transparencyAudit?.repositoriesInspected ?? analysis.publicReposCount} Public Repos
+                      {(analysis.developerMetrics as any)?.transparencyAudit?.totalPublicRepos ?? analysis.publicReposCount} Public Repositories
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
-                      <span className="text-emerald-200 font-medium">Meaningful Projects</span>
-                      <span className="font-mono font-bold text-emerald-300">
-                        {(analysis.developerMetrics as any)?.transparencyAudit?.meaningfulProjects ?? 0}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Metadata Scanned</span>
+                      <span className="font-mono font-bold text-white">
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.metadataReposFetched ?? analysis.publicReposCount}
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Academic Projects</span>
-                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.transparencyAudit?.academicProjects ?? 0}</span>
+                    <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex justify-between items-center">
+                      <span className="text-cyan-200 font-medium">Deep Audited</span>
+                      <span className="font-mono font-bold text-cyan-300">
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.deepAuditedRepos ?? 0}
+                      </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Assignments / Labs</span>
-                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.transparencyAudit?.assignments ?? 0}</span>
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
+                      <span className="text-emerald-200 font-medium">Verified (RQS ≥ 50)</span>
+                      <span className="font-mono font-bold text-emerald-300">
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.verifiedRepos ?? 0}
+                      </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Tutorials & Practice</span>
-                      <span className="font-mono font-bold text-gray-300">
-                        {((analysis.developerMetrics as any)?.transparencyAudit?.tutorials ?? 0) + ((analysis.developerMetrics as any)?.transparencyAudit?.practiceRepos ?? 0)}
+                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex justify-between items-center">
+                      <span className="text-purple-200 font-medium">Substantial (RQS ≥ 65)</span>
+                      <span className="font-mono font-bold text-purple-300">
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.substantialRepos ?? 0}
                       </span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex justify-between items-center">
-                      <span className="text-amber-200 font-medium">Forks</span>
-                      <span className="font-mono font-bold text-amber-300">{(analysis.developerMetrics as any)?.transparencyAudit?.forks ?? 0}</span>
+                      <span className="text-amber-200 font-medium">Strong (RQS ≥ 75)</span>
+                      <span className="font-mono font-bold text-amber-300">
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.strongRepos ?? 0}
+                      </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Minimal / Empty / Config</span>
-                      <span className="font-mono font-bold text-gray-400">
-                        {((analysis.developerMetrics as any)?.transparencyAudit?.minimalEmptyRepos ?? 0) + ((analysis.developerMetrics as any)?.transparencyAudit?.profileConfigRepos ?? 0)}
+                    <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex justify-between items-center">
+                      <span className="text-rose-200 font-medium">Evidence Excluded</span>
+                      <span className="font-mono font-bold text-rose-300">
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.evidenceExcludedRepos ?? 0}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-gray-500/10 border border-gray-500/20 flex justify-between items-center col-span-2">
+                      <span className="text-gray-400 font-medium">Not Deep Audited (Outside Budget)</span>
+                      <span className="font-mono font-bold text-gray-300">
+                        {(analysis.developerMetrics as any)?.transparencyAudit?.notDeepAuditedRepos ?? 0}
                       </span>
                     </div>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-[11px] text-gray-400 leading-relaxed">
-                    ℹ️ <strong>Data Transparency:</strong> {(analysis.developerMetrics as any)?.transparencyAudit?.disclaimer || "Assessment is based on publicly accessible GitHub evidence and should not be interpreted as a complete measurement of developer abilities."}
+                    ℹ️ <strong>Audit Policy:</strong> {(analysis.developerMetrics as any)?.transparencyAudit?.disclaimer || "Assessment is based on publicly accessible GitHub evidence. Repositories outside deep audit budget are marked 'Not Deep Audited' rather than excluded."}
                   </div>
                 </div>
               </div>
@@ -1581,9 +1593,12 @@ export default function GitHubIntelligencePage() {
                     <span>Project Evidence Audit</span>
                   </div>
                   <h3 className="text-2xl font-black text-white">{selectedProjectAudit.name}</h3>
-                  <div className="flex items-center gap-3 text-xs text-gray-400 pt-0.5">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 pt-0.5">
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
                       {selectedProjectAudit.category}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                      Type: {selectedProjectAudit.projectType || "Application"}
                     </span>
                     <span>Confidence: <strong className="text-white">{selectedProjectAudit.auditDetails?.analysisConfidence || "HIGH"}</strong></span>
                   </div>
@@ -1609,6 +1624,33 @@ export default function GitHubIntelligencePage() {
                   <span className="text-xs text-gray-400"> / 100</span>
                 </div>
               </div>
+
+              {/* Verified Technical Evidence Signals List */}
+              {(selectedProjectAudit.auditDetails?.technicalSignals || []).length > 0 && (
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-cyan-500/30 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block">
+                    VERIFIED TECHNICAL EVIDENCE SIGNALS ({selectedProjectAudit.auditDetails.technicalSignals.length})
+                  </span>
+                  <div className="space-y-2 text-xs">
+                    {selectedProjectAudit.auditDetails.technicalSignals.map((ts: any, tsIdx: number) => (
+                      <div key={tsIdx} className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1">
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="text-cyan-300 font-mono">✓ {ts.signal}</span>
+                          <span className="text-emerald-400 font-mono">+{ts.points} pts</span>
+                        </div>
+                        <p className="text-[11px] text-gray-300">{ts.evidenceReason}</p>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {ts.evidenceFiles.map((ef: string, efIdx: number) => (
+                            <span key={efIdx} className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-200 border border-cyan-500/20">
+                              {ef}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Category Breakdown */}
               <div className="space-y-4">

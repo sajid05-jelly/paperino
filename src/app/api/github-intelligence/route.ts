@@ -39,6 +39,24 @@ export type RepoCategoryType =
   | "NOT_DEEP_AUDITED"
   | "UNKNOWN_INSUFFICIENT_EVIDENCE";
 
+export type ProjectClassificationType =
+  | "Web Application"
+  | "Backend/API"
+  | "Full-Stack Application"
+  | "Library/Package"
+  | "CLI Tool"
+  | "SDK"
+  | "Mobile/Desktop Application"
+  | "Infrastructure/DevTool"
+  | "Other";
+
+export interface TechnicalEvidenceSignal {
+  signal: string;
+  points: number;
+  evidenceFiles: string[];
+  evidenceReason: string;
+}
+
 export interface ClassifiedRepoAuditDetails {
   categoryScores: {
     implementationDepth: { score: number; max: number; evidence: string[] };
@@ -50,6 +68,7 @@ export interface ClassifiedRepoAuditDetails {
     testing: { score: number; max: number; evidence: string[] };
     deploymentUsability: { score: number; max: number; evidence: string[] };
   };
+  technicalSignals?: TechnicalEvidenceSignal[];
   filesInspected: string[];
   evidenceMissing: string[];
   analysisConfidence: "HIGH" | "MEDIUM" | "LOW";
@@ -64,6 +83,7 @@ export interface ClassifiedRepoInfo {
   updatedAt: string;
   url: string;
   topics: string[];
+  projectType: ProjectClassificationType;
   repoCategory: RepoCategoryType;
   isSubstantial: boolean;
   isMeaningful: boolean; // RQS >= 50
@@ -558,11 +578,6 @@ export async function GET(req: NextRequest) {
 
         // Codebase Capability Signals
         const hasReadme = Boolean(hasDescription || sizeKB >= 5);
-        const hasTest = testsDetected;
-        const hasCiCd = ciDetected || dockerDetected;
-        const hasFE = hasPackageJson || language === "JavaScript" || language === "TypeScript" || language === "HTML" || corpus.includes("react") || corpus.includes("vue") || corpus.includes("next") || (treeFetched && fileList.some(f => f.includes("/components/") || f.includes("/pages/") || f.includes("/frontend/") || f.includes("/client/")));
-        const hasBE = backendDetected;
-        const hasDB = databaseDetected;
 
         // Keyword triggers for low-value / academic repositories
         const isTaskKeyword = corpus.includes("bharatintern") || corpus.includes("codesoft") || corpus.includes("prodigy") || corpus.includes("internship") || corpus.includes("task-1") || corpus.includes("task1") || corpus.includes("task-2") || corpus.includes("task2") || corpus.includes("web-development-task");
@@ -571,7 +586,7 @@ export async function GET(req: NextRequest) {
         const isPracticeKeyword = corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo") || corpus.includes("demo");
         const isAcademicKeyword = corpus.includes("academic") || corpus.includes("college") || corpus.includes("sem-") || corpus.includes("university");
 
-        // Filter out vendor, build, generated, lock, and asset files for accurate source file count & codebase size evaluation
+        // Filter out vendor, build, generated, lock, and asset files
         const excludedPatterns = [
           "node_modules/", "dist/", "build/", ".next/", "coverage/", "vendor/", ".git/",
           "package-lock.json", "yarn.lock", "pnpm-lock.yaml", ".DS_Store"
@@ -579,13 +594,110 @@ export async function GET(req: NextRequest) {
         const isExcludedFile = (p: string) => excludedPatterns.some(pat => p.includes(pat));
         const filteredFileList = treeFetched ? fileList.filter(f => !isExcludedFile(f)) : [];
 
+        // ── STRICT TECHNICAL SIGNAL & EVIDENCE EXTRACTION ──
+        const technicalSignals: TechnicalEvidenceSignal[] = [];
+
+        // 1. DATABASE PERSISTENCE SIGNAL
+        const dbEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              !f.endsWith(".md") && !f.endsWith(".markdown") && !f.includes("/docs/") && !f.includes("/documentation/") &&
+              (f.includes("schema.") || f.includes("prisma") || f.includes("migration") ||
+               f.includes("/models/") || f.includes("/database/") || f.includes("/db/") ||
+               f.endsWith("db.ts") || f.endsWith("db.js") || f.endsWith(".sql"))
+            )
+          : [];
+        const hasDB = treeFetched && dbEvidenceFiles.length > 0;
+        if (hasDB) {
+          technicalSignals.push({
+            signal: "databasePersistence",
+            points: 3,
+            evidenceFiles: dbEvidenceFiles.slice(0, 5),
+            evidenceReason: "Source code performs database persistence operations.",
+          });
+        }
+
+        // 2. AUTHENTICATION & AUTHORIZATION SIGNAL
+        const authEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.includes("auth") || f.includes("jwt") || f.includes("session") ||
+              f.includes("passport") || f.includes("login") || f.includes("middleware/auth")
+            )
+          : [];
+        const hasAuth = treeFetched && authEvidenceFiles.length > 0;
+        if (hasAuth) {
+          technicalSignals.push({
+            signal: "authenticationAuthorization",
+            points: 2,
+            evidenceFiles: authEvidenceFiles.slice(0, 5),
+            evidenceReason: "Source code contains authentication & authorization logic.",
+          });
+        }
+
+        // 3. FRONTEND / BACKEND LAYER IDENTIFICATION & SEPARATION
+        const feEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.includes("/components/") || f.includes("/pages/") || f.includes("/views/") ||
+              f.includes("/frontend/") || f.includes("/client/") || f.endsWith("index.html") || f.endsWith(".vue") || f.endsWith(".jsx") || f.endsWith(".tsx")
+            )
+          : [];
+
+        const beEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.includes("/controllers/") || f.includes("/routes/") || f.includes("/server/") ||
+              f.includes("/backend/") || (f.includes("/api/") && !f.includes("index.html"))
+            )
+          : [];
+
+        const hasFE = feEvidenceFiles.length > 0;
+        const hasBE = beEvidenceFiles.length > 0;
+        const hasFEBESep = hasFE && hasBE;
+
+        if (hasFEBESep) {
+          technicalSignals.push({
+            signal: "fullstackSeparation",
+            points: 3,
+            evidenceFiles: [...feEvidenceFiles.slice(0, 3), ...beEvidenceFiles.slice(0, 3)],
+            evidenceReason: "Independently implemented frontend UI and backend server/API layers exist.",
+          });
+        }
+
+        // 4. PROJECT TYPE CLASSIFICATION
+        let projectType: ProjectClassificationType = "Other";
+        if (hasFE && hasBE) projectType = "Full-Stack Application";
+        else if (hasBE && !hasFE) projectType = "Backend/API";
+        else if (hasFE && !hasBE) projectType = "Web Application";
+        else if (treeFetched && filteredFileList.some(f => f.includes("cli") || f.includes("bin/") || f.endsWith("cli.js") || f.endsWith("cli.ts"))) projectType = "CLI Tool";
+        else if (treeFetched && (filteredFileList.some(f => f.endsWith("index.d.ts") || f.endsWith("package.json")) || corpus.includes("library") || corpus.includes("package"))) projectType = "Library/Package";
+        else if (treeFetched && (fileList.some(f => f.includes(".github/workflows")) || dockerDetected)) projectType = "Infrastructure/DevTool";
+
+        // 5. TESTING FILES & CONFIGURATION SIGNAL
+        const testEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.includes("/test/") || f.includes("/tests/") || f.includes("__tests__") ||
+              f.includes(".test.") || f.includes(".spec.")
+            )
+          : [];
+        const hasTest = testEvidenceFiles.length > 0;
+
+        // 6. CI WORKFLOW SIGNAL
+        const ciEvidenceFiles = treeFetched ? fileList.filter(f => f.includes(".github/workflows/")) : [];
+        const hasCiCd = ciEvidenceFiles.length > 0;
+
+        // 7. DEPLOYMENT PIPELINE SIGNAL (Distinct from CI test/lint)
+        const deployEvidenceFiles = treeFetched
+          ? fileList.filter(f => 
+              f.includes("deploy.yml") || f.includes("release.yml") || f.includes("publish.yml") ||
+              f.includes("vercel") || f.includes("netlify") || f.includes("docker-compose")
+            )
+          : [];
+        const hasDeploymentPipeline = deployEvidenceFiles.length > 0 || hasPages;
+
         // Count meaningful source files (.js, .ts, .jsx, .tsx, .py, .go, .java, .c, .cpp, .rs, .php, .rb, .sql, etc.)
         const sourceExtensions = [".js", ".ts", ".jsx", ".tsx", ".py", ".go", ".java", ".c", ".cpp", ".rs", ".php", ".rb", ".sql", ".kt", ".swift", ".cs", ".html", ".vue", ".svelte"];
         const meaningfulSourceFiles = filteredFileList.filter(f => sourceExtensions.some(ext => f.endsWith(ext)));
         const meaningfulSourceFileCount = treeFetched ? meaningfulSourceFiles.length : Math.round(sizeKB / 20);
 
         // 1. PROGRESSIVE IMPLEMENTATION DEPTH (0-30)
-        // A. Meaningful source file count (max 8)
         let fileCountPoints = 0;
         if (meaningfulSourceFileCount >= 100) fileCountPoints = 8;
         else if (meaningfulSourceFileCount >= 41) fileCountPoints = 7;
@@ -593,7 +705,6 @@ export async function GET(req: NextRequest) {
         else if (meaningfulSourceFileCount >= 6) fileCountPoints = 3;
         else if (meaningfulSourceFileCount >= 1) fileCountPoints = 1;
 
-        // B. Code footprint / LOC (max 8)
         let footprintPoints = 0;
         if (sizeKB > 2000) footprintPoints = 8;
         else if (sizeKB >= 500) footprintPoints = 7;
@@ -601,11 +712,10 @@ export async function GET(req: NextRequest) {
         else if (sizeKB >= 50) footprintPoints = 3;
         else if (sizeKB > 0) footprintPoints = 1;
 
-        // C. Actual business-logic modules (max 8)
-        const controllerModules = filteredFileList.filter(f => f.includes("/controllers/") || f.includes("/routes/") || f.includes("/api/") || f.includes("/handlers/")).length;
+        const controllerModules = beEvidenceFiles.length;
         const serviceModules = filteredFileList.filter(f => f.includes("/services/") || f.includes("/lib/") || f.includes("/utils/") || f.includes("/hooks/")).length;
-        const modelModules = filteredFileList.filter(f => f.includes("/models/") || f.includes("/schemas/") || f.includes("/db/") || f.includes("/database/")).length;
-        const uiModules = filteredFileList.filter(f => f.includes("/components/") || f.includes("/pages/") || f.includes("/app/") || f.includes("/views/")).length;
+        const modelModules = dbEvidenceFiles.length;
+        const uiModules = feEvidenceFiles.length;
         
         let businessLogicPoints = 0;
         if (treeFetched) {
@@ -615,7 +725,6 @@ export async function GET(req: NextRequest) {
           if (uiModules > 0) businessLogicPoints += 2;
         }
 
-        // D. Implementation diversity / depth (max 6)
         let diversityPoints = 0;
         if (treeFetched) {
           const totalModules = controllerModules + serviceModules + modelModules + uiModules;
@@ -629,56 +738,69 @@ export async function GET(req: NextRequest) {
           ? (fileCountPoints + footprintPoints + businessLogicPoints + diversityPoints)
           : 0;
 
-        // 2. NON-BINARY ARCHITECTURE (0-15)
+        // 2. NON-BINARY ARCHITECTURE (0-15) — Adapted to projectType
         let archPoints = 0;
         const hasOrgStructure = treeFetched && (srcDetected || filteredFileList.some(f => f.includes("/")));
         const hasModuleSep = treeFetched && (uiModules > 0 || serviceModules > 0);
-        const hasFEBESep = hasFE && hasBE;
         const hasServiceDataLayer = treeFetched && (serviceModules > 0 || modelModules > 0);
-        const hasReusableArch = treeFetched && (serviceModules >= 2 || uiModules >= 5);
-        const hasClearDomainBoundaries = treeFetched && (controllerModules > 0 && modelModules > 0);
+        const hasReusableArch = treeFetched && (serviceModules >= 2 || uiModules >= 5 || projectType === "Library/Package");
+        const hasClearDomainBoundaries = treeFetched && (controllerModules > 0 || modelModules > 0 || projectType === "Library/Package");
 
         if (hasOrgStructure) archPoints += 3;
         if (hasModuleSep) archPoints += 3;
-        if (hasFEBESep) archPoints += 3;
-        if (hasServiceDataLayer) archPoints += 2;
-        if (hasReusableArch) archPoints += 2;
-        if (hasClearDomainBoundaries) archPoints += 2;
+
+        if (projectType === "Library/Package" || projectType === "SDK" || projectType === "CLI Tool") {
+          // Evaluate public API organization & modular internal separation instead of penalizing lack of FE/BE split
+          if (treeFetched && filteredFileList.some(f => f.endsWith("index.ts") || f.endsWith("index.js") || f.endsWith("exports.ts"))) archPoints += 3;
+          if (hasServiceDataLayer) archPoints += 2;
+          if (hasReusableArch) archPoints += 2;
+          if (hasClearDomainBoundaries) archPoints += 2;
+        } else {
+          if (hasFEBESep) archPoints += 3;
+          if (hasServiceDataLayer) archPoints += 2;
+          if (hasReusableArch) archPoints += 2;
+          if (hasClearDomainBoundaries) archPoints += 2;
+        }
         let architecture = treeFetched ? Math.min(15, archPoints) : 0;
 
-        // 3. DISTINCT EVIDENCE COMPLEXITY (0-15)
+        // 3. DISTINCT EVIDENCE COMPLEXITY (0-15) — Requiring source evidence files
         let compPoints = 0;
-        if (hasBE) compPoints += 3; // Real API/backend logic = 3
-        if (hasDB) compPoints += 3; // Real database persistence = 3
-        const hasAuth = treeFetched && fileList.some(f => f.includes("auth") || f.includes("jwt") || f.includes("session") || f.includes("login") || f.includes("passport"));
-        if (hasAuth) compPoints += 2; // Auth = 2
+        if (hasBE) compPoints += 3; // Verified API/backend logic = 3
+        if (hasDB) compPoints += 3; // Verified database persistence = 3
+        if (hasAuth) compPoints += 2; // Verified auth = 2
+
         const hasStateDataFlow = treeFetched && (uiModules >= 3 && serviceModules >= 1);
-        if (hasStateDataFlow) compPoints += 2; // Complex state/data flow = 2
-        const hasExternalApi = treeFetched && fileList.some(f => f.includes("fetch") || f.includes("axios") || f.includes("http") || f.includes("api"));
-        if (hasExternalApi) compPoints += 1; // External API = 1
-        const hasValidation = treeFetched && fileList.some(f => f.includes("zod") || f.includes("joi") || f.includes("validator") || f.includes("error") || f.includes("middleware"));
-        if (hasValidation) compPoints += 1; // Validation/error handling = 1
+        if (hasStateDataFlow) compPoints += 2;
+
+        const externalApiFiles = treeFetched ? filteredFileList.filter(f => f.includes("fetch") || f.includes("axios") || f.includes("http")) : [];
+        if (externalApiFiles.length > 0) compPoints += 1;
+
+        const validationFiles = treeFetched ? filteredFileList.filter(f => f.includes("zod") || f.includes("joi") || f.includes("validator") || f.includes("middleware")) : [];
+        if (validationFiles.length > 0) compPoints += 1;
+
         const hasAdvancedFramework = treeFetched && (corpus.includes("next") || corpus.includes("nest") || corpus.includes("astro") || corpus.includes("fastapi"));
-        if (hasAdvancedFramework) compPoints += 1; // Advanced framework capability = 1
-        const hasAsyncRealtime = treeFetched && fileList.some(f => f.includes("socket") || f.includes("websocket") || f.includes("stream") || f.includes("pubsub") || f.includes("cron"));
-        if (hasAsyncRealtime) compPoints += 1; // Async/realtime = 1
-        const hasNonTrivialEng = treeFetched && (dockerDetected || ciDetected || testsDetected);
-        if (hasNonTrivialEng) compPoints += 1; // Non-trivial engineering = 1
+        if (hasAdvancedFramework) compPoints += 1;
+
+        const asyncRealtimeFiles = treeFetched ? filteredFileList.filter(f => f.includes("socket") || f.includes("websocket") || f.includes("stream") || f.includes("cron")) : [];
+        if (asyncRealtimeFiles.length > 0) compPoints += 1;
+
+        if (dockerDetected || hasCiCd || hasTest) compPoints += 1;
+
         let featureComplexity = treeFetched ? Math.min(15, compPoints) : 0;
 
         // 4. PROGRESSIVE COMPLETENESS (0-15)
         let completenessPoints = 0;
-        if (srcDetected || meaningfulSourceFileCount >= 3) completenessPoints += 3; // Working app structure = 3
-        if (manifestDetected) completenessPoints += 3; // Configuration completeness = 3
-        if (hasReadme) completenessPoints += 3; // README setup = 3
-        if (hasDescription) completenessPoints += 2; // Repo metadata = 2
-        if (treeFetched && (fileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings")))) completenessPoints += 2; // Env example / config = 2
-        if (hasPages || ciDetected) completenessPoints += 2; // Deployment config / entry point = 2
+        if (srcDetected || meaningfulSourceFileCount >= 3) completenessPoints += 3;
+        if (manifestDetected) completenessPoints += 3;
+        if (hasReadme) completenessPoints += 3;
+        if (hasDescription) completenessPoints += 2;
+        if (treeFetched && filteredFileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings"))) completenessPoints += 2;
+        if (hasPages || hasCiCd) completenessPoints += 2;
         let completeness = Math.min(15, completenessPoints);
 
         // 5. ENGINEERING PRACTICES (0-10)
         let engPractices = 0;
-        if (ciDetected) engPractices += 6;
+        if (hasCiCd) engPractices += 6;
         if (dockerDetected) engPractices += 4;
         engPractices = Math.min(10, engPractices);
 
@@ -686,10 +808,13 @@ export async function GET(req: NextRequest) {
         let docScore = hasDescription && sizeKB > 20 ? 5 : hasDescription ? 3 : 1;
 
         // 7. TESTING (0-5)
-        let testingScore = testsDetected ? 5 : 0;
+        let testingScore = hasTest ? 5 : 0;
 
-        // 8. DEPLOYMENT (0-5)
-        let deployCi = (hasPages ? 3 : 0) + (ciDetected ? 2 : 0);
+        // 8. DEPLOYMENT (0-5) — Differentiating CI test/lint from actual deployment pipeline/live URL
+        let deployCi = 0;
+        if (hasPages) deployCi += 3;
+        if (hasDeploymentPipeline) deployCi += 2;
+        deployCi = Math.min(5, deployCi);
 
         // Specific category caps for noise/assignment/forks
         if (isFork) {
@@ -848,7 +973,9 @@ export async function GET(req: NextRequest) {
               evidence: [
                 hasOrgStructure ? "✓ Basic organized directory structure (+3 pts)" : "✗ No organized structure (+0 pts)",
                 hasModuleSep ? "✓ Component/module separation (+3 pts)" : "✗ No module separation (+0 pts)",
-                hasFEBESep ? "✓ Frontend/backend separation (+3 pts)" : "✗ No FE/BE separation (+0 pts)",
+                projectType === "Library/Package" || projectType === "SDK"
+                  ? (filteredFileList.some(f => f.endsWith("index.ts") || f.endsWith("index.js")) ? "✓ Public API index export (+3 pts)" : "✗ No public API export (+0 pts)")
+                  : (hasFEBESep ? "✓ Frontend/backend separation (+3 pts)" : "✗ No FE/BE separation (+0 pts)"),
                 hasServiceDataLayer ? "✓ Service/data layer separation (+2 pts)" : "✗ No service/data layer (+0 pts)",
                 hasReusableArch ? "✓ Reusable architecture modules (+2 pts)" : "✗ No reusable modules (+0 pts)",
                 hasClearDomainBoundaries ? "✓ Clear domain boundaries (+2 pts)" : "✗ No clear domain boundaries (+0 pts)",
@@ -858,15 +985,15 @@ export async function GET(req: NextRequest) {
               score: featureComplexity,
               max: 15,
               evidence: [
-                hasBE ? "✓ Verified API/backend logic (+3 pts)" : "✗ No backend logic (+0 pts)",
-                hasDB ? "✓ Verified database persistence (+3 pts)" : "✗ No database persistence (+0 pts)",
-                hasAuth ? "✓ Authentication/authorization (+2 pts)" : "✗ No authentication (+0 pts)",
+                hasBE ? `✓ Verified API/backend logic (+3 pts) [${beEvidenceFiles[0] || 'verified'}]` : "✗ No backend logic (+0 pts)",
+                hasDB ? `✓ Verified database persistence (+3 pts) [${dbEvidenceFiles[0] || 'verified'}]` : "✗ No database persistence (+0 pts)",
+                hasAuth ? `✓ Authentication/authorization (+2 pts) [${authEvidenceFiles[0] || 'verified'}]` : "✗ No authentication (+0 pts)",
                 hasStateDataFlow ? "✓ Complex state/data flow (+2 pts)" : "✗ Simple data flow (+0 pts)",
-                hasExternalApi ? "✓ External API integration (+1 pt)" : "✗ No external API integration (+0 pts)",
-                hasValidation ? "✓ Validation/error handling (+1 pt)" : "✗ No validation logic (+0 pts)",
+                externalApiFiles.length > 0 ? "✓ External API integration (+1 pt)" : "✗ No external API integration (+0 pts)",
+                validationFiles.length > 0 ? "✓ Validation/error handling (+1 pt)" : "✗ No validation logic (+0 pts)",
                 hasAdvancedFramework ? "✓ Advanced framework capability (+1 pt)" : "✗ Basic framework (+0 pts)",
-                hasAsyncRealtime ? "✓ Async/realtime functionality (+1 pt)" : "✗ Synchronous logic (+0 pts)",
-                hasNonTrivialEng ? "✓ Non-trivial engineering (+1 pt)" : "✗ Standard setup (+0 pts)",
+                asyncRealtimeFiles.length > 0 ? "✓ Async/realtime functionality (+1 pt)" : "✗ Synchronous logic (+0 pts)",
+                dockerDetected || hasCiCd || hasTest ? "✓ Non-trivial engineering (+1 pt)" : "✗ Standard setup (+0 pts)",
               ],
             },
             completeness: {
@@ -877,15 +1004,15 @@ export async function GET(req: NextRequest) {
                 manifestDetected ? "✓ Configuration completeness (+3 pts)" : "✗ Missing manifest (+0 pts)",
                 hasReadme ? "✓ README setup instructions (+3 pts)" : "✗ Missing README (+0 pts)",
                 hasDescription ? "✓ Repository overview description (+2 pts)" : "✗ Short description (+0 pts)",
-                treeFetched && fileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings")) ? "✓ Environment config (+2 pts)" : "✗ No env config (+0 pts)",
-                hasPages || ciDetected ? "✓ Usable entry point/deployment (+2 pts)" : "✗ No deployment entry (+0 pts)",
+                treeFetched && filteredFileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings")) ? "✓ Environment config (+2 pts)" : "✗ No env config (+0 pts)",
+                hasPages || hasCiCd ? "✓ Usable entry point/deployment (+2 pts)" : "✗ No deployment entry (+0 pts)",
               ],
             },
             engineeringPractices: {
               score: engPractices,
               max: 10,
               evidence: [
-                ciDetected ? "✓ GitHub Actions CI workflow (+6 pts)" : "✗ No CI workflow (+0 pts)",
+                hasCiCd ? `✓ GitHub Actions CI workflow (+6 pts) [${ciEvidenceFiles[0] || 'workflow'}]` : "✗ No CI workflow (+0 pts)",
                 dockerDetected ? "✓ Docker container config (+4 pts)" : "✗ No Docker config (+0 pts)",
               ],
             },
@@ -900,7 +1027,7 @@ export async function GET(req: NextRequest) {
               score: testingScore,
               max: 5,
               evidence: [
-                testsDetected ? "✓ Automated unit test files detected (+5 pts)" : "✗ No automated test files detected (+0 pts)",
+                hasTest ? `✓ Automated unit test files detected (+5 pts) [${testEvidenceFiles[0] || 'test'}]` : "✗ No automated test files detected (+0 pts)",
               ],
             },
             deploymentUsability: {
@@ -908,10 +1035,11 @@ export async function GET(req: NextRequest) {
               max: 5,
               evidence: [
                 hasPages ? "✓ GitHub Pages live URL (+3 pts)" : "✗ No live URL (+0 pts)",
-                ciDetected ? "✓ CI deployment pipeline (+2 pts)" : "✗ No CI deployment (+0 pts)",
+                hasDeploymentPipeline ? `✓ Deployment pipeline verified (+2 pts) [${deployEvidenceFiles[0] || 'deploy'}]` : "✗ No deployment pipeline (+0 pts)",
               ],
             },
           },
+          technicalSignals,
           filesInspected,
           evidenceMissing,
           analysisConfidence: treeFetched ? "HIGH" : "LOW",
@@ -920,8 +1048,10 @@ export async function GET(req: NextRequest) {
         // DEV-ONLY RQS AUDIT LOG
         console.log("PAPERINO_RQS_AUDIT", {
           repository: repo.name,
+          projectType,
           classification: repoCategory,
           rqs,
+          technicalSignals,
           categoryScores: {
             implementationDepth: `${implementationDepth}/30`,
             architecture: `${architecture}/15`,
@@ -968,6 +1098,7 @@ export async function GET(req: NextRequest) {
           updatedAt: repo.updated_at ? new Date(repo.updated_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "Recently",
           url: repo.html_url,
           topics,
+          projectType,
           repoCategory,
           isSubstantial,
           isMeaningful,
