@@ -217,7 +217,7 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
 
   doc.setFontSize(8);
   doc.setTextColor(purplePrimary[0], purplePrimary[1], purplePrimary[2]);
-  doc.text(`Next Reward: 🎁 ${analysis.developerMetrics?.nextRewardBadge || "Elite Builder Badge"}`, margin + 8, y + 27);
+  doc.text(`Next Reward: ${analysis.developerMetrics?.nextRewardBadge || "Elite Builder Badge"}`, margin + 8, y + 27);
 
   // -------------------------------------------------------------
   // PAGE 2: TECHNICAL INTELLIGENCE
@@ -821,7 +821,7 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(purpleDark[0], purpleDark[1], purpleDark[2]);
-  doc.text("🤖 TAKE THIS REPORT FURTHER WITH AI", margin + 8, y + 12);
+  doc.text("TAKE THIS REPORT FURTHER WITH AI", margin + 8, y + 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
