@@ -550,15 +550,114 @@ export default function CareerDnaPage() {
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-4 sm:px-6 py-12 relative min-h-screen text-white">
+      {/* ── JSON-LD STRUCTURED DATA FOR SEO ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "WebApplication",
+                "@id": "https://paperino-eta.vercel.app/career-dna#webapp",
+                "name": "Paperino Career DNA",
+                "url": "https://paperino-eta.vercel.app/career-dna",
+                "applicationCategory": "EducationalApplication",
+                "operatingSystem": "All",
+                "description":
+                  "Build your Career DNA with Paperino. Analyze your skills, resume, projects, GitHub profile and career readiness to discover strengths, gaps and personalized growth recommendations.",
+                "browserRequirements": "Requires JavaScript. Requires HTML5."
+              },
+              {
+                "@type": "BreadcrumbList",
+                "@id": "https://paperino-eta.vercel.app/career-dna#breadcrumb",
+                "itemListElement": [
+                  {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Paperino",
+                    "item": "https://paperino-eta.vercel.app"
+                  },
+                  {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Career DNA",
+                    "item": "https://paperino-eta.vercel.app/career-dna"
+                  }
+                ]
+              },
+              {
+                "@type": "FAQPage",
+                "@id": "https://paperino-eta.vercel.app/career-dna#faq",
+                "mainEntity": [
+                  {
+                    "@type": "Question",
+                    "name": "What is Career DNA?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Paperino Career DNA combines information about your skills, projects, resume and developer profile to create a structured view of your career readiness for internships and placement opportunities."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "How does Career DNA analyze student skills?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Career DNA evaluates programming languages, frameworks, tools, academic CGPA, certifications, resume details, and verified technical project evidence."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Can Career DNA analyze GitHub projects?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Yes! Career DNA seamlessly integrates with Paperino GitHub Intelligence to inspect code depth, project evidence, and engineering quality from your public GitHub profile."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Can Career DNA help with internship preparation?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Yes, Career DNA identifies skill gaps, strengths, and role matches so students can improve their technical background before applying for internships and placements."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Does Career DNA replace professional career advice?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "No, Career DNA provides data-driven career analysis and skill recommendations to guide your preparation, but is not a substitute for formal career counseling."
+                    }
+                  }
+                ]
+              }
+            ]
+          })
+        }}
+      />
+
+      <title>Career DNA – Student Career Profile & Skill Analysis | Paperino</title>
+      <meta name="description" content="Build your Career DNA with Paperino. Analyze your skills, resume, projects, GitHub profile and career readiness to discover strengths, gaps and personalized growth recommendations." />
+      <link rel="canonical" href="https://paperino-eta.vercel.app/career-dna" />
+      <meta property="og:title" content="Career DNA – Student Career Profile & Skill Analysis | Paperino" />
+      <meta property="og:description" content="Build your Career DNA with Paperino. Analyze your skills, resume, projects, GitHub profile and career readiness to discover strengths, gaps and personalized growth recommendations." />
+      <meta property="og:url" content="https://paperino-eta.vercel.app/career-dna" />
+      <meta property="og:type" content="website" />
+      <meta property="og:image" content="https://paperino-eta.vercel.app/og-image.png" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="Career DNA – Student Career Profile & Skill Analysis | Paperino" />
+      <meta name="twitter:description" content="Build your Career DNA with Paperino. Analyze your skills, resume, projects, GitHub profile and career readiness to discover strengths, gaps and personalized growth recommendations." />
+
       <AmbientOrbs />
 
       <header className="w-full mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10 border-b border-white/[0.06] pb-8">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-purple-300 flex items-center gap-3">
-            Career DNA <span className="text-sm font-semibold tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-full uppercase">AI Mentor</span>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-purple-300 flex items-center gap-3">
+            Discover Your Career DNA <span className="text-sm font-semibold tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-full uppercase">AI Mentor</span>
           </h1>
-          <p className="text-gray-400 text-sm mt-1 max-w-xl">
-            A premium career intelligence dashboard matching your technical profiles and academic goals.
+          <p className="text-gray-300 text-sm mt-2 max-w-2xl leading-relaxed">
+            Paperino Career DNA combines information about your skills, projects, resume and developer profile to create a structured view of your career readiness. It helps students understand their strengths, identify skill gaps and discover areas they can improve before internships and placements.
           </p>
         </div>
 
@@ -2075,6 +2174,96 @@ export default function CareerDnaPage() {
           </div>
         </div>
       )}
+
+      {/* ── CRAWLABLE SEO INFORMATIONAL & FAQ SECTIONS FOR CAREER DNA ── */}
+      <section className="w-full mt-20 space-y-12 border-t border-purple-500/20 pt-12 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* What Career DNA Analyzes */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <BrainCircuit className="text-purple-400" size={20} />
+              What Career DNA Analyzes
+            </h2>
+            <ul className="space-y-2.5 text-xs sm:text-sm text-gray-300 list-disc list-inside leading-relaxed">
+              <li>Technical skills (languages, frameworks & developer tools)</li>
+              <li>Verified software engineering projects and code quality</li>
+              <li>Resume readiness & academic records</li>
+              <li>GitHub profile intelligence & evidence</li>
+              <li>Portfolio & web deployment evidence</li>
+              <li>Verified career strengths & technical domain depth</li>
+              <li>Personalized skill gap breakdown</li>
+              <li>Targeted development recommendations for internships & placements</li>
+            </ul>
+          </div>
+
+          {/* How Career DNA Helps Students */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <TrendingUp className="text-emerald-400" size={20} />
+              How Career DNA Helps Students
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
+              Career DNA gives students a clear, objective assessment of where their technical skills stand today. By comparing student profiles against industry standards, students can naturally understand which areas need targeted practice—such as building full-stack projects, learning backend APIs, or adding automated unit tests—before applying for competitive internships and campus placements.
+            </p>
+          </div>
+        </div>
+
+        {/* Frequently Asked Questions */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <HelpCircle className="text-cyan-400" size={20} />
+            Frequently Asked Questions
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm">
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">What is Career DNA?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Paperino Career DNA combines information about your skills, projects, resume and developer profile to create a structured view of your career readiness for internships and placement opportunities.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">How does Career DNA analyze student skills?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Career DNA evaluates programming languages, frameworks, tools, academic CGPA, certifications, resume details, and verified technical project evidence.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">Can Career DNA analyze GitHub projects?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Yes! Career DNA seamlessly integrates with Paperino GitHub Intelligence to inspect code depth, project evidence, and engineering quality from your public GitHub profile.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">Can Career DNA help with internship preparation?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Yes, Career DNA identifies skill gaps, strengths, and role matches so students can improve their technical background before applying for internships and placements.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">Does Career DNA replace professional career advice?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                No, Career DNA provides data-driven career analysis and skill recommendations to guide your preparation, but is not a substitute for formal career counseling.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Internal Link Banner */}
+        <div className="p-6 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="space-y-1">
+            <h4 className="font-bold text-white text-sm">Want deeper developer insights into your repositories?</h4>
+            <p className="text-gray-400">Explore your public project quality and engineering scores with GitHub Intelligence.</p>
+          </div>
+          <a href="/github-intelligence" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold transition-all shrink-0">
+            Explore GitHub Intelligence →
+          </a>
+        </div>
+      </section>
     </div>
   );
 }

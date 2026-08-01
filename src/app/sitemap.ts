@@ -72,6 +72,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
 
     {
+      url: `${BASE_URL}/free-class-finder`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/career-dna`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/github-intelligence`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
       url: `${BASE_URL}/privacy`,
       lastModified: new Date(),
       changeFrequency: 'yearly',

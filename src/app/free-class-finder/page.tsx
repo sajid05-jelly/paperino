@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { 
   Building2, Plus, Search, Filter, Check, X as IconX, 
   Sparkles, Clock, ShieldCheck, Zap, Award, CheckCircle2,
-  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb, Trash2, UserCheck, Radio, Calendar
+  X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb, Trash2, UserCheck, Radio, Calendar, HelpCircle
 } from "lucide-react";
 import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -606,6 +606,103 @@ function FreeClassFinderContent() {
     <div className="min-h-screen text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{
       background: "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(109,40,217,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(76,29,149,0.22) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%), linear-gradient(135deg, #07030f 0%, #0a041a 30%, #060210 60%, #050308 100%)"
     }}>
+      {/* ── JSON-LD STRUCTURED DATA FOR SEO ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "WebApplication",
+                "@id": "https://paperino-eta.vercel.app/free-class-finder#webapp",
+                "name": "Paperino Free Class Finder",
+                "url": "https://paperino-eta.vercel.app/free-class-finder",
+                "applicationCategory": "EducationalApplication",
+                "operatingSystem": "All",
+                "description":
+                  "Discover available classrooms during free hours with Paperino Free Class Finder. Shared by students for study, projects and learning.",
+                "browserRequirements": "Requires JavaScript. Requires HTML5."
+              },
+              {
+                "@type": "BreadcrumbList",
+                "@id": "https://paperino-eta.vercel.app/free-class-finder#breadcrumb",
+                "itemListElement": [
+                  {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Paperino",
+                    "item": "https://paperino-eta.vercel.app"
+                  },
+                  {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Paperino Labs",
+                    "item": "https://paperino-eta.vercel.app/#labs"
+                  },
+                  {
+                    "@type": "ListItem",
+                    "position": 3,
+                    "name": "Free Class Finder",
+                    "item": "https://paperino-eta.vercel.app/free-class-finder"
+                  }
+                ]
+              },
+              {
+                "@type": "FAQPage",
+                "@id": "https://paperino-eta.vercel.app/free-class-finder#faq",
+                "mainEntity": [
+                  {
+                    "@type": "Question",
+                    "name": "What is Paperino Free Class Finder?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Paperino Free Class Finder is a student-driven tool that helps college students locate empty, available classrooms on campus during their free hours for studying, project work, and collaboration."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "How does Free Class Finder work?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Students report open classrooms with building, floor, room number, and expected duration details. Other students verify reports in real time with community upvotes and downvotes."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Can students report an available classroom?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Yes! Any logged-in student can quickly submit an open classroom location and help fellow classmates find study spots across campus."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "How recent is classroom availability information?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Classroom reports feature live countdown timers and community confidence ratings. Reports expire automatically when estimated free hours end."
+                    }
+                  }
+                ]
+              }
+            ]
+          })
+        }}
+      />
+
+      <title>Free Class Finder for College Students | Find Available Classrooms | Paperino</title>
+      <meta name="description" content="Find available classrooms during your free hours with Paperino Free Class Finder. Discover free classrooms shared by students and use your free time for projects, study and learning." />
+      <link rel="canonical" href="https://paperino-eta.vercel.app/free-class-finder" />
+      <meta property="og:title" content="Free Class Finder for College Students | Find Available Classrooms | Paperino" />
+      <meta property="og:description" content="Find available classrooms during your free hours with Paperino Free Class Finder. Discover free classrooms shared by students and use your free time for projects, study and learning." />
+      <meta property="og:url" content="https://paperino-eta.vercel.app/free-class-finder" />
+      <meta property="og:type" content="website" />
+      <meta property="og:image" content="https://paperino-eta.vercel.app/og-image.png" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="Free Class Finder for College Students | Find Available Classrooms | Paperino" />
+      <meta name="twitter:description" content="Find available classrooms during your free hours with Paperino Free Class Finder. Discover free classrooms shared by students and use your free time for projects, study and learning." />
+
       {/* Premium ambient glow orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
         <div style={{ position: "absolute", top: "-10%", left: "-5%", width: "500px", height: "500px", background: "radial-gradient(circle, rgba(109,40,217,0.12) 0%, transparent 70%)", borderRadius: "50%", filter: "blur(40px)" }} />
@@ -624,10 +721,10 @@ function FreeClassFinderContent() {
                 <Sparkles size={14} className="text-purple-400" /> Paperino Labs · Free Class Finder
               </div>
               <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-                Campus <span className="bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent">Free Class Finder</span>
+                Find a Free Classroom During Your Free Hour
               </h1>
-              <p className="text-gray-400 text-sm sm:text-base leading-relaxed">
-                Community-driven free classroom reports. Vote whether rooms are free, track live countdown timers, and discover open study spaces across campuses.
+              <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                Paperino Free Class Finder helps college students discover available classrooms during free hours. Students can share available classrooms with the community and quickly find a place to study, work on projects, complete courses or collaborate with friends.
               </p>
             </div>
 
@@ -1091,6 +1188,93 @@ function FreeClassFinderContent() {
       </div>
 
       {/* Expected Free Time Details Modal */}
+      {/* ── CRAWLABLE SEO INFORMATIONAL & FAQ SECTIONS ── */}
+      <section className="mt-16 space-y-12 border-t border-purple-500/20 pt-12 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* How Free Class Finder Works */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Zap className="text-purple-400" size={20} />
+              How Free Class Finder Works
+            </h2>
+            <ol className="space-y-3 text-xs sm:text-sm text-gray-300 list-decimal list-inside leading-relaxed">
+              <li>Check available classrooms reported live on campus.</li>
+              <li>View building, floor, and classroom capacity information.</li>
+              <li>Check when the classroom was reported and expected free duration.</li>
+              <li>Use the available space responsibly for study or project work.</li>
+            </ol>
+          </div>
+
+          {/* Why Use Free Class Finder? */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <ShieldCheck className="text-emerald-400" size={20} />
+              Why Use Free Class Finder?
+            </h2>
+            <ul className="space-y-2.5 text-xs sm:text-sm text-gray-300 list-disc list-inside leading-relaxed">
+              <li>Find classrooms without searching every floor manually</li>
+              <li>Save valuable time between lectures</li>
+              <li>Work on group projects and assignments seamlessly</li>
+              <li>Study quietly during free hours</li>
+              <li>Collaborate with classmates in open study spaces</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Frequently Asked Questions */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <HelpCircle className="text-cyan-400" size={20} />
+            Frequently Asked Questions
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm">
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">What is Paperino Free Class Finder?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Paperino Free Class Finder is a community-driven tool designed for college students to locate empty, available classrooms on campus during free hours for studying and group collaboration.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">How does Free Class Finder work?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Students report open classrooms with building block, floor, room number, and estimated duration. Peer students verify reports in real time with upvotes and downvotes.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">Can students report an available classroom?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Yes! Any logged-in student can submit a free classroom report to help fellow classmates quickly find open study spaces.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-purple-300 text-sm">How recent is classroom availability information?</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Reports feature live countdown timers and auto-expire when expected free time ends. Active community votes ensure information remains accurate.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Internal Link Banner */}
+        <div className="p-6 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="space-y-1">
+            <h4 className="font-bold text-white text-sm">Looking to analyze your developer skills & career profile?</h4>
+            <p className="text-gray-400">Discover your strengths and internship readiness with Paperino Career DNA & GitHub Intelligence.</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <a href="/career-dna" className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all">
+              Career DNA →
+            </a>
+            <a href="/github-intelligence" className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all">
+              GitHub Intelligence →
+            </a>
+          </div>
+        </div>
+      </section>
       {selectedTimerReport && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedTimerReport(null)}></div>
