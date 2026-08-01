@@ -319,9 +319,15 @@ export default function GitHubIntelligencePage() {
                     <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-fuchsia-300 to-cyan-300 block">
                       Developer Score
                     </span>
-                    <span className="text-[11px] text-gray-400 font-semibold block">
-                      Top <strong className="text-cyan-300">{analysis.developerMetrics?.rankPercentile || 12}%</strong> among Paperino developers
-                    </span>
+                    {analysis.developerMetrics?.rankPercentile ? (
+                      <span className="text-[11px] text-gray-400 font-semibold block">
+                        Top <strong className="text-cyan-300">{analysis.developerMetrics.rankPercentile}%</strong> among developers
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-gray-400 font-semibold block">
+                        Evidence-Based Quality Rating
+                      </span>
+                    )}
                   </div>
 
                   {/* Download Report Button */}
@@ -390,20 +396,23 @@ export default function GitHubIntelligencePage() {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {[
-                      { label: "Project Quality", val: (analysis.developerMetrics as any)?.scoreBreakdown?.projectQuality ?? 0, max: 25 },
-                      { label: "Documentation", val: (analysis.developerMetrics as any)?.scoreBreakdown?.documentation ?? 0, max: 15 },
-                      { label: "Development Activity", val: (analysis.developerMetrics as any)?.scoreBreakdown?.developmentActivity ?? 0, max: 15 },
-                      { label: "Technical Depth", val: (analysis.developerMetrics as any)?.scoreBreakdown?.technicalDepth ?? 0, max: 15 },
-                      { label: "Portfolio Quality", val: (analysis.developerMetrics as any)?.scoreBreakdown?.portfolioQuality ?? 0, max: 10 },
-                      { label: "Engineering Practices", val: (analysis.developerMetrics as any)?.scoreBreakdown?.engineeringPractices ?? 0, max: 10 },
-                      { label: "Community Impact", val: (analysis.developerMetrics as any)?.scoreBreakdown?.communityImpact ?? 0, max: 5 },
-                      { label: "Technology Breadth", val: (analysis.developerMetrics as any)?.scoreBreakdown?.technologyBreadth ?? 0, max: 5 },
-                    ].map((item) => (
-                      <div key={item.label} className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                        <span className="text-gray-300 font-medium">{item.label}</span>
-                        <span className="font-mono font-bold text-cyan-300">{item.val} / {item.max}</span>
-                      </div>
-                    ))}
+                      { label: "Project Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.projectQuality, max: 25 },
+                      { label: "Documentation", item: (analysis.developerMetrics as any)?.scoreBreakdown?.documentation, max: 15 },
+                      { label: "Development Activity", item: (analysis.developerMetrics as any)?.scoreBreakdown?.developmentActivity, max: 15 },
+                      { label: "Technical Depth", item: (analysis.developerMetrics as any)?.scoreBreakdown?.technicalDepth, max: 15 },
+                      { label: "Portfolio Quality", item: (analysis.developerMetrics as any)?.scoreBreakdown?.portfolioQuality, max: 10 },
+                      { label: "Engineering Practices", item: (analysis.developerMetrics as any)?.scoreBreakdown?.engineeringPractices, max: 10 },
+                      { label: "Community Impact", item: (analysis.developerMetrics as any)?.scoreBreakdown?.communityImpact, max: 5 },
+                      { label: "Technology Breadth", item: (analysis.developerMetrics as any)?.scoreBreakdown?.technologyBreadth, max: 5 },
+                    ].map((entry) => {
+                      const scoreVal = typeof entry.item === "number" ? entry.item : (entry.item?.score ?? 0);
+                      return (
+                        <div key={entry.label} className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                          <span className="text-gray-300 font-medium">{entry.label}</span>
+                          <span className="font-mono font-bold text-cyan-300">{scoreVal} / {entry.max}</span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Why this score? */}
@@ -431,47 +440,47 @@ export default function GitHubIntelligencePage() {
                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
                     <span className="text-xs font-black uppercase tracking-wider text-cyan-300">Repository Quality Audit</span>
                     <span className="text-xs font-mono font-bold text-gray-300">
-                      {(analysis.developerMetrics as any)?.repoAudit?.repositoriesAnalyzed ?? analysis.publicReposCount} Analyzed
+                      {(analysis.developerMetrics as any)?.repoAudit?.totalPublicRepos ?? analysis.publicReposCount} Repositories
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
-                      <span className="text-emerald-200 font-medium">Substantial Projects</span>
-                      <span className="font-mono font-bold text-emerald-300">{(analysis.developerMetrics as any)?.repoAudit?.substantialProjects ?? 0}</span>
-                    </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Normal Projects</span>
-                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.repoAudit?.normalProjects ?? 0}</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Learning / Tutorial Repos</span>
-                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.repoAudit?.learningBasicRepos ?? 0}</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Assignments / Labs</span>
-                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.repoAudit?.assignments ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Original Repos</span>
+                      <span className="font-mono font-bold text-white">{(analysis.developerMetrics as any)?.repoAudit?.originalRepos ?? 0}</span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex justify-between items-center">
                       <span className="text-amber-200 font-medium">Forks</span>
                       <span className="font-mono font-bold text-amber-300">{(analysis.developerMetrics as any)?.repoAudit?.forks ?? 0}</span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Archived Repos</span>
-                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.repoAudit?.archivedRepos ?? 0}</span>
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center">
+                      <span className="text-emerald-200 font-medium">Substantial Projects</span>
+                      <span className="font-mono font-bold text-emerald-300">{(analysis.developerMetrics as any)?.repoAudit?.substantialProjects ?? 0}</span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
-                      <span className="text-gray-300 font-medium">Minimal / Empty Repos</span>
-                      <span className="font-mono font-bold text-gray-400">{(analysis.developerMetrics as any)?.repoAudit?.minimalEmptyRepos ?? 0}</span>
+                      <span className="text-gray-300 font-medium">Tutorial / Learning Repos</span>
+                      <span className="font-mono font-bold text-gray-300">{(analysis.developerMetrics as any)?.repoAudit?.learningTutorialRepos ?? 0}</span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex justify-between items-center">
-                      <span className="text-purple-200 font-medium">Repositories Skipped</span>
-                      <span className="font-mono font-bold text-purple-300">{(analysis.developerMetrics as any)?.repoAudit?.repositoriesSkipped ?? 0}</span>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Repos with README</span>
+                      <span className="font-mono font-bold text-cyan-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithMeaningfulReadme ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Repos with CI/CD / Docker</span>
+                      <span className="font-mono font-bold text-cyan-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithCiCd ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Repos with Backend</span>
+                      <span className="font-mono font-bold text-purple-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithBackendEvidence ?? 0}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center">
+                      <span className="text-gray-300 font-medium">Repos with Frontend</span>
+                      <span className="font-mono font-bold text-purple-300">{(analysis.developerMetrics as any)?.repoAudit?.reposWithFrontendEvidence ?? 0}</span>
                     </div>
                   </div>
 
                   <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-[11px] text-gray-400 leading-relaxed">
-                    ℹ️ <strong>Evidence Rule:</strong> Forks, profile configurations, and empty repositories are skipped from core developer quality calculations to ensure realistic scoring.
+                    ℹ️ <strong>Evidence Rule:</strong> Forks and profile configurations do not contribute to core developer quality scores to ensure 100% evidence accuracy.
                   </div>
                 </div>
               </div>
