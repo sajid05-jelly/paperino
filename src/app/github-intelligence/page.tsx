@@ -1370,7 +1370,7 @@ export default function GitHubIntelligencePage() {
             <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest text-purple-300 bg-purple-500/10 px-3.5 py-1 rounded-full border border-purple-500/20">
               Developer Knowledge & Overview
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug pt-1">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-fuchsia-300 to-cyan-300 tracking-tight leading-snug pt-1">
               GitHub Profile Analytics & Engineering Standards
             </h2>
             <p className="text-xs text-gray-400 leading-relaxed max-w-lg mx-auto">
