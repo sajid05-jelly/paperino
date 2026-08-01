@@ -417,15 +417,25 @@ export async function generateDeveloperReportPdf(analysis: GitHubAnalysisResult)
       doc.setTextColor(255, 255, 255);
       doc.text(`PROJ 0${idx + 1}`, margin + 15, y + 10.2, { align: "center" });
 
+      // Project Name (Truncated if too long so stats don't overlap or overflow container)
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFontSize(10.5);
       doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-      doc.text(proj.name, margin + 28, y + 11);
+      const maxNameWidth = 90;
+      let projName = proj.name;
+      if (doc.getTextWidth(projName) > maxNameWidth) {
+        while (projName.length > 3 && doc.getTextWidth(projName + "...") > maxNameWidth) {
+          projName = projName.slice(0, -1);
+        }
+        projName += "...";
+      }
+      doc.text(projName, margin + 28, y + 10.5);
 
-      // Stars & Forks
+      // Stars & Forks (Aligned cleanly inside card container boundary)
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
       doc.setTextColor(amberText[0], amberText[1], amberText[2]);
-      doc.text(`★ ${proj.stars} stars  |  ⑂ ${proj.forks} forks`, pageWidth - margin - 8, y + 11, { align: "right" });
+      doc.text(`${proj.stars} stars  |  ${proj.forks} forks`, pageWidth - margin - 8, y + 10.5, { align: "right" });
 
       // Description
       doc.setFont("helvetica", "normal");
