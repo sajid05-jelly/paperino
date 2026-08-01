@@ -4,7 +4,7 @@ import { githubApiClient } from "@/lib/githubApiClient";
 export const dynamic = "force-dynamic";
 
 // ─────────────────────────────────────────────────────────────
-// DATA TYPES & INTERFACES (Evidence Engine V8 - Complete Rebuild)
+// DATA TYPES & INTERFACES (Evidence Engine V8.1 - Complete Debug & Pagination Fix)
 // ─────────────────────────────────────────────────────────────
 
 export interface ProjectQualityBreakdown {
@@ -46,7 +46,7 @@ export interface ClassifiedRepoInfo {
   isMeaningful: boolean;
   rqs: number; // Repository Quality Score (0-100)
   projectQualityBreakdown: ProjectQualityBreakdown;
-  evidenceList: string[]; // Why counted or not counted
+  evidenceList: string[];
   rejectionReason?: string;
   selectionReason: string;
   hasFE: boolean;
@@ -59,7 +59,7 @@ export interface ClassifiedRepoInfo {
 }
 
 export interface SkillConfidenceItem {
-  score: number; // 0-100
+  score: number;
   confidence: "HIGH CONFIDENCE" | "MEDIUM CONFIDENCE" | "LOW CONFIDENCE" | "INSUFFICIENT EVIDENCE";
   evidence: string[];
   reason: string;
@@ -73,14 +73,14 @@ export interface CategoryScoreItem {
 }
 
 export interface CategoryScoreBreakdown {
-  bestProjectQuality: CategoryScoreItem; // /30 (Flagship Project Quality)
-  overallProjectQuality: CategoryScoreItem; // /15 (Portfolio Quality)
-  technicalDepth: CategoryScoreItem; // /15 (Technical Depth)
-  engineeringPractices: CategoryScoreItem; // /15 (Engineering Practices)
-  codebaseMaturity: CategoryScoreItem; // /10 (Codebase Maturity)
-  documentation: CategoryScoreItem; // /5 (Documentation)
-  maintenanceConsistency: CategoryScoreItem; // /5 (Activity & Maintenance)
-  collaborationOpenSource: CategoryScoreItem; // /5 (Open Source / Collaboration)
+  bestProjectQuality: CategoryScoreItem;
+  overallProjectQuality: CategoryScoreItem;
+  technicalDepth: CategoryScoreItem;
+  engineeringPractices: CategoryScoreItem;
+  codebaseMaturity: CategoryScoreItem;
+  documentation: CategoryScoreItem;
+  maintenanceConsistency: CategoryScoreItem;
+  collaborationOpenSource: CategoryScoreItem;
 }
 
 export interface TransparencyAudit {
@@ -97,14 +97,16 @@ export interface TransparencyAudit {
   verifiedProjectsList: { name: string; rqs: number; category: string; isSubstantial: boolean }[];
   excludedProjectsList: { name: string; category: string; reason: string }[];
   disclaimer: string;
+  analysisCoverage: string;
+  deepAnalysisInfo: string;
 }
 
 export interface SeparateQualityMetrics {
-  bestProjectQuality: number; // 0 - 100
-  portfolioDepth: number; // 0 - 100
-  engineeringQuality: number; // 0 - 100
-  technicalBreadth: number; // 0 - 100
-  maintenance: number; // 0 - 100
+  bestProjectQuality: number;
+  portfolioDepth: number;
+  engineeringQuality: number;
+  technicalBreadth: number;
+  maintenance: number;
 }
 
 export interface DeveloperBadge {
@@ -122,7 +124,7 @@ export interface DeveloperBadge {
 }
 
 export interface DeveloperMetrics {
-  score: number; // 0 - 100
+  score: number;
   evidenceConfidence: "LOW" | "MEDIUM" | "HIGH";
   confidenceReason: string;
   separateMetrics: SeparateQualityMetrics;
@@ -142,88 +144,14 @@ export interface DeveloperMetrics {
     strengths: string[];
     needsImprovement: string[];
   };
-  skillsBreakdown: {
-    frontend: number;
-    backend: number;
-    database: number;
-    aiMl: number;
-    devOps: number;
-    cloud: number;
-    problemSolving: number;
-    documentation: number;
-    uiUx: number;
-    testing: number;
-  };
-  skillsConfidence: {
-    frontend: SkillConfidenceItem;
-    backend: SkillConfidenceItem;
-    database: SkillConfidenceItem;
-    aiMl: SkillConfidenceItem;
-    devOps: SkillConfidenceItem;
-    cloud: SkillConfidenceItem;
-    problemSolving: SkillConfidenceItem;
-    documentation: SkillConfidenceItem;
-    uiUx: SkillConfidenceItem;
-    testing: SkillConfidenceItem;
-  };
+  skillsBreakdown: Record<string, number>;
+  skillsConfidence: Record<string, SkillConfidenceItem>;
   badges: DeveloperBadge[];
   analysisVersion: string;
   analyzedAt: string;
-}
-
-export interface DeveloperPersonality {
-  archetype: string;
-  title: string;
-  bestCareerPath: string;
-  readinessScores: {
-    startupReadiness: number;
-    enterpriseReadiness: number;
-    freelancerPotential: number;
-    leadershipPotential: number;
-  };
-  readinessLevels: {
-    startupReadiness: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
-    enterpriseReadiness: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
-    freelancerPotential: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
-    leadershipPotential: "Developing" | "Moderate" | "Strong" | "Needs Evidence";
-  };
-  developerStyleTraits: string[];
-}
-
-export interface DeveloperTimelineMilestone {
-  title: string;
-  subtitle: string;
-  date: string;
-  icon: string;
-  badgeText?: string;
-}
-
-export interface ProjectGrowthMetrics {
-  reposCreatedCount: number;
-  technologiesLearnedCount: number;
-  activityTrend: string;
-  mostProductiveMonth: string;
-  latestProject: { name: string; url: string; date: string } | null;
-  mostSuccessfulProject: { name: string; url: string; stars: number } | null;
-}
-
-export interface DeveloperJourney {
-  timeline: DeveloperTimelineMilestone[];
-  growth: ProjectGrowthMetrics;
-}
-
-export interface RecruiterPerspective {
-  recruiterStrengths: string[];
-  areasToImprove: string[];
-  overallImpression: string;
-  readinessStatus: string;
-}
-
-export interface ActionPlanSection {
-  quickWins: string[];
-  next7Days: string[];
-  next30Days: string[];
-  beforeApplying: string[];
+  analysisComplete: boolean;
+  authenticated: boolean;
+  deepAnalyzedRepoCount: number;
 }
 
 export interface GitHubAnalysisResult {
@@ -241,31 +169,24 @@ export interface GitHubAnalysisResult {
   technologyBreakdown: Record<string, number>;
   bestProjects: ClassifiedRepoInfo[];
   developerMetrics: DeveloperMetrics;
-  developerPersonality: DeveloperPersonality;
-  developerJourney: DeveloperJourney;
-  recruiterPerspective: RecruiterPerspective;
-  actionPlan: ActionPlanSection;
-  healthReport: {
-    strengths: string[];
-    improvements: string[];
-    score: number;
-    healthLevelText: string;
-  };
-  activityInsights: {
-    lastUpdatedRepo: string | null;
-    mostActiveLanguage: string | null;
-    recentActivityStatus: string;
-    isInactive: boolean;
-  };
+  developerPersonality: any;
+  developerJourney: any;
+  recruiterPerspective: any;
+  actionPlan: any;
+  healthReport: any;
+  activityInsights: any;
   aiRecommendations: string[];
   cachedAt: string;
+  engineVersion: string;
+  analysisComplete: boolean;
+  authenticated: boolean;
 }
 
-const ANALYSIS_ENGINE_VERSION = "EVIDENCE_ENGINE_V8_AUTHENTICATED";
-const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string }>();
+const ANALYSIS_ENGINE_VERSION = "8.1";
+const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string; authenticated: boolean }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 
-const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" | "aiMl" | "devOps" | "cloud" | "testing" | "uiUx"; matchers: (string | RegExp)[] }[] = [
+const TECH_RULES: { name: string; category: string; matchers: (string | RegExp)[] }[] = [
   { name: "TypeScript", category: "frontend", matchers: ["typescript", "ts"] },
   { name: "JavaScript", category: "frontend", matchers: ["javascript", "js"] },
   { name: "React", category: "frontend", matchers: ["react", "reactjs", "jsx", "tsx"] },
@@ -279,7 +200,6 @@ const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" 
   { name: "Python", category: "backend", matchers: ["python", "py", "django", "flask", "fastapi"] },
   { name: "Go", category: "backend", matchers: ["go", "golang"] },
   { name: "Rust", category: "backend", matchers: ["rust", "rs"] },
-  { name: "Nix / SaltStack", category: "devOps", matchers: ["nix", "nixos", "saltstack", "salt"] },
   { name: "Java", category: "backend", matchers: ["java", "spring", "springboot"] },
   { name: "C++", category: "backend", matchers: ["c++", "cpp"] },
   { name: "C", category: "backend", matchers: ["c", "c-lang"] },
@@ -297,9 +217,12 @@ const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" 
 
 export async function GET(req: NextRequest) {
   let apiRequestsUsed = 0;
+  const isAuthenticatedToken = Boolean(process.env.GITHUB_TOKEN);
+
   try {
     const { searchParams } = new URL(req.url);
     let username = searchParams.get("username")?.trim().replace(/^@/, "");
+    const forceFresh = searchParams.get("fresh") === "true" || searchParams.get("refresh") === "true";
 
     if (!username) {
       return NextResponse.json({ error: "GitHub username is required" }, { status: 400 });
@@ -311,13 +234,19 @@ export async function GET(req: NextRequest) {
     }
 
     username = username.toLowerCase();
+    const cacheKey = `github-intelligence:v8.1:${username}`;
 
     const now = Date.now();
-    // ── 6. CACHING ENGINE (6-HOUR TTL) ──
-    if (cache.has(username)) {
-      const cached = cache.get(username)!;
-      if (cached.version === ANALYSIS_ENGINE_VERSION && (now - cached.timestamp < CACHE_TTL_MS)) {
-        console.log(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${Boolean(process.env.GITHUB_TOKEN)} | Rate limit: N/A | Remaining: N/A | API Requests Used: 0 | Cache hit: true`);
+    // ── 5. FIX CACHE CONTAMINATION (v8.1 Versioning + Strict Check) ──
+    if (!forceFresh && cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey)!;
+      if (
+        cached.version === ANALYSIS_ENGINE_VERSION &&
+        cached.authenticated === isAuthenticatedToken &&
+        cached.data.analysisComplete === true &&
+        (now - cached.timestamp < CACHE_TTL_MS)
+      ) {
+        console.log(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${isAuthenticatedToken} | Rate limit: N/A | Remaining: N/A | API Requests Used: 0 | Cache hit: true`);
         return NextResponse.json({ ...cached.data, fromCache: true });
       }
     }
@@ -327,8 +256,10 @@ export async function GET(req: NextRequest) {
     const userFetch = await githubApiClient<any>(`/users/${encodeURIComponent(username)}`);
 
     if (userFetch.isRateLimited) {
-      console.warn(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${Boolean(process.env.GITHUB_TOKEN)} | Rate limit: ${userFetch.rateLimitLimit} | Remaining: ${userFetch.rateLimitRemaining} | API Requests Used: ${apiRequestsUsed} | Cache hit: false | RATE LIMITED`);
-      return NextResponse.json({ error: userFetch.error }, { status: 403 });
+      console.warn(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${isAuthenticatedToken} | Rate limit: ${userFetch.rateLimitLimit} | Remaining: ${userFetch.rateLimitRemaining} | API Requests Used: ${apiRequestsUsed} | Cache hit: false | RATE LIMITED`);
+      return NextResponse.json({
+        error: "GitHub analysis temporarily unavailable due to API rate limits. Please try again later.",
+      }, { status: 403 });
     }
 
     if (userFetch.status === 404 || !userFetch.data) {
@@ -336,25 +267,52 @@ export async function GET(req: NextRequest) {
     }
 
     const userData = userFetch.data;
+    const totalPublicReposCount = userData.public_repos || 0;
 
-    // ── 2. FETCH REPOSITORIES (UP TO 100) VIA CENTRALIZED CLIENT ──
-    apiRequestsUsed++;
-    const reposFetch = await githubApiClient<any[]>(`/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`);
+    // ── 2. PAGINATED REPOSITORY DISCOVERY (Fetch ALL public repos) ──
+    let allRepos: any[] = [];
+    let page = 1;
+    const maxPages = totalPublicReposCount > 0 ? Math.ceil(totalPublicReposCount / 100) : 1;
 
-    if (reposFetch.isRateLimited) {
-      return NextResponse.json({ error: reposFetch.error }, { status: 403 });
+    while (page <= Math.min(maxPages, 5)) { // Fetch up to 500 repos cleanly
+      apiRequestsUsed++;
+      const reposFetch = await githubApiClient<any[]>(`/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100&page=${page}`);
+      
+      if (reposFetch.isRateLimited) {
+        return NextResponse.json({
+          error: "GitHub analysis temporarily unavailable due to API rate limits. Please try again later.",
+        }, { status: 403 });
+      }
+
+      if (reposFetch.data && Array.isArray(reposFetch.data) && reposFetch.data.length > 0) {
+        allRepos = allRepos.concat(reposFetch.data);
+        if (reposFetch.data.length < 100) break;
+        page++;
+      } else {
+        break;
+      }
     }
 
-    const allRepos: any[] = Array.isArray(reposFetch.data) ? reposFetch.data : [];
+    const nonForkRepos = allRepos.filter(r => !r.fork);
+    const lightScannedReposCount = allRepos.length;
 
-    // Prioritize lightweight pre-filtering
-    let candidateRepos = allRepos.filter(r => !r.fork && r.size > 0);
-    candidateRepos.sort((a, b) => (b.size + (b.stargazers_count || 0) * 100) - (a.size + (a.stargazers_count || 0) * 100));
+    // ── 3. CANDIDATE SELECTION FOR DEEP ANALYSIS BASED ON CODE SIGNALS ──
+    // Candidates are non-fork repos with non-zero size, prioritized by code signals rather than stars/followers alone
+    let candidateRepos = nonForkRepos.filter(r => (r.size || 0) > 0);
+    
+    // Sort candidate selection based on actual code complexity indicators (size, language, topics)
+    candidateRepos.sort((a, b) => {
+      const aScore = (a.size || 0) + (a.language ? 500 : 0) + (a.description ? 200 : 0);
+      const bScore = (b.size || 0) + (b.language ? 500 : 0) + (b.description ? 200 : 0);
+      return bScore - aScore;
+    });
 
-    // Deep inspect top 5 candidate repos only if rate limit remaining requests > 10
-    const shouldDeepInspect = reposFetch.rateLimitRemaining > 10;
-    const deepInspectedNames = shouldDeepInspect ? new Set(candidateRepos.slice(0, 5).map(r => r.name)) : new Set<string>();
+    // Deep inspect up to 5 top candidate repos using repository git tree endpoint if API quota permits (> 10 remaining)
+    const shouldDeepInspect = reposFetchRateRemaining(userFetch.rateLimitRemaining) > 10;
+    const deepCandidateList = shouldDeepInspect ? candidateRepos.slice(0, 5) : [];
+    const deepInspectedNames = new Set(deepCandidateList.map(r => r.name));
 
+    let deepAnalyzedRepoCount = 0;
     let substantialCount = 0;
     let meaningfulCount = 0;
     let academicCount = 0;
@@ -370,7 +328,7 @@ export async function GET(req: NextRequest) {
         const isProfileRepo = repo.name.toLowerCase() === username.toLowerCase();
         const sizeKB = repo.size || 0;
         const description = (repo.description || "").trim();
-        const hasDescription = description.length >= 10;
+        const hasDescription = description.length >= 8;
         const stars = repo.stargazers_count || 0;
         const forksCount = repo.forks_count || 0;
         const hasPages = Boolean(repo.has_pages || repo.homepage);
@@ -378,51 +336,63 @@ export async function GET(req: NextRequest) {
         const language = repo.language || null;
         const corpus = `${repo.name} ${description} ${topics.join(" ")}`.toLowerCase();
 
-        let hasDeepFiles = false;
+        let treeFetched = false;
         let fileList: string[] = [];
 
-        // Single recursive tree endpoint for candidate repos
-        if (deepInspectedNames.has(repo.name) && !isFork && sizeKB > 30) {
+        // Deep tree inspection for candidate repos
+        if (deepInspectedNames.has(repo.name) && !isFork && sizeKB > 15) {
           apiRequestsUsed++;
           const treeFetch = await githubApiClient<any>(`/repos/${encodeURIComponent(username)}/${encodeURIComponent(repo.name)}/git/trees/${repo.default_branch || "main"}?recursive=1`);
           if (treeFetch.data && Array.isArray(treeFetch.data.tree)) {
             fileList = treeFetch.data.tree.map((f: any) => f.path.toLowerCase());
-            hasDeepFiles = true;
+            treeFetched = true;
+            deepAnalyzedRepoCount++;
           }
         }
 
-        // File-level evidence triggers
-        const hasPackageJson = hasDeepFiles
+        // Code Structure & Manifest Triggers
+        const manifestDetected = treeFetched
+          ? fileList.some(f => f === "package.json" || f.endsWith("/package.json") || f === "requirements.txt" || f === "pyproject.toml" || f === "pom.xml" || f === "build.gradle" || f === "cargo.toml" || f === "go.mod")
+          : Boolean(language);
+
+        const srcDetected = treeFetched
+          ? fileList.some(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("api/") || f.startsWith("lib/"))
+          : Boolean(sizeKB > 30);
+
+        const hasPackageJson = treeFetched
           ? fileList.some(f => f === "package.json" || f.endsWith("/package.json"))
           : corpus.includes("package.json") || language === "JavaScript" || language === "TypeScript";
 
-        const hasRequirements = hasDeepFiles
+        const hasRequirements = treeFetched
           ? fileList.some(f => f === "requirements.txt" || f === "pyproject.toml" || f === "pom.xml" || f === "build.gradle" || f === "cargo.toml" || f === "go.mod")
           : corpus.includes("requirements") || corpus.includes("pipfile") || language === "Python" || language === "Go" || language === "Java" || language === "Rust";
 
-        const hasDockerfile = hasDeepFiles
+        const dockerDetected = treeFetched
           ? fileList.some(f => f.includes("dockerfile") || f.includes("docker-compose"))
           : corpus.includes("docker");
 
-        const hasCiWorkflow = hasDeepFiles
+        const ciDetected = treeFetched
           ? fileList.some(f => f.includes(".github/workflows/"))
           : corpus.includes("workflow") || corpus.includes("ci/cd") || corpus.includes("github-actions");
 
-        const hasTestsDir = hasDeepFiles
+        const testsDetected = treeFetched
           ? fileList.some(f => f.includes("test/") || f.includes("tests/") || f.includes("__tests__") || f.includes(".test.") || f.includes(".spec."))
           : corpus.includes("test") || corpus.includes("spec");
 
-        const srcFileCount = hasDeepFiles
+        const sourceFileCount = treeFetched
           ? fileList.filter(f => f.startsWith("src/") || f.startsWith("app/") || f.startsWith("pages/") || f.startsWith("components/") || f.startsWith("server/") || f.startsWith("api/") || f.startsWith("lib/")).length
-          : Math.round(sizeKB / 25);
+          : Math.round(sizeKB / 20);
+
+        const backendDetected = hasRequirements || corpus.includes("node") || corpus.includes("express") || corpus.includes("api") || corpus.includes("backend") || language === "Python" || language === "Go" || language === "Java" || language === "Rust";
+        const databaseDetected = corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db") || (treeFetched && fileList.some(f => f.includes("schema") || f.includes("prisma") || f.includes("migration")));
 
         // Codebase Capability Signals
         const hasReadme = Boolean(hasDescription || sizeKB >= 5);
-        const hasTest = hasTestsDir || corpus.includes("test") || corpus.includes("jest") || corpus.includes("vitest") || corpus.includes("cypress") || corpus.includes("pytest");
-        const hasCiCd = hasCiWorkflow || hasDockerfile || corpus.includes("ci") || corpus.includes("workflow") || corpus.includes("docker") || corpus.includes("github-actions");
+        const hasTest = testsDetected;
+        const hasCiCd = ciDetected || dockerDetected;
         const hasFE = hasPackageJson || language === "JavaScript" || language === "TypeScript" || language === "HTML" || corpus.includes("react") || corpus.includes("vue") || corpus.includes("next");
-        const hasBE = hasRequirements || language === "Python" || language === "Go" || language === "Java" || language === "Rust" || corpus.includes("node") || corpus.includes("express") || corpus.includes("api") || corpus.includes("backend");
-        const hasDB = corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db");
+        const hasBE = backendDetected;
+        const hasDB = databaseDetected;
 
         // Keyword triggers for low-value / academic repositories
         const isTaskKeyword = corpus.includes("bharatintern") || corpus.includes("codesoft") || corpus.includes("prodigy") || corpus.includes("internship") || corpus.includes("task-1") || corpus.includes("task1") || corpus.includes("task-2") || corpus.includes("task2") || corpus.includes("web-development-task");
@@ -433,15 +403,15 @@ export async function GET(req: NextRequest) {
 
         // ── CALCULATE REPOSITORY QUALITY SCORE (RQS) /100 ──
         let implementationDepth = 0;
-        if (hasDeepFiles) {
-          if (srcFileCount >= 20 || sizeKB > 1500) implementationDepth = 25;
-          else if (srcFileCount >= 8 || sizeKB > 400) implementationDepth = 18;
-          else if (srcFileCount >= 3 || sizeKB > 100) implementationDepth = 12;
+        if (treeFetched) {
+          if (sourceFileCount >= 15 || sizeKB > 1200) implementationDepth = 25;
+          else if (sourceFileCount >= 6 || sizeKB > 300) implementationDepth = 18;
+          else if (sourceFileCount >= 2 || sizeKB > 50) implementationDepth = 12;
           else implementationDepth = 5;
         } else {
-          if (sizeKB > 1000 && (hasFE || hasBE)) implementationDepth = 22;
-          else if (sizeKB > 300 && (hasFE || hasBE)) implementationDepth = 15;
-          else if (sizeKB > 80) implementationDepth = 10;
+          if (sizeKB > 500 && (hasFE || hasBE)) implementationDepth = 22;
+          else if (sizeKB > 150 && (hasFE || hasBE)) implementationDepth = 16;
+          else if (sizeKB > 30) implementationDepth = 10;
           else implementationDepth = 4;
         }
 
@@ -451,12 +421,12 @@ export async function GET(req: NextRequest) {
         let testing = hasTest ? 10 : 0;
         let docScore = hasDescription && sizeKB > 20 ? 8 : hasDescription ? 4 : 2;
         let deployCi = (hasPages ? 4 : 0) + (hasCiCd ? 3 : 0);
-        let maintainability = sizeKB > 50 ? 5 : 2;
+        let maintainability = sizeKB > 40 ? 5 : 2;
 
-        if (isFork || isProfileRepo || sizeKB < 15 || isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
-          implementationDepth = Math.min(6, implementationDepth);
-          architecture = Math.min(5, architecture);
-          featureComplexity = Math.min(4, featureComplexity);
+        if (isFork || isProfileRepo || sizeKB < 10 || isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
+          implementationDepth = Math.min(5, implementationDepth);
+          architecture = Math.min(4, architecture);
+          featureComplexity = Math.min(3, featureComplexity);
           engPractices = 0;
           testing = 0;
           deployCi = Math.min(2, deployCi);
@@ -478,7 +448,7 @@ export async function GET(req: NextRequest) {
           repoCategory = "CONFIG_PROFILE";
           configProfileCount++;
           evidenceList.push("GitHub profile README / configuration repository (Excluded)");
-        } else if (sizeKB === 0 || (sizeKB < 15 && !hasDescription && stars === 0)) {
+        } else if (sizeKB === 0 || (sizeKB < 10 && !hasDescription && stars === 0)) {
           repoCategory = "MINIMAL_EMPTY";
           minimalEmptyCount++;
           evidenceList.push("Minimal or empty repository with no substantial codebase (Excluded)");
@@ -504,7 +474,8 @@ export async function GET(req: NextRequest) {
             evidenceList.push("Basic academic submission without substantial application implementation");
           }
         } else {
-          if (rqs >= 70 && sizeKB >= 300 && (hasFE || hasBE) && hasDescription) {
+          // Fair project validation for student projects (does NOT penalize 0 stars/0 forks)
+          if (rqs >= 65 || (sizeKB >= 150 && (hasFE || hasBE))) {
             repoCategory = "FLAGSHIP_PROJECT";
             isSubstantial = true;
             isMeaningful = true;
@@ -516,8 +487,7 @@ export async function GET(req: NextRequest) {
             if (hasDB) evidenceList.push("✓ Database integration detected");
             if (hasCiCd) evidenceList.push("✓ CI/CD workflow / Docker configuration detected");
             if (hasTest) evidenceList.push("✓ Automated testing suite verified");
-            if (srcFileCount > 0) evidenceList.push(`✓ ${srcFileCount} application source files verified`);
-          } else if (rqs >= 45 && sizeKB >= 80 && (hasFE || hasBE) && hasDescription) {
+          } else if (rqs >= 40 || (sizeKB >= 40 && (hasFE || hasBE))) {
             repoCategory = "MEANINGFUL_PROJECT";
             isMeaningful = true;
             meaningfulCount++;
@@ -527,7 +497,7 @@ export async function GET(req: NextRequest) {
           } else {
             repoCategory = "TUTORIAL_PRACTICE";
             tutorialCount++;
-            evidenceList.push("Small practice repository or starter boilerplate (RQS < 45)");
+            evidenceList.push(`Small practice repository or starter boilerplate (RQS: ${rqs}/100 < 40)`);
           }
         }
 
@@ -557,6 +527,11 @@ export async function GET(req: NextRequest) {
           : isMeaningful
           ? `Verified meaningful project with RQS ${rqs}/100`
           : `Excluded from score calculations (${evidenceList[0]})`;
+
+        // ── 4. SERVER-SIDE DEBUGGING LOG FOR EACH CANDIDATE ──
+        if (deepInspectedNames.has(repo.name) || isMeaningful) {
+          console.log(`[GitHub Intelligence Debug Repo] repo: ${repo.name} | treeFetched: ${treeFetched} | fileCount: ${fileList.length} | sourceFileCount: ${sourceFileCount} | manifestDetected: ${manifestDetected} | srcDetected: ${srcDetected} | backendDetected: ${backendDetected} | databaseDetected: ${databaseDetected} | testsDetected: ${testsDetected} | dockerDetected: ${dockerDetected} | ciDetected: ${ciDetected} | RQS: ${rqs} | classification: ${repoCategory} | rejectionReason: ${isMeaningful ? "None" : evidenceList[0]}`);
+        }
 
         return {
           name: repo.name,
@@ -599,7 +574,7 @@ export async function GET(req: NextRequest) {
     const excludedProjectsList = classifiedRepos.filter(r => !r.isMeaningful).map(r => ({
       name: r.name,
       category: r.repoCategory.replace(/_/g, " "),
-      reason: r.evidenceList[0] || "Did not meet substantial RQS threshold (<45)",
+      reason: r.evidenceList[0] || "Did not meet substantial RQS threshold (<40)",
     }));
 
     // ── 4. DEVELOPER SCORE (0-100 POINTS) EXACT CATEGORIES ──
@@ -668,16 +643,16 @@ export async function GET(req: NextRequest) {
     if (meaningfulProjects.length === 0 && classifiedRepos.some(r => r.repoCategory === "TUTORIAL_PRACTICE" || r.repoCategory === "ASSIGNMENT_LAB")) {
       rawScore = Math.min(35, rawScore);
     }
-    if (bestRQS < 45) {
+    if (bestRQS < 40) {
       rawScore = Math.min(40, rawScore);
     }
-    if (bestRQS < 70) {
+    if (bestRQS < 65) {
       rawScore = Math.min(69, rawScore);
     }
-    if (rawScore >= 80 && (bestRQS < 70 || engPracticesPts < 7)) {
+    if (rawScore >= 80 && (bestRQS < 65 || engPracticesPts < 7)) {
       rawScore = Math.min(79, rawScore);
     }
-    if (rawScore >= 90 && (substantialProjects.length < 2 || bestRQS < 85 || engPracticesPts < 12)) {
+    if (rawScore >= 90 && (substantialProjects.length < 2 || bestRQS < 80 || engPracticesPts < 12)) {
       rawScore = Math.min(89, rawScore);
     }
     if (rawScore >= 95 && (substantialProjects.length < 3 || bestRQS < 90)) {
@@ -686,14 +661,13 @@ export async function GET(req: NextRequest) {
 
     const finalDevScore = Math.min(100, Math.max(0, rawScore));
 
-    // Category Evidences
     const scoreBreakdown: CategoryScoreBreakdown = {
       bestProjectQuality: {
         score: flagshipPts,
         max: 30,
         evidence: bestProj && bestProj.isMeaningful
           ? [`Flagship project "${bestProj.name}" quality RQS: ${bestRQS}/100 (+${flagshipPts} pts)`]
-          : ["No verified flagship project found with RQS >= 70"],
+          : ["No verified flagship project found with RQS >= 65"],
       },
       overallProjectQuality: {
         score: portfolioPts,
@@ -770,7 +744,7 @@ export async function GET(req: NextRequest) {
     }
 
     const transparencyAudit: TransparencyAudit = {
-      totalPublicRepos: userData.public_repos || allRepos.length,
+      totalPublicRepos: totalPublicReposCount,
       repositoriesInspected: allRepos.length,
       substantialProjectsCount: substantialCount,
       meaningfulProjectsCount: meaningfulCount,
@@ -783,6 +757,8 @@ export async function GET(req: NextRequest) {
       verifiedProjectsList,
       excludedProjectsList,
       disclaimer: "This assessment is based only on publicly accessible GitHub evidence and should not be interpreted as a complete measurement of the developer's abilities.",
+      analysisCoverage: `${allRepos.length} / ${totalPublicReposCount} repositories scanned`,
+      deepAnalysisInfo: `${deepCandidateList.length} candidate repositories inspected deeply`,
     };
 
     const separateMetrics: SeparateQualityMetrics = {
@@ -801,7 +777,7 @@ export async function GET(req: NextRequest) {
     if (validCiCd || validTest) scoreStrengths.push("Verified engineering practices (Automated Testing / CI-CD / Docker)");
 
     if (meaningfulProjects.length === 0) scoreNeedsImp.push("No verified substantial or meaningful software projects found");
-    else if (substantialProjects.length === 0) scoreNeedsImp.push("No flagship project with RQS >= 70 discovered");
+    else if (substantialProjects.length === 0) scoreNeedsImp.push("No flagship project with RQS >= 65 discovered");
     if (!validTest) scoreNeedsImp.push("No automated unit testing suite detected in public repositories");
 
     // Skill Confidence
@@ -1045,17 +1021,17 @@ export async function GET(req: NextRequest) {
       name: "Elite Builder",
       description: "Master level developer profile demonstrating top-tier software engineering",
       icon: "👑",
-      unlocked: finalDevScore >= 90 && bestRQS >= 85 && preUnlocked >= 3,
+      unlocked: finalDevScore >= 90 && bestRQS >= 80 && preUnlocked >= 3,
       glowColor: "rgba(250,204,21,0.8)",
       evidenceList: finalDevScore >= 90
-        ? [`• Developer Score: ${finalDevScore}/100 (Required: >= 90)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 85)`]
-        : [`• Current Developer Score: ${finalDevScore}/100 (Required: >= 90)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 85)`],
+        ? [`• Developer Score: ${finalDevScore}/100 (Required: >= 90)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 80)`]
+        : [`• Current Developer Score: ${finalDevScore}/100 (Required: >= 90)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 80)`],
       unlockReason: finalDevScore >= 90
         ? "Elite engineering portfolio status achieved with top-tier project quality and score >= 90."
-        : "Requires Developer Score >= 90, Flagship Project RQS >= 85, and at least 3 other unlocked badges.",
+        : "Requires Developer Score >= 90, Flagship Project RQS >= 80, and at least 3 other unlocked badges.",
       requirementsChecklist: [
         { text: "Developer Score >= 90", satisfied: finalDevScore >= 90 },
-        { text: "Flagship Project RQS >= 85", satisfied: bestRQS >= 85 },
+        { text: "Flagship Project RQS >= 80", satisfied: bestRQS >= 80 },
         { text: "At least 3 other achievements unlocked", satisfied: preUnlocked >= 3 },
       ],
     };
@@ -1110,7 +1086,7 @@ export async function GET(req: NextRequest) {
       xpCurrent: Math.round(totalXP % 100),
       xpMax: 100,
       xpPercentage: Math.min(100, Math.round(((totalXP % 100) / 100) * 100)),
-      nextLevelRequirements: ["+1 Substantial Project with RQS >= 70"],
+      nextLevelRequirements: ["+1 Substantial Project with RQS >= 65"],
       nextRewardBadge: "Master Engineer Badge",
       stars: devStars,
       rankPercentile: null,
@@ -1148,6 +1124,9 @@ export async function GET(req: NextRequest) {
       badges,
       analysisVersion: ANALYSIS_ENGINE_VERSION,
       analyzedAt: new Date().toISOString(),
+      analysisComplete: true,
+      authenticated: isAuthenticatedToken,
+      deepAnalyzedRepoCount,
     };
 
     const startupLevel = isFullStackVerified ? "Strong" : meaningfulProjects.length >= 1 ? "Moderate" : "Developing";
@@ -1203,7 +1182,7 @@ export async function GET(req: NextRequest) {
       bio: userData.bio || null,
       followers: userData.followers || 0,
       following: userData.following || 0,
-      publicReposCount: userData.public_repos || allRepos.length,
+      publicReposCount: totalPublicReposCount,
       createdAt: userData.created_at ? new Date(userData.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "",
       portfolioUrl: userData.blog ? (userData.blog.startsWith("http") ? userData.blog : `https://${userData.blog}`) : null,
       detectedSkills: Array.from(detectedSkillsSet),
@@ -1257,15 +1236,22 @@ export async function GET(req: NextRequest) {
         "Pin your top 3 best projects on your GitHub profile overview.",
       ],
       cachedAt: new Date().toISOString(),
+      engineVersion: ANALYSIS_ENGINE_VERSION,
+      analysisComplete: true,
+      authenticated: isAuthenticatedToken,
     };
 
-    // ── 11. SERVER LOGS ──
-    console.log(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${Boolean(process.env.GITHUB_TOKEN)} | Rate limit: ${userFetch.rateLimitLimit} | Remaining: ${userFetch.rateLimitRemaining} | API Requests Used: ${apiRequestsUsed} | Cache hit: false`);
+    // ── 4. SERVER-SIDE DEBUGGING SUMMARY LOG ──
+    console.log(`[GitHub Intelligence Debug] username: @${username} | totalRepos: ${totalPublicReposCount} | nonForkRepos: ${nonForkRepos.length} | lightScannedRepos: ${lightScannedReposCount} | candidateRepos: ${candidateRepos.length} | deepAnalyzedRepos: ${deepAnalyzedRepoCount} | verifiedProjects: ${meaningfulProjects.length} | rejectedRepos: ${excludedProjectsList.length} | githubAuthenticated: ${isAuthenticatedToken} | apiRequestsUsed: ${apiRequestsUsed} | cacheHit: false`);
 
-    cache.set(username, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION });
+    cache.set(cacheKey, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION, authenticated: isAuthenticatedToken });
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error("[GitHub Intelligence V8 Error]:", err);
+    console.error("[GitHub Intelligence V8.1 Error]:", err);
     return NextResponse.json({ error: err.message || "Failed to analyze GitHub profile" }, { status: 500 });
   }
+}
+
+function reposFetchRateRemaining(remaining: number): number {
+  return typeof remaining === "number" ? remaining : 60;
 }
