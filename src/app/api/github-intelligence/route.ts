@@ -487,9 +487,16 @@ export async function GET(req: NextRequest) {
           deployCi = 0;
         }
 
+        // ── STRICT IMPLEMENTATION & QUALITY GATES ──
+        // Rule: A repository MUST NOT reach RQS 50 unless meaningful source-code implementation has actually been verified.
         let rawRQS = implementationDepth + architecture + featureComplexity + completeness + engPractices + docScore + testingScore + deployCi;
 
-        // Step 9 Max Caps for non-substantial categories:
+        // If implementation depth is minimal (< 14), RQS is strictly capped at 44 (below Verified threshold 50)
+        if (implementationDepth < 14) {
+          rawRQS = Math.min(44, rawRQS);
+        }
+
+        // Capping for non-substantial / noise categories:
         if (isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
           rawRQS = Math.min(34, rawRQS);
         } else if (isProfileRepo || sizeKB < 10) {
@@ -500,13 +507,13 @@ export async function GET(req: NextRequest) {
 
         const rqs = Math.min(100, Math.max(0, rawRQS));
 
-        // ── STEP 4 & 5: PROJECT CLASSIFICATION & QUALITY GATES ──
+        // ── PROJECT CLASSIFICATION & QUALITY GATES ──
         let repoCategory: RepoCategoryType = "TUTORIAL_PRACTICE";
         let isSubstantial = false;
         let isMeaningful = false; // Verified Project requiring RQS >= 50
         const evidenceList: string[] = [];
 
-        // Quality Gate Signals:
+        // Quality Gate Signals for RQS 65+ (Substantial Project):
         const strongSignalsCount = (hasBE ? 1 : 0) + (hasDB ? 1 : 0) + (hasFE ? 1 : 0) + (testsDetected ? 1 : 0) + (ciDetected || dockerDetected ? 1 : 0);
 
         if (isFork) {
@@ -532,15 +539,15 @@ export async function GET(req: NextRequest) {
         } else if (isAcademicKeyword) {
           repoCategory = "ACADEMIC_PROJECT";
           academicCount++;
-          if (rqs >= 50) {
+          if (rqs >= 50 && implementationDepth >= 14) {
             isMeaningful = true;
             evidenceList.push(`Academic sem project with verified codebase (RQS: ${rqs}/100)`);
           } else {
             evidenceList.push("Basic academic submission without substantial application implementation");
           }
         } else {
-          // Substantial Project requires RQS >= 65 AND at least TWO strong engineering signals
-          if (rqs >= 65 && strongSignalsCount >= 2) {
+          // Substantial Project requires RQS >= 65 AND implementationDepth >= 22 AND at least TWO strong engineering signals
+          if (rqs >= 65 && implementationDepth >= 22 && strongSignalsCount >= 2) {
             repoCategory = "SUBSTANTIAL_PROJECT";
             isSubstantial = true;
             isMeaningful = true;
@@ -552,7 +559,7 @@ export async function GET(req: NextRequest) {
             if (hasDB) evidenceList.push("✓ Database integration detected");
             if (hasCiCd) evidenceList.push("✓ CI/CD workflow / Docker configuration detected");
             if (hasTest) evidenceList.push("✓ Automated testing suite verified");
-          } else if (rqs >= 50) {
+          } else if (rqs >= 50 && implementationDepth >= 14) {
             repoCategory = "VALID_SMALL_PROJECT";
             isMeaningful = true;
             meaningfulCount++;
