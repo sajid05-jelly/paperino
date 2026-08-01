@@ -246,7 +246,7 @@ export interface GitHubAnalysisResult {
   partialAnalysisWarning?: string;
 }
 
-const ANALYSIS_ENGINE_VERSION = "DISCOVERY_ENGINE_V5";
+const ANALYSIS_ENGINE_VERSION = "DISCOVERY_ENGINE_V6";
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string; authenticated: boolean }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 
@@ -269,7 +269,7 @@ export async function GET(req: NextRequest) {
     }
 
     username = username.toLowerCase();
-    const cacheKey = `github-intelligence:v5:${username}`;
+    const cacheKey = `github-intelligence:v6:${username}`;
 
     const now = Date.now();
     // ── STEP 5: CACHE CONTAMINATION PREVENTION (v8.1 Versioning + Strict Check) ──
@@ -598,13 +598,20 @@ export async function GET(req: NextRequest) {
         const technicalSignals: TechnicalEvidenceSignal[] = [];
 
         // 1. DATABASE PERSISTENCE SIGNAL
+        // Requires actual executable source code files performing database connection/query/model operations.
+        // Documentation, migration guides, READMEs, examples, or config files MUST NOT award DB points.
         const dbEvidenceFiles = treeFetched
-          ? filteredFileList.filter(f => 
-              !f.endsWith(".md") && !f.endsWith(".markdown") && !f.includes("/docs/") && !f.includes("/documentation/") &&
-              (f.includes("schema.") || f.includes("prisma") || f.includes("migration") ||
-               f.includes("/models/") || f.includes("/database/") || f.includes("/db/") ||
-               f.endsWith("db.ts") || f.endsWith("db.js") || f.endsWith(".sql"))
-            )
+          ? filteredFileList.filter(f => {
+              const isNonSource = f.endsWith(".md") || f.endsWith(".markdown") || f.endsWith(".json") || f.endsWith(".yaml") || f.endsWith(".yml") || f.includes("/docs/") || f.includes("/documentation/") || f.includes("/examples/");
+              if (isNonSource) return false;
+
+              return (
+                f.includes("schema.prisma") || f.includes("schema.sql") ||
+                f.includes("/models/") || f.includes("/database/") || f.includes("/db/") ||
+                f.endsWith("/db.ts") || f.endsWith("/db.js") || f.endsWith("/database.ts") || f.endsWith("/database.js") ||
+                f.endsWith(".sql") || f.includes("prisma/client") || f.includes("mongoose") || f.includes("typeorm") || f.includes("sequelize")
+              );
+            })
           : [];
         const hasDB = treeFetched && dbEvidenceFiles.length > 0;
         if (hasDB) {
@@ -612,16 +619,27 @@ export async function GET(req: NextRequest) {
             signal: "databasePersistence",
             points: 3,
             evidenceFiles: dbEvidenceFiles.slice(0, 5),
-            evidenceReason: "Source code performs database persistence operations.",
+            evidenceReason: "Executable source code performs database persistence operations.",
           });
         }
 
         // 2. AUTHENTICATION & AUTHORIZATION SIGNAL
+        // Requires executable implementation of an actual auth/security flow (login, token validation, auth middleware, permission checks).
+        // URL formatting/strip helpers (e.g. strip-url-auth.ts) MUST NOT award Auth points.
         const authEvidenceFiles = treeFetched
-          ? filteredFileList.filter(f => 
-              f.includes("auth") || f.includes("jwt") || f.includes("session") ||
-              f.includes("passport") || f.includes("login") || f.includes("middleware/auth")
-            )
+          ? filteredFileList.filter(f => {
+              const isNonSource = f.endsWith(".md") || f.endsWith(".markdown") || f.includes("/docs/") || f.includes("/documentation/") || f.includes("/examples/");
+              if (isNonSource) return false;
+
+              // Explicitly exclude URL strip/format/parsing helpers
+              if (f.includes("strip-url-auth") || f.includes("format-auth") || f.includes("parse-auth-header-only")) return false;
+
+              return (
+                f.includes("auth.ts") || f.includes("auth.js") || f.includes("passport") ||
+                f.includes("jwt") || f.includes("session") || f.includes("middleware/auth") ||
+                f.includes("/auth/") || f.includes("login") || f.includes("permission") || f.includes("role")
+              );
+            })
           : [];
         const hasAuth = treeFetched && authEvidenceFiles.length > 0;
         if (hasAuth) {
@@ -629,7 +647,7 @@ export async function GET(req: NextRequest) {
             signal: "authenticationAuthorization",
             points: 2,
             evidenceFiles: authEvidenceFiles.slice(0, 5),
-            evidenceReason: "Source code contains authentication & authorization logic.",
+            evidenceReason: "Executable source code contains authentication & authorization flow.",
           });
         }
 
@@ -667,6 +685,7 @@ export async function GET(req: NextRequest) {
         else if (hasBE && !hasFE) projectType = "Backend/API";
         else if (hasFE && !hasBE) projectType = "Web Application";
         else if (treeFetched && filteredFileList.some(f => f.includes("cli") || f.includes("bin/") || f.endsWith("cli.js") || f.endsWith("cli.ts"))) projectType = "CLI Tool";
+        else if (treeFetched && corpus.includes("sdk")) projectType = "SDK";
         else if (treeFetched && (filteredFileList.some(f => f.endsWith("index.d.ts") || f.endsWith("package.json")) || corpus.includes("library") || corpus.includes("package"))) projectType = "Library/Package";
         else if (treeFetched && (fileList.some(f => f.includes(".github/workflows")) || dockerDetected)) projectType = "Infrastructure/DevTool";
 
@@ -1120,9 +1139,14 @@ export async function GET(req: NextRequest) {
     );
 
     // ── STEP 5: 3-STATE REPOSITORY PARTITIONING & TRANSPARENCY AUDIT ──
+    // State A: Deeply inspected candidate repos (tree fetched & verified RQS >= 50)
     const deepAuditedRepos = classifiedRepos.filter(r => r.auditState === "DEEP_AUDITED");
-    const notDeepAuditedRepos = classifiedRepos.filter(r => r.auditState === "NOT_DEEP_AUDITED");
-    const hardExcludedRepos = classifiedRepos.filter(r => r.auditState === "EXCLUDED_WITH_EVIDENCE");
+    // State B: Repos NOT deeply inspected — includes both:
+    //   - Repos outside deep audit sampling budget (NOT_DEEP_AUDITED)
+    //   - Metadata-excluded repos (forks, archived, empty, dotfiles) that were NEVER deeply inspected (EXCLUDED_WITH_EVIDENCE)
+    const notDeepAuditedRepos = classifiedRepos.filter(r => r.auditState === "NOT_DEEP_AUDITED" || r.auditState === "EXCLUDED_WITH_EVIDENCE");
+    // State C: ONLY repos that were actually deeply inspected (tree fetched) but failed quality gates (RQS < 50)
+    const evidenceExcludedAfterInspection = deepAuditedRepos.filter(r => !r.isMeaningful);
 
     const substantialProjects = deepAuditedRepos.filter(r => r.isSubstantial).sort((a, b) => b.rqs - a.rqs);
     const verifiedProjects = deepAuditedRepos.filter(r => r.isMeaningful).sort((a, b) => b.rqs - a.rqs);
@@ -1136,15 +1160,17 @@ export async function GET(req: NextRequest) {
       auditDetails: r.auditDetails,
     }));
 
-    const excludedProjectsList = hardExcludedRepos.map(r => ({
+    const excludedProjectsList = evidenceExcludedAfterInspection.map(r => ({
       name: r.name,
       category: r.repoCategory.replace(/_/g, " "),
-      reason: r.evidenceList[0] || "Excluded with verified metadata evidence",
+      reason: r.evidenceList[0] || "Did not meet verified RQS threshold (<50)",
     }));
 
     const notAuditedProjectsList = notDeepAuditedRepos.map(r => ({
       name: r.name,
-      reason: "Not selected for deep audit within sampling candidate budget",
+      reason: r.auditState === "EXCLUDED_WITH_EVIDENCE"
+        ? r.evidenceList[0] || "Metadata exclusion (fork/archived/empty/config)"
+        : "Not selected for deep audit within sampling candidate budget",
     }));
 
     // ── STEP 6: CANONICAL PROFILE SCORE CALCULATION (0-100 EXACT SUM) ──
@@ -1307,9 +1333,9 @@ export async function GET(req: NextRequest) {
       verifiedRepos: verifiedProjects.length,
       substantialRepos: substantialProjects.length,
       strongRepos: strongReposList.length,
-      evidenceExcludedRepos: hardExcludedRepos.length,
+      evidenceExcludedRepos: evidenceExcludedAfterInspection.length,
       notDeepAuditedRepos: notDeepAuditedRepos.length,
-      excludedRepos: hardExcludedRepos.length,
+      excludedRepos: evidenceExcludedAfterInspection.length,
       repositoriesInspected: deepAuditedRepos.length,
       substantialProjectsCount: substantialProjects.length,
       meaningfulProjectsCount: verifiedProjects.length,
@@ -1322,7 +1348,7 @@ export async function GET(req: NextRequest) {
       verifiedProjectsList,
       excludedProjectsList,
       notAuditedProjectsList,
-      disclaimer: "This assessment is based strictly on publicly accessible GitHub code evidence. Repositories outside deep audit budget are marked 'Not Deep Audited' rather than excluded.",
+      disclaimer: "This assessment is based strictly on publicly accessible GitHub code evidence. 'Evidence Excluded' counts only deeply inspected repos that failed quality gates. Repos outside deep audit budget are marked 'Not Deep Audited'.",
       analysisCoverage: `${deepAuditedRepos.length} candidate repositories deep-audited from ${allRepos.length} public repositories scanned`,
       deepAnalysisInfo: `${deepAuditedRepos.length} candidate repositories inspected deeply`,
     };
@@ -1725,7 +1751,7 @@ export async function GET(req: NextRequest) {
     console.log(`==================================================`);
     console.log(`TOTAL PUBLIC: ${totalPublicReposCount}`);
     console.log(`METADATA FETCHED: ${allRepos.length}`);
-    console.log(`HARD EXCLUDED WITH EVIDENCE: ${hardExcludedRepos.length}`);
+    console.log(`EVIDENCE EXCLUDED (Inspected & Failed): ${evidenceExcludedAfterInspection.length}`);
     console.log(`CANDIDATE POOL SIZE: ${candidatePool.length}`);
     console.log(`DEEP AUDITED: ${deepAuditedRepos.length}`);
     console.log(`NOT DEEP AUDITED: ${notDeepAuditedRepos.length}`);
