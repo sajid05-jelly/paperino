@@ -319,17 +319,29 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // GitHub API headers with optional token to avoid rate limits
+    const headers: Record<string, string> = {
+      "User-Agent": "Paperino-CareerDNA-App",
+      "Accept": "application/vnd.github.v3+json",
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
+    }
+
     // ── 1. FETCH GITHUB USER PROFILE ──
     const userRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
-      headers: {
-        "User-Agent": "Paperino-CareerDNA-App",
-        "Accept": "application/vnd.github.v3+json",
-      },
+      headers,
       next: { revalidate: 0 },
     });
 
     if (userRes.status === 404) {
       return NextResponse.json({ error: `GitHub user "@${username}" not found. Please check the username.` }, { status: 404 });
+    }
+    if (userRes.status === 403) {
+      return NextResponse.json(
+        { error: "GitHub API rate limit exceeded (60 requests/hr for unauthenticated requests). Please try again in a few minutes or add GITHUB_TOKEN." },
+        { status: 403 }
+      );
     }
     if (!userRes.ok) {
       return NextResponse.json({ error: `GitHub API error (HTTP ${userRes.status}).` }, { status: userRes.status });
@@ -339,10 +351,7 @@ export async function GET(req: NextRequest) {
 
     // ── 2. FETCH REPOSITORIES (UP TO 100) ──
     const reposRes = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`, {
-      headers: {
-        "User-Agent": "Paperino-CareerDNA-App",
-        "Accept": "application/vnd.github.v3+json",
-      },
+      headers,
       next: { revalidate: 0 },
     });
 
@@ -354,8 +363,8 @@ export async function GET(req: NextRequest) {
     // Sort candidates by size & stargazers to inspect most substantial projects first
     candidateRepos.sort((a, b) => (b.size + (b.stargazers_count || 0) * 100) - (a.size + (a.stargazers_count || 0) * 100));
 
-    // Deep inspect top 15 candidates to avoid rate limits while guaranteeing evidence accuracy
-    const deepInspectedNames = new Set(candidateRepos.slice(0, 15).map(r => r.name));
+    // Deep inspect top 5 candidate repos only (to prevent 403 Rate Limit)
+    const deepInspectedNames = new Set(candidateRepos.slice(0, 5).map(r => r.name));
 
     let substantialCount = 0;
     let meaningfulCount = 0;
@@ -387,10 +396,7 @@ export async function GET(req: NextRequest) {
         if (deepInspectedNames.has(repo.name) && !isFork && sizeKB > 30) {
           try {
             const treeRes = await fetch(`https://api.github.com/repos/${encodeURIComponent(username)}/${encodeURIComponent(repo.name)}/git/trees/${repo.default_branch || "main"}?recursive=1`, {
-              headers: {
-                "User-Agent": "Paperino-CareerDNA-App",
-                "Accept": "application/vnd.github.v3+json",
-              },
+              headers,
               next: { revalidate: 0 },
             });
             if (treeRes.ok) {
