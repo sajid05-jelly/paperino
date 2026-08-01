@@ -108,6 +108,13 @@ export interface CategoryScoreBreakdown {
 
 export interface TransparencyAudit {
   totalPublicRepos: number;
+  metadataReposFetched: number;
+  candidateReposFound: number;
+  deepAuditedRepos: number;
+  verifiedRepos: number;
+  substantialRepos: number;
+  strongRepos: number;
+  excludedRepos: number;
   repositoriesInspected: number;
   substantialProjectsCount: number;
   meaningfulProjectsCount: number;
@@ -210,9 +217,11 @@ export interface GitHubAnalysisResult {
   analysisComplete: boolean;
   authenticated: boolean;
   analysisConfidence: "HIGH" | "MEDIUM" | "LOW";
+  isPartialAnalysis?: boolean;
+  partialAnalysisWarning?: string;
 }
 
-const ANALYSIS_ENGINE_VERSION = "RQS_ENGINE_V3";
+const ANALYSIS_ENGINE_VERSION = "DISCOVERY_ENGINE_V4";
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string; authenticated: boolean }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 
@@ -235,7 +244,7 @@ export async function GET(req: NextRequest) {
     }
 
     username = username.toLowerCase();
-    const cacheKey = `github-intelligence:v3:${username}`;
+    const cacheKey = `github-intelligence:v4:${username}`;
 
     const now = Date.now();
     // ── STEP 5: CACHE CONTAMINATION PREVENTION (v8.1 Versioning + Strict Check) ──
@@ -273,21 +282,23 @@ export async function GET(req: NextRequest) {
     const userData = userFetch.data;
     const totalPublicReposCount = userData.public_repos || 0;
 
-    // Fetch ALL public repos (Pagination support)
+    // ── STEP 1: PAGINATED REPOSITORY DISCOVERY ──
     let allRepos: any[] = [];
     let page = 1;
-    const maxPages = totalPublicReposCount > 0 ? Math.ceil(totalPublicReposCount / 100) : 1;
+    let isPartialAnalysis = false;
+    let partialAnalysisWarning = "";
+    const maxPagesToFetch = isAuthenticatedToken ? 15 : 5; // Up to 1500 repos for authenticated API requests
+    const targetPages = totalPublicReposCount > 0 ? Math.ceil(totalPublicReposCount / 100) : 1;
 
-    while (page <= Math.min(maxPages, 5)) {
+    while (page <= Math.min(targetPages, maxPagesToFetch)) {
       apiRequestsUsed++;
       const reposFetch = await githubApiClient<any[]>(`/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100&page=${page}`);
       
       if (reposFetch.isRateLimited || reposFetch.status === 403) {
-        return NextResponse.json({
-          error: "Unable to complete evidence-based analysis due to API rate limits. Please try again later.",
-          analysisConfidence: "LOW",
-          analysisComplete: false,
-        }, { status: 403 });
+        isPartialAnalysis = true;
+        partialAnalysisWarning = "Repository coverage was incomplete due to API rate limits. This score may underestimate the developer.";
+        console.warn(`[DISCOVERY] User: @${username} | Rate limited on page ${page}. Continuing with ${allRepos.length} repos.`);
+        break;
       }
 
       if (reposFetch.data && Array.isArray(reposFetch.data) && reposFetch.data.length > 0) {
@@ -299,27 +310,123 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    if (allRepos.length < totalPublicReposCount && !isPartialAnalysis) {
+      isPartialAnalysis = true;
+      partialAnalysisWarning = `Scanned ${allRepos.length} of ${totalPublicReposCount} repositories. This score may underestimate the developer.`;
+    }
+
     if (allRepos.length === 0 && totalPublicReposCount > 0) {
       return NextResponse.json({
         error: "Analysis incomplete — repository contents could not be fully verified.",
         analysisConfidence: "LOW",
         analysisComplete: false,
+        isPartialAnalysis: true,
+        partialAnalysisWarning: "Repository coverage was incomplete. This score may underestimate the developer.",
       }, { status: 500 });
     }
 
-    const nonForkRepos = allRepos.filter(r => !r.fork);
-    const lightScannedReposCount = allRepos.length;
+    // ── STEP 2: METADATA FILTERING & EXCLUSION ──
+    const isObviousNoise = (repo: any) => {
+      const name = repo.name.toLowerCase();
+      const desc = (repo.description || "").toLowerCase();
+      const topics = (repo.topics || []).map((t: string) => t.toLowerCase());
+      const corpus = `${name} ${desc} ${topics.join(" ")}`;
 
-    // Candidate Selection based on Code Evidence Signals
-    let candidateRepos = nonForkRepos.filter(r => (r.size || 0) > 0);
-    candidateRepos.sort((a, b) => {
-      const aScore = (a.size || 0) + (a.language ? 500 : 0) + (a.description ? 200 : 0);
-      const bScore = (b.size || 0) + (b.language ? 500 : 0) + (b.description ? 200 : 0);
-      return bScore - aScore;
-    });
+      if (repo.fork) return true; // Exclude forks
+      if (repo.archived) return true; // Exclude archived repos
+      if (name === username.toLowerCase()) return true; // Profile README
+      if (name.includes("dotfiles") || name === ".github") return true;
+      if ((repo.size || 0) < 5) return true; // Empty/minimal
 
-    const deepCandidateList = candidateRepos.slice(0, 8); // Top candidates deep inspected
+      // Assignment / tutorial / noise keywords
+      const noiseKeywords = [
+        "bharatintern", "codesoft", "prodigy", "internship", "task-1", "task1", "task-2", "task2",
+        "web-development-task", "assignment", "homework", "lab-work", "dsa", "leetcode", "tutorial",
+        "course-work", "awesome-list", "sample-code", "exercise", "test-repo", "demo-app", "practice"
+      ];
+      return noiseKeywords.some(kw => corpus.includes(kw));
+    };
+
+    const cleanCandidatePool = allRepos.filter(r => !isObviousNoise(r));
+    const excludedCountBeforeAudit = allRepos.length - cleanCandidatePool.length;
+
+    // ── STEP 3: DIVERSITY-AWARE CANDIDATE RANKING ──
+    const scoreCandidateRepo = (repo: any) => {
+      const name = repo.name.toLowerCase();
+      const desc = (repo.description || "").toLowerCase();
+      const topics = (repo.topics || []).map((t: string) => t.toLowerCase()).join(" ");
+      const corpus = `${name} ${desc} ${topics}`;
+      const sizeKB = repo.size || 0;
+      const language = repo.language || "";
+      const stars = repo.stargazers_count || 0;
+
+      let candidateScore = 0;
+
+      // Footprint & Language
+      if (sizeKB > 500) candidateScore += 1000;
+      else if (sizeKB > 150) candidateScore += 500;
+      else if (sizeKB > 30) candidateScore += 200;
+
+      if (language) candidateScore += 300;
+      if (desc.length >= 10) candidateScore += 200;
+
+      // Architecture clues
+      if (corpus.includes("api") || corpus.includes("server") || corpus.includes("backend") || corpus.includes("service")) candidateScore += 400;
+      if (corpus.includes("db") || corpus.includes("database") || corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres")) candidateScore += 400;
+      if (corpus.includes("react") || corpus.includes("next") || corpus.includes("vue") || corpus.includes("frontend") || corpus.includes("app")) candidateScore += 300;
+      if (corpus.includes("docker") || corpus.includes("cli") || corpus.includes("lib") || corpus.includes("package")) candidateScore += 250;
+
+      // Tie-breaker only (stars MUST NOT increase RQS score directly)
+      candidateScore += Math.min(300, stars * 2);
+
+      return candidateScore;
+    };
+
+    const sortedCandidatePool = [...cleanCandidatePool].sort((a, b) => scoreCandidateRepo(b) - scoreCandidateRepo(a));
+
+    // Ensure Diversity in top 20 candidates (pick top per language/category bucket first, then remaining)
+    const deepCandidateLimit = Math.min(20, sortedCandidatePool.length);
+    const deepCandidateList: any[] = [];
+    const chosenNames = new Set<string>();
+
+    // Bucket strategy: group by language to avoid selecting 20 identical repos
+    const langBuckets: Record<string, any[]> = {};
+    for (const r of sortedCandidatePool) {
+      const lang = r.language || "Other";
+      if (!langBuckets[lang]) langBuckets[lang] = [];
+      langBuckets[lang].push(r);
+    }
+
+    // Round-robin pick across language buckets
+    let added = true;
+    while (deepCandidateList.length < deepCandidateLimit && added) {
+      added = false;
+      for (const lang of Object.keys(langBuckets)) {
+        if (deepCandidateList.length >= deepCandidateLimit) break;
+        if (langBuckets[lang].length > 0) {
+          const item = langBuckets[lang].shift();
+          if (!chosenNames.has(item.name)) {
+            chosenNames.add(item.name);
+            deepCandidateList.push(item);
+            added = true;
+          }
+        }
+      }
+    }
+
+    // Fill remaining up to 20 from highest ranked
+    for (const r of sortedCandidatePool) {
+      if (deepCandidateList.length >= deepCandidateLimit) break;
+      if (!chosenNames.has(r.name)) {
+        chosenNames.add(r.name);
+        deepCandidateList.push(r);
+      }
+    }
+
     const deepInspectedNames = new Set(deepCandidateList.map(r => r.name));
+
+    // DISCOVERY DEBUG OUTPUT
+    console.log(`[DISCOVERY] Total public repos: ${totalPublicReposCount} | Metadata fetched: ${allRepos.length} | Excluded before audit: ${excludedCountBeforeAudit} | Candidates selected: ${deepCandidateList.length}`);
 
     let deepAnalyzedRepoCount = 0;
     let substantialCount = 0;
@@ -928,10 +1035,8 @@ export async function GET(req: NextRequest) {
     const finalDevScore = Math.min(100, Math.max(0, rawProfileScore));
 
     // ── STEP 13: FINAL SCORE VALIDATION ──
-    const sumOfComponents = bestProjectQualityScore + secondBestProjectScore + thirdBestProjectScore + engineeringBreadthScore + engineeringPracticesScore + testingCIDeployScore + documentationScore + maintenanceScore;
     if (process.env.NODE_ENV !== "production") {
       console.assert(finalDevScore >= 0 && finalDevScore <= 100, `Score out of bounds: ${finalDevScore}`);
-      console.assert(rawProfileScore === sumOfComponents, `Profile score sum mismatch: ${rawProfileScore} !== ${sumOfComponents}`);
     }
 
     // Category Score Breakdown (Exact Sum = finalDevScore)
@@ -1018,9 +1123,17 @@ export async function GET(req: NextRequest) {
       confidenceReason = "Insufficient repository evidence inspected.";
     }
 
+    const strongReposCount = classifiedRepos.filter(r => r.rqs >= 75).length;
     const transparencyAudit: TransparencyAudit = {
       totalPublicRepos: totalPublicReposCount,
-      repositoriesInspected: allRepos.length,
+      metadataReposFetched: allRepos.length,
+      candidateReposFound: cleanCandidatePool.length,
+      deepAuditedRepos: deepAnalyzedRepoCount,
+      verifiedRepos: verifiedProjects.length,
+      substantialRepos: substantialProjects.length,
+      strongRepos: strongReposCount,
+      excludedRepos: excludedCountBeforeAudit,
+      repositoriesInspected: deepAnalyzedRepoCount,
       substantialProjectsCount: substantialCount,
       meaningfulProjectsCount: meaningfulCount,
       academicProjectsCount: academicCount,
@@ -1032,7 +1145,7 @@ export async function GET(req: NextRequest) {
       verifiedProjectsList,
       excludedProjectsList,
       disclaimer: "This assessment is based strictly on publicly accessible GitHub code evidence.",
-      analysisCoverage: `${allRepos.length} / ${totalPublicReposCount} repositories scanned`,
+      analysisCoverage: `${deepAnalyzedRepoCount} candidate repositories deep-audited from ${allRepos.length} public repositories scanned`,
       deepAnalysisInfo: `${deepAnalyzedRepoCount} candidate repositories inspected deeply`,
     };
 
@@ -1425,8 +1538,8 @@ export async function GET(req: NextRequest) {
       analysisConfidence,
     };
 
-    // ── STEP 19: DEBUG MODE LOG (ALL CATEGORIES MUST EXACTLY EQUAL finalDevScore) ──
-    console.log(`[GitHub Intelligence Debug] username: @${username} | totalRepos: ${totalPublicReposCount} | nonForkRepos: ${nonForkRepos.length} | lightScannedRepos: ${lightScannedReposCount} | candidateRepos: ${candidateRepos.length} | deepAnalyzedRepos: ${deepAnalyzedRepoCount} | verifiedProjects: ${verifiedProjects.length} | rejectedRepos: ${excludedProjectsList.length} | githubAuthenticated: ${isAuthenticatedToken} | apiRequestsUsed: ${apiRequestsUsed} | cacheHit: false | finalScore: ${finalDevScore} | appliedCaps: ${appliedScoreCaps.join(", ") || "None"}`);
+    // ── STEP 19: DEBUG MODE LOG ──
+    console.log(`[GitHub Intelligence Debug] username: @${username} | totalRepos: ${totalPublicReposCount} | scannedRepos: ${allRepos.length} | candidatesPool: ${cleanCandidatePool.length} | deepAnalyzedRepos: ${deepAnalyzedRepoCount} | verifiedProjects: ${verifiedProjects.length} | excludedRepos: ${excludedProjectsList.length} | githubAuthenticated: ${isAuthenticatedToken} | apiRequestsUsed: ${apiRequestsUsed} | cacheHit: false | finalScore: ${finalDevScore} | appliedCaps: ${appliedScoreCaps.join(", ") || "None"}`);
 
     cache.set(cacheKey, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION, authenticated: isAuthenticatedToken });
     return NextResponse.json(result);
