@@ -3,20 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 // ─────────────────────────────────────────────────────────────
-// DATA TYPES & INTERFACES (Evidence Engine V6 - Achievement Badges Upgrade)
+// DATA TYPES & INTERFACES (Evidence Engine V7 - Strict Engineering Audit)
 // ─────────────────────────────────────────────────────────────
 
 export interface ProjectQualityBreakdown {
-  completeness: number; // /20 (Functionality & Completeness)
-  technicalDepth: number; // /15 (Technical Complexity)
-  architectureStructure: number; // /15 (Architecture)
-  codeStructure: number; // /10 (Code Structure)
+  completeness: number; // /15 (Functional completeness)
+  technicalDepth: number; // /15 (Technical complexity)
+  architectureStructure: number; // /20 (Architecture & code structure)
+  implementationDepth: number; // /20 (Implementation depth)
+  engineeringPractices: number; // /10 (Engineering practices)
   documentation: number; // /10 (Documentation)
-  engineeringPractices: number; // /10 (Engineering Practices)
-  testing: number; // /5 (Testing)
-  deployment: number; // /5 (Deployment)
-  maintainability: number; // /5 (Maintenance)
-  usefulness: number; // /5 (Real-world Usefulness)
+  deployment: number; // /5 (Deployment & usability)
+  originality: number; // /5 (Originality & ownership)
   totalScore: number; // /100
   qualityTier:
     | "Empty/Config"
@@ -51,6 +49,7 @@ export interface ClassifiedRepoInfo {
     | "PROFILE_CONFIG"
     | "MINIMAL"
     | "EMPTY";
+  isMeaningful: boolean;
   projectQualityScore: number; // 0-100
   projectQualityBreakdown: ProjectQualityBreakdown;
   selectionReason: string;
@@ -80,14 +79,14 @@ export interface CategoryScoreItem {
 }
 
 export interface CategoryScoreBreakdown {
-  bestProjectQuality: CategoryScoreItem; // /30 (30%)
-  overallProjectQuality: CategoryScoreItem; // /20 (20%)
-  technicalDepth: CategoryScoreItem; // /15 (15%)
-  engineeringPractices: CategoryScoreItem; // /10 (10%)
-  portfolioDepth: CategoryScoreItem; // /10 (10%)
-  documentation: CategoryScoreItem; // /5 (5%)
-  maintenanceConsistency: CategoryScoreItem; // /5 (5%)
-  collaborationOpenSource: CategoryScoreItem; // /5 (5%)
+  bestProjectQuality: CategoryScoreItem; // /30 (Flagship Project Quality)
+  overallProjectQuality: CategoryScoreItem; // /20 (Overall Codebase Quality)
+  technicalDepth: CategoryScoreItem; // /15 (Technical Depth)
+  engineeringPractices: CategoryScoreItem; // /15 (Engineering Practices)
+  portfolioDepth: CategoryScoreItem; // /10 (Project Completeness & Deployment)
+  documentation: CategoryScoreItem; // /5 (Documentation & Presentation)
+  maintenanceConsistency: CategoryScoreItem; // /5 (Consistency & Maintenance)
+  collaborationOpenSource: CategoryScoreItem; // /0 (Included under Context metadata)
 }
 
 export interface TransparencyAudit {
@@ -110,7 +109,7 @@ export interface SeparateQualityMetrics {
   portfolioDepth: number; // 0 - 100
   engineeringQuality: number; // 0 - 100
   technicalBreadth: number; // 0 - 100
-  maintenance: number; // 0 - 100 (Separate project quality from maintenance)
+  maintenance: number; // 0 - 100
 }
 
 export interface DeveloperBadge {
@@ -173,6 +172,8 @@ export interface DeveloperMetrics {
     testing: SkillConfidenceItem;
   };
   badges: DeveloperBadge[];
+  analysisVersion: string;
+  analyzedAt: string;
 }
 
 export interface DeveloperPersonality {
@@ -265,11 +266,10 @@ export interface GitHubAnalysisResult {
   cachedAt: string;
 }
 
-// In-memory cache for 6 hours
-const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number }>();
+const ANALYSIS_ENGINE_VERSION = "QUALITY_ENGINE_V7";
+const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
-// Technology rules
 const TECH_RULES: { name: string; category: "frontend" | "backend" | "database" | "aiMl" | "devOps" | "cloud" | "testing" | "uiUx"; matchers: (string | RegExp)[] }[] = [
   { name: "TypeScript", category: "frontend", matchers: ["typescript", "ts"] },
   { name: "JavaScript", category: "frontend", matchers: ["javascript", "js"] },
@@ -320,7 +320,7 @@ export async function GET(req: NextRequest) {
     const now = Date.now();
     if (!forceRefresh && cache.has(username)) {
       const cached = cache.get(username)!;
-      if (now - cached.timestamp < CACHE_TTL_MS) {
+      if (cached.version === ANALYSIS_ENGINE_VERSION && (now - cached.timestamp < CACHE_TTL_MS)) {
         return NextResponse.json({ ...cached.data, fromCache: true });
       }
     }
@@ -370,7 +370,6 @@ export async function GET(req: NextRequest) {
 
     const classifiedRepos: ClassifiedRepoInfo[] = allRepos.map(repo => {
       const isFork = Boolean(repo.fork);
-      const isArchived = Boolean(repo.archived);
       const isProfileRepo = repo.name.toLowerCase() === username.toLowerCase();
       const sizeKB = repo.size || 0;
       const description = (repo.description || "").trim();
@@ -382,7 +381,7 @@ export async function GET(req: NextRequest) {
       const language = repo.language || null;
       const corpus = `${repo.name} ${description} ${topics.join(" ")}`.toLowerCase();
 
-      // Codebase Depth Signals
+      // Deep Codebase Verification
       const hasReadme = Boolean(hasDescription || sizeKB >= 5);
       const hasTest = corpus.includes("test") || corpus.includes("jest") || corpus.includes("vitest") || corpus.includes("cypress") || corpus.includes("spec");
       const hasCiCd = corpus.includes("ci") || corpus.includes("workflow") || corpus.includes("docker") || corpus.includes("github-actions");
@@ -390,8 +389,17 @@ export async function GET(req: NextRequest) {
       const hasBE = Boolean(language === "Python" || language === "Go" || language === "Java" || corpus.includes("c++") || corpus.includes("c") || corpus.includes("rust") || corpus.includes("node") || corpus.includes("express") || corpus.includes("api") || corpus.includes("backend") || corpus.includes("server"));
       const hasDB = Boolean(corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db") || corpus.includes("database"));
 
+      // Keyword triggers for low-value / academic repositories
+      const isTaskKeyword = corpus.includes("bharatintern") || corpus.includes("codesoft") || corpus.includes("prodigy") || corpus.includes("internship") || corpus.includes("task-1") || corpus.includes("task1") || corpus.includes("task-2") || corpus.includes("task2") || corpus.includes("internship-task") || corpus.includes("web-development-task");
+      const isAssignmentKeyword = corpus.includes("assignment") || corpus.includes("homework") || corpus.includes("lab") || corpus.includes("dsa") || corpus.includes("leetcode");
+      const isTutorialKeyword = corpus.includes("tutorial") || corpus.includes("course") || corpus.includes("awesome") || corpus.includes("sample");
+      const isPracticeKeyword = corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo") || corpus.includes("demo");
+      const isAcademicKeyword = corpus.includes("academic") || corpus.includes("college") || corpus.includes("sem-") || corpus.includes("university");
+
       // Categorization
       let repoCategory: ClassifiedRepoInfo["repoCategory"] = "STANDARD_PROJECT";
+      let isMeaningful = false;
+
       if (isFork) {
         repoCategory = "FORK";
         forkCount++;
@@ -404,78 +412,70 @@ export async function GET(req: NextRequest) {
       } else if (sizeKB < 15 && !hasDescription && stars < 5) {
         repoCategory = "MINIMAL";
         minimalCount++;
-      } else if (
-        corpus.includes("bharatintern") ||
-        corpus.includes("codesoft") ||
-        corpus.includes("prodigy") ||
-        corpus.includes("internship") ||
-        corpus.includes("task-1") ||
-        corpus.includes("task1") ||
-        corpus.includes("task-2") ||
-        corpus.includes("task2") ||
-        corpus.includes("internship-task") ||
-        corpus.includes("web-development-task")
-      ) {
+      } else if (isTaskKeyword) {
         repoCategory = "INTERNSHIP_TASK";
         internshipCount++;
-      } else if (
-        corpus.includes("assignment") ||
-        corpus.includes("homework") ||
-        corpus.includes("lab") ||
-        corpus.includes("dsa") ||
-        corpus.includes("leetcode")
-      ) {
+      } else if (isAssignmentKeyword) {
         repoCategory = "ASSIGNMENT";
         assignmentCount++;
-      } else if (corpus.includes("tutorial") || corpus.includes("course") || corpus.includes("awesome") || corpus.includes("sample")) {
+      } else if (isTutorialKeyword) {
         repoCategory = "TUTORIAL";
         tutorialCount++;
-      } else if (corpus.includes("practice") || corpus.includes("exercise") || corpus.includes("test-repo") || corpus.includes("demo")) {
+      } else if (isPracticeKeyword) {
         repoCategory = "PRACTICE";
         practiceCount++;
-      } else if (corpus.includes("academic") || corpus.includes("college") || corpus.includes("sem-") || corpus.includes("university")) {
+      } else if (isAcademicKeyword) {
         repoCategory = "ACADEMIC_PROJECT";
         academicCount++;
-      } else if ((stars >= 100 || forksCount >= 25 || (sizeKB > 1200 && hasBE && hasFE)) && hasDescription) {
-        repoCategory = "FLAGSHIP_PROJECT";
-        flagshipCount++;
-      } else if ((stars >= 10 || forksCount >= 3 || hasPages || (sizeKB > 400 && (hasBE || hasFE))) && hasDescription) {
-        repoCategory = "STRONG_PROJECT";
-        strongCount++;
       } else {
-        repoCategory = "STANDARD_PROJECT";
-        standardCount++;
+        // Validation for Meaningful Engineering Project:
+        // Must have non-trivial size (>= 50KB or hasBE/hasFE with description), must not be pure config, and must have original code structure
+        if (sizeKB >= 400 && (hasBE || hasFE) && hasDescription) {
+          if (stars >= 100 || forksCount >= 25 || (sizeKB > 1200 && hasBE && hasFE)) {
+            repoCategory = "FLAGSHIP_PROJECT";
+            flagshipCount++;
+          } else {
+            repoCategory = "STRONG_PROJECT";
+            strongCount++;
+          }
+          isMeaningful = true;
+        } else if (sizeKB >= 80 && (hasBE || hasFE || hasDB) && hasDescription) {
+          repoCategory = "STANDARD_PROJECT";
+          standardCount++;
+          isMeaningful = true;
+        } else {
+          repoCategory = "PRACTICE";
+          practiceCount++;
+        }
       }
 
-      // ── INTERNAL PROJECT QUALITY SCORE /100 ──
+      // ── STRICT PROJECT QUALITY SCORE /100 ──
+      // Evaluates: Architecture (20), Implementation (20), Completeness (15), Technical Complexity (15), Engineering Practices (10), Documentation (10), Deployment (5), Originality (5)
       let completeness = 0;
-      if (hasFE && hasBE && hasDB) completeness = 20;
-      else if (hasFE && hasBE) completeness = 16;
-      else if (hasFE || hasBE) completeness = 10;
-      else completeness = 5;
+      if (hasFE && hasBE && hasDB) completeness = 15;
+      else if (hasFE && hasBE) completeness = 12;
+      else if (hasFE || hasBE) completeness = 8;
+      else completeness = 4;
 
       let techComplexity = (hasFE ? 4 : 0) + (hasBE ? 4 : 0) + (hasDB ? 4 : 0) + (hasCiCd ? 3 : 0);
-      let architecture = sizeKB > 800 ? 15 : sizeKB > 200 ? 10 : 5;
-      let codeStructure = topics.length >= 2 ? 10 : 5;
+      let architectureStructure = sizeKB > 1000 ? 20 : sizeKB > 300 ? 14 : sizeKB > 80 ? 8 : 4;
+      let implementationDepth = isMeaningful ? (sizeKB > 500 ? 20 : 14) : 4;
       let docScore = hasDescription ? 10 : 3;
       let engPractices = (hasCiCd ? 5 : 0) + (hasTest ? 5 : 0);
-      let testScore = hasTest ? 5 : 0;
       let deployScore = hasPages ? 5 : 0;
-      let maintainability = sizeKB > 50 ? 5 : 2;
-      let usefulness = Math.min(5, Math.round(Math.log10(stars + 1) * 3));
+      let originality = !isFork && !isTaskKeyword && !isAssignmentKeyword ? 5 : 1;
 
-      // Subtract points for empty/minimal/fork repos
-      if (repoCategory === "FORK" || repoCategory === "MINIMAL" || repoCategory === "EMPTY" || repoCategory === "PROFILE_CONFIG") {
-        completeness = 0;
-        techComplexity = 0;
-        architecture = 2;
-        codeStructure = 2;
+      // Zero out or heavily penalize non-meaningful repos
+      if (!isMeaningful) {
+        completeness = Math.min(4, completeness);
+        techComplexity = Math.min(3, techComplexity);
+        architectureStructure = Math.min(4, architectureStructure);
+        implementationDepth = Math.min(3, implementationDepth);
         engPractices = 0;
-        testScore = 0;
-        deployScore = 0;
+        deployScore = Math.min(2, deployScore);
       }
 
-      const totalScore = Math.min(100, completeness + techComplexity + architecture + codeStructure + docScore + engPractices + testScore + deployScore + maintainability + usefulness);
+      const totalScore = Math.min(100, completeness + techComplexity + architectureStructure + implementationDepth + docScore + engPractices + deployScore + originality);
 
       let qualityTier: ProjectQualityBreakdown["qualityTier"] = "Basic Academic";
       if (totalScore >= 95) qualityTier = "Exceptional Open Source";
@@ -490,19 +490,16 @@ export async function GET(req: NextRequest) {
       const projectQualityBreakdown: ProjectQualityBreakdown = {
         completeness,
         technicalDepth: techComplexity,
-        architectureStructure: architecture,
-        codeStructure,
+        architectureStructure,
+        implementationDepth,
         documentation: docScore,
         engineeringPractices: engPractices,
-        testing: testScore,
         deployment: deployScore,
-        maintainability,
-        usefulness,
+        originality,
         totalScore,
         qualityTier,
       };
 
-      // Separate Maintenance Analysis
       const daysSinceUpdate = repo.updated_at
         ? Math.floor((now - new Date(repo.updated_at).getTime()) / (1000 * 60 * 60 * 24))
         : 999;
@@ -529,6 +526,7 @@ export async function GET(req: NextRequest) {
         url: repo.html_url,
         topics,
         repoCategory,
+        isMeaningful,
         projectQualityScore: totalScore,
         projectQualityBreakdown,
         selectionReason,
@@ -544,105 +542,101 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Valid Original Projects
+    // ── 3. STRICT MEANINGFUL PROJECTS FILTERING ──
+    const meaningfulProjectsList = classifiedRepos.filter(r => r.isMeaningful).sort((a, b) => b.projectQualityScore - a.projectQualityScore);
+    const meaningfulCount = meaningfulProjectsList.length;
+
+    // All original non-fork repos sorted by quality
     const validOriginalProjects = classifiedRepos.filter(
       r => r.repoCategory !== "FORK" && r.repoCategory !== "EMPTY" && r.repoCategory !== "MINIMAL" && r.repoCategory !== "PROFILE_CONFIG"
     ).sort((a, b) => b.projectQualityScore - a.projectQualityScore);
 
-    // ── 3. STRICT FORMULA CALCULATION FOR FINAL DEVELOPER SCORE /100 ──
-    const bestProj = validOriginalProjects[0];
-    const secondBestProj = validOriginalProjects[1];
-    const thirdBestProj = validOriginalProjects[2];
-
+    // ── 4. STRICT DEVELOPER SCORE FORMULA /100 (EVIDENCE-BASED) ──
+    // 1. Flagship Project Quality (30 pts max)
+    const bestProj = meaningfulProjectsList[0] || validOriginalProjects[0];
     const bestScore = bestProj ? bestProj.projectQualityScore : 0;
-    const secondBestScore = secondBestProj ? secondBestProj.projectQualityScore : 0;
-    const thirdBestScore = thirdBestProj ? thirdBestProj.projectQualityScore : 0;
+    const flagshipPts = Math.min(30, Math.round((bestScore * 30) / 100));
 
-    const overallAvgScore = validOriginalProjects.length > 0
-      ? validOriginalProjects.reduce((acc, r) => acc + r.projectQualityScore, 0) / validOriginalProjects.length
+    // 2. Overall Codebase Quality (20 pts max)
+    const avgCodebaseQuality = meaningfulProjectsList.length > 0
+      ? meaningfulProjectsList.reduce((acc, r) => acc + r.projectQualityScore, 0) / meaningfulProjectsList.length
       : 0;
+    const codebaseQualityPts = Math.min(20, Math.round((avgCodebaseQuality * 20) / 100));
 
-    // Technical Depth
+    // 3. Technical Depth (15 pts max)
     const reposWithFE = validOriginalProjects.filter(r => r.hasFE);
     const reposWithBE = validOriginalProjects.filter(r => r.hasBE);
     const reposWithDB = validOriginalProjects.filter(r => r.hasDB);
-    const techDepthScore = Math.min(100, (reposWithFE.length > 0 ? 35 : 0) + (reposWithBE.length > 0 ? 35 : 0) + (reposWithDB.length > 0 ? 30 : 0));
+    const techDepthPts = Math.min(15, (reposWithFE.length > 0 ? 5 : 0) + (reposWithBE.length > 0 ? 5 : 0) + (reposWithDB.length > 0 ? 5 : 0));
 
-    // Engineering Practices
+    // 4. Engineering Practices (15 pts max)
     const reposWithTests = validOriginalProjects.filter(r => r.hasTest).length;
     const reposWithCiCd = validOriginalProjects.filter(r => r.hasCiCd).length;
+    const engPracticesPts = Math.min(15, (reposWithCiCd > 0 ? 8 : 0) + (reposWithTests > 0 ? 7 : 0));
+
+    // 5. Completeness & Deployment (10 pts max)
     const reposWithDeploy = validOriginalProjects.filter(r => r.hasPages).length;
-    const engPracticesScore = Math.min(100, (reposWithCiCd > 0 ? 40 : 0) + (reposWithTests > 0 ? 35 : 0) + (reposWithDeploy > 0 ? 25 : 0));
+    const completenessPts = Math.min(10, (meaningfulCount >= 2 ? 5 : meaningfulCount === 1 ? 3 : 0) + (reposWithDeploy > 0 ? 5 : 0));
 
-    // Portfolio Depth
-    const meaningfulCount = flagshipCount + strongCount + standardCount;
-    const portfolioDepthScore = Math.min(100, meaningfulCount >= 3 ? 100 : meaningfulCount === 2 ? 70 : meaningfulCount === 1 ? 40 : 15);
-
-    // Documentation
+    // 6. Documentation & Presentation (5 pts max)
     const reposWithReadme = validOriginalProjects.filter(r => r.hasReadme).length;
-    const docScore = Math.min(100, (reposWithReadme > 0 ? 60 : 0) + (userData.bio ? 40 : 0));
+    const docPts = Math.min(5, (reposWithReadme >= 2 ? 3 : reposWithReadme === 1 ? 2 : 0) + (userData.bio ? 2 : 0));
 
-    // Maintenance & Consistency
+    // 7. Consistency & Maintenance (5 pts max)
     const daysSinceUpdate = validOriginalProjects[0]?.updatedAt
       ? Math.floor((now - new Date(allRepos[0]?.updated_at || now).getTime()) / (1000 * 60 * 60 * 24))
       : 999;
-    const maintenanceScore = daysSinceUpdate <= 30 ? 100 : daysSinceUpdate <= 90 ? 70 : 40;
+    const maintenancePts = daysSinceUpdate <= 30 ? 5 : daysSinceUpdate <= 90 ? 3 : 1;
 
-    // Collaboration / Open Source
-    const totalStars = validOriginalProjects.reduce((acc, r) => acc + r.stars, 0);
-    const collabScore = Math.min(100, totalStars > 100 ? 100 : totalStars > 10 ? 60 : totalStars > 0 ? 30 : 10);
+    let ungroundedDevScore = flagshipPts + codebaseQualityPts + techDepthPts + engPracticesPts + completenessPts + docPts + maintenancePts;
 
-    // ── STRICT DEVELOPER SCORE FORMULA /100 ──
-    const scoreA = Math.min(30, Math.round((bestScore * 30) / 100));
-    const scoreB = Math.min(20, Math.round((overallAvgScore * 20) / 100));
-    const scoreC = Math.min(15, Math.round((techDepthScore * 15) / 100));
-    const scoreD = Math.min(10, Math.round((engPracticesScore * 10) / 100));
-    const scoreE = Math.min(10, Math.round((portfolioDepthScore * 10) / 100));
-    const scoreF = Math.min(5, Math.round((docScore * 5) / 100));
-    const scoreG = Math.min(5, Math.round((maintenanceScore * 5) / 100));
-    const scoreH = Math.min(5, Math.round((collabScore * 5) / 100));
-
-    let devScore = Math.min(100, Math.max(0, scoreA + scoreB + scoreC + scoreD + scoreE + scoreF + scoreG + scoreH));
-
-    if (devScore >= 90) {
-      const has90PlusEvidence = bestScore >= 75 && (reposWithFE.length > 0 && reposWithBE.length > 0) && (reposWithCiCd > 0 || reposWithTests > 0) && meaningfulCount >= 2;
-      if (!has90PlusEvidence) {
-        devScore = Math.min(88, devScore);
-      }
+    // ── STRICT EVIDENCE-BASED GUARDRAILS & SCORE CEILINGS ──
+    if (meaningfulCount === 0) {
+      ungroundedDevScore = Math.min(35, ungroundedDevScore);
+    } else if (meaningfulCount === 1 && bestScore < 60) {
+      ungroundedDevScore = Math.min(45, ungroundedDevScore);
+    } else if (meaningfulCount === 1) {
+      ungroundedDevScore = Math.min(70, ungroundedDevScore);
+    } else if (meaningfulCount >= 2 && bestScore < 80) {
+      ungroundedDevScore = Math.min(85, ungroundedDevScore);
     }
 
-    const catAEvid: string[] = [];
-    if (bestProj) catAEvid.push(`Best Flagship project "${bestProj.name}" score: ${bestScore}/100 (+${scoreA} pts)`);
-    else catAEvid.push("No original projects found (0 pts)");
+    const devScore = Math.min(100, Math.max(0, ungroundedDevScore));
 
-    const catBEvid: string[] = [`Average quality across ${validOriginalProjects.length} projects: ${Math.round(overallAvgScore)}/100 (+${scoreB} pts)`];
+    // Category Evidences
+    const catAEvid: string[] = [];
+    if (bestProj && bestProj.isMeaningful) catAEvid.push(`Flagship project "${bestProj.name}" verified quality: ${bestScore}/100 (+${flagshipPts} pts)`);
+    else catAEvid.push("No verified meaningful flagship project found (Score capped)");
+
+    const catBEvid: string[] = [`Average quality across ${meaningfulCount} meaningful projects: ${Math.round(avgCodebaseQuality)}/100 (+${codebaseQualityPts} pts)`];
 
     const catCEvid: string[] = [];
-    if (reposWithFE.length > 0) catCEvid.push(`Frontend code detected (+5 pts)`);
-    if (reposWithBE.length > 0) catCEvid.push(`Backend server logic detected (+5 pts)`);
-    if (reposWithDB.length > 0) catCEvid.push(`Database integration detected (+5 pts)`);
-    if (catCEvid.length === 0) catCEvid.push("No public evidence of backend or database logic (0 pts)");
+    if (reposWithFE.length > 0) catCEvid.push("Frontend codebase implementation verified (+5 pts)");
+    if (reposWithBE.length > 0) catCEvid.push("Backend API server implementation verified (+5 pts)");
+    if (reposWithDB.length > 0) catCEvid.push("Database persistence integration verified (+5 pts)");
+    if (catCEvid.length === 0) catCEvid.push("No verified backend, database, or frontend code (0 pts)");
 
     const catDEvid: string[] = [];
-    if (reposWithCiCd > 0) catDEvid.push(`CI/CD or Docker in ${reposWithCiCd} project(s) (+5 pts)`);
-    if (reposWithTests > 0) catDEvid.push(`Automated unit testing in ${reposWithTests} project(s) (+3 pts)`);
-    if (reposWithDeploy > 0) catDEvid.push(`Live web deployment (+2 pts)`);
-    if (catDEvid.length === 0) catDEvid.push("No automated tests, CI/CD, or container configuration (0 pts)");
+    if (reposWithCiCd > 0) catDEvid.push(`CI/CD workflow or Docker in ${reposWithCiCd} project(s) (+8 pts)`);
+    if (reposWithTests > 0) catDEvid.push(`Automated testing in ${reposWithTests} project(s) (+7 pts)`);
+    if (catDEvid.length === 0) catDEvid.push("No automated unit tests or CI/CD pipelines verified (0 pts)");
 
-    const catEEvid: string[] = [`${meaningfulCount} meaningful project(s) verified (+${scoreE} pts)`];
-    const catFEvid: string[] = [`${reposWithReadme}/${validOriginalProjects.length} projects have README documentation (+${scoreF} pts)`];
-    const catGEvid: string[] = [`Code updated within ${daysSinceUpdate <= 30 ? "last 30 days" : `${daysSinceUpdate} days`} (+${scoreG} pts)`];
-    const catHEvid: string[] = [`${totalStars} total community stars (+${scoreH} pts)`];
+    const catEEvid: string[] = [];
+    if (meaningfulCount > 0) catEEvid.push(`${meaningfulCount} verified meaningful project(s)`);
+    if (reposWithDeploy > 0) catEEvid.push("Live web deployment URL verified (+5 pts)");
+
+    const catFEvid: string[] = [`${reposWithReadme} project(s) with README documentation (+${docPts} pts)`];
+    const catGEvid: string[] = [`Code commits updated within ${daysSinceUpdate <= 30 ? "last 30 days" : `${daysSinceUpdate} days`} (+${maintenancePts} pts)`];
 
     const scoreBreakdown: CategoryScoreBreakdown = {
-      bestProjectQuality: { score: scoreA, max: 30, evidence: catAEvid },
-      overallProjectQuality: { score: scoreB, max: 20, evidence: catBEvid },
-      technicalDepth: { score: scoreC, max: 15, evidence: catCEvid },
-      engineeringPractices: { score: scoreD, max: 10, evidence: catDEvid },
-      portfolioDepth: { score: scoreE, max: 10, evidence: catEEvid },
-      documentation: { score: scoreF, max: 5, evidence: catFEvid },
-      maintenanceConsistency: { score: scoreG, max: 5, evidence: catGEvid },
-      collaborationOpenSource: { score: scoreH, max: 5, evidence: catHEvid },
+      bestProjectQuality: { score: flagshipPts, max: 30, evidence: catAEvid },
+      overallProjectQuality: { score: codebaseQualityPts, max: 20, evidence: catBEvid },
+      technicalDepth: { score: techDepthPts, max: 15, evidence: catCEvid },
+      engineeringPractices: { score: engPracticesPts, max: 15, evidence: catDEvid },
+      portfolioDepth: { score: completenessPts, max: 10, evidence: catEEvid },
+      documentation: { score: docPts, max: 5, evidence: catFEvid },
+      maintenanceConsistency: { score: maintenancePts, max: 5, evidence: catGEvid },
+      collaborationOpenSource: { score: 0, max: 0, evidence: ["Followers/Stars contribute 0 direct score points"] },
     };
 
     let devLevel = "Beginner Portfolio";
@@ -664,17 +658,19 @@ export async function GET(req: NextRequest) {
     else if (devScore >= 20) devStars = "★☆☆☆☆";
 
     let evidenceConfidence: "LOW" | "MEDIUM" | "HIGH" = "MEDIUM";
-    let confidenceReason = "Analysis based on available public repositories.";
-    if (validOriginalProjects.length >= 3 && reposWithReadme >= 2) {
+    let confidenceReason = "Analysis based on public GitHub repository inspection.";
+    if (meaningfulCount >= 2 && reposWithReadme >= 2) {
       evidenceConfidence = "HIGH";
       confidenceReason = "Verified deep evidence across multiple substantial public repositories.";
-    } else if (validOriginalProjects.length === 1) {
+    } else if (meaningfulCount === 1) {
       evidenceConfidence = "MEDIUM";
-      confidenceReason = "Only 1 substantial public project available, but project quality was deeply inspected.";
-    } else if (validOriginalProjects.length === 0) {
+      confidenceReason = "Only 1 substantial public project available, inspected deeply.";
+    } else {
       evidenceConfidence = "LOW";
-      confidenceReason = "Insufficient public evidence. Repositories are mostly forks, minimal, or empty.";
+      confidenceReason = "Insufficient public evidence. Repositories are mostly forks, assignments, minimal, or empty.";
     }
+
+    const totalStars = validOriginalProjects.reduce((acc, r) => acc + r.stars, 0);
 
     const transparencyAudit: TransparencyAudit = {
       totalPublicRepos: userData.public_repos || allRepos.length,
@@ -693,27 +689,27 @@ export async function GET(req: NextRequest) {
 
     const separateMetrics: SeparateQualityMetrics = {
       bestProjectQuality: bestScore,
-      portfolioDepth: portfolioDepthScore,
-      engineeringQuality: engPracticesScore,
-      technicalBreadth: Math.min(100, (reposWithFE.length > 0 ? 35 : 0) + (reposWithBE.length > 0 ? 35 : 0) + (reposWithDB.length > 0 ? 30 : 0)),
-      maintenance: maintenanceScore,
+      portfolioDepth: Math.min(100, meaningfulCount * 35),
+      engineeringQuality: Math.round((engPracticesPts / 15) * 100),
+      technicalBreadth: Math.round((techDepthPts / 15) * 100),
+      maintenance: Math.round((maintenancePts / 5) * 100),
     };
 
     const scoreStrengths: string[] = [];
     const scoreNeedsImp: string[] = [];
 
-    if (bestProj) scoreStrengths.push(`Best project "${bestProj.name}" quality rated at ${bestScore}/100 (${bestProj.projectQualityBreakdown.qualityTier})`);
+    if (bestProj && bestProj.isMeaningful) scoreStrengths.push(`Flagship project "${bestProj.name}" quality rated at ${bestScore}/100 (${bestProj.projectQualityBreakdown.qualityTier})`);
     if (reposWithFE.length > 0 && reposWithBE.length > 0) scoreStrengths.push("Verified full-stack implementation evidence (Frontend + Backend)");
     if (daysSinceUpdate <= 30) scoreStrengths.push("Active code commits within the last 30 days");
 
-    if (meaningfulCount <= 1) scoreNeedsImp.push("Only 1 meaningful project discovered (build more portfolio projects)");
+    if (meaningfulCount === 0) scoreNeedsImp.push("No verified meaningful software projects found (build complete applications)");
+    else if (meaningfulCount === 1) scoreNeedsImp.push("Only 1 meaningful project discovered (build more portfolio projects)");
     if (reposWithReadme === 0) scoreNeedsImp.push("No public README documentation detected");
     if (reposWithTests === 0) scoreNeedsImp.push("No public automated testing evidence detected");
-    if (!userData.blog) scoreNeedsImp.push("No portfolio website linked to profile");
 
     // Skill Confidence
     const detectedSkillsSet = new Set<string>();
-    validOriginalProjects.forEach(r => {
+    meaningfulProjectsList.forEach(r => {
       if (r.language) detectedSkillsSet.add(r.language);
       TECH_RULES.forEach(rule => {
         const isMatched = rule.matchers.some(m => {
@@ -759,7 +755,7 @@ export async function GET(req: NextRequest) {
     const aiConf = getConfidence(detectedSkillsSet.has("TensorFlow"), validOriginalProjects.filter(r => r.name.includes("tensor")), detectedSkillsSet.has("TensorFlow"));
     const devOpsConf = getConfidence(reposWithCiCd > 0, validOriginalProjects.filter(r => r.hasCiCd), detectedSkillsSet.has("Docker") || detectedSkillsSet.has("GitHub Workflows") || detectedSkillsSet.has("Nix / SaltStack"));
     const cloudConf = getConfidence(detectedSkillsSet.has("Firebase") || reposWithDeploy > 0, validOriginalProjects.filter(r => r.hasPages), detectedSkillsSet.has("Firebase"));
-    const psConf = getConfidence(validOriginalProjects.length >= 1, validOriginalProjects, validOriginalProjects.length >= 2);
+    const psConf = getConfidence(meaningfulCount >= 1, meaningfulProjectsList, meaningfulCount >= 2);
     const docConf = getConfidence(reposWithReadme > 0, validOriginalProjects.filter(r => r.hasReadme), reposWithReadme >= 2);
     const uiUxConf = getConfidence(detectedSkillsSet.has("Tailwind CSS"), validOriginalProjects.filter(r => r.name.includes("tailwind")), detectedSkillsSet.has("Tailwind CSS"));
     const testConf = getConfidence(reposWithTests > 0, validOriginalProjects.filter(r => r.hasTest), reposWithTests > 0);
@@ -767,11 +763,11 @@ export async function GET(req: NextRequest) {
     const isFullStackVerified = reposWithFE.length > 0 && reposWithBE.length > 0 && (reposWithDB.length > 0 || reposWithBE.length >= 2) && meaningfulCount >= 1;
 
     // ─────────────────────────────────────────────────────────────
-    // EXACT TOP 10 ACHIEVEMENTS BADGE EVALUATION SYSTEM
+    // TOP 10 ACHIEVEMENTS BADGES EVALUATION SYSTEM (EVIDENCE-BASED)
     // ─────────────────────────────────────────────────────────────
 
-    // 1. Frontend Developer ⚛️ (Requires meaningful FE project)
-    const feProjects = validOriginalProjects.filter(r => r.hasFE && r.projectQualityScore >= 30);
+    // 1. Frontend Developer ⚛️
+    const feProjects = meaningfulProjectsList.filter(r => r.hasFE);
     const isFrontendUnlocked = feProjects.length > 0;
     const feBadge: DeveloperBadge = {
       id: "frontend-developer",
@@ -781,20 +777,20 @@ export async function GET(req: NextRequest) {
       unlocked: isFrontendUnlocked,
       glowColor: "rgba(56,189,248,0.6)",
       evidenceList: isFrontendUnlocked
-        ? feProjects.map(r => `• ${r.name}: Frontend UI code verified (${r.projectQualityScore}/100 quality)`)
-        : ["No meaningful frontend application project detected."],
+        ? feProjects.map(r => `• ${r.name}: Verified frontend UI code (${r.projectQualityScore}/100 quality)`)
+        : ["No verified meaningful frontend application project detected."],
       unlockReason: isFrontendUnlocked
         ? "Verified frontend application implementation in your public repositories."
         : "Requires at least one meaningful frontend project (React, Next.js, Vue, or modern JS/TS).",
       suggestion: "Build and publish a standalone frontend web application with interactive components.",
       requirementsChecklist: [
         { text: "Frontend framework / JS/TS codebase detected", satisfied: reposWithFE.length > 0 },
-        { text: "Meaningful project quality (Score >= 30)", satisfied: feProjects.length > 0 },
+        { text: "Verified meaningful project", satisfied: feProjects.length > 0 },
       ],
     };
 
-    // 2. Backend Engineer ⚙️ (Requires meaningful BE server/API)
-    const beProjects = validOriginalProjects.filter(r => r.hasBE && r.projectQualityScore >= 30);
+    // 2. Backend Engineer ⚙️
+    const beProjects = meaningfulProjectsList.filter(r => r.hasBE);
     const isBackendUnlocked = beProjects.length > 0;
     const beBadge: DeveloperBadge = {
       id: "backend-engineer",
@@ -804,7 +800,7 @@ export async function GET(req: NextRequest) {
       unlocked: isBackendUnlocked,
       glowColor: "rgba(34,197,94,0.6)",
       evidenceList: isBackendUnlocked
-        ? beProjects.map(r => `• ${r.name}: Backend server/API code verified (${r.projectQualityScore}/100 quality)`)
+        ? beProjects.map(r => `• ${r.name}: Verified backend server/API code (${r.projectQualityScore}/100 quality)`)
         : ["No backend API implementation detected in public repos."],
       unlockReason: isBackendUnlocked
         ? "Meaningful backend/server implementation was detected in your public repositories."
@@ -812,12 +808,12 @@ export async function GET(req: NextRequest) {
       suggestion: "Build a REST API server connecting request endpoints with business logic.",
       requirementsChecklist: [
         { text: "Backend framework / API server implementation", satisfied: reposWithBE.length > 0 },
-        { text: "Meaningful project quality (Score >= 30)", satisfied: beProjects.length > 0 },
+        { text: "Verified meaningful project", satisfied: beProjects.length > 0 },
       ],
     };
 
-    // 3. Full-Stack Builder 🚀 (Requires FE + BE in a single project)
-    const fullStackProjects = validOriginalProjects.filter(r => r.hasFE && r.hasBE && r.projectQualityScore >= 35);
+    // 3. Full-Stack Builder 🚀
+    const fullStackProjects = meaningfulProjectsList.filter(r => r.hasFE && r.hasBE);
     const isFullStackUnlocked = fullStackProjects.length > 0;
     const fullStackBadge: DeveloperBadge = {
       id: "full-stack-builder",
@@ -840,8 +836,8 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    // 4. Database Architect 🗄️ (Requires DB integration in real app)
-    const dbProjects = validOriginalProjects.filter(r => r.hasDB && r.projectQualityScore >= 25);
+    // 4. Database Architect 🗄️
+    const dbProjects = meaningfulProjectsList.filter(r => r.hasDB);
     const isDbUnlocked = dbProjects.length > 0;
     const dbBadge: DeveloperBadge = {
       id: "database-architect",
@@ -863,9 +859,9 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    // 5. AI / ML Builder 🧠 (Requires real ML/AI API/Model implementation)
-    const aiProjects = validOriginalProjects.filter(r => (r.name.toLowerCase().includes("tensor") || r.name.toLowerCase().includes("ai") || r.name.toLowerCase().includes("ml") || r.topics.includes("ai")) && r.projectQualityScore >= 30);
-    const isAiUnlocked = aiProjects.length > 0 || detectedSkillsSet.has("TensorFlow");
+    // 5. AI / ML Builder 🧠
+    const aiProjects = meaningfulProjectsList.filter(r => (r.name.toLowerCase().includes("tensor") || r.name.toLowerCase().includes("ai") || r.name.toLowerCase().includes("ml") || r.topics.includes("ai")));
+    const isAiUnlocked = aiProjects.length > 0 || (detectedSkillsSet.has("TensorFlow") && meaningfulCount > 0);
     const aiBadge: DeveloperBadge = {
       id: "ai-ml-builder",
       name: "AI / ML Builder",
@@ -886,8 +882,8 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    // 6. API Architect 🔗 (Requires REST/GraphQL API endpoints creation)
-    const apiProjects = validOriginalProjects.filter(r => (r.hasBE || r.name.toLowerCase().includes("api")) && r.projectQualityScore >= 30);
+    // 6. API Architect 🔗
+    const apiProjects = meaningfulProjectsList.filter(r => r.hasBE || r.name.toLowerCase().includes("api"));
     const isApiUnlocked = apiProjects.length > 0;
     const apiBadge: DeveloperBadge = {
       id: "api-architect",
@@ -909,8 +905,8 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    // 7. Deployment Ready ☁️ (Requires Vercel/Netlify/Pages or Docker/CI-CD)
-    const deployProjects = validOriginalProjects.filter(r => r.hasPages || r.hasCiCd);
+    // 7. Deployment Ready ☁️
+    const deployProjects = meaningfulProjectsList.filter(r => r.hasPages || r.hasCiCd);
     const isDeployUnlocked = deployProjects.length > 0;
     const deployBadge: DeveloperBadge = {
       id: "deployment-ready",
@@ -932,9 +928,8 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    // 8. Documentation Pro 📚 (Requires multiple repos with strong README)
-    const readmeProjects = validOriginalProjects.filter(r => r.hasReadme);
-    const isDocUnlocked = readmeProjects.length >= 2;
+    // 8. Documentation Pro 📚
+    const isDocUnlocked = reposWithReadme >= 2 && meaningfulCount >= 1;
     const docBadge: DeveloperBadge = {
       id: "documentation-pro",
       name: "Documentation Pro",
@@ -943,20 +938,20 @@ export async function GET(req: NextRequest) {
       unlocked: isDocUnlocked,
       glowColor: "rgba(16,185,129,0.6)",
       evidenceList: isDocUnlocked
-        ? readmeProjects.map(r => `• ${r.name}: Complete README documentation verified`)
-        : [`Only ${readmeProjects.length} repository has detailed README documentation.`],
+        ? validOriginalProjects.filter(r => r.hasReadme).map(r => `• ${r.name}: Complete README documentation verified`)
+        : [`Only ${reposWithReadme} repository has detailed README documentation.`],
       unlockReason: isDocUnlocked
         ? "Comprehensive README documentation verified across multiple repositories."
         : "Requires detailed README documentation (setup, tech stack, screenshots) across at least 2 projects.",
       suggestion: "Add clear setup steps, tech stack details, and feature descriptions to your project READMEs.",
       requirementsChecklist: [
-        { text: "First repository README documentation", satisfied: readmeProjects.length >= 1 },
-        { text: "Second repository README documentation", satisfied: readmeProjects.length >= 2 },
+        { text: "First repository README documentation", satisfied: reposWithReadme >= 1 },
+        { text: "Second repository README documentation", satisfied: reposWithReadme >= 2 },
       ],
     };
 
-    // 9. Open Source Contributor 🌐 (Requires real community stars/forks on original repos)
-    const isCollabUnlocked = totalStars >= 25 || (userData.public_repos > 5 && validOriginalProjects.length >= 3);
+    // 9. Open Source Contributor 🌐
+    const isCollabUnlocked = totalStars >= 25 && meaningfulCount >= 2;
     const collabBadge: DeveloperBadge = {
       id: "open-source-contributor",
       name: "Open Source Contributor",
@@ -965,14 +960,14 @@ export async function GET(req: NextRequest) {
       unlocked: isCollabUnlocked,
       glowColor: "rgba(245,158,11,0.6)",
       evidenceList: isCollabUnlocked
-        ? [`• ${totalStars} total community stars across original repositories`, `• ${validOriginalProjects.length} published original repositories`]
+        ? [`• ${totalStars} total community stars across original repositories`, `• ${meaningfulCount} published meaningful repositories`]
         : ["No public collaboration or community star recognition yet."],
       unlockReason: isCollabUnlocked
         ? "Verified open source publications with community recognition."
         : "Requires publishing meaningful original repositories with community stars or PR contributions.",
       suggestion: "Share your original projects on developer communities to earn stargazers and contributors.",
       requirementsChecklist: [
-        { text: "Published original open source projects", satisfied: validOriginalProjects.length >= 2 },
+        { text: "Published original open source projects", satisfied: meaningfulCount >= 2 },
         { text: "Community stargazers or PR contributions", satisfied: totalStars >= 25 },
       ],
     };
@@ -1095,6 +1090,8 @@ export async function GET(req: NextRequest) {
         testing: testConf,
       },
       badges,
+      analysisVersion: ANALYSIS_ENGINE_VERSION,
+      analyzedAt: new Date().toISOString(),
     };
 
     const startupLevel = isFullStackVerified ? "Strong" : meaningfulCount >= 1 ? "Moderate" : "Developing";
@@ -1170,7 +1167,7 @@ export async function GET(req: NextRequest) {
           },
           {
             title: `Current Band: ${devLevel}`,
-            subtitle: `Analyzed ${validOriginalProjects.length} original project(s)`,
+            subtitle: `Analyzed ${meaningfulCount} verified meaningful project(s)`,
             date: "Present",
             icon: "🏆",
             badgeText: "Current Band",
@@ -1206,10 +1203,10 @@ export async function GET(req: NextRequest) {
       cachedAt: new Date().toISOString(),
     };
 
-    cache.set(username, { data: result, timestamp: now });
+    cache.set(username, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION });
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error("[GitHub Intelligence V6 API Error]:", err);
+    console.error("[GitHub Intelligence V7 API Error]:", err);
     return NextResponse.json({ error: err.message || "Failed to analyze GitHub profile" }, { status: 500 });
   }
 }
