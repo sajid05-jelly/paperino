@@ -36,6 +36,7 @@ export type RepoCategoryType =
   | "CONFIG_PROFILE"
   | "EMPTY_MINIMAL"
   | "FORK"
+  | "NOT_DEEP_AUDITED"
   | "UNKNOWN_INSUFFICIENT_EVIDENCE";
 
 export interface ClassifiedRepoAuditDetails {
@@ -65,7 +66,7 @@ export interface ClassifiedRepoInfo {
   topics: string[];
   repoCategory: RepoCategoryType;
   isSubstantial: boolean;
-  isMeaningful: boolean; // RQS >= 45
+  isMeaningful: boolean; // RQS >= 50
   rqs: number; // Repository Quality Score (0-100)
   projectQualityBreakdown: ProjectQualityBreakdown;
   auditDetails: ClassifiedRepoAuditDetails;
@@ -79,6 +80,7 @@ export interface ClassifiedRepoInfo {
   hasCiCd: boolean;
   hasPages: boolean;
   hasReadme: boolean;
+  auditState?: "DEEP_AUDITED" | "NOT_DEEP_AUDITED" | "EXCLUDED_WITH_EVIDENCE";
 }
 
 export interface SkillConfidenceItem {
@@ -114,6 +116,8 @@ export interface TransparencyAudit {
   verifiedRepos: number;
   substantialRepos: number;
   strongRepos: number;
+  evidenceExcludedRepos: number;
+  notDeepAuditedRepos: number;
   excludedRepos: number;
   repositoriesInspected: number;
   substantialProjectsCount: number;
@@ -132,6 +136,7 @@ export interface TransparencyAudit {
     auditDetails: ClassifiedRepoAuditDetails;
   }[];
   excludedProjectsList: { name: string; category: string; reason: string }[];
+  notAuditedProjectsList: { name: string; reason: string }[];
   disclaimer: string;
   analysisCoverage: string;
   deepAnalysisInfo: string;
@@ -221,7 +226,7 @@ export interface GitHubAnalysisResult {
   partialAnalysisWarning?: string;
 }
 
-const ANALYSIS_ENGINE_VERSION = "DISCOVERY_ENGINE_V4";
+const ANALYSIS_ENGINE_VERSION = "DISCOVERY_ENGINE_V5";
 const cache = new Map<string, { data: GitHubAnalysisResult; timestamp: number; version: string; authenticated: boolean }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 
@@ -244,7 +249,7 @@ export async function GET(req: NextRequest) {
     }
 
     username = username.toLowerCase();
-    const cacheKey = `github-intelligence:v4:${username}`;
+    const cacheKey = `github-intelligence:v5:${username}`;
 
     const now = Date.now();
     // ── STEP 5: CACHE CONTAMINATION PREVENTION (v8.1 Versioning + Strict Check) ──
@@ -325,108 +330,127 @@ export async function GET(req: NextRequest) {
       }, { status: 500 });
     }
 
-    // ── STEP 2: METADATA FILTERING & EXCLUSION ──
-    const isObviousNoise = (repo: any) => {
+    // ── STEP 2: EVIDENCE-BASED HARD EXCLUSIONS ──
+    // Only exclude repos confidently proven to be forks without original work, profile README, empty, or archived.
+    const isHardExcludedWithEvidence = (repo: any) => {
       const name = repo.name.toLowerCase();
-      const desc = (repo.description || "").toLowerCase();
-      const topics = (repo.topics || []).map((t: string) => t.toLowerCase());
-      const corpus = `${name} ${desc} ${topics.join(" ")}`;
-
-      if (repo.fork) return true; // Exclude forks
-      if (repo.archived) return true; // Exclude archived repos
-      if (name === username.toLowerCase()) return true; // Profile README
-      if (name.includes("dotfiles") || name === ".github") return true;
-      if ((repo.size || 0) < 5) return true; // Empty/minimal
-
-      // Assignment / tutorial / noise keywords
-      const noiseKeywords = [
-        "bharatintern", "codesoft", "prodigy", "internship", "task-1", "task1", "task-2", "task2",
-        "web-development-task", "assignment", "homework", "lab-work", "dsa", "leetcode", "tutorial",
-        "course-work", "awesome-list", "sample-code", "exercise", "test-repo", "demo-app", "practice"
-      ];
-      return noiseKeywords.some(kw => corpus.includes(kw));
+      if (repo.fork) return { excluded: true, reason: "Forked repository without verified original changes" };
+      if (repo.archived) return { excluded: true, reason: "Archived repository" };
+      if (name === username.toLowerCase()) return { excluded: true, reason: "GitHub profile README / config repository" };
+      if (name.includes("dotfiles") || name === ".github") return { excluded: true, reason: "Configuration / dotfiles repository" };
+      if ((repo.size || 0) < 5) return { excluded: true, reason: "Empty or minimal repository (<5 KB)" };
+      return { excluded: false, reason: "" };
     };
 
-    const cleanCandidatePool = allRepos.filter(r => !isObviousNoise(r));
-    const excludedCountBeforeAudit = allRepos.length - cleanCandidatePool.length;
+    const evidenceExcludedRepos: any[] = [];
+    const candidatePool: any[] = [];
 
-    // ── STEP 3: DIVERSITY-AWARE CANDIDATE RANKING ──
-    const scoreCandidateRepo = (repo: any) => {
-      const name = repo.name.toLowerCase();
-      const desc = (repo.description || "").toLowerCase();
-      const topics = (repo.topics || []).map((t: string) => t.toLowerCase()).join(" ");
-      const corpus = `${name} ${desc} ${topics}`;
-      const sizeKB = repo.size || 0;
-      const language = repo.language || "";
-      const stars = repo.stargazers_count || 0;
-
-      let candidateScore = 0;
-
-      // Footprint & Language
-      if (sizeKB > 500) candidateScore += 1000;
-      else if (sizeKB > 150) candidateScore += 500;
-      else if (sizeKB > 30) candidateScore += 200;
-
-      if (language) candidateScore += 300;
-      if (desc.length >= 10) candidateScore += 200;
-
-      // Architecture clues
-      if (corpus.includes("api") || corpus.includes("server") || corpus.includes("backend") || corpus.includes("service")) candidateScore += 400;
-      if (corpus.includes("db") || corpus.includes("database") || corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres")) candidateScore += 400;
-      if (corpus.includes("react") || corpus.includes("next") || corpus.includes("vue") || corpus.includes("frontend") || corpus.includes("app")) candidateScore += 300;
-      if (corpus.includes("docker") || corpus.includes("cli") || corpus.includes("lib") || corpus.includes("package")) candidateScore += 250;
-
-      // Tie-breaker only (stars MUST NOT increase RQS score directly)
-      candidateScore += Math.min(300, stars * 2);
-
-      return candidateScore;
-    };
-
-    const sortedCandidatePool = [...cleanCandidatePool].sort((a, b) => scoreCandidateRepo(b) - scoreCandidateRepo(a));
-
-    // Ensure Diversity in top 20 candidates (pick top per language/category bucket first, then remaining)
-    const deepCandidateLimit = Math.min(20, sortedCandidatePool.length);
-    const deepCandidateList: any[] = [];
-    const chosenNames = new Set<string>();
-
-    // Bucket strategy: group by language to avoid selecting 20 identical repos
-    const langBuckets: Record<string, any[]> = {};
-    for (const r of sortedCandidatePool) {
-      const lang = r.language || "Other";
-      if (!langBuckets[lang]) langBuckets[lang] = [];
-      langBuckets[lang].push(r);
+    for (const r of allRepos) {
+      const check = isHardExcludedWithEvidence(r);
+      if (check.excluded) {
+        evidenceExcludedRepos.push({ repo: r, reason: check.reason });
+      } else {
+        candidatePool.push(r);
+      }
     }
 
-    // Round-robin pick across language buckets
-    let added = true;
-    while (deepCandidateList.length < deepCandidateLimit && added) {
-      added = false;
-      for (const lang of Object.keys(langBuckets)) {
-        if (deepCandidateList.length >= deepCandidateLimit) break;
-        if (langBuckets[lang].length > 0) {
-          const item = langBuckets[lang].shift();
-          if (!chosenNames.has(item.name)) {
-            chosenNames.add(item.name);
-            deepCandidateList.push(item);
-            added = true;
+    // ── STEP 3: DYNAMIC PROFILE SAMPLING BUDGET ──
+    // <= 30 repos: up to 20 candidates; 31-100: up to 20; 101-500: up to 30; >500: up to 40 candidates.
+    let deepCandidateBudget = 20;
+    if (totalPublicReposCount > 500) deepCandidateBudget = 40;
+    else if (totalPublicReposCount > 100) deepCandidateBudget = 30;
+    else deepCandidateBudget = Math.min(20, candidatePool.length);
+
+    // ── STEP 4: MULTI-BUCKET CANDIDATE DISCOVERY ──
+    // Candidate selection combines positive signals from 9 independent buckets:
+    const selectedCandidateNames = new Set<string>();
+    const deepCandidateList: any[] = [];
+
+    const addCandidate = (repo: any) => {
+      if (repo && !selectedCandidateNames.has(repo.name) && deepCandidateList.length < deepCandidateBudget) {
+        selectedCandidateNames.add(repo.name);
+        deepCandidateList.push(repo);
+      }
+    };
+
+    // Helper score for ranking candidates within buckets
+    const getCandidateScore = (r: any) => {
+      const name = r.name.toLowerCase();
+      const desc = (r.description || "").toLowerCase();
+      const topics = (r.topics || []).map((t: string) => t.toLowerCase()).join(" ");
+      const corpus = `${name} ${desc} ${topics}`;
+      const sizeKB = r.size || 0;
+      const lang = r.language || "";
+      let score = sizeKB + (lang ? 500 : 0) + (desc.length >= 10 ? 200 : 0);
+      if (corpus.includes("api") || corpus.includes("server") || corpus.includes("backend")) score += 400;
+      if (corpus.includes("db") || corpus.includes("database") || corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres")) score += 400;
+      if (corpus.includes("react") || corpus.includes("next") || corpus.includes("vue") || corpus.includes("app")) score += 300;
+      if (corpus.includes("docker") || corpus.includes("cli") || corpus.includes("lib")) score += 200;
+      score += Math.min(300, (r.stargazers_count || 0) * 2); // Weak tie-breaker only
+      return score;
+    };
+
+    const sortedPool = [...candidatePool].sort((a, b) => getCandidateScore(b) - getCandidateScore(a));
+
+    // Bucket A: Footprint (largest clean repos)
+    sortedPool.slice(0, 10).forEach(addCandidate);
+
+    // Bucket B: Backend & Service repos
+    sortedPool.filter(r => {
+      const c = `${r.name} ${r.description || ""} ${(r.topics || []).join(" ")}`.toLowerCase();
+      return c.includes("api") || c.includes("server") || c.includes("backend") || c.includes("service");
+    }).slice(0, 8).forEach(addCandidate);
+
+    // Bucket C: Database persistence repos
+    sortedPool.filter(r => {
+      const c = `${r.name} ${r.description || ""} ${(r.topics || []).join(" ")}`.toLowerCase();
+      return c.includes("db") || c.includes("database") || c.includes("mongo") || c.includes("sql") || c.includes("postgres") || c.includes("prisma");
+    }).slice(0, 8).forEach(addCandidate);
+
+    // Bucket D: Frontend / App repos
+    sortedPool.filter(r => {
+      const c = `${r.name} ${r.description || ""} ${(r.topics || []).join(" ")}`.toLowerCase();
+      return c.includes("react") || c.includes("next") || c.includes("vue") || c.includes("angular") || c.includes("frontend") || c.includes("ui");
+    }).slice(0, 8).forEach(addCandidate);
+
+    // Bucket E: Tooling / CLI / Package repos
+    sortedPool.filter(r => {
+      const c = `${r.name} ${r.description || ""} ${(r.topics || []).join(" ")}`.toLowerCase();
+      return c.includes("cli") || c.includes("tool") || c.includes("lib") || c.includes("package") || c.includes("docker") || c.includes("action");
+    }).slice(0, 8).forEach(addCandidate);
+
+    // Bucket F: Round-robin across primary languages
+    const langGroups: Record<string, any[]> = {};
+    for (const r of sortedPool) {
+      const lang = r.language || "Other";
+      if (!langGroups[lang]) langGroups[lang] = [];
+      langGroups[lang].push(r);
+    }
+    let roundAdded = true;
+    while (deepCandidateList.length < deepCandidateBudget && roundAdded) {
+      roundAdded = false;
+      for (const lang of Object.keys(langGroups)) {
+        if (deepCandidateList.length >= deepCandidateBudget) break;
+        if (langGroups[lang].length > 0) {
+          const item = langGroups[lang].shift();
+          if (!selectedCandidateNames.has(item.name)) {
+            addCandidate(item);
+            roundAdded = true;
           }
         }
       }
     }
 
-    // Fill remaining up to 20 from highest ranked
-    for (const r of sortedCandidatePool) {
-      if (deepCandidateList.length >= deepCandidateLimit) break;
-      if (!chosenNames.has(r.name)) {
-        chosenNames.add(r.name);
-        deepCandidateList.push(r);
-      }
+    // Bucket G: Fill remaining candidates up to deepCandidateBudget from sortedPool
+    for (const r of sortedPool) {
+      if (deepCandidateList.length >= deepCandidateBudget) break;
+      addCandidate(r);
     }
 
     const deepInspectedNames = new Set(deepCandidateList.map(r => r.name));
 
-    // DISCOVERY DEBUG OUTPUT
-    console.log(`[DISCOVERY] Total public repos: ${totalPublicReposCount} | Metadata fetched: ${allRepos.length} | Excluded before audit: ${excludedCountBeforeAudit} | Candidates selected: ${deepCandidateList.length}`);
+    // DISCOVERY DEBUG LOG
+    console.log(`[DISCOVERY] Total public repos: ${totalPublicReposCount} | Metadata fetched: ${allRepos.length} | Hard excluded: ${evidenceExcludedRepos.length} | Candidate pool size: ${candidatePool.length} | Selected candidates for deep audit: ${deepCandidateList.length}`);
 
     let deepAnalyzedRepoCount = 0;
     let substantialCount = 0;
@@ -914,10 +938,25 @@ export async function GET(req: NextRequest) {
           analysisConfidence: auditDetails.analysisConfidence,
         });
 
+        // Determine explicit auditState for 3-State Model
+        const isHardExcluded = evidenceExcludedRepos.some(e => e.repo.name === repo.name);
+        const auditState: ClassifiedRepoInfo["auditState"] = isHardExcluded
+          ? "EXCLUDED_WITH_EVIDENCE"
+          : treeFetched
+          ? "DEEP_AUDITED"
+          : "NOT_DEEP_AUDITED";
+
+        if (auditState === "NOT_DEEP_AUDITED") {
+          repoCategory = "NOT_DEEP_AUDITED";
+          evidenceList.unshift("Not selected for deep audit within sampling candidate budget");
+        }
+
         const selectionReason = isSubstantial
           ? `Verified substantial project with RQS ${rqs}/100`
           : isMeaningful
           ? `Verified valid project with RQS ${rqs}/100`
+          : auditState === "NOT_DEEP_AUDITED"
+          ? "Not deep audited within candidate sampling budget"
           : `Excluded from score calculations (${evidenceList[0]})`;
 
         return {
@@ -944,13 +983,19 @@ export async function GET(req: NextRequest) {
           hasCiCd,
           hasPages,
           hasReadme,
+          auditState,
         };
       })
     );
 
-    // ── STEP 4: SORT & FILTER VERIFIED PROJECTS (RQS >= 50) ──
-    const substantialProjects = classifiedRepos.filter(r => r.isSubstantial).sort((a, b) => b.rqs - a.rqs);
-    const verifiedProjects = classifiedRepos.filter(r => r.isMeaningful).sort((a, b) => b.rqs - a.rqs);
+    // ── STEP 5: 3-STATE REPOSITORY PARTITIONING & TRANSPARENCY AUDIT ──
+    const deepAuditedRepos = classifiedRepos.filter(r => r.auditState === "DEEP_AUDITED");
+    const notDeepAuditedRepos = classifiedRepos.filter(r => r.auditState === "NOT_DEEP_AUDITED");
+    const hardExcludedRepos = classifiedRepos.filter(r => r.auditState === "EXCLUDED_WITH_EVIDENCE");
+
+    const substantialProjects = deepAuditedRepos.filter(r => r.isSubstantial).sort((a, b) => b.rqs - a.rqs);
+    const verifiedProjects = deepAuditedRepos.filter(r => r.isMeaningful).sort((a, b) => b.rqs - a.rqs);
+    const strongReposList = deepAuditedRepos.filter(r => r.rqs >= 75);
 
     const verifiedProjectsList = verifiedProjects.map(r => ({
       name: r.name,
@@ -960,10 +1005,15 @@ export async function GET(req: NextRequest) {
       auditDetails: r.auditDetails,
     }));
 
-    const excludedProjectsList = classifiedRepos.filter(r => !r.isMeaningful).map(r => ({
+    const excludedProjectsList = hardExcludedRepos.map(r => ({
       name: r.name,
       category: r.repoCategory.replace(/_/g, " "),
-      reason: r.evidenceList[0] || "Did not meet verified RQS threshold (<50)",
+      reason: r.evidenceList[0] || "Excluded with verified metadata evidence",
+    }));
+
+    const notAuditedProjectsList = notDeepAuditedRepos.map(r => ({
+      name: r.name,
+      reason: "Not selected for deep audit within sampling candidate budget",
     }));
 
     // ── STEP 6: CANONICAL PROFILE SCORE CALCULATION (0-100 EXACT SUM) ──
@@ -1113,29 +1163,25 @@ export async function GET(req: NextRequest) {
     else if (finalDevScore >= 20) devStars = "★☆☆☆☆";
 
     // ── STEP 10: EVIDENCE CONFIDENCE (HIGH / MEDIUM / LOW) ──
-    let analysisConfidence: "HIGH" | "MEDIUM" | "LOW" = "HIGH";
-    let confidenceReason = "Verified deep source code file tree evidence across public repositories.";
-    if (deepAnalyzedRepoCount === 0 && verifiedProjects.length > 0) {
-      analysisConfidence = "MEDIUM";
-      confidenceReason = "Verified repository metadata and code structure.";
-    } else if (allRepos.length === 0) {
-      analysisConfidence = "LOW";
-      confidenceReason = "Insufficient repository evidence inspected.";
-    }
+    let analysisConfidence: "HIGH" | "MEDIUM" | "LOW" = isPartialAnalysis ? "LOW" : "HIGH";
+    let confidenceReason = isPartialAnalysis
+      ? partialAnalysisWarning
+      : "Verified deep source code file tree evidence across candidate repositories.";
 
-    const strongReposCount = classifiedRepos.filter(r => r.rqs >= 75).length;
     const transparencyAudit: TransparencyAudit = {
       totalPublicRepos: totalPublicReposCount,
       metadataReposFetched: allRepos.length,
-      candidateReposFound: cleanCandidatePool.length,
-      deepAuditedRepos: deepAnalyzedRepoCount,
+      candidateReposFound: candidatePool.length,
+      deepAuditedRepos: deepAuditedRepos.length,
       verifiedRepos: verifiedProjects.length,
       substantialRepos: substantialProjects.length,
-      strongRepos: strongReposCount,
-      excludedRepos: excludedCountBeforeAudit,
-      repositoriesInspected: deepAnalyzedRepoCount,
-      substantialProjectsCount: substantialCount,
-      meaningfulProjectsCount: meaningfulCount,
+      strongRepos: strongReposList.length,
+      evidenceExcludedRepos: hardExcludedRepos.length,
+      notDeepAuditedRepos: notDeepAuditedRepos.length,
+      excludedRepos: hardExcludedRepos.length,
+      repositoriesInspected: deepAuditedRepos.length,
+      substantialProjectsCount: substantialProjects.length,
+      meaningfulProjectsCount: verifiedProjects.length,
       academicProjectsCount: academicCount,
       assignmentsCount: assignmentCount,
       tutorialsCount: tutorialCount,
@@ -1144,9 +1190,10 @@ export async function GET(req: NextRequest) {
       minimalEmptyCount,
       verifiedProjectsList,
       excludedProjectsList,
-      disclaimer: "This assessment is based strictly on publicly accessible GitHub code evidence.",
-      analysisCoverage: `${deepAnalyzedRepoCount} candidate repositories deep-audited from ${allRepos.length} public repositories scanned`,
-      deepAnalysisInfo: `${deepAnalyzedRepoCount} candidate repositories inspected deeply`,
+      notAuditedProjectsList,
+      disclaimer: "This assessment is based strictly on publicly accessible GitHub code evidence. Repositories outside deep audit budget are marked 'Not Deep Audited' rather than excluded.",
+      analysisCoverage: `${deepAuditedRepos.length} candidate repositories deep-audited from ${allRepos.length} public repositories scanned`,
+      deepAnalysisInfo: `${deepAuditedRepos.length} candidate repositories inspected deeply`,
     };
 
     const separateMetrics: SeparateQualityMetrics = {
@@ -1538,8 +1585,26 @@ export async function GET(req: NextRequest) {
       analysisConfidence,
     };
 
-    // ── STEP 19: DEBUG MODE LOG ──
-    console.log(`[GitHub Intelligence Debug] username: @${username} | totalRepos: ${totalPublicReposCount} | scannedRepos: ${allRepos.length} | candidatesPool: ${cleanCandidatePool.length} | deepAnalyzedRepos: ${deepAnalyzedRepoCount} | verifiedProjects: ${verifiedProjects.length} | excludedRepos: ${excludedProjectsList.length} | githubAuthenticated: ${isAuthenticatedToken} | apiRequestsUsed: ${apiRequestsUsed} | cacheHit: false | finalScore: ${finalDevScore} | appliedCaps: ${appliedScoreCaps.join(", ") || "None"}`);
+    // ── STEP 19: REQUIRED DEBUG OUTPUT ──
+    const topAudited10 = deepAuditedRepos.slice(0, 10).map(r => `${r.name} | RQS:${r.rqs} | ${r.repoCategory}`);
+    const top3Final = verifiedProjects.slice(0, 3).map(r => `${r.name} | RQS:${r.rqs}`);
+    
+    console.log(`\n==================================================`);
+    console.log(`[GITHUB INTELLIGENCE REPOSITORY DISCOVERY AUDIT] User: @${username}`);
+    console.log(`==================================================`);
+    console.log(`TOTAL PUBLIC: ${totalPublicReposCount}`);
+    console.log(`METADATA FETCHED: ${allRepos.length}`);
+    console.log(`HARD EXCLUDED WITH EVIDENCE: ${hardExcludedRepos.length}`);
+    console.log(`CANDIDATE POOL SIZE: ${candidatePool.length}`);
+    console.log(`DEEP AUDITED: ${deepAuditedRepos.length}`);
+    console.log(`NOT DEEP AUDITED: ${notDeepAuditedRepos.length}`);
+    console.log(`VERIFIED: ${verifiedProjects.length}`);
+    console.log(`SUBSTANTIAL: ${substantialProjects.length}`);
+    console.log(`STRONG: ${strongReposList.length}`);
+    console.log(`\nTOP 10 AUDITED REPOSITORIES:\n${topAudited10.join("\n")}`);
+    console.log(`\nFINAL TOP 3:\n${top3Final.join("\n")}`);
+    console.log(`ANALYSIS STATUS: ${isPartialAnalysis ? "PARTIAL" : "COMPLETE"}`);
+    console.log(`==================================================\n`);
 
     cache.set(cacheKey, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION, authenticated: isAuthenticatedToken });
     return NextResponse.json(result);
