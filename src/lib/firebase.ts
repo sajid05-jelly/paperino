@@ -13,19 +13,19 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase only once
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+// Initialize Firebase safely
+const app = (getApps().length === 0 && firebaseConfig.apiKey) ? initializeApp(firebaseConfig) : (getApps()[0] || null);
 
-const auth = getAuth(app);
-const db = getFirestore(app);
+const auth = app ? getAuth(app) : (null as any);
+const db = app ? getFirestore(app) : (null as any);
 
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && db) {
   enableMultiTabIndexedDbPersistence(db).catch((err) => {
     console.warn("Firestore multi-tab persistence failed:", err);
   });
 }
 
-const storage = getStorage(app);
+const storage = app ? getStorage(app) : (null as any);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: "select_account"

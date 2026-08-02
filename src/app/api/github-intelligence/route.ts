@@ -125,7 +125,7 @@ export interface CategoryScoreBreakdown {
   documentation: CategoryScoreItem; // /5
   testingCI: CategoryScoreItem; // /5
   projectDiversity: CategoryScoreItem; // /5
-  maintenance: CategoryScoreItem; // /5
+  maintenance: CategoryScoreItem; // /10
 }
 
 export interface TransparencyAudit {
@@ -577,7 +577,9 @@ export async function GET(req: NextRequest) {
         const databaseDetected = corpus.includes("mongo") || corpus.includes("sql") || corpus.includes("postgres") || corpus.includes("firebase") || corpus.includes("db") || (treeFetched && fileList.some(f => f.includes("schema") || f.includes("prisma") || f.includes("migration") || f.includes("/models/") || f.includes("/database/")));
 
         // Codebase Capability Signals
-        const hasReadme = Boolean(hasDescription || sizeKB >= 5);
+        const hasReadme = treeFetched
+          ? fileList.some(f => f === "readme.md" || f === "readme" || f === "readme.rst" || f === "readme.txt")
+          : Boolean(hasDescription || sizeKB >= 5);
 
         // Keyword triggers for low-value / academic repositories
         const isTaskKeyword = corpus.includes("bharatintern") || corpus.includes("codesoft") || corpus.includes("prodigy") || corpus.includes("internship") || corpus.includes("task-1") || corpus.includes("task1") || corpus.includes("task-2") || corpus.includes("task2") || corpus.includes("web-development-task");
@@ -810,11 +812,12 @@ export async function GET(req: NextRequest) {
         // 4. PROGRESSIVE COMPLETENESS (0-15)
         let completenessPoints = 0;
         if (srcDetected || meaningfulSourceFileCount >= 3) completenessPoints += 3;
-        if (manifestDetected) completenessPoints += 3;
-        if (hasReadme) completenessPoints += 3;
+        if (manifestDetected) completenessPoints += 2;
+        if (hasReadme) completenessPoints += 2;
         if (hasDescription) completenessPoints += 2;
         if (treeFetched && filteredFileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings"))) completenessPoints += 2;
         if (hasPages || hasCiCd) completenessPoints += 2;
+        if (treeFetched && meaningfulSourceFileCount >= 10 && manifestDetected) completenessPoints += 2;
         let completeness = Math.min(15, completenessPoints);
 
         // 5. ENGINEERING PRACTICES (0-10)
@@ -865,8 +868,8 @@ export async function GET(req: NextRequest) {
         // ── STRICT IMPLEMENTATION & QUALITY GATES ──
         let rawRQS = implementationDepth + architecture + featureComplexity + completeness + engPractices + docScore + testingScore + deployCi;
 
-        if (implementationDepth < 14) {
-          rawRQS = Math.min(44, rawRQS);
+        if (implementationDepth < 8) {
+          rawRQS = Math.min(55, rawRQS);
         }
 
         if (isTaskKeyword || isAssignmentKeyword || isTutorialKeyword || isPracticeKeyword) {
@@ -910,14 +913,14 @@ export async function GET(req: NextRequest) {
         } else if (isAcademicKeyword) {
           repoCategory = "ACADEMIC_PROJECT";
           academicCount++;
-          if (rqs >= 50 && implementationDepth >= 14) {
+          if (rqs >= 40 && implementationDepth >= 8) {
             isMeaningful = true;
             evidenceList.push(`Academic sem project with verified codebase (RQS: ${rqs}/100)`);
           } else {
             evidenceList.push("Basic academic submission without substantial application implementation");
           }
         } else {
-          if (rqs >= 65 && implementationDepth >= 22 && strongSignalsCount >= 2) {
+          if (rqs >= 55 && implementationDepth >= 14 && strongSignalsCount >= 2) {
             repoCategory = "SUBSTANTIAL_PROJECT";
             isSubstantial = true;
             isMeaningful = true;
@@ -929,7 +932,7 @@ export async function GET(req: NextRequest) {
             if (hasDB) evidenceList.push("✓ Database integration detected");
             if (hasCiCd) evidenceList.push("✓ CI/CD workflow / Docker configuration detected");
             if (hasTest) evidenceList.push("✓ Automated testing suite verified");
-          } else if (rqs >= 50 && implementationDepth >= 14) {
+          } else if (rqs >= 40 && implementationDepth >= 8) {
             repoCategory = "VALID_SMALL_PROJECT";
             isMeaningful = true;
             meaningfulCount++;
@@ -1020,8 +1023,8 @@ export async function GET(req: NextRequest) {
               max: 15,
               evidence: [
                 srcDetected || meaningfulSourceFileCount >= 3 ? "✓ Working application structure (+3 pts)" : "✗ Minimal structure (+0 pts)",
-                manifestDetected ? "✓ Configuration completeness (+3 pts)" : "✗ Missing manifest (+0 pts)",
-                hasReadme ? "✓ README setup instructions (+3 pts)" : "✗ Missing README (+0 pts)",
+                manifestDetected ? "✓ Configuration completeness (+2 pts)" : "✗ Missing manifest (+0 pts)",
+                hasReadme ? "✓ README setup instructions (+2 pts)" : "✗ Missing README (+0 pts)",
                 hasDescription ? "✓ Repository overview description (+2 pts)" : "✗ Short description (+0 pts)",
                 treeFetched && filteredFileList.some(f => f.includes(".env") || f.includes("config") || f.includes("settings")) ? "✓ Environment config (+2 pts)" : "✗ No env config (+0 pts)",
                 hasPages || hasCiCd ? "✓ Usable entry point/deployment (+2 pts)" : "✗ No deployment entry (+0 pts)",
@@ -1183,8 +1186,8 @@ export async function GET(req: NextRequest) {
     const secondRQS = proj2 ? proj2.rqs : 0;
     const thirdRQS = proj3 ? proj3.rqs : 0;
 
-    // 1. BEST PROJECT QUALITY — 40 Points Max
-    const bestProjectQualityScore = Math.round((bestRQS / 100) * 40);
+    // 1. BEST PROJECT QUALITY — 35 Points Max (was 40)
+    const bestProjectQualityScore = Math.round((bestRQS / 100) * 35);
 
     // 2. SECOND BEST PROJECT — 15 Points Max
     const secondBestProjectScore = Math.round((secondRQS / 100) * 15);
@@ -1212,34 +1215,47 @@ export async function GET(req: NextRequest) {
     const validReadmeCount = verifiedProjects.filter(r => r.hasReadme).length;
     let documentationScore = Math.min(5, (validReadmeCount >= 2 ? 3 : validReadmeCount === 1 ? 2 : 0) + (userData.bio ? 2 : 0));
 
-    // 8. MAINTENANCE / CONSISTENCY — 5 Points Max (Max 5 points limit)
+    // 8. MAINTENANCE / CONSISTENCY — 10 Points Max (was 5)
     const daysSinceUpdate = proj1?.updatedAt
       ? Math.floor((now - new Date(allRepos[0]?.updated_at || now).getTime()) / (1000 * 60 * 60 * 24))
       : 999;
-    let maintenanceScore = daysSinceUpdate <= 30 ? 5 : daysSinceUpdate <= 90 ? 3 : 1;
+    let maintenanceScore = daysSinceUpdate <= 30 ? 10 : daysSinceUpdate <= 90 ? 6 : daysSinceUpdate <= 180 ? 3 : 1;
+
+    // ── FIX: Zero out non-project metrics when NO verified projects exist ──
+    if (verifiedProjects.length === 0) {
+      engineeringBreadthScore = 0;
+      engineeringPracticesScore = 0;
+      testingCIDeployScore = 0;
+      documentationScore = 0;
+      maintenanceScore = Math.min(1, maintenanceScore);
+    }
 
     let rawProfileScore = bestProjectQualityScore + secondBestProjectScore + thirdBestProjectScore + engineeringBreadthScore + engineeringPracticesScore + testingCIDeployScore + documentationScore + maintenanceScore;
 
-    // ── STEP 7: MANDATORY SCORE CAPS ──
+    // ── STEP 7: MANDATORY SCORE CAPS (Rebalanced for accuracy) ──
     const appliedScoreCaps: string[] = [];
 
     if (verifiedProjects.length === 0) {
-      rawProfileScore = Math.min(25, rawProfileScore);
-      appliedScoreCaps.push("0 Verified Projects -> Max 25");
+      rawProfileScore = Math.min(15, rawProfileScore);
+      appliedScoreCaps.push("0 Verified Projects -> Max 15");
     }
     if (substantialProjects.length === 0) {
-      rawProfileScore = Math.min(49, rawProfileScore);
-      appliedScoreCaps.push("0 Substantial Projects (RQS < 65) -> Max 49");
-    } else if (substantialProjects.length === 1 && bestRQS < 80) {
-      rawProfileScore = Math.min(69, rawProfileScore);
-      appliedScoreCaps.push("Exactly 1 Substantial Project (RQS < 80) -> Max 69");
+      rawProfileScore = Math.min(55, rawProfileScore);
+      appliedScoreCaps.push("0 Substantial Projects -> Max 55");
+    } else if (substantialProjects.length === 1 && bestRQS < 70) {
+      rawProfileScore = Math.min(74, rawProfileScore);
+      appliedScoreCaps.push("Exactly 1 Substantial Project (RQS < 70) -> Max 74");
     }
-    if (bestRQS < 80) {
-      rawProfileScore = Math.min(79, rawProfileScore);
-      appliedScoreCaps.push("No project with RQS >= 80 -> Max 79");
+    if (bestRQS < 55) {
+      rawProfileScore = Math.min(75, rawProfileScore);
+      appliedScoreCaps.push("No project with RQS >= 55 -> Max 75");
+    } else if (bestRQS < 70) {
+      rawProfileScore = Math.min(85, rawProfileScore);
+      appliedScoreCaps.push("No project with RQS >= 70 -> Max 85");
     }
 
     const finalDevScore = Math.min(100, Math.max(0, rawProfileScore));
+
 
     // ── STEP 13: FINAL SCORE VALIDATION ──
     if (process.env.NODE_ENV !== "production") {
@@ -1250,9 +1266,9 @@ export async function GET(req: NextRequest) {
     const scoreBreakdown: CategoryScoreBreakdown = {
       bestProjectQuality: {
         score: bestProjectQualityScore,
-        max: 40,
+        max: 35,
         evidence: proj1
-          ? [`Best project "${proj1.name}" RQS: ${bestRQS}/100 -> +${bestProjectQualityScore}/40 pts`]
+          ? [`Best project "${proj1.name}" RQS: ${bestRQS}/100 -> +${bestProjectQualityScore}/35 pts`]
           : ["No verified project found"],
       },
       otherVerifiedProjects: {
@@ -1297,8 +1313,8 @@ export async function GET(req: NextRequest) {
       },
       maintenance: {
         score: maintenanceScore,
-        max: 5,
-        evidence: [`Last active ${daysSinceUpdate <= 30 ? "within 30 days" : `${daysSinceUpdate} days ago`} (+${maintenanceScore}/5 pts)`],
+        max: 10,
+        evidence: [`Last active ${daysSinceUpdate <= 30 ? "within 30 days" : `${daysSinceUpdate} days ago`} (+${maintenanceScore}/10 pts)`],
       },
     };
 
@@ -1358,7 +1374,7 @@ export async function GET(req: NextRequest) {
       portfolioDepth: Math.min(100, meaningfulCount * 35),
       engineeringQuality: Math.round(((engineeringPracticesScore + testingCIDeployScore) / 15) * 100),
       technicalBreadth: Math.round((engineeringBreadthScore / 10) * 100),
-      maintenance: Math.round((maintenanceScore / 5) * 100),
+      maintenance: Math.round((maintenanceScore / 10) * 100),
     };
 
     const scoreStrengths: string[] = [];

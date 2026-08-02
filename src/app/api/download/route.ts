@@ -3,7 +3,7 @@
  *
  * Secure download & preview proxy for Paperino study materials.
  * Enforces mandatory dynamic security watermarking (-35° rotation, 14% opacity, #8B5CF6 purple,
- * 40px headline, 26px user details, 2 per page) before download initiation,
+ * 40px headline, 26px user details, 1 centered per page) before download initiation,
  * logs downloads with `watermarkApplied: true` in Firestore, and blocks any unwatermarked file downloads.
  */
 
@@ -196,7 +196,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 4. MANDATORY HIGH-VISIBILITY WATERMARKING PIPELINE (2 per page, 40px title, 26px details, 14% opacity, -35° angle)
+  // 4. MANDATORY HIGH-VISIBILITY WATERMARKING PIPELINE (1 centered per page, 40px title, 26px details, 14% opacity, -35° angle)
   let watermarkApplied = false;
   const isPdf = mimeType.includes("pdf") || matName.toLowerCase().endsWith(".pdf");
   const isImage = mimeType.startsWith("image/") || ["png", "jpg", "jpeg"].some(ext => matName.toLowerCase().endsWith(ext));
@@ -248,38 +248,36 @@ export async function GET(req: NextRequest) {
       for (const page of pages) {
         const { width, height } = page.getSize();
         
-        // Exactly 2 diagonal positions per page
-        const diagonalPositions = [
-          { x: width * 0.12, y: height * 0.75 }, // Watermark 1: Top-Left quadrant
-          { x: width * 0.28, y: height * 0.35 }, // Watermark 2: Bottom-Right quadrant
-        ];
+        // Single centered watermark per page
+        // Calculate center position accounting for text block height
+        const totalTextHeight = 40 + (detailLines.length * 32); // headline + detail lines
+        const centerX = width * 0.25; // Offset slightly left since text rotates from anchor
+        const centerY = (height / 2) + (totalTextHeight / 2); // Vertically centered
 
-        for (const pos of diagonalPositions) {
-          // 1. Headline "PAPERINO" (40px bold)
-          page.drawText("PAPERINO", {
-            x: pos.x,
-            y: pos.y,
-            size: 40,
+        // 1. Headline "PAPERINO" (40px bold) — Centered
+        page.drawText("PAPERINO", {
+          x: centerX,
+          y: centerY,
+          size: 40,
+          font: fontBold,
+          color: watermarkColor,
+          opacity: watermarkOpacity,
+          rotate: watermarkAngle,
+        });
+
+        // 2. Metadata Lines (26px bold) — Below headline, centered
+        let offsetY = 36;
+        for (const line of detailLines) {
+          page.drawText(line, {
+            x: centerX,
+            y: centerY - offsetY,
+            size: 26,
             font: fontBold,
             color: watermarkColor,
             opacity: watermarkOpacity,
             rotate: watermarkAngle,
           });
-
-          // 2. Metadata Lines (26px bold)
-          let offsetY = 36;
-          for (const line of detailLines) {
-            page.drawText(line, {
-              x: pos.x,
-              y: pos.y - offsetY,
-              size: 26,
-              font: fontBold,
-              color: watermarkColor,
-              opacity: watermarkOpacity,
-              rotate: watermarkAngle,
-            });
-            offsetY += 32;
-          }
+          offsetY += 32;
         }
       }
 
@@ -287,7 +285,7 @@ export async function GET(req: NextRequest) {
       fileBuffer = Buffer.from(watermarkedBytes);
       mimeType = "application/pdf";
       watermarkApplied = true;
-      console.log(`[Download API Stage 4 Complete] High-visibility 2-diagonal watermark applied. Size: ${fileBuffer.length} bytes`);
+      console.log(`[Download API Stage 4 Complete] Single centered watermark applied. Size: ${fileBuffer.length} bytes`);
     } catch (wmErr: any) {
       console.error("[Download API Stage 4 Error] Security watermark generation failed:", wmErr);
       watermarkApplied = false;

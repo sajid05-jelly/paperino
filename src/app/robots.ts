@@ -11,6 +11,8 @@ export default function robots(): MetadataRoute.Robots {
           '/career-dna',
           '/github-intelligence',
           '/btech',
+          '/courses',
+          '/courses/*',
           '/pyq',
           '/ats',
           '/gpa',
