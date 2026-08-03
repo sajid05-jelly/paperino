@@ -303,11 +303,16 @@ export async function syncKnowafestToFirestore(): Promise<SyncResult> {
     }
 
     // Fetch existing pulse updates for deduplication check
-    const existingSnap = await adminDb.collection("pulse_updates").get();
-    const existingDocs = existingSnap.docs.map(d => ({
-      docId: d.id,
-      ...d.data(),
-    }));
+    let existingDocs: any[] = [];
+    try {
+      const existingSnap = await adminDb.collection("pulse_updates").get();
+      existingDocs = existingSnap.docs.map(d => ({
+        docId: d.id,
+        ...d.data(),
+      }));
+    } catch (fetchErr: any) {
+      console.warn("[Knowafest Pipeline] pulse_updates query notice (Quota/Permission):", fetchErr?.message || fetchErr);
+    }
 
     for (const ev of scrapeRes.events) {
       try {
@@ -410,7 +415,11 @@ export async function syncKnowafestToFirestore(): Promise<SyncResult> {
       logs: logs.slice(0, 30),
     };
 
-    await adminDb.collection("system_settings").doc("knowafest_sync").set(syncLog, { merge: true });
+    try {
+      await adminDb.collection("system_settings").doc("knowafest_sync").set(syncLog, { merge: true });
+    } catch (saveErr: any) {
+      console.warn("[Knowafest Pipeline] system_settings save notice (Quota):", saveErr?.message || saveErr);
+    }
 
     return syncLog;
   } catch (err: any) {

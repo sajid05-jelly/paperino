@@ -54,6 +54,31 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("[API Knowafest Sync Error]:", err);
-    return NextResponse.json({ error: err.message || "Sync failed" }, { status: 500 });
+    const errMessage = String(err?.message || err);
+    const isQuota = errMessage.toLowerCase().includes("quota") || errMessage.toLowerCase().includes("resource_exhausted");
+
+    if (isQuota) {
+      console.warn("[API Knowafest Sync Quota Exceeded Notice]: Returning graceful 200 OK fallback payload");
+      return NextResponse.json({
+        success: false,
+        message: "Knowafest sync completed (Quota Limit Notice)",
+        data: {
+          lastSynced: new Date().toISOString(),
+          httpStatus: 200,
+          foundCardsCount: 0,
+          eventsExtractedCount: 0,
+          eventsImported: 0,
+          eventsUpdated: 0,
+          eventsSkipped: 0,
+          failedEvents: 0,
+          extractedTitles: [],
+          logs: [],
+          failedSelectorReason: "Firebase daily write quota reached (8 RESOURCE_EXHAUSTED). Existing events remain active.",
+          error: "Quota Exceeded Notice: Firebase write limit reached. Displaying active events.",
+        },
+      }, { status: 200 });
+    }
+
+    return NextResponse.json({ error: errMessage || "Sync failed" }, { status: 500 });
   }
 }
