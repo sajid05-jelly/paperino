@@ -1379,50 +1379,96 @@ export default function GitHubIntelligencePage() {
 
         {/* ── CRAWLABLE ELEGANT INFORMATIONAL & FAQ SECTION ── */}
         <section className="w-full mt-24 pt-12 border-t border-purple-500/20 space-y-12 relative z-10">
-          <div className="text-center space-y-4 max-w-2xl mx-auto px-4">
-            <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest text-purple-300 bg-purple-500/10 px-3.5 py-1 rounded-full border border-purple-500/20">
-              Developer Knowledge & Overview
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-fuchsia-300 to-cyan-300 tracking-tight leading-snug pt-1">
-              GitHub Profile Analytics & Engineering Standards
-            </h2>
-            <p className="text-xs text-gray-400 leading-relaxed max-w-lg mx-auto">
-              Understanding evidence-based developer scoring, repository quality metrics, and portfolio optimization.
-            </p>
-          </div>
+          
+          {/* Premium Glassmorphism Container for GitHub Profile Analytics & Engineering Standards */}
+          <div className="w-full max-w-6xl mx-auto rounded-[24px] sm:rounded-[32px] p-6 sm:p-10 md:p-14 relative overflow-hidden transition-all duration-500 shadow-[0_25px_80px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)] border border-[rgba(180,130,255,0.18)]"
+            style={{
+              background: "linear-gradient(135deg, rgba(35, 22, 62, 0.72), rgba(17, 14, 35, 0.78))",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+            }}
+          >
+            {/* Top Edge Highlight */}
+            <div 
+              className="absolute top-0 left-0 right-0 h-[1.5px] pointer-events-none z-20"
+              style={{
+                background: "linear-gradient(90deg, transparent, rgba(168,85,247,0.30), rgba(56,189,248,0.22), transparent)",
+              }}
+            />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Box 1 */}
-            <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-3 hover:border-purple-500/30 transition-all">
-              <h3 className="text-sm font-bold text-purple-300 flex items-center gap-2">
-                <FolderGit2 size={16} className="text-purple-400" />
-                What GitHub Intelligence Analyzes
-              </h3>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Paperino GitHub Intelligence inspects public GitHub repositories to evaluate code quality, technical depth (Frontend, Backend, Database), documentation (README completeness), engineering practices (CI/CD, unit tests), and repository categorizations.
+            {/* Premium Ambient Glow Layers */}
+            <div 
+              className="absolute -top-24 -left-24 w-80 h-80 pointer-events-none rounded-full blur-[70px] opacity-70"
+              style={{
+                background: "radial-gradient(circle, rgba(139, 92, 246, 0.12), transparent 65%)",
+              }}
+            />
+            <div 
+              className="absolute -top-24 -right-24 w-80 h-80 pointer-events-none rounded-full blur-[70px] opacity-70"
+              style={{
+                background: "radial-gradient(circle, rgba(56, 189, 248, 0.08), transparent 65%)",
+              }}
+            />
+            <div 
+              className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-96 h-96 pointer-events-none rounded-full blur-[80px] opacity-50"
+              style={{
+                background: "radial-gradient(circle, rgba(168, 85, 247, 0.08), transparent 65%)",
+              }}
+            />
+
+            {/* Header Area inside Glass Panel */}
+            <div className="text-center space-y-4 max-w-2xl mx-auto mb-10 sm:mb-12 relative z-10">
+              <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest text-purple-300 bg-purple-500/10 px-3.5 py-1.5 rounded-full border border-purple-500/20 backdrop-blur-md">
+                Developer Knowledge & Overview
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-fuchsia-300 to-cyan-300 tracking-tight leading-snug pt-1">
+                GitHub Profile Analytics & Engineering Standards
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-lg mx-auto">
+                Understanding evidence-based developer scoring, repository quality metrics, and portfolio optimization.
               </p>
             </div>
 
-            {/* Box 2 */}
-            <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-3 hover:border-purple-500/30 transition-all">
-              <h3 className="text-sm font-bold text-emerald-300 flex items-center gap-2">
-                <ShieldCheck size={16} className="text-emerald-400" />
-                Quality Over Quantity
-              </h3>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Raw repository counts, followers, and contribution streaks contribute ZERO direct points to the Developer Score. A single complete, well-architected full-stack application achieves a much higher quality rating than 100 empty or tutorial repos.
-              </p>
-            </div>
+            {/* 3 Information Cards Grid inside Glass Panel */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+              {/* Box 1 */}
+              <div 
+                className="p-6 rounded-[22px] bg-white/[0.025] border border-white/[0.08] space-y-3 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-purple-400/40 hover:bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:shadow-[0_12px_30px_rgba(139,92,246,0.12)] group"
+              >
+                <h3 className="text-sm font-bold text-purple-300 flex items-center gap-2 group-hover:text-purple-200 transition-colors">
+                  <FolderGit2 size={16} className="text-purple-400 group-hover:scale-110 transition-transform" />
+                  What GitHub Intelligence Analyzes
+                </h3>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Paperino GitHub Intelligence inspects public GitHub repositories to evaluate code quality, technical depth (Frontend, Backend, Database), documentation (README completeness), engineering practices (CI/CD, unit tests), and repository categorizations.
+                </p>
+              </div>
 
-            {/* Box 3 */}
-            <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-3 hover:border-purple-500/30 transition-all">
-              <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
-                <FileText size={16} className="text-cyan-400" />
-                Developer Report Generation
-              </h3>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Students can generate a multi-page PDF developer report containing their overall profile score, project quality breakdown, verified strengths, technical gaps, and actionable step-by-step career growth recommendations.
-              </p>
+              {/* Box 2 */}
+              <div 
+                className="p-6 rounded-[22px] bg-white/[0.025] border border-white/[0.08] space-y-3 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-emerald-400/40 hover:bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:shadow-[0_12px_30px_rgba(16,185,129,0.12)] group"
+              >
+                <h3 className="text-sm font-bold text-emerald-300 flex items-center gap-2 group-hover:text-emerald-200 transition-colors">
+                  <ShieldCheck size={16} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                  Quality Over Quantity
+                </h3>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Raw repository counts, followers, and contribution streaks contribute ZERO direct points to the Developer Score. A single complete, well-architected full-stack application achieves a much higher quality rating than 100 empty or tutorial repos.
+                </p>
+              </div>
+
+              {/* Box 3 */}
+              <div 
+                className="p-6 rounded-[22px] bg-white/[0.025] border border-white/[0.08] space-y-3 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-cyan-400/40 hover:bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:shadow-[0_12px_30px_rgba(56,189,248,0.12)] group"
+              >
+                <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-2 group-hover:text-cyan-200 transition-colors">
+                  <FileText size={16} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+                  Developer Report Generation
+                </h3>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Students can generate a multi-page PDF developer report containing their overall profile score, project quality breakdown, verified strengths, technical gaps, and actionable step-by-step career growth recommendations.
+                </p>
+              </div>
             </div>
           </div>
 
