@@ -130,14 +130,16 @@ export interface CategoryScoreItem {
 }
 
 export interface CategoryScoreBreakdown {
-  bestProjectQuality: CategoryScoreItem; // /30
+  bestProjectQuality: CategoryScoreItem; // /20
   overallProjectQuality: CategoryScoreItem; // /20
   technicalDepth: CategoryScoreItem; // /15
-  portfolioDepth: CategoryScoreItem; // /10
+  portfolioDepth: CategoryScoreItem; // /15
   engineeringPractices: CategoryScoreItem; // /10
   documentation: CategoryScoreItem; // /5
   maintenanceConsistency: CategoryScoreItem; // /5
   collaborationOpenSource: CategoryScoreItem; // /5
+  testingReliability?: CategoryScoreItem; // /5
+  eliteSynergyBonus?: CategoryScoreItem; // /2
   // Legacy aliases for backward compatibility
   otherVerifiedProjects?: CategoryScoreItem;
   engineeringDepth?: CategoryScoreItem;
@@ -1260,20 +1262,26 @@ export async function GET(req: NextRequest) {
         : "Not selected for deep audit within sampling candidate budget",
     }));
 
-    // ── STEP 6: AUTHORITATIVE EVIDENCE-BASED 100-POINT SCORE CALCULATION ──
+    // ── STEP 6: AUTHORITATIVE EVIDENCE-BASED 100-POINT RECALIBRATED SCORE CALCULATION ──
     const proj1 = verifiedProjects[0] || null;
     const bestRQS = proj1 ? proj1.rqs : 0;
 
-    // 1. BEST PROJECT QUALITY — 30 Points Max
-    const bestProjectQualityScore = Math.round((bestRQS / 100) * 30);
+    // 1. BEST PROJECT QUALITY — 20 Points Max
+    const baseQuality = (bestRQS / 100) * 16;
+    let portfolioQualityBonus = 0;
+    if (verifiedProjects.length >= 12) portfolioQualityBonus = 3;
+    else if (verifiedProjects.length >= 7) portfolioQualityBonus = 2;
+    else if (verifiedProjects.length >= 3) portfolioQualityBonus = 1;
+
+    const substantialBonus = substantialProjects.length >= 3 ? 1 : 0;
+    const bestProjectQualityScore = Math.min(20, Math.round(baseQuality + portfolioQualityBonus + substantialBonus));
 
     // 2. OVERALL PROJECTS — 20 Points Max
-    const verifiedCountScore = Math.min(12, verifiedProjects.length * 2);
-    const substantialCountScore = Math.min(5, Math.round(substantialProjects.length * 1.25));
-    const strongProjectScore = strongReposList.length >= 1 ? 3 : 0;
-    const overallProjectQualityScore = Math.min(20, verifiedCountScore + substantialCountScore + strongProjectScore);
+    const verifiedScore = Math.min(14, verifiedProjects.length * 1.5);
+    const substantialScore = Math.min(6, substantialProjects.length * 1.5);
+    const overallProjectQualityScore = Math.min(20, Math.round(verifiedScore + substantialScore));
 
-    // 3. TECHNICAL DEPTH — 15 Points Max (Calculated from inspected technical skills)
+    // 3. TECHNICAL DEPTH — 15 Points Max (Specialist Fairness + Strongly Verified Competencies)
     // Gather inspected technical skills
     const feEvidenceRepos = deepAuditedRepos.filter(r => r.hasFE);
     const beEvidenceRepos = deepAuditedRepos.filter(r => r.hasBE);
@@ -1286,38 +1294,27 @@ export async function GET(req: NextRequest) {
     const problemSolvingEvidenceRepos = deepAuditedRepos.filter(r => r.hasProblemSolving || r.rqs >= 50);
     const docEvidenceRepos = deepAuditedRepos.filter(r => r.hasReadme);
 
-    const activeTechRepos = [
+    // Strongly verified technical skills: count skills with repo count >= 1 and RQS evidence
+    const skillList = [
       feEvidenceRepos, beEvidenceRepos, dbEvidenceRepos, aiMlEvidenceRepos,
       devOpsEvidenceRepos, cloudEvidenceRepos, testingEvidenceRepos, uiUxEvidenceRepos, problemSolvingEvidenceRepos
     ];
-    const activeSkillCount = activeTechRepos.filter(rList => rList.length > 0).length;
-    const reposWithTechEvidenceCount = deepAuditedRepos.filter(r => r.hasFE || r.hasBE || r.hasDB || r.hasTest || r.hasCiCd || r.hasAiMl).length;
+    const stronglyVerifiedSkillCount = skillList.filter(rList => rList.length >= 1 && rList.some(r => r.rqs >= 40)).length;
 
-    const breadthScore = Math.min(6, activeSkillCount);
-    const techSkillScores = [
-      feEvidenceRepos.length > 0 ? Math.min(100, feEvidenceRepos.length * 40) : 0,
-      beEvidenceRepos.length > 0 ? Math.min(100, beEvidenceRepos.length * 40) : 0,
-      dbEvidenceRepos.length > 0 ? Math.min(100, dbEvidenceRepos.length * 45) : 0,
-      aiMlEvidenceRepos.length > 0 ? Math.min(100, aiMlEvidenceRepos.length * 50) : 0,
-      devOpsEvidenceRepos.length > 0 ? Math.min(100, devOpsEvidenceRepos.length * 45) : 0,
-      cloudEvidenceRepos.length > 0 ? Math.min(100, cloudEvidenceRepos.length * 40) : 0,
-      testingEvidenceRepos.length > 0 ? Math.min(100, testingEvidenceRepos.length * 50) : 0,
-      uiUxEvidenceRepos.length > 0 ? Math.min(100, uiUxEvidenceRepos.length * 35) : 0,
-      problemSolvingEvidenceRepos.length > 0 ? Math.min(100, problemSolvingEvidenceRepos.length * 30) : 0,
-    ].filter(s => s > 0);
+    let technicalDepthScore = 0;
+    if (stronglyVerifiedSkillCount >= 6) technicalDepthScore = 15;
+    else if (stronglyVerifiedSkillCount === 5) technicalDepthScore = 14;
+    else if (stronglyVerifiedSkillCount === 4) technicalDepthScore = 12;
+    else if (stronglyVerifiedSkillCount === 3) technicalDepthScore = 10;
+    else if (stronglyVerifiedSkillCount === 2) technicalDepthScore = 7;
+    else if (stronglyVerifiedSkillCount === 1) technicalDepthScore = 4;
 
-    const techSkillAvg = techSkillScores.length > 0 ? (techSkillScores.reduce((a, b) => a + b, 0) / techSkillScores.length) : 0;
-    const strengthScore = Math.min(6, Math.round((techSkillAvg / 100) * 6));
-    const deepEvidenceScore = Math.min(3, Math.round(reposWithTechEvidenceCount / 2));
-
-    const technicalDepthScore = verifiedProjects.length > 0 ? Math.min(15, breadthScore + strengthScore + deepEvidenceScore) : 0;
-
-    // 4. PORTFOLIO DEPTH — 10 Points Max
-    const verifiedContribution = Math.min(4, verifiedProjects.length * 0.5);
-    const substantialContribution = Math.min(3, substantialProjects.length * 0.75);
-    const skillDiversityContribution = Math.min(3, activeSkillCount * 0.5);
+    // 4. PORTFOLIO DEPTH — 15 Points Max
+    const verifiedDepth = Math.min(7, verifiedProjects.length * 0.6);
+    const substantialDepth = Math.min(4, substantialProjects.length);
+    const diversityDepth = Math.min(4, stronglyVerifiedSkillCount * 0.7);
     const portfolioDepthScore = verifiedProjects.length > 0
-      ? Math.min(10, Math.round(verifiedContribution + substantialContribution + skillDiversityContribution))
+      ? Math.min(15, Math.round(verifiedDepth + substantialDepth + diversityDepth))
       : 0;
 
     // 5. ENGINEERING PRACTICES — 10 Points Max
@@ -1348,7 +1345,6 @@ export async function GET(req: NextRequest) {
       : 0;
 
     // 8. COLLABORATION — 5 Points Max (Strictly verified codebase collaboration evidence)
-    // Do NOT infer collaboration from followers or star counts.
     const hasPRCollaboration = deepAuditedRepos.some(r => r.evidenceList.some(e => e.toLowerCase().includes("pr") || e.toLowerCase().includes("pull request")));
     const hasMultiContributorCodebase = deepAuditedRepos.some(r => r.forks > 0 && r.isMeaningful);
     const isOrgMember = Boolean(userData.company && userData.company.startsWith("@"));
@@ -1357,8 +1353,25 @@ export async function GET(req: NextRequest) {
       ? Math.min(5, (hasMultiContributorCodebase ? 2 : 0) + (hasPRCollaboration ? 2 : 0) + (isOrgMember ? 1 : 0))
       : 0;
 
+    // 9. TESTING / RELIABILITY — 5 Points Max
+    const testingSkillScore = testingEvidenceRepos.length > 0 ? Math.min(100, testingEvidenceRepos.length * 50) : 0;
+    const testingReliabilityScore = Math.round((testingSkillScore / 100) * 5);
+
+    // BASE RAW SCORE (0-100 EXACT SUM OF COMPONENTS)
+    const baseRawScore = bestProjectQualityScore + overallProjectQualityScore + technicalDepthScore + portfolioDepthScore + engineeringPracticesScore + documentationScore + maintenanceConsistencyScore + collaborationOpenSourceScore + testingReliabilityScore;
+
+    // 10. ELITE PORTFOLIO SYNERGY BONUS (+2 Max)
+    const passEliteSynergy = verifiedProjects.length >= 10 &&
+      substantialProjects.length >= 3 &&
+      stronglyVerifiedSkillCount >= 5 &&
+      engineeringPracticesScore >= 8 &&
+      documentationScore >= 4 &&
+      technicalDepthScore >= 13;
+
+    const eliteSynergyBonus = passEliteSynergy ? 2 : 0;
+
     // AUTHORITATIVE SUM (0-100 EXACT SUM)
-    let rawProfileScore = bestProjectQualityScore + overallProjectQualityScore + technicalDepthScore + portfolioDepthScore + engineeringPracticesScore + documentationScore + maintenanceConsistencyScore + collaborationOpenSourceScore;
+    let rawProfileScore = baseRawScore + eliteSynergyBonus;
 
     // MANDATORY DYNAMIC CAPS (For weak or empty profiles)
     if (verifiedProjects.length === 0) {
@@ -1369,46 +1382,37 @@ export async function GET(req: NextRequest) {
 
     const finalDevScore = Math.min(100, Math.max(0, rawProfileScore));
 
-
-    // ── STEP 13: FINAL SCORE VALIDATION ──
-    if (process.env.NODE_ENV !== "production") {
-      console.assert(finalDevScore >= 0 && finalDevScore <= 100, `Score out of bounds: ${finalDevScore}`);
-    }
-
     // Category Score Breakdown (Exact Sum = finalDevScore)
     const scoreBreakdown: CategoryScoreBreakdown = {
       bestProjectQuality: {
         score: bestProjectQualityScore,
-        max: 30,
+        max: 20,
         evidence: proj1
-          ? [`Best project "${proj1.name}" RQS: ${bestRQS}/100 -> +${bestProjectQualityScore}/30 pts`]
+          ? [`Best project "${proj1.name}" RQS: ${bestRQS}/100 -> +${bestProjectQualityScore}/20 pts (Portfolio supported)`]
           : ["No verified project found"],
       },
       overallProjectQuality: {
         score: overallProjectQualityScore,
         max: 20,
         evidence: [
-          `✓ ${verifiedProjects.length} verified project(s) -> +${verifiedCountScore}/12 pts`,
-          `✓ ${substantialProjects.length} substantial project(s) -> +${substantialCountScore}/5 pts`,
-          strongProjectScore > 0 ? "✓ Strong project (RQS >= 75) -> +3 pts" : "✗ No strong project (RQS >= 75)",
+          `✓ ${verifiedProjects.length} verified project(s) -> +${verifiedScore}/14 pts`,
+          `✓ ${substantialProjects.length} substantial project(s) -> +${substantialScore}/6 pts`,
         ],
       },
       technicalDepth: {
         score: technicalDepthScore,
         max: 15,
         evidence: [
-          `✓ ${activeSkillCount} active technical skills -> +${breadthScore}/6 pts`,
-          `✓ Skill strength -> +${strengthScore}/6 pts`,
-          `✓ ${reposWithTechEvidenceCount} repo(s) with deep evidence -> +${deepEvidenceScore}/3 pts`,
+          `✓ ${stronglyVerifiedSkillCount} strongly verified technical skill(s) -> ${technicalDepthScore}/15 pts`,
         ],
       },
       portfolioDepth: {
         score: portfolioDepthScore,
-        max: 10,
+        max: 15,
         evidence: [
-          `✓ Verified project contribution -> +${verifiedContribution}/4 pts`,
-          `✓ Substantial project contribution -> +${substantialContribution}/3 pts`,
-          `✓ Technical diversity contribution -> +${skillDiversityContribution}/3 pts`,
+          `✓ Verified project contribution -> +${Math.round(verifiedDepth)}/7 pts`,
+          `✓ Substantial project contribution -> +${Math.round(substantialDepth)}/4 pts`,
+          `✓ Technical diversity contribution -> +${Math.round(diversityDepth)}/4 pts`,
         ],
       },
       engineeringPractices: {
@@ -1432,13 +1436,23 @@ export async function GET(req: NextRequest) {
       collaborationOpenSource: {
         score: collaborationOpenSourceScore,
         max: 5,
-        evidence: [`Public collaboration and stargazers (+${collaborationOpenSourceScore}/5 pts)`],
+        evidence: [`Verified codebase collaboration (+${collaborationOpenSourceScore}/5 pts)`],
+      },
+      testingReliability: {
+        score: testingReliabilityScore,
+        max: 5,
+        evidence: [`Testing skill score ${testingSkillScore}% -> +${testingReliabilityScore}/5 pts`],
+      },
+      eliteSynergyBonus: {
+        score: eliteSynergyBonus,
+        max: 2,
+        evidence: [passEliteSynergy ? "✓ Elite portfolio synergy criteria met (+2 pts)" : "✗ Synergy criteria not met (+0 pts)"],
       },
       // Legacy backward compatibility mappings
       otherVerifiedProjects: { score: overallProjectQualityScore, max: 20, evidence: [] },
       engineeringDepth: { score: technicalDepthScore, max: 15, evidence: [] },
-      testingCI: { score: engineeringPracticesScore, max: 10, evidence: [] },
-      projectDiversity: { score: portfolioDepthScore, max: 10, evidence: [] },
+      testingCI: { score: testingReliabilityScore, max: 5, evidence: [] },
+      projectDiversity: { score: portfolioDepthScore, max: 15, evidence: [] },
       maintenance: { score: maintenanceConsistencyScore, max: 5, evidence: [] },
     };
 
@@ -1848,23 +1862,25 @@ export async function GET(req: NextRequest) {
 
     // ── STEP 14: PROGRAMMATIC INVARIANT VALIDATION & DEBUG CONSOLE LOGGING ──
     if (process.env.NODE_ENV !== "production") {
-      console.log(`\n=== GITHUB INTELLIGENCE SCORE BREAKDOWN (@${username}) ===`);
+      console.log(`\n=== GITHUB INTELLIGENCE RECALIBRATED SCORE BREAKDOWN (@${username}) ===`);
       console.table({
-        bestProjectQuality: `${bestProjectQualityScore} / 30`,
+        bestProjectQuality: `${bestProjectQualityScore} / 20`,
         overallProjectQuality: `${overallProjectQualityScore} / 20`,
         technicalDepth: `${technicalDepthScore} / 15`,
-        portfolioDepth: `${portfolioDepthScore} / 10`,
+        portfolioDepth: `${portfolioDepthScore} / 15`,
         engineeringPractices: `${engineeringPracticesScore} / 10`,
         documentation: `${documentationScore} / 5`,
         maintenanceConsistency: `${maintenanceConsistencyScore} / 5`,
         collaborationOpenSource: `${collaborationOpenSourceScore} / 5`,
+        testingReliability: `${testingReliabilityScore} / 5`,
+        eliteSynergyBonus: `${eliteSynergyBonus} / 2`,
         FINAL_AUTHORITATIVE_SCORE: `${finalDevScore} / 100`,
       });
 
       // Assertions Check
       if (verifiedProjects.length > 0 && overallProjectQualityScore === 0) console.warn("[INVARIANT_VIOLATION] Verified projects > 0 but Overall Projects is 0!");
       if (substantialProjects.length > 0 && portfolioDepthScore === 0) console.warn("[INVARIANT_VIOLATION] Substantial projects > 0 but Portfolio Depth is 0!");
-      if (activeSkillCount >= 3 && technicalDepthScore === 0) console.warn("[INVARIANT_VIOLATION] 3+ active technical skills but Technical Depth is 0!");
+      if (stronglyVerifiedSkillCount >= 3 && technicalDepthScore === 0) console.warn("[INVARIANT_VIOLATION] 3+ strongly verified technical skills but Technical Depth is 0!");
     }
 
     const techBreakdown: Record<string, number> = {};
