@@ -100,6 +100,14 @@ export interface ClassifiedRepoInfo {
   hasCiCd: boolean;
   hasPages: boolean;
   hasReadme: boolean;
+  hasAiMl: boolean;
+  hasCloud: boolean;
+  hasUiUx: boolean;
+  hasProblemSolving: boolean;
+  aiMlEvidenceFiles?: string[];
+  cloudEvidenceFiles?: string[];
+  uiUxEvidenceFiles?: string[];
+  problemSolvingEvidenceFiles?: string[];
   auditState?: "DEEP_AUDITED" | "NOT_DEEP_AUDITED" | "EXCLUDED_WITH_EVIDENCE";
 }
 
@@ -713,10 +721,58 @@ export async function GET(req: NextRequest) {
           : [];
         const hasDeploymentPipeline = deployEvidenceFiles.length > 0 || hasPages;
 
+        // 8. AI / ML EVIDENCE EXTRACTION (Distinguish actual ML model pipeline vs OpenAI API wrapper)
+        const mlModelFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.includes("torch") || f.includes("tensorflow") || f.includes("sklearn") || f.includes("scikit") ||
+              f.includes("transformers") || f.includes("keras") || f.includes("dataset") ||
+              f.endsWith(".ipynb") || f.includes("/ml/") || f.includes("/models/") || f.includes("train.py") || f.includes("predict.py") || f.includes("inference.py")
+            )
+          : [];
+        const externalAiApiFiles = treeFetched
+          ? filteredFileList.filter(f => f.includes("openai") || f.includes("langchain") || f.includes("anthropic") || f.includes("cohere"))
+          : [];
+
+        const hasActualMlModel = mlModelFiles.length > 0 || corpus.includes("machine-learning") || corpus.includes("deep-learning") || corpus.includes("pytorch") || corpus.includes("tensorflow") || corpus.includes("scikit-learn");
+        const hasExternalAiApi = externalAiApiFiles.length > 0 || corpus.includes("openai") || corpus.includes("chatgpt");
+
+        const hasAiMl = hasActualMlModel; // Requires actual ML model code / dataset pipeline
+        const aiMlEvidenceFiles = hasActualMlModel ? mlModelFiles : externalAiApiFiles;
+
+        // 9. CLOUD INFRASTRUCTURE EVIDENCE EXTRACTION
+        const cloudEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.includes("vercel.json") || f.includes("netlify.toml") || f.includes("aws") || f.includes("serverless") ||
+              f.includes("terraform") || f.includes("cloudfront") || f.includes("s3") || f.includes("firebase.json") ||
+              f.includes("fly.toml") || f.includes("render.yaml") || f.includes("cloudflare")
+            )
+          : [];
+        const hasCloud = cloudEvidenceFiles.length > 0 || hasPages || corpus.includes("vercel") || corpus.includes("aws") || corpus.includes("cloud");
+
+        // 10. UI / UX DESIGN EVIDENCE EXTRACTION
+        const uiUxEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.endsWith(".css") || f.endsWith(".scss") || f.endsWith(".sass") || f.endsWith(".less") ||
+              f.includes("tailwind") || f.includes("styled") || f.includes("theme") || f.includes("component") ||
+              f.includes("layout") || f.includes("css") || f.endsWith(".svg")
+            )
+          : [];
+        const hasUiUx = uiUxEvidenceFiles.length > 0 || corpus.includes("tailwind") || corpus.includes("ui") || corpus.includes("css");
+
         // Count meaningful source files (.js, .ts, .jsx, .tsx, .py, .go, .java, .c, .cpp, .rs, .php, .rb, .sql, etc.)
         const sourceExtensions = [".js", ".ts", ".jsx", ".tsx", ".py", ".go", ".java", ".c", ".cpp", ".rs", ".php", ".rb", ".sql", ".kt", ".swift", ".cs", ".html", ".vue", ".svelte"];
         const meaningfulSourceFiles = filteredFileList.filter(f => sourceExtensions.some(ext => f.endsWith(ext)));
         const meaningfulSourceFileCount = treeFetched ? meaningfulSourceFiles.length : Math.round(sizeKB / 20);
+
+        // 11. PROBLEM SOLVING / ALGORITHM EVIDENCE EXTRACTION
+        const problemSolvingEvidenceFiles = treeFetched
+          ? filteredFileList.filter(f => 
+              f.includes("algorithm") || f.includes("parser") || f.includes("compiler") || f.includes("ast") ||
+              f.includes("tree") || f.includes("graph") || f.includes("search") || f.includes("sort") ||
+              f.includes("solver") || f.includes("calculator") || f.includes("engine") || f.includes("utility") || f.includes("util")
+            )
+          : [];
+        const hasProblemSolving = problemSolvingEvidenceFiles.length > 0 || (meaningfulSourceFileCount >= 10);
 
         // 1. PROGRESSIVE IMPLEMENTATION DEPTH (0-30)
         let fileCountPoints = 0;
@@ -1136,6 +1192,14 @@ export async function GET(req: NextRequest) {
           hasCiCd,
           hasPages,
           hasReadme,
+          hasAiMl,
+          hasCloud,
+          hasUiUx,
+          hasProblemSolving,
+          aiMlEvidenceFiles,
+          cloudEvidenceFiles,
+          uiUxEvidenceFiles,
+          problemSolvingEvidenceFiles,
           auditState,
         };
       })
@@ -1369,11 +1433,110 @@ export async function GET(req: NextRequest) {
       deepAnalysisInfo: `${deepAuditedRepos.length} candidate repositories inspected deeply`,
     };
 
+    // ── STEP 10: SINGLE NORMALIZED EVIDENCE STORE & SKILL MATRIX PIPELINE ──
+    // Aggregate technical evidence STRICTLY from deeply inspected repositories (tree fetched).
+    // Not Deep Audited != evidence found. Metadata-only repositories MUST NOT grant code evidence.
+    const auditedCandidatePool = classifiedRepos.filter(r => r.auditState === "DEEP_AUDITED");
+
+    const feEvidenceRepos = auditedCandidatePool.filter(r => r.hasFE);
+    const beEvidenceRepos = auditedCandidatePool.filter(r => r.hasBE);
+    const dbEvidenceRepos = auditedCandidatePool.filter(r => r.hasDB);
+    const aiMlEvidenceRepos = auditedCandidatePool.filter(r => r.hasAiMl);
+    const devOpsEvidenceRepos = auditedCandidatePool.filter(r => r.hasCiCd || (r.auditDetails?.categoryScores?.engineeringPractices?.score || 0) > 0);
+    const cloudEvidenceRepos = auditedCandidatePool.filter(r => r.hasCloud || r.hasPages);
+    const testingEvidenceRepos = auditedCandidatePool.filter(r => r.hasTest);
+    const uiUxEvidenceRepos = auditedCandidatePool.filter(r => r.hasUiUx);
+    const docEvidenceRepos = auditedCandidatePool.filter(r => r.hasReadme);
+    const problemSolvingEvidenceRepos = auditedCandidatePool.filter(r => r.hasProblemSolving || r.rqs >= 50);
+
+    const buildSkillConfidence = (
+      key: string,
+      label: string,
+      matchingRepos: ClassifiedRepoInfo[],
+      repoPointWeight: number
+    ): SkillConfidenceItem => {
+      const repoNames = matchingRepos.map(r => r.name);
+      const count = matchingRepos.length;
+
+      if (count === 0) {
+        return {
+          score: 0,
+          confidence: "INSUFFICIENT EVIDENCE",
+          evidence: ["No executable implementation evidence found in deeply inspected repositories."],
+          reason: "No code implementation detected.",
+          supportingRepos: [],
+        };
+      }
+
+      let rawScore = Math.min(100, count * repoPointWeight);
+      if (rawScore < 35) rawScore = 35;
+
+      let confidence: SkillConfidenceItem["confidence"] = "LOW CONFIDENCE";
+      let reason = "Limited code implementation evidence verified in inspected repositories.";
+
+      if (count >= 2 || (count >= 1 && matchingRepos.some(r => r.isMeaningful))) {
+        confidence = "HIGH CONFIDENCE";
+        reason = `Verified implementation evidence across ${count} deeply audited repository codebase(s).`;
+      } else if (count >= 1) {
+        confidence = "MEDIUM CONFIDENCE";
+        reason = `Implementation evidence verified in inspected repository "${matchingRepos[0].name}".`;
+      }
+
+      const evidence = matchingRepos.map(r => `• ${r.name}: ${label} evidence verified (RQS: ${r.rqs}/100)`);
+
+      return {
+        score: Math.min(100, Math.max(15, rawScore)),
+        confidence,
+        evidence,
+        reason,
+        supportingRepos: repoNames,
+      };
+    };
+
+    const skillsConfidence: Record<string, SkillConfidenceItem> = {
+      frontend: buildSkillConfidence("frontend", "Frontend UI", feEvidenceRepos, 40),
+      backend: buildSkillConfidence("backend", "Backend / API", beEvidenceRepos, 40),
+      database: buildSkillConfidence("database", "Database Persistence", dbEvidenceRepos, 45),
+      aiMl: buildSkillConfidence("aiMl", "AI / Machine Learning", aiMlEvidenceRepos, 50),
+      devOps: buildSkillConfidence("devOps", "DevOps & CI/CD", devOpsEvidenceRepos, 45),
+      cloud: buildSkillConfidence("cloud", "Cloud Infrastructure", cloudEvidenceRepos, 40),
+      problemSolving: buildSkillConfidence("problemSolving", "Problem Solving & Architecture", problemSolvingEvidenceRepos, 30),
+      documentation: buildSkillConfidence("documentation", "Documentation", docEvidenceRepos, 35),
+      uiUx: buildSkillConfidence("uiUx", "UI / UX Design", uiUxEvidenceRepos, 35),
+      testing: buildSkillConfidence("testing", "Software Testing", testingEvidenceRepos, 50),
+    };
+
+    const skillsBreakdown: Record<string, number> = {
+      frontend: skillsConfidence.frontend.confidence === "INSUFFICIENT EVIDENCE" ? 0 : skillsConfidence.frontend.score,
+      backend: skillsConfidence.backend.confidence === "INSUFFICIENT EVIDENCE" ? 0 : skillsConfidence.backend.score,
+      database: skillsConfidence.database.confidence === "INSUFFICIENT EVIDENCE" ? 0 : skillsConfidence.database.score,
+      devOps: skillsConfidence.devOps.confidence === "INSUFFICIENT EVIDENCE" ? 0 : skillsConfidence.devOps.score,
+      testing: skillsConfidence.testing.confidence === "INSUFFICIENT EVIDENCE" ? 0 : skillsConfidence.testing.score,
+      documentation: skillsConfidence.documentation.confidence === "INSUFFICIENT EVIDENCE" ? 0 : skillsConfidence.documentation.score,
+    };
+
+    // ── STEP 11: BALANCED PORTFOLIO DEPTH FORMULA ──
+    // 40% Substantial Project Quality + 25% Verified Project Count + 20% Technical Diversity + 15% Independent Project Diversity
+    const activeSkillsCount = Object.values(skillsConfidence).filter(s => s.confidence !== "INSUFFICIENT EVIDENCE").length;
+
+    // Component 1: Flagship Quality (40 pts)
+    const substantialQualityComponent = Math.round(Math.min(40, (bestRQS / 100) * 40));
+    // Component 2: Verified Count (25 pts)
+    const verifiedCountComponent = Math.round(Math.min(25, (verifiedProjects.length / 4) * 25));
+    // Component 3: Technical Diversity (20 pts)
+    const techDiversityComponent = Math.round(Math.min(20, (activeSkillsCount / 6) * 20));
+    // Component 4: Independent Project Diversity (15 pts) - unique non-fork candidate repos
+    const uniqueIndependentCount = auditedCandidatePool.filter(r => !r.repoCategory.includes("FORK")).length;
+    const independentDiversityComponent = Math.round(Math.min(15, (uniqueIndependentCount / 3) * 15));
+
+    const weightedPortfolioDepth = Math.min(100, Math.max(0, substantialQualityComponent + verifiedCountComponent + techDiversityComponent + independentDiversityComponent));
+    const technicalBreadthScore = Math.min(100, Math.round((activeSkillsCount / 10) * 100));
+
     const separateMetrics: SeparateQualityMetrics = {
       bestProjectQuality: bestRQS,
-      portfolioDepth: Math.min(100, meaningfulCount * 35),
+      portfolioDepth: verifiedProjects.length > 0 ? Math.max(20, weightedPortfolioDepth) : 0,
       engineeringQuality: Math.round(((engineeringPracticesScore + testingCIDeployScore) / 15) * 100),
-      technicalBreadth: Math.round((engineeringBreadthScore / 10) * 100),
+      technicalBreadth: verifiedProjects.length > 0 ? Math.max(20, technicalBreadthScore) : 0,
       maintenance: Math.round((maintenanceScore / 10) * 100),
     };
 
@@ -1390,44 +1553,42 @@ export async function GET(req: NextRequest) {
 
     const totalStars = classifiedRepos.reduce((acc, r) => acc + r.stars, 0);
 
-    // ── STEP 15: BADGES SYSTEM REQUIRING CODE EVIDENCE ──
-    const feProjects = verifiedProjects.filter(r => r.hasFE);
+    // ── STEP 12: ACHIEVEMENTS SYSTEM (Must match Skill Matrix & Evidence) ──
     const feBadge: DeveloperBadge = {
       id: "frontend-developer",
       name: "Frontend Developer",
       description: "Build & publish valid frontend web applications",
       icon: "⚛️",
-      unlocked: feProjects.length > 0,
+      unlocked: skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" && feEvidenceRepos.length > 0,
       glowColor: "rgba(56,189,248,0.6)",
-      evidenceList: feProjects.length > 0
-        ? feProjects.map(r => `• ${r.name}: Verified frontend UI code (RQS: ${r.rqs}/100)`)
+      evidenceList: feEvidenceRepos.length > 0
+        ? feEvidenceRepos.map(r => `• ${r.name}: Verified frontend UI code (RQS: ${r.rqs}/100)`)
         : ["No verified frontend application project detected."],
-      unlockReason: feProjects.length > 0
+      unlockReason: feEvidenceRepos.length > 0
         ? "Verified frontend application implementation in public repositories."
         : "Requires at least one verified frontend project.",
       requirementsChecklist: [
         { text: "Frontend framework / JS/TS codebase detected", satisfied: validFE },
-        { text: "Verified project (RQS >= 45)", satisfied: feProjects.length > 0 },
+        { text: "Verified frontend evidence (Confidence != Insufficient)", satisfied: skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" },
       ],
     };
 
-    const beProjects = verifiedProjects.filter(r => r.hasBE);
     const beBadge: DeveloperBadge = {
       id: "backend-engineer",
       name: "Backend Engineer",
       description: "Create robust backend API servers and application logic",
       icon: "⚙️",
-      unlocked: beProjects.length > 0,
+      unlocked: skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && beEvidenceRepos.length > 0,
       glowColor: "rgba(34,197,94,0.6)",
-      evidenceList: beProjects.length > 0
-        ? beProjects.map(r => `• ${r.name}: Verified backend server/API code (RQS: ${r.rqs}/100)`)
+      evidenceList: beEvidenceRepos.length > 0
+        ? beEvidenceRepos.map(r => `• ${r.name}: Verified backend server/API code (RQS: ${r.rqs}/100)`)
         : ["No backend API implementation detected in public repos."],
-      unlockReason: beProjects.length > 0
+      unlockReason: beEvidenceRepos.length > 0
         ? "Valid backend/server implementation verified."
         : "Requires a backend API server (Node, Python, Go, Java, etc.).",
       requirementsChecklist: [
         { text: "Backend framework / API server implementation", satisfied: validBE },
-        { text: "Verified project (RQS >= 45)", satisfied: beProjects.length > 0 },
+        { text: "Verified backend evidence (Confidence != Insufficient)", satisfied: skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" },
       ],
     };
 
@@ -1437,98 +1598,93 @@ export async function GET(req: NextRequest) {
       name: "Full-Stack Builder",
       description: "Build complete end-to-end applications connecting frontend & backend",
       icon: "🚀",
-      unlocked: fullStackProjects.length > 0,
+      unlocked: skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" && skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && (fullStackProjects.length > 0 || (feEvidenceRepos.length > 0 && beEvidenceRepos.length > 0)),
       glowColor: "rgba(168,85,247,0.7)",
-      evidenceList: fullStackProjects.length > 0
-        ? fullStackProjects.map(r => `• ${r.name}: Integrated FE + BE codebase verified (RQS: ${r.rqs}/100)`)
-        : ["No single project combines both frontend and backend logic."],
-      unlockReason: fullStackProjects.length > 0
-        ? "Verified full-stack project combining frontend UI and backend API detected."
-        : "Requires at least one single project containing BOTH frontend and backend.",
+      evidenceList: feEvidenceRepos.length > 0 && beEvidenceRepos.length > 0
+        ? [`• Verified Frontend repositories (${feEvidenceRepos.length}) + Backend repositories (${beEvidenceRepos.length})`]
+        : ["No integrated frontend and backend evidence."],
+      unlockReason: feEvidenceRepos.length > 0 && beEvidenceRepos.length > 0
+        ? "Verified full-stack capability combining frontend UI and backend API detected."
+        : "Requires evidence of BOTH frontend and backend implementations.",
       requirementsChecklist: [
-        { text: "Frontend codebase detected", satisfied: validFE },
-        { text: "Backend codebase detected", satisfied: validBE },
-        { text: "Single repository combines FE + BE", satisfied: fullStackProjects.length > 0 },
+        { text: "Frontend evidence verified", satisfied: skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" },
+        { text: "Backend evidence verified", satisfied: skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" },
       ],
     };
 
-    const dbProjects = verifiedProjects.filter(r => r.hasDB);
     const dbBadge: DeveloperBadge = {
       id: "database-architect",
       name: "Database Architect",
       description: "Integrate database schemas and data persistence layers",
       icon: "🗄️",
-      unlocked: dbProjects.length > 0,
+      unlocked: skillsConfidence.database.confidence !== "INSUFFICIENT EVIDENCE" && dbEvidenceRepos.length > 0,
       glowColor: "rgba(20,184,166,0.6)",
-      evidenceList: dbProjects.length > 0
-        ? dbProjects.map(r => `• ${r.name}: Database persistence verified (RQS: ${r.rqs}/100)`)
-        : ["No database schemas or client queries detected in public codebases."],
-      unlockReason: dbProjects.length > 0
-        ? "Database persistence layers (MongoDB, PostgreSQL, MySQL, Firebase, etc.) verified."
-        : "Requires database integration.",
+      evidenceList: dbEvidenceRepos.length > 0
+        ? dbEvidenceRepos.map(r => `• ${r.name}: Verified database schema/persistence (RQS: ${r.rqs}/100)`)
+        : ["No database schema or ORM models detected."],
+      unlockReason: dbEvidenceRepos.length > 0
+        ? "Verified database persistence integration."
+        : "Requires integrating a database (MongoDB, PostgreSQL, Prisma, SQL, etc.).",
       requirementsChecklist: [
-        { text: "Database ORM / driver / query integration", satisfied: dbProjects.length > 0 },
-        { text: "Verified project (RQS >= 45)", satisfied: dbProjects.length > 0 },
+        { text: "Database persistence layer verified", satisfied: validDB },
+        { text: "Database skill confidence verified", satisfied: skillsConfidence.database.confidence !== "INSUFFICIENT EVIDENCE" },
       ],
     };
 
-    const aiProjects = verifiedProjects.filter(r => (r.name.toLowerCase().includes("tensor") || r.name.toLowerCase().includes("ai") || r.name.toLowerCase().includes("ml") || r.topics.includes("ai")));
     const aiBadge: DeveloperBadge = {
       id: "ai-ml-builder",
-      name: "AI / ML Builder",
-      description: "Implement Machine Learning models, Computer Vision, or AI integrations",
-      icon: "🧠",
-      unlocked: aiProjects.length > 0,
+      name: "AI/ML Builder",
+      description: "Develop machine learning models or AI application integrations",
+      icon: "🤖",
+      unlocked: skillsConfidence.aiMl.confidence !== "INSUFFICIENT EVIDENCE" && aiMlEvidenceRepos.length > 0,
       glowColor: "rgba(236,72,153,0.6)",
-      evidenceList: aiProjects.length > 0
-        ? aiProjects.map(r => `• ${r.name}: AI/ML implementation verified (RQS: ${r.rqs}/100)`)
-        : ["No AI/ML model training or API implementation detected."],
-      unlockReason: aiProjects.length > 0
-        ? "Verified AI/ML libraries or API integrations in your project repository."
-        : "Requires implementing Machine Learning models or AI integrations.",
+      evidenceList: aiMlEvidenceRepos.length > 0
+        ? aiMlEvidenceRepos.map(r => `• ${r.name}: AI/ML implementation verified (RQS: ${r.rqs}/100)`)
+        : ["No PyTorch, TensorFlow, or AI SDK code detected."],
+      unlockReason: aiMlEvidenceRepos.length > 0
+        ? "Verified AI/ML implementation codebase detected."
+        : "Requires building an AI/ML model or API integration.",
       requirementsChecklist: [
-        { text: "AI/ML codebase or API integration", satisfied: aiProjects.length > 0 },
-        { text: "Non-trivial project implementation", satisfied: aiProjects.length > 0 },
+        { text: "AI/ML codebase or model files", satisfied: aiMlEvidenceRepos.length > 0 },
+        { text: "AI/ML skill confidence verified", satisfied: skillsConfidence.aiMl.confidence !== "INSUFFICIENT EVIDENCE" },
       ],
     };
 
-    const apiProjects = verifiedProjects.filter(r => r.hasBE || r.name.toLowerCase().includes("api"));
     const apiBadge: DeveloperBadge = {
       id: "api-architect",
       name: "API Architect",
-      description: "Design & implement RESTful or GraphQL backend API services",
+      description: "Design structured backend API endpoints and microservices",
       icon: "🔗",
-      unlocked: apiProjects.length > 0,
+      unlocked: skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && beEvidenceRepos.length > 0,
       glowColor: "rgba(99,102,241,0.6)",
-      evidenceList: apiProjects.length > 0
-        ? apiProjects.map(r => `• ${r.name}: REST API routes & endpoints verified (RQS: ${r.rqs}/100)`)
+      evidenceList: beEvidenceRepos.length > 0
+        ? beEvidenceRepos.map(r => `• ${r.name}: REST/GraphQL API routes verified (RQS: ${r.rqs}/100)`)
         : ["No REST/GraphQL backend route definitions found."],
-      unlockReason: apiProjects.length > 0
+      unlockReason: beEvidenceRepos.length > 0
         ? "RESTful/GraphQL backend API routes verified."
         : "Requires designing and publishing backend API routes/endpoints.",
       requirementsChecklist: [
-        { text: "Backend REST/GraphQL route definitions", satisfied: apiProjects.length > 0 },
-        { text: "Verified API service architecture", satisfied: apiProjects.length > 0 },
+        { text: "Backend REST/GraphQL route definitions", satisfied: validBE },
+        { text: "Backend skill confidence verified", satisfied: skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" },
       ],
     };
 
-    const deployProjects = verifiedProjects.filter(r => r.hasPages || r.hasCiCd);
     const deployBadge: DeveloperBadge = {
       id: "deployment-ready",
       name: "Deployment Ready",
       description: "Deploy live applications or configure cloud deployment pipelines",
       icon: "☁️",
-      unlocked: deployProjects.length > 0,
+      unlocked: (skillsConfidence.devOps.confidence !== "INSUFFICIENT EVIDENCE" || skillsConfidence.cloud.confidence !== "INSUFFICIENT EVIDENCE") && (devOpsEvidenceRepos.length > 0 || cloudEvidenceRepos.length > 0),
       glowColor: "rgba(14,165,233,0.6)",
-      evidenceList: deployProjects.length > 0
-        ? deployProjects.map(r => `• ${r.name}: ${r.hasPages ? "Live web URL verified" : "CI/CD & Docker config verified"}`)
+      evidenceList: cloudEvidenceRepos.length > 0 || devOpsEvidenceRepos.length > 0
+        ? [...cloudEvidenceRepos, ...devOpsEvidenceRepos].slice(0, 3).map(r => `• ${r.name}: Deployment / CI/CD pipeline verified`)
         : ["No live web URL or Docker/CI-CD setup found."],
-      unlockReason: deployProjects.length > 0
+      unlockReason: cloudEvidenceRepos.length > 0 || devOpsEvidenceRepos.length > 0
         ? "Live application URL deployment or automated CI/CD container configuration verified."
         : "Requires deploying a web app live or adding Docker/CI-CD.",
       requirementsChecklist: [
-        { text: "Live web application homepage URL", satisfied: verifiedProjects.some(r => r.hasPages) },
-        { text: "Docker / GitHub Actions pipeline", satisfied: validCiCd },
+        { text: "Live web application or deployment config", satisfied: cloudEvidenceRepos.length > 0 || validPages },
+        { text: "Docker / GitHub Actions pipeline", satisfied: devOpsEvidenceRepos.length > 0 || validCiCd },
       ],
     };
 
@@ -1537,17 +1693,17 @@ export async function GET(req: NextRequest) {
       name: "Documentation Pro",
       description: "Maintain comprehensive README documentation across repositories",
       icon: "📚",
-      unlocked: validReadmeCount >= 2 && verifiedProjects.length >= 1,
+      unlocked: skillsConfidence.documentation.confidence !== "INSUFFICIENT EVIDENCE" && docEvidenceRepos.length >= 1,
       glowColor: "rgba(16,185,129,0.6)",
-      evidenceList: validReadmeCount >= 2
-        ? verifiedProjects.filter(r => r.hasReadme).map(r => `• ${r.name}: Complete README documentation verified`)
-        : [`Only ${validReadmeCount} repository has detailed README documentation.`],
-      unlockReason: validReadmeCount >= 2
-        ? "Comprehensive README documentation verified across multiple repositories."
-        : "Requires detailed README documentation across at least 2 projects.",
+      evidenceList: docEvidenceRepos.length > 0
+        ? docEvidenceRepos.slice(0, 3).map(r => `• ${r.name}: Complete README documentation verified`)
+        : ["No repository with detailed README documentation found."],
+      unlockReason: docEvidenceRepos.length > 0
+        ? "Comprehensive README documentation verified across repository codebases."
+        : "Requires detailed README documentation.",
       requirementsChecklist: [
-        { text: "First repository README documentation", satisfied: validReadmeCount >= 1 },
-        { text: "Second repository README documentation", satisfied: validReadmeCount >= 2 },
+        { text: "Repository README documentation", satisfied: docEvidenceRepos.length >= 1 },
+        { text: "Documentation skill confidence verified", satisfied: skillsConfidence.documentation.confidence !== "INSUFFICIENT EVIDENCE" },
       ],
     };
 
@@ -1556,17 +1712,16 @@ export async function GET(req: NextRequest) {
       name: "Open Source Contributor",
       description: "Publish open source repositories with verified community recognition",
       icon: "🌐",
-      unlocked: totalStars >= 25 && verifiedProjects.length >= 2,
+      unlocked: (totalStars >= 10 || allRepos.length >= 5) && (auditedCandidatePool.length >= 2),
       glowColor: "rgba(245,158,11,0.6)",
-      evidenceList: totalStars >= 25
-        ? [`• ${totalStars} total community stars across original repositories`, `• ${verifiedProjects.length} published verified repositories`]
-        : ["No public collaboration or community star recognition yet."],
-      unlockReason: totalStars >= 25
-        ? "Verified open source publications with community recognition."
-        : "Requires publishing verified original repositories with community stars.",
+      evidenceList: [
+        `• ${totalStars} total community stars across public repositories`,
+        `• ${auditedCandidatePool.length} inspected open source repository codebases`
+      ],
+      unlockReason: "Verified open source publications with community recognition.",
       requirementsChecklist: [
-        { text: "Published original open source projects", satisfied: verifiedProjects.length >= 2 },
-        { text: "Community stargazers or PR contributions", satisfied: totalStars >= 25 },
+        { text: "Published original open source projects", satisfied: auditedCandidatePool.length >= 2 },
+        { text: "Community stargazers or public repositories", satisfied: totalStars >= 5 || allRepos.length >= 3 },
       ],
     };
 
@@ -1576,17 +1731,17 @@ export async function GET(req: NextRequest) {
       name: "Elite Builder",
       description: "Master level developer profile demonstrating top-tier software engineering",
       icon: "👑",
-      unlocked: finalDevScore >= 90 && bestRQS >= 80 && preUnlocked >= 3,
+      unlocked: finalDevScore >= 85 && bestRQS >= 75 && preUnlocked >= 3,
       glowColor: "rgba(250,204,21,0.8)",
-      evidenceList: finalDevScore >= 90
-        ? [`• Developer Score: ${finalDevScore}/100 (Required: >= 90)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 80)`]
-        : [`• Current Developer Score: ${finalDevScore}/100 (Required: >= 90)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 80)`],
-      unlockReason: finalDevScore >= 90
-        ? "Elite engineering portfolio status achieved with top-tier project quality and score >= 90."
-        : "Requires Developer Score >= 90, Flagship Project RQS >= 80, and at least 3 other unlocked badges.",
+      evidenceList: finalDevScore >= 85
+        ? [`• Developer Score: ${finalDevScore}/100 (Required: >= 85)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 75)`]
+        : [`• Current Developer Score: ${finalDevScore}/100 (Required: >= 85)`, `• Best Project RQS: ${bestRQS}/100 (Required: >= 75)`],
+      unlockReason: finalDevScore >= 85
+        ? "Elite engineering portfolio status achieved with top-tier project quality and score >= 85."
+        : "Requires Developer Score >= 85, Flagship Project RQS >= 75, and at least 3 other unlocked badges.",
       requirementsChecklist: [
-        { text: "Developer Score >= 90", satisfied: finalDevScore >= 90 },
-        { text: "Flagship Project RQS >= 80", satisfied: bestRQS >= 80 },
+        { text: "Developer Score >= 85", satisfied: finalDevScore >= 85 },
+        { text: "Flagship Project RQS >= 75", satisfied: bestRQS >= 75 },
         { text: "At least 3 other achievements unlocked", satisfied: preUnlocked >= 3 },
       ],
     };
@@ -1603,6 +1758,51 @@ export async function GET(req: NextRequest) {
       collabBadge,
       eliteBadge,
     ];
+
+    // ── STEP 13: CAREER ARCHETYPE SELECTION (Strictly from Skill Matrix) ──
+    let careerArchetype = "Software Developer";
+    const feScore = skillsConfidence.frontend.score;
+    const beScore = skillsConfidence.backend.score;
+    const aiScore = skillsConfidence.aiMl.score;
+    const devOpsScore = skillsConfidence.devOps.score;
+    const cloudScore = skillsConfidence.cloud.score;
+    const psScore = skillsConfidence.problemSolving.score;
+
+    if (skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" && skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && feScore >= 35 && beScore >= 35) {
+      careerArchetype = "Full Stack Developer";
+    } else if (skillsConfidence.aiMl.confidence !== "INSUFFICIENT EVIDENCE" && aiScore >= 40) {
+      careerArchetype = "AI / ML Engineer";
+    } else if (skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" && feScore >= beScore && feScore >= 35) {
+      careerArchetype = "Frontend Developer";
+    } else if (skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && beScore >= feScore && beScore >= 35) {
+      careerArchetype = "Backend Engineer";
+    } else if ((skillsConfidence.devOps.confidence !== "INSUFFICIENT EVIDENCE" || skillsConfidence.cloud.confidence !== "INSUFFICIENT EVIDENCE") && (devOpsScore >= 40 || cloudScore >= 40)) {
+      careerArchetype = "DevOps & Cloud Engineer";
+    } else if (skillsConfidence.problemSolving.confidence !== "INSUFFICIENT EVIDENCE" && psScore >= 50) {
+      careerArchetype = "Systems / Software Engineer";
+    } else {
+      careerArchetype = "Software Developer";
+    }
+
+    // ── STEP 14: PROGRAMMATIC INVARIANT VALIDATION & WARNING LOGGING ──
+    // Validates invariants to ensure evidence consistency without mutating scores
+    if (process.env.NODE_ENV !== "production") {
+      if (badges.find(b => b.id === "frontend-developer")?.unlocked && skillsConfidence.frontend.confidence === "INSUFFICIENT EVIDENCE") {
+        console.warn("[INVARIANT_WARNING] Frontend Developer achievement unlocked but Frontend skill is INSUFFICIENT EVIDENCE!");
+      }
+      if (badges.find(b => b.id === "backend-engineer")?.unlocked && skillsConfidence.backend.confidence === "INSUFFICIENT EVIDENCE") {
+        console.warn("[INVARIANT_WARNING] Backend Engineer achievement unlocked but Backend skill is INSUFFICIENT EVIDENCE!");
+      }
+      if (documentationScore > 0 && skillsConfidence.documentation.confidence === "INSUFFICIENT EVIDENCE") {
+        console.warn("[INVARIANT_WARNING] Documentation score awarded but Documentation skill is INSUFFICIENT EVIDENCE!");
+      }
+      if (validTest && skillsConfidence.testing.confidence === "INSUFFICIENT EVIDENCE") {
+        console.warn("[INVARIANT_WARNING] Verified test suite exists but Testing skill is INSUFFICIENT EVIDENCE!");
+      }
+      if ((validCiCd || validDocker) && skillsConfidence.devOps.confidence === "INSUFFICIENT EVIDENCE") {
+        console.warn("[INVARIANT_WARNING] CI/CD / Docker setup exists but DevOps skill is INSUFFICIENT EVIDENCE!");
+      }
+    }
 
     const techBreakdown: Record<string, number> = {};
     classifiedRepos.filter(r => r.isMeaningful).forEach(r => {
@@ -1645,22 +1845,15 @@ export async function GET(req: NextRequest) {
       nextRewardBadge: "Master Engineer Badge",
       stars: devStars,
       rankPercentile: null,
-      category: validFE && validBE ? "Full Stack Engineer" : "Software Developer",
+      category: careerArchetype,
       scoreBreakdown,
       transparencyAudit,
       scoreExplanation: {
         strengths: scoreStrengths,
         needsImprovement: scoreNeedsImp,
       },
-      skillsBreakdown: {
-        frontend: validFE ? 80 : 0,
-        backend: validBE ? 80 : 0,
-        database: validDB ? 75 : 0,
-        devOps: validCiCd ? 70 : 0,
-        testing: validTest ? 70 : 0,
-        documentation: validReadmeCount > 0 ? 65 : 0,
-      },
-      skillsConfidence: {},
+      skillsBreakdown,
+      skillsConfidence,
       badges,
       analysisVersion: ANALYSIS_ENGINE_VERSION,
       analyzedAt: new Date().toISOString(),
