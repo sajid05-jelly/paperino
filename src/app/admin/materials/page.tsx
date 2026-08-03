@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit, orderBy } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { logFirestoreRead } from "@/lib/firestoreDiagnostics";
 import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2, Trash2 } from "lucide-react";
@@ -51,13 +51,17 @@ export default function ManageMaterialsPage() {
   const fetchMaterials = async () => {
     setLoading(true);
     try {
-      logFirestoreRead("materials", "Admin page fetch with limit(100) orderBy createdAt desc");
-      const q = query(collection(db, "materials"), orderBy("createdAt", "desc"), limit(100));
+      logFirestoreRead("materials", "Admin page fetch with limit(100)");
+      // NOTE: No orderBy in query — materials without createdAt field would be excluded by Firestore.
+      // Sort client-side instead so ALL materials are returned.
+      const q = query(collection(db, "materials"), limit(100));
       const snap = await getDocs(q);
       const mats: Material[] = [];
       snap.forEach(d => {
         mats.push({ id: d.id, ...d.data() } as Material);
       });
+      // Sort newest first client-side (handles missing createdAt gracefully)
+      mats.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
       setMaterials(mats);
     } catch (err) {
       console.error("Error fetching materials:", err);
