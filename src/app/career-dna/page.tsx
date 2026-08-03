@@ -682,16 +682,6 @@ export default function CareerDnaPage() {
               <Edit2 size={12} />
               {isEditing ? "View Matches" : "Edit Profile"}
             </button>
-            {!isEditing && (
-              <button
-                onClick={() => triggerAnalysis(formData, true)}
-                disabled={analysing}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 text-white transition text-xs font-semibold cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-              >
-                <RefreshCw size={12} className={analysing ? "animate-spin" : ""} />
-                {analysing ? "Syncing..." : "Sync AI"}
-              </button>
-            )}
           </div>
         )}
       </header>
@@ -1619,10 +1609,20 @@ export default function CareerDnaPage() {
               {/* Opportunities Feed */}
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Briefcase className="text-purple-400" />
-                    Recommended Internships
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Briefcase className="text-purple-400" />
+                      Recommended Internships
+                    </h3>
+                    <button
+                      onClick={() => triggerAnalysis(formData, true)}
+                      disabled={analysing}
+                      className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 text-white transition text-xs font-bold cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.25)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+                    >
+                      <RefreshCw size={12} className={analysing ? "animate-spin" : ""} />
+                      {analysing ? "Syncing..." : "Sync AI"}
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {["All", "High Match", "Medium Match", "Stretch Opportunity"].map((f) => (
                       <button
