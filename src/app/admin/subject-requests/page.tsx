@@ -40,11 +40,30 @@ export default function SubjectRequestsAdminPage() {
           "Authorization": `Bearer ${token}`
         }
       });
-      if (!res.ok) throw new Error("Failed to fetch from admin API");
-      const list = await res.json();
+      if (res.ok) {
+        const list = await res.json();
+        setRequests(list);
+        return;
+      }
+    } catch (apiErr) {
+      console.warn("Admin API fetch failed, attempting client Firestore fallback...", apiErr);
+    }
+
+    // Client-side Firestore fallback
+    try {
+      const q = query(collection(db, "subject_requests"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : data.createdAt,
+        } as SubjectRequest;
+      });
       setRequests(list);
-    } catch (err) {
-      console.error("Failed to fetch subject requests:", err);
+    } catch (fallbackErr) {
+      console.error("Failed to fetch subject requests from fallback:", fallbackErr);
       showToast("Error loading subject requests.", "error");
     } finally {
       setLoading(false);

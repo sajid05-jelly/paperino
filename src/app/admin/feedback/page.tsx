@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { MessageSquare, Loader2, CheckCircle2, Trash2, Filter, Reply } from "lucide-react";
 
@@ -39,11 +39,30 @@ export default function FeedbackCenterPage() {
           "Authorization": `Bearer ${token}`
         }
       });
-      if (!res.ok) throw new Error("Failed to fetch feedback from API");
-      const data = await res.json();
-      setFeedbacks(data);
-    } catch (err) {
-      console.error("Error fetching feedback:", err);
+      if (res.ok) {
+        const data = await res.json();
+        setFeedbacks(data);
+        return;
+      }
+    } catch (apiErr) {
+      console.warn("Admin API feedback fetch failed, using client Firestore fallback...", apiErr);
+    }
+
+    // Client-side Firestore fallback
+    try {
+      const q = query(collection(db, "user_feedback"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          timestamp: data.createdAt?.toMillis ? data.createdAt.toMillis() : data.timestamp,
+        } as Feedback;
+      });
+      setFeedbacks(list);
+    } catch (fallbackErr) {
+      console.error("Error fetching feedback from fallback:", fallbackErr);
     } finally {
       setLoading(false);
     }
