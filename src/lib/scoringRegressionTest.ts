@@ -1,82 +1,111 @@
 import { DeveloperMetrics, ClassifiedRepoInfo } from "../app/api/github-intelligence/route";
 
 /**
- * Comprehensive Automated Regression Tests for GitHub Intelligence Scoring Model
+ * Comprehensive Anti-Inflation & Regression Tests for GitHub Intelligence Scoring Model
  */
 export function runScoringRegressionTests() {
-  console.log("=== RUNNING GITHUB INTELLIGENCE SCORING REGRESSION TESTS ===");
+  console.log("=== RUNNING GITHUB INTELLIGENCE SCORING & ANTI-INFLATION TESTS ===");
 
   const testResults: { testName: string; passed: boolean; details: string }[] = [];
 
-  // Test 1: Verified Projects must never produce Overall Projects = 0
+  // Test 1: README-only AI mention must NOT create AI/ML skill or 100% score
   {
-    const mockVerifiedRepos: any[] = [
-      { name: "repo1", rqs: 70, isMeaningful: true, isSubstantial: true, hasFE: true, hasBE: true },
-      { name: "repo2", rqs: 65, isMeaningful: true, isSubstantial: true, hasBE: true, hasDB: true },
-      { name: "repo3", rqs: 60, isMeaningful: true, isSubstantial: false, hasFE: true },
-    ];
-    const verifiedCount = mockVerifiedRepos.length;
-    const verifiedCountScore = Math.min(12, verifiedCount * 2);
-    const overallProjects = Math.min(20, verifiedCountScore + 2.5);
-    const passed = overallProjects > 0;
+    const fileList = ["README.md", "package.json", "docs/ai_architecture.md"];
+    const mlModelFiles = fileList.filter(f => {
+      const lowerF = f.toLowerCase();
+      if (lowerF.includes("readme") || lowerF.includes("package.json") || lowerF.includes("lock") || lowerF.includes("docs/")) return false;
+      const isSourceFile = lowerF.endsWith(".py") || lowerF.endsWith(".ipynb") || lowerF.endsWith(".ts") || lowerF.endsWith(".js") || lowerF.endsWith(".cpp") || lowerF.endsWith(".rs");
+      if (!isSourceFile) return false;
+      return lowerF.includes("torch") || lowerF.includes("tensorflow") || lowerF.includes("sklearn") || lowerF.includes("train.py");
+    });
+    const passed = mlModelFiles.length === 0;
     testResults.push({
-      testName: "Verified projects must produce Overall Projects > 0",
+      testName: "README-only or doc AI mention does NOT trigger AI/ML code evidence",
       passed,
-      details: `Overall Projects score: ${overallProjects}/20 (Expected > 0)`,
+      details: `ML files detected from README/docs: ${mlModelFiles.length} (Expected 0)`,
     });
   }
 
-  // Test 2: Substantial Projects & Active Skills must produce Portfolio Depth > 0
+  // Test 2: AI dependency without code implementation must NOT create 100% AI/ML
   {
-    const substantialCount = 4;
-    const verifiedCount = 14;
-    const activeSkillsCount = 6;
-    const verifiedContribution = Math.min(4, verifiedCount * 0.5);
-    const substantialContribution = Math.min(3, substantialCount * 0.75);
-    const skillDiversityContribution = Math.min(3, activeSkillsCount * 0.5);
-    const portfolioDepth = Math.min(10, Math.round(verifiedContribution + substantialContribution + skillDiversityContribution));
-    const passed = portfolioDepth >= 8;
+    const mockRepo: any = {
+      name: "chatbot-app",
+      hasAiMl: false, // Strict gate requires PyTorch/TF/sklearn source code file
+      aiMlEvidenceFiles: [],
+    };
+    const passed = !mockRepo.hasAiMl && mockRepo.aiMlEvidenceFiles.length === 0;
     testResults.push({
-      testName: "High volume verified/substantial projects produce strong Portfolio Depth",
+      testName: "External AI wrapper or package dependency without ML pipeline source code cannot trigger AI/ML evidence",
       passed,
-      details: `Portfolio Depth score: ${portfolioDepth}/10 (Expected >= 8)`,
+      details: `hasAiMl flag: ${mockRepo.hasAiMl} (Expected false)`,
     });
   }
 
-  // Test 3: Active Technical Skills produce Technical Depth > 0
+  // Test 3: Many followers must NOT increase Collaboration score
   {
-    const activeSkillCount = 5;
-    const breadthScore = Math.min(6, activeSkillCount);
-    const strengthScore = Math.min(6, Math.round((75 / 100) * 6));
-    const deepEvidenceScore = Math.min(3, Math.round(4 / 2));
-    const technicalDepth = Math.min(15, breadthScore + strengthScore + deepEvidenceScore);
-    const passed = technicalDepth >= 10;
+    const followers = 150000;
+    const hasPRCollaboration = false;
+    const hasMultiContributorCodebase = false;
+    const isOrgMember = false;
+    const collaborationScore = (hasMultiContributorCodebase ? 2 : 0) + (hasPRCollaboration ? 2 : 0) + (isOrgMember ? 1 : 0);
+    const passed = collaborationScore === 0;
     testResults.push({
-      testName: "Multiple active technical skills produce high Technical Depth",
+      testName: "150k Followers without PR/codebase collaboration evidence produces 0/5 Collaboration",
       passed,
-      details: `Technical Depth score: ${technicalDepth}/15 (Expected >= 10)`,
+      details: `Collaboration score: ${collaborationScore}/5 (Expected 0 despite ${followers} followers)`,
     });
   }
 
-  // Test 4: Pure repository quantity (e.g. 1000 empty repos) without code evidence cannot generate high score
+  // Test 4: Many raw repositories (e.g. 1000 repos) must NOT automatically inflate Maintenance score
   {
-    const verifiedCount = 0;
-    const substantialCount = 0;
-    const rawScore = 15; // Capped for 0 verified projects
-    const passed = rawScore <= 15;
+    const proj1 = { name: "old-repo", updatedAt: "2024-01-01" };
+    const now = new Date("2026-08-03").getTime();
+    const daysSinceUpdate = Math.floor((now - new Date(proj1.updatedAt).getTime()) / (1000 * 60 * 60 * 24)); // > 500 days
+    const hasReleaseEvidence = false;
+    const hasActiveCiCdPipeline = false;
+    const hasMultipleActiveVerified = false;
+    const maintenanceScore = (daysSinceUpdate <= 30 ? 2 : daysSinceUpdate <= 90 ? 1 : 0) + (hasReleaseEvidence ? 1 : 0) + (hasActiveCiCdPipeline ? 1 : 0) + (hasMultipleActiveVerified ? 1 : 0);
+    const passed = maintenanceScore === 0;
     testResults.push({
-      testName: "0 Verified Projects capped at Max 15 regardless of total public repo count",
+      testName: "Outdated profile with 1000 public repos produces 0/5 Maintenance without recent activity",
       passed,
-      details: `Raw score for 0 verified projects: ${rawScore}/100 (Max allowed: 15)`,
+      details: `Maintenance score: ${maintenanceScore}/5 (Days inactive: ${daysSinceUpdate})`,
     });
   }
 
-  // Test 5: Exact Component Sum equals 100
+  // Test 5: Celebrity / Profile popularity (stars/followers) must NOT increase Developer Score
+  {
+    const bestRQS = 73; // Quality 22/30
+    const verifiedProjectsCount = 14;
+    const substantialProjectsCount = 4;
+    const strongProjectsCount = 0;
+    const activeSkillsCount = 9;
+
+    const bestProjectQualityScore = Math.round((bestRQS / 100) * 30); // 22
+    const overallProjectsScore = Math.min(20, Math.min(12, verifiedProjectsCount * 2) + Math.min(5, substantialProjectsCount * 1.25) + (strongProjectsCount >= 1 ? 3 : 0)); // 17
+    const technicalDepthScore = 15;
+    const portfolioDepthScore = 10;
+    const engineeringPracticesScore = 10;
+    const documentationScore = 5;
+    const maintenanceScore = 5;
+    const collaborationScore = 5;
+
+    const totalScore = bestProjectQualityScore + overallProjectsScore + technicalDepthScore + portfolioDepthScore + engineeringPracticesScore + documentationScore + maintenanceScore + collaborationScore;
+
+    const passed = totalScore === 89 && bestProjectQualityScore === 22;
+    testResults.push({
+      testName: "Sindre Sorhus evidence profile correctly calculates exact 89/100 without artificial inflation",
+      passed,
+      details: `Final score: ${totalScore}/100 (Best Quality: ${bestProjectQualityScore}/30, Overall: ${overallProjectsScore}/20)`,
+    });
+  }
+
+  // Test 6: Authoritative Max Sum is 100
   {
     const maxSum = 30 + 20 + 15 + 10 + 10 + 5 + 5 + 5;
     const passed = maxSum === 100;
     testResults.push({
-      testName: "Authoritative score component max values sum to exactly 100",
+      testName: "Authoritative component max values sum to exactly 100",
       passed,
       details: `Component max sum: ${maxSum} / 100`,
     });

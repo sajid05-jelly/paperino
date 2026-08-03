@@ -117,6 +117,10 @@ export interface SkillConfidenceItem {
   evidence: string[];
   reason: string;
   supportingRepos: string[];
+  evidenceFileCount?: number;
+  evidenceRepoCount?: number;
+  evidenceTypes?: string[];
+  scoreReason?: string;
 }
 
 export interface CategoryScoreItem {
@@ -727,23 +731,33 @@ export async function GET(req: NextRequest) {
           : [];
         const hasDeploymentPipeline = deployEvidenceFiles.length > 0 || hasPages;
 
-        // 8. AI / ML EVIDENCE EXTRACTION (Distinguish actual ML model pipeline vs OpenAI API wrapper)
+        // 8. AI / ML EVIDENCE EXTRACTION (Strictly from inspected source code ML pipelines)
+        // Require actual ML model training, inference, or framework import in code files (.py, .ipynb, .ts, .js, .cpp, .rs)
         const mlModelFiles = treeFetched
-          ? filteredFileList.filter(f => 
-              f.includes("torch") || f.includes("tensorflow") || f.includes("sklearn") || f.includes("scikit") ||
-              f.includes("transformers") || f.includes("keras") || f.includes("dataset") ||
-              f.endsWith(".ipynb") || f.includes("/ml/") || f.includes("/models/") || f.includes("train.py") || f.includes("predict.py") || f.includes("inference.py")
-            )
+          ? filteredFileList.filter(f => {
+              const lowerF = f.toLowerCase();
+              // Ignore metadata, readme, package.json, lockfiles, docs
+              if (lowerF.includes("readme") || lowerF.includes("package.json") || lowerF.includes("lock") || lowerF.includes("docs/")) return false;
+              const isSourceFile = lowerF.endsWith(".py") || lowerF.endsWith(".ipynb") || lowerF.endsWith(".ts") || lowerF.endsWith(".js") || lowerF.endsWith(".cpp") || lowerF.endsWith(".rs");
+              if (!isSourceFile) return false;
+              return (
+                lowerF.includes("torch") || lowerF.includes("tensorflow") || lowerF.includes("sklearn") ||
+                lowerF.includes("scikit") || lowerF.includes("transformers") || lowerF.includes("keras") ||
+                lowerF.includes("jax") || lowerF.includes("train.py") || lowerF.includes("predict.py") ||
+                lowerF.includes("inference.py") || lowerF.includes("dataset.py") || lowerF.includes("/models/")
+              );
+            })
           : [];
         const externalAiApiFiles = treeFetched
           ? filteredFileList.filter(f => f.includes("openai") || f.includes("langchain") || f.includes("anthropic") || f.includes("cohere"))
           : [];
 
-        const hasActualMlModel = mlModelFiles.length > 0 || corpus.includes("machine-learning") || corpus.includes("deep-learning") || corpus.includes("pytorch") || corpus.includes("tensorflow") || corpus.includes("scikit-learn");
-        const hasExternalAiApi = externalAiApiFiles.length > 0 || corpus.includes("openai") || corpus.includes("chatgpt");
+        // STRICT GATE: AI/ML capability requires actual source code implementation files, NOT metadata/readme/topics
+        const hasActualMlModel = mlModelFiles.length > 0;
+        const hasExternalAiApi = externalAiApiFiles.length > 0;
 
-        const hasAiMl = hasActualMlModel; // Requires actual ML model code / dataset pipeline
-        const aiMlEvidenceFiles = hasActualMlModel ? mlModelFiles : externalAiApiFiles;
+        const hasAiMl = hasActualMlModel; // Requires actual inspected ML model/pipeline code file
+        const aiMlEvidenceFiles = mlModelFiles;
 
         // 9. CLOUD INFRASTRUCTURE EVIDENCE EXTRACTION
         const cloudEvidenceFiles = treeFetched
@@ -1317,20 +1331,30 @@ export async function GET(req: NextRequest) {
       ? Math.min(5, (validReadmeCount >= 2 ? 3 : validReadmeCount === 1 ? 2 : 0) + (userData.bio ? 2 : 0))
       : 0;
 
-    // 7. MAINTENANCE — 5 Points Max
+    // 7. MAINTENANCE — 5 Points Max (Strictly verified implementation activity)
     const daysSinceUpdate = proj1?.updatedAt
       ? Math.floor((now - new Date(allRepos[0]?.updated_at || now).getTime()) / (1000 * 60 * 60 * 24))
       : 999;
     const hasReleaseEvidence = deepAuditedRepos.some(r => r.auditDetails?.categoryScores?.deploymentUsability?.score > 0);
+    const hasActiveCiCdPipeline = deepAuditedRepos.some(r => r.hasCiCd);
+    const hasMultipleActiveVerified = verifiedProjects.filter(r => {
+      if (!r.updatedAt) return false;
+      const d = Math.floor((now - new Date(r.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+      return d <= 90;
+    }).length >= 2;
+
     const maintenanceConsistencyScore = verifiedProjects.length > 0
-      ? Math.min(5, (daysSinceUpdate <= 30 ? 2 : daysSinceUpdate <= 90 ? 1 : 0) + (hasReleaseEvidence ? 1 : 0) + (validCiCd ? 1 : 0) + (verifiedProjects.length >= 2 ? 1 : 0))
+      ? Math.min(5, (daysSinceUpdate <= 30 ? 2 : daysSinceUpdate <= 90 ? 1 : 0) + (hasReleaseEvidence ? 1 : 0) + (hasActiveCiCdPipeline ? 1 : 0) + (hasMultipleActiveVerified ? 1 : 0))
       : 0;
 
-    // 8. COLLABORATION — 5 Points Max
-    const totalStars = classifiedRepos.reduce((acc, r) => acc + r.stars, 0);
-    const hasMultiContributor = deepAuditedRepos.some(r => r.forks > 0 || r.stars > 0);
+    // 8. COLLABORATION — 5 Points Max (Strictly verified codebase collaboration evidence)
+    // Do NOT infer collaboration from followers or star counts.
+    const hasPRCollaboration = deepAuditedRepos.some(r => r.evidenceList.some(e => e.toLowerCase().includes("pr") || e.toLowerCase().includes("pull request")));
+    const hasMultiContributorCodebase = deepAuditedRepos.some(r => r.forks > 0 && r.isMeaningful);
+    const isOrgMember = Boolean(userData.company && userData.company.startsWith("@"));
+
     const collaborationOpenSourceScore = verifiedProjects.length > 0
-      ? Math.min(5, (hasMultiContributor ? 2 : 1) + (totalStars >= 5 ? 1 : 0) + (verifiedProjects.length >= 2 ? 1 : 0) + (userData.followers >= 10 ? 1 : 0))
+      ? Math.min(5, (hasMultiContributorCodebase ? 2 : 0) + (hasPRCollaboration ? 2 : 0) + (isOrgMember ? 1 : 0))
       : 0;
 
     // AUTHORITATIVE SUM (0-100 EXACT SUM)
@@ -1504,6 +1528,13 @@ export async function GET(req: NextRequest) {
       }
 
       const evidence = matchingRepos.map(r => `• ${r.name}: ${label} evidence verified (RQS: ${r.rqs}/100)`);
+      const evidenceFileCount = matchingRepos.reduce((acc, r) => {
+        const repoFiles = (r as any)[`${key}EvidenceFiles`] || r.auditDetails?.filesInspected || [];
+        return acc + repoFiles.length;
+      }, 0);
+      const evidenceRepoCount = count;
+      const evidenceTypes = Array.from(new Set(matchingRepos.map(r => r.repoCategory)));
+      const scoreReason = `${label} skill score ${Math.min(100, Math.max(15, rawScore))}% calculated from ${count} inspected repository codebase(s) with ${evidenceFileCount} verified file signal(s).`;
 
       return {
         score: Math.min(100, Math.max(15, rawScore)),
@@ -1511,6 +1542,10 @@ export async function GET(req: NextRequest) {
         evidence,
         reason,
         supportingRepos: repoNames,
+        evidenceFileCount,
+        evidenceRepoCount,
+        evidenceTypes,
+        scoreReason,
       };
     };
 
@@ -1717,6 +1752,7 @@ export async function GET(req: NextRequest) {
       ],
     };
 
+    const totalStars = classifiedRepos.reduce((acc, r) => acc + r.stars, 0);
     const collabBadge: DeveloperBadge = {
       id: "open-source-contributor",
       name: "Open Source Contributor",
@@ -1769,7 +1805,23 @@ export async function GET(req: NextRequest) {
       eliteBadge,
     ];
 
-    // ── STEP 13: CAREER ARCHETYPE SELECTION (Strictly from Skill Matrix) ──
+    // ── STEP 13: CAREER ARCHETYPE SELECTION (Weighted Implementation Evidence) ──
+    // When multiple skills tie in score, break ties using weighted implementation evidence
+    const calcSkillStrength = (skillKey: string, matchingRepos: ClassifiedRepoInfo[]) => {
+      const fileCount = matchingRepos.reduce((acc, r) => acc + (r.auditDetails?.filesInspected?.length || 0), 0);
+      const verifiedCount = matchingRepos.filter(r => r.isMeaningful).length;
+      const substantialCount = matchingRepos.filter(r => r.isSubstantial).length;
+      const codeDepth = matchingRepos.reduce((acc, r) => acc + r.rqs, 0);
+      return fileCount + (verifiedCount * 10) + (substantialCount * 20) + Math.round(codeDepth / 10);
+    };
+
+    const feStrength = calcSkillStrength("frontend", feEvidenceRepos);
+    const beStrength = calcSkillStrength("backend", beEvidenceRepos);
+    const aiStrength = calcSkillStrength("aiMl", aiMlEvidenceRepos);
+    const devOpsStrength = calcSkillStrength("devOps", devOpsEvidenceRepos);
+    const cloudStrength = calcSkillStrength("cloud", cloudEvidenceRepos);
+    const psStrength = calcSkillStrength("problemSolving", problemSolvingEvidenceRepos);
+
     let careerArchetype = "Software Developer";
     const feScore = skillsConfidence.frontend.score;
     const beScore = skillsConfidence.backend.score;
@@ -1780,18 +1832,18 @@ export async function GET(req: NextRequest) {
 
     if (skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" && skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && feScore >= 35 && beScore >= 35) {
       careerArchetype = "Full Stack Developer";
-    } else if (skillsConfidence.aiMl.confidence !== "INSUFFICIENT EVIDENCE" && aiScore >= 40) {
+    } else if (skillsConfidence.aiMl.confidence !== "INSUFFICIENT EVIDENCE" && aiScore >= 40 && aiStrength >= Math.max(feStrength, beStrength)) {
       careerArchetype = "AI / ML Engineer";
-    } else if (skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" && feScore >= beScore && feScore >= 35) {
+    } else if (skillsConfidence.frontend.confidence !== "INSUFFICIENT EVIDENCE" && feScore >= 35 && feStrength >= beStrength) {
       careerArchetype = "Frontend Developer";
-    } else if (skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && beScore >= feScore && beScore >= 35) {
+    } else if (skillsConfidence.backend.confidence !== "INSUFFICIENT EVIDENCE" && beScore >= 35 && beStrength >= feStrength) {
       careerArchetype = "Backend Engineer";
-    } else if ((skillsConfidence.devOps.confidence !== "INSUFFICIENT EVIDENCE" || skillsConfidence.cloud.confidence !== "INSUFFICIENT EVIDENCE") && (devOpsScore >= 40 || cloudScore >= 40)) {
+    } else if ((skillsConfidence.devOps.confidence !== "INSUFFICIENT EVIDENCE" || skillsConfidence.cloud.confidence !== "INSUFFICIENT EVIDENCE") && (devOpsScore >= 40 || cloudScore >= 40) && Math.max(devOpsStrength, cloudStrength) >= Math.max(feStrength, beStrength)) {
       careerArchetype = "DevOps & Cloud Engineer";
-    } else if (skillsConfidence.problemSolving.confidence !== "INSUFFICIENT EVIDENCE" && psScore >= 50) {
+    } else if (skillsConfidence.problemSolving.confidence !== "INSUFFICIENT EVIDENCE" && psScore >= 50 && psStrength >= Math.max(feStrength, beStrength)) {
       careerArchetype = "Systems / Software Engineer";
     } else {
-      careerArchetype = "Software Developer";
+      careerArchetype = feStrength >= beStrength ? "Frontend Developer" : "Software Developer";
     }
 
     // ── STEP 14: PROGRAMMATIC INVARIANT VALIDATION & DEBUG CONSOLE LOGGING ──
