@@ -199,24 +199,20 @@ export async function POST(req: NextRequest) {
     const lastSyncedAt = Date.now();
 
     const dbInstance = adminDb;
-    if (!dbInstance) {
-      return NextResponse.json({
-        readinessLevel,
-        opportunities: finalOpportunities,
-        lastSyncedAt,
-        suggestions: [
-          "Upload your updated ATS-friendly resume to increase role alignment.",
-          "Build a hands-on project using production-level frameworks."
-        ],
-        roadmap: ["Master Fundamental Technologies", "Build & Deploy Capstone Project", "Apply to Verified Opportunities"],
-        skillGap: ["Industry Standard Frameworks"],
-        learningRecommendations: ["Complete online developer certification tracks"]
-      });
-    }
+    let savedData: any = null;
+    let userDnaRef: any = null;
 
-    const userDnaRef = dbInstance.collection("career_dna").doc(uid);
-    const docSnap = await userDnaRef.get();
-    const savedData = docSnap.exists ? docSnap.data() : null;
+    if (dbInstance) {
+      try {
+        userDnaRef = dbInstance.collection("career_dna").doc(uid);
+        const docSnap = await userDnaRef.get();
+        if (docSnap.exists) {
+          savedData = docSnap.data();
+        }
+      } catch (dbErr: any) {
+        console.warn("[Career DNA API] Firestore read skipped due to Quota / DB notice:", dbErr?.message || dbErr);
+      }
+    }
 
     const profileHashStr = JSON.stringify({
       dreamRole: profile.dreamRole || "",
@@ -315,14 +311,20 @@ Return STRICTLY a JSON object with these key outputs:
       readinessLevel
     };
 
-    await userDnaRef.set({
-      profile,
-      profileHash: profileHashStr,
-      analysis: finalAnalysis,
-      usage,
-      lastSyncedAt,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    if (userDnaRef) {
+      try {
+        await userDnaRef.set({
+          profile,
+          profileHash: profileHashStr,
+          analysis: finalAnalysis,
+          usage,
+          lastSyncedAt,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (saveErr: any) {
+        console.warn("[Career DNA API] Firestore write skipped due to Quota / DB notice:", saveErr?.message || saveErr);
+      }
+    }
 
     return NextResponse.json({
       readinessLevel,
