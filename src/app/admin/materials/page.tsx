@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { logFirestoreRead } from "@/lib/firestoreDiagnostics";
 import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2, Trash2 } from "lucide-react";
@@ -44,23 +44,26 @@ export default function ManageMaterialsPage() {
   const { departments, subjects: dynamicSubjects } = useSubjects();
   const { showToast, dismissToast } = useToast();
 
-  useEffect(() => {
-    fetchMaterials();
-  }, []);
-
-  const fetchMaterials = async () => {
+  // Fetch materials from Firestore — use targeted where() when dept is selected
+  // to avoid blind limit() missing non-btech materials.
+  const fetchMaterials = async (dept?: string) => {
     setLoading(true);
     try {
-      logFirestoreRead("materials", "Admin page fetch with limit(100)");
-      // NOTE: No orderBy in query — materials without createdAt field would be excluded by Firestore.
-      // Sort client-side instead so ALL materials are returned.
-      const q = query(collection(db, "materials"), limit(100));
+      const activeDept = dept !== undefined ? dept : filterDept;
+      let q;
+      if (activeDept) {
+        logFirestoreRead("materials", `Admin fetch: where departmentId == ${activeDept}`);
+        q = query(collection(db, "materials"), where("departmentId", "==", activeDept), limit(200));
+      } else {
+        logFirestoreRead("materials", "Admin fetch: all departments limit(200)");
+        q = query(collection(db, "materials"), limit(200));
+      }
       const snap = await getDocs(q);
       const mats: Material[] = [];
       snap.forEach(d => {
         mats.push({ id: d.id, ...d.data() } as Material);
       });
-      // Sort newest first client-side (handles missing createdAt gracefully)
+      // Sort newest first client-side
       mats.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
       setMaterials(mats);
     } catch (err) {
@@ -70,6 +73,10 @@ export default function ManageMaterialsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMaterials(filterDept);
+  }, [filterDept]);
 
   const handleDeleteMaterial = async (id: string) => {
     if (!confirm("Are you sure you want to delete this study material?")) return;
