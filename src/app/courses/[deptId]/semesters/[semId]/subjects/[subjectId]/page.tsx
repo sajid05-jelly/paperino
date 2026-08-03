@@ -2,6 +2,10 @@ import { Metadata } from "next";
 import { getAllUnifiedData, getSubjectDetails } from "@/lib/unifiedSubjectData";
 import SubjectClientComponent from "@/components/SubjectClientComponent";
 
+// Allow on-demand rendering for subjects not pre-generated at build time
+// (e.g. dynamic departments like MBA/MCA when Firestore quota is exceeded during build)
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
   const { subjects } = await getAllUnifiedData();
   return subjects.map((s) => ({

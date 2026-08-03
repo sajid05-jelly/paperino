@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { logFirestoreRead } from "@/lib/firestoreDiagnostics";
 import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2, Trash2 } from "lucide-react";
@@ -31,7 +31,7 @@ export default function ManageMaterialsPage() {
   
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterDept, setFilterDept] = useState("btech");
+  const [filterDept, setFilterDept] = useState(""); // Default: show ALL departments
   const [filterSem, setFilterSem] = useState("");
   const [filterSub, setFilterSub] = useState("");
   const [filterCat, setFilterCat] = useState("");
@@ -51,14 +51,13 @@ export default function ManageMaterialsPage() {
   const fetchMaterials = async () => {
     setLoading(true);
     try {
-      logFirestoreRead("materials", "Admin page fetch with limit(25)");
-      const q = query(collection(db, "materials"), limit(25));
+      logFirestoreRead("materials", "Admin page fetch with limit(100) orderBy createdAt desc");
+      const q = query(collection(db, "materials"), orderBy("createdAt", "desc"), limit(100));
       const snap = await getDocs(q);
       const mats: Material[] = [];
       snap.forEach(d => {
         mats.push({ id: d.id, ...d.data() } as Material);
       });
-      mats.sort((a, b) => b.id.localeCompare(a.id));
       setMaterials(mats);
     } catch (err) {
       console.error("Error fetching materials:", err);
