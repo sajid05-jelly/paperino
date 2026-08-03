@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { logFirestoreRead } from "@/lib/firestoreDiagnostics";
 import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
@@ -50,7 +51,9 @@ export default function ManageMaterialsPage() {
   const fetchMaterials = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, "materials"));
+      logFirestoreRead("materials", "Admin page fetch with limit(25)");
+      const q = query(collection(db, "materials"), limit(25));
+      const snap = await getDocs(q);
       const mats: Material[] = [];
       snap.forEach(d => {
         mats.push({ id: d.id, ...d.data() } as Material);

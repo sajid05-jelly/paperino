@@ -13,6 +13,7 @@ import SuggestSubjectModal from "@/components/SuggestSubjectModal";
 import DocPreviewViewer from "@/components/DocPreviewViewer";
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
+import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
 
 const contributorCache: Record<string, string> = {};
 const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[] }> = {};
@@ -65,6 +66,7 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
     }
 
     if (!forceRefetch && subjectDataCache[cacheKey]) {
+      logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(subjectDataCache[cacheKey].materials);
       setSurvivalNotes(subjectDataCache[cacheKey].survivalNotes);
       setLoading(false);
@@ -73,6 +75,7 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
 
     setLoading(true);
     try {
+      logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials from Firestore");
       // 1. Fetch Subject Materials
       const qMaterials = query(
         collection(db, "materials"),

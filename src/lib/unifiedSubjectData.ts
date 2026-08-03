@@ -21,15 +21,33 @@ export interface UnifiedDepartment {
   status?: string;
 }
 
+import { cache } from "react";
+import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
+
+let inMemoryUnifiedData: {
+  departments: UnifiedDepartment[];
+  subjects: UnifiedSubject[];
+} | null = null;
+let lastUnifiedFetchTime = 0;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL for server-side SEO & SSG
+
 /**
  * Unified Data Provider for All Courses, Semesters, and Subjects in Paperino.
  * Combines both static default subjects and dynamic Firestore departments/subjects.
  * Serves as the Single Source of Truth for Sitemap, Routing, Metadata & Structured Data.
+ * Wrapped with React cache() & 1-hour TTL cache for zero redundant build/request reads.
  */
-export async function getAllUnifiedData(): Promise<{
+export const getAllUnifiedData = cache(async (): Promise<{
   departments: UnifiedDepartment[];
   subjects: UnifiedSubject[];
-}> {
+}> => {
+  const now = Date.now();
+  if (inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
+    logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 1h server cache`);
+    return inMemoryUnifiedData;
+  }
+
+  logFirestoreRead("departments & dynamic_subjects", "getAllUnifiedData cache miss - executing server fetch");
   const departmentsMap = new Map<string, UnifiedDepartment>();
   const subjectsList: UnifiedSubject[] = [];
   const subjectKeysSet = new Set<string>();
@@ -122,11 +140,16 @@ export async function getAllUnifiedData(): Promise<{
     console.warn("[getAllUnifiedData] Dynamic Firestore fetch skipped or deferred:", err);
   }
 
-  return {
+  const result = {
     departments: Array.from(departmentsMap.values()),
     subjects: subjectsList,
   };
-}
+
+  inMemoryUnifiedData = result;
+  lastUnifiedFetchTime = Date.now();
+
+  return result;
+});
 
 /**
  * Fetch metadata parameters for a specific subject dynamically from the unified data source.

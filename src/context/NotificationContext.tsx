@@ -16,6 +16,10 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
+
+let globalPulseCache: PulseUpdate[] | null = null;
+let lastPulseFetchTime = 0;
 import { useAuth } from "@/context/AuthContext";
 import type { PaperinoNotification } from "@/lib/notifications";
 import { useRouter } from "next/navigation";
@@ -115,63 +119,46 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 1. Single Global listener for Pulse Updates
+  // 1. Single Global TTL Cached Fetch for Pulse Updates (5-min TTL to eliminate realtime read multiplication)
   useEffect(() => {
     if (!user) {
       setUpdates([]);
       return;
     }
 
-    const q = query(
-      collection(db, "pulse_updates"), 
-      orderBy("createdAt", "desc"), 
-      limit(10)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newUpdates: PulseUpdate[] = [];
-      let newestItem: PulseUpdate | null = null;
-
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const data = change.doc.data() as PulseUpdate;
-          data.id = change.doc.id;
-          
-          if (!newestItem || (data.createdAt && data.createdAt.seconds > newestItem.createdAt?.seconds)) {
-            newestItem = data;
-          }
-        }
-      });
-
-      snapshot.forEach((doc) => {
-        newUpdates.push({ id: doc.id, ...doc.data() } as PulseUpdate);
-      });
-
-      setUpdates(newUpdates);
-
-      // Handle Toast Logic
-      if (newestItem) {
-        const itemTime = (newestItem as PulseUpdate).createdAt?.toDate?.()?.getTime?.() || Date.now();
-        const firebaseLastRead = lastPulseReadAt 
-          ? (typeof lastPulseReadAt.toDate === "function" ? lastPulseReadAt.toDate().getTime() : new Date(lastPulseReadAt).getTime())
-          : 0;
-
-        const isUnread = itemTime > firebaseLastRead && itemTime > localReadTime;
-
-        if (isUnread && Date.now() - itemTime < 60000) {
-          setLatestToast(newestItem);
-          const timer = setTimeout(() => {
-            setLatestToast(null);
-          }, 6000);
-          return () => clearTimeout(timer);
-        }
+    let isMounted = true;
+    const fetchPulseUpdates = async () => {
+      const now = Date.now();
+      if (globalPulseCache && (now - lastPulseFetchTime) < 5 * 60 * 1000) {
+        logFirestoreCacheHit("pulse_updates", "Serving 10 pulse items from 5m client TTL cache");
+        if (isMounted) setUpdates(globalPulseCache);
+        return;
       }
-    }, (err) => {
-      console.warn("[NotificationContext] pulse_updates snapshot notice:", err.message);
-    });
 
-    return () => unsubscribe();
-  }, [user, lastPulseReadAt, localReadTime]);
+      try {
+        logFirestoreRead("pulse_updates", "getDocs(limit(10)) - 5m TTL cache miss");
+        const q = query(
+          collection(db, "pulse_updates"), 
+          orderBy("createdAt", "desc"), 
+          limit(10)
+        );
+        const snapshot = await getDocs(q);
+        const newUpdates: PulseUpdate[] = [];
+        snapshot.forEach((d) => {
+          newUpdates.push({ id: d.id, ...d.data() } as PulseUpdate);
+        });
+
+        globalPulseCache = newUpdates;
+        lastPulseFetchTime = now;
+        if (isMounted) setUpdates(newUpdates);
+      } catch (err: any) {
+        console.warn("[NotificationContext] pulse_updates fetch notice:", err?.message || err);
+      }
+    };
+
+    fetchPulseUpdates();
+    return () => { isMounted = false; };
+  }, [user]);
 
   // 2. Single Global Realtime Listener for User & Public Notifications
   useEffect(() => {

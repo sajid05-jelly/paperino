@@ -162,9 +162,18 @@ export default function LeaderboardPage() {
     setLoading(false);
   };
 
-  const currentBoard = activeTab === "season" ? seasonBoard : allTimeBoard;
+  const rawBoard = activeTab === "season" ? seasonBoard : allTimeBoard;
+
+  // Filter & sort eligible contributors:
+  // For Hall of Fame (activeTab === "allTime"): Filter points > 0, sort by points descending, take Top 3 MAX (runnersUp = []).
+  // For Current Season: Filter points > 0, sort by points descending.
+  const eligibleBoard = rawBoard
+    .filter(user => Number(user.points || 0) > 0)
+    .sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
+
+  const currentBoard = activeTab === "allTime" ? eligibleBoard.slice(0, 3) : eligibleBoard;
   const top3 = currentBoard.slice(0, 3);
-  const runnersUp = currentBoard.slice(3);
+  const runnersUp = activeTab === "allTime" ? [] : currentBoard.slice(3);
 
   const formatSerial = (num: number) => {
     return num >= 1 && num <= 9 ? `0${num}` : `${num}`;
