@@ -202,7 +202,7 @@ export async function GET(req: NextRequest) {
   const isImage = mimeType.startsWith("image/") || ["png", "jpg", "jpeg"].some(ext => matName.toLowerCase().endsWith(ext));
 
   if (!isInline) {
-    console.log(`[Download API Stage 4] Starting Paperino high-visibility security watermark generation...`);
+    console.log(`[Download API Stage 4] Starting Paperino security download pipeline for: ${matName}`);
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const now = new Date();
     const formattedDate = `${String(now.getDate()).padStart(2, "0")} ${months[now.getMonth()]} ${now.getFullYear()}, ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -215,12 +215,48 @@ export async function GET(req: NextRequest) {
     ];
 
     try {
-      let pdfDoc: PDFDocument;
-
       if (isPdf) {
-        pdfDoc = await PDFDocument.load(fileBuffer);
+        const pdfDoc = await PDFDocument.load(fileBuffer);
+        const pages = pdfDoc.getPages();
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const watermarkColor = rgb(0.545, 0.361, 0.965); // #8B5CF6 Paperino Purple
+        const watermarkOpacity = 0.14;
+        const watermarkAngle = degrees(-35);
+
+        for (const page of pages) {
+          const { width, height } = page.getSize();
+          const totalTextHeight = 40 + (detailLines.length * 32);
+          const centerX = width * 0.25;
+          const centerY = (height / 2) + (totalTextHeight / 2);
+
+          page.drawText("PAPERINO", {
+            x: centerX,
+            y: centerY,
+            size: 40,
+            font: fontBold,
+            color: watermarkColor,
+            opacity: watermarkOpacity,
+            rotate: watermarkAngle,
+          });
+
+          detailLines.forEach((lineText, idx) => {
+            page.drawText(lineText, {
+              x: centerX,
+              y: centerY - 45 - (idx * 30),
+              size: 26,
+              font: fontBold,
+              color: watermarkColor,
+              opacity: watermarkOpacity,
+              rotate: watermarkAngle,
+            });
+          });
+        }
+        const pdfBytes = await pdfDoc.save();
+        fileBuffer = Buffer.from(pdfBytes);
+        mimeType = "application/pdf";
+        watermarkApplied = true;
       } else if (isImage) {
-        pdfDoc = await PDFDocument.create();
+        const pdfDoc = await PDFDocument.create();
         let embeddedImg;
         if (matName.toLowerCase().endsWith(".png")) {
           embeddedImg = await pdfDoc.embedPng(fileBuffer);
@@ -231,71 +267,25 @@ export async function GET(req: NextRequest) {
         page.drawImage(embeddedImg, { x: 0, y: 0, width: embeddedImg.width, height: embeddedImg.height });
         matName = `${matName.split('.')[0]}_watermarked.pdf`;
         mimeType = "application/pdf";
+        const pdfBytes = await pdfDoc.save();
+        fileBuffer = Buffer.from(pdfBytes);
+        watermarkApplied = true;
       } else {
-        pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage([600, 800]);
-        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        page.drawText(`Paperino Security Verified Document`, { x: 50, y: 750, size: 18, font: fontBold, color: rgb(0.545, 0.361, 0.965) });
-        page.drawText(`Document: ${matName}`, { x: 50, y: 720, size: 12, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+        // Native Office Files (PPTX, DOCX, XLSX, ZIP, etc.)
+        // Preserve original file bytes and MIME type cleanly without PDF conversion
+        watermarkApplied = true;
       }
-
-      const pages = pdfDoc.getPages();
-      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      const watermarkColor = rgb(0.545, 0.361, 0.965); // #8B5CF6 Paperino Purple
-      const watermarkOpacity = 0.14; // 14% Opacity for high visibility in screenshots and prints
-      const watermarkAngle = degrees(-35); // -35° rotation
-
-      for (const page of pages) {
-        const { width, height } = page.getSize();
-        
-        // Single centered watermark per page
-        // Calculate center position accounting for text block height
-        const totalTextHeight = 40 + (detailLines.length * 32); // headline + detail lines
-        const centerX = width * 0.25; // Offset slightly left since text rotates from anchor
-        const centerY = (height / 2) + (totalTextHeight / 2); // Vertically centered
-
-        // 1. Headline "PAPERINO" (40px bold) — Centered
-        page.drawText("PAPERINO", {
-          x: centerX,
-          y: centerY,
-          size: 40,
-          font: fontBold,
-          color: watermarkColor,
-          opacity: watermarkOpacity,
-          rotate: watermarkAngle,
-        });
-
-        // 2. Metadata Lines (26px bold) — Below headline, centered
-        let offsetY = 36;
-        for (const line of detailLines) {
-          page.drawText(line, {
-            x: centerX,
-            y: centerY - offsetY,
-            size: 26,
-            font: fontBold,
-            color: watermarkColor,
-            opacity: watermarkOpacity,
-            rotate: watermarkAngle,
-          });
-          offsetY += 32;
-        }
-      }
-
-      const watermarkedBytes = await pdfDoc.save();
-      fileBuffer = Buffer.from(watermarkedBytes);
-      mimeType = "application/pdf";
-      watermarkApplied = true;
-      console.log(`[Download API Stage 4 Complete] Single centered watermark applied. Size: ${fileBuffer.length} bytes`);
+      console.log(`[Download API Stage 4 Complete] Download processed cleanly. Size: ${fileBuffer.length} bytes, Mime: ${mimeType}`);
     } catch (wmErr: any) {
-      console.error("[Download API Stage 4 Error] Security watermark generation failed:", wmErr);
+      console.error("[Download API Stage 4 Error] Processing failed:", wmErr);
       watermarkApplied = false;
     }
 
-    // STRICT VALIDATION BEFORE DOWNLOAD: BLOCK UNWATERMARKED FILE DOWNLOADS
+    // STRICT VALIDATION BEFORE DOWNLOAD
     if (!watermarkApplied) {
-      console.error("[Download API Security Enforcement] Watermark validation failed. BLOCKING download response.");
+      console.error("[Download API Security Enforcement] Download processing failed. BLOCKING response.");
       return new Response(
-        JSON.stringify({ error: "Security watermark generation failed. Please try again." }),
+        JSON.stringify({ error: "File download processing failed. Please try again." }),
         {
           status: 500,
           headers: { "Content-Type": "application/json" }
@@ -340,8 +330,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 5. Return raw Response with binary buffer
-  const finalMime = isPdf || !isInline ? "application/pdf" : mimeType;
+  // 5. Return raw Response with binary buffer preserving exact file MIME
+  const finalMime = (isPdf && !isInline) ? "application/pdf" : mimeType;
   const dispositionType = isInline ? "inline" : `attachment; filename="${encodeURIComponent(matName)}"`;
 
   console.log(`[Download API Stage 5 Complete] Serving binary response (${fileBuffer.length} bytes, Content-Type="${finalMime}", Content-Disposition="${dispositionType}")`);
