@@ -54,8 +54,9 @@ export async function recalculateLeaderboards(db: any) {
       }
     }
 
-    // 2. Fetch Users (Exclude blocked status and admin accounts)
-    const usersSnap = await getDocs(collection(db, "users"));
+    // 2. Fetch Users (Limit to contributors with uploads > 0)
+    const usersQ = query(collection(db, "users"), where("uploads", ">", 0));
+    const usersSnap = await getDocs(usersQ);
     const usersMap = new Map();
     usersSnap.forEach(d => {
       const data = d.data();

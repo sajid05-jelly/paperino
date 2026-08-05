@@ -160,7 +160,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return () => { isMounted = false; };
   }, [user]);
 
-  // 2. Single Global Realtime Listener for User & Public Notifications
+  // 2. Bounded Cached Fetch for User & Public Notifications (limit(15), 5-min TTL, sessionStorage backed)
   useEffect(() => {
     if (!user) {
       setRawNotifications([]);
@@ -168,26 +168,65 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "in", [user.uid, "ALL", ...(isAdmin ? ["ADMIN"] : [])])
-    );
+    let isMounted = true;
+    const cacheKey = `paperino_notifs_${user.uid}`;
+    const cacheTimeKey = `paperino_notifs_time_${user.uid}`;
 
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const notifs: PaperinoNotification[] = [];
-      snap.forEach((d) => {
-        const data = d.data();
-        notifs.push({ id: d.id, ...data } as PaperinoNotification);
-      });
-      notifs.sort((a, b) => b.createdAt - a.createdAt);
-      setRawNotifications(notifs);
-      setLoadingNotifications(false);
-    }, (err) => {
-      console.warn("[NotificationContext] notifications snapshot notice:", err.message);
-      setLoadingNotifications(false);
-    });
+    // Check sessionStorage cache
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(cacheKey);
+      const cachedTime = sessionStorage.getItem(cacheTimeKey);
+      const now = Date.now();
 
-    return () => unsubscribe();
+      if (cached && cachedTime && (now - parseInt(cachedTime, 10)) < 5 * 60 * 1000) {
+        try {
+          const parsed = JSON.parse(cached);
+          logFirestoreCacheHit("notifications", `Serving ${parsed.length} notifications from 5m session cache`);
+          setRawNotifications(parsed);
+          setLoadingNotifications(false);
+          return;
+        } catch (e) {
+          // Cache parse error, proceed to fetch
+        }
+      }
+    }
+
+    const fetchNotifications = async () => {
+      try {
+        logFirestoreRead("notifications", `getDocs(limit(15)) for uid: ${user.uid}`);
+        const q = query(
+          collection(db, "notifications"),
+          where("userId", "in", [user.uid, "ALL", ...(isAdmin ? ["ADMIN"] : [])]),
+          limit(15)
+        );
+
+        const snap = await getDocs(q);
+        const notifs: PaperinoNotification[] = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          notifs.push({ id: d.id, ...data } as PaperinoNotification);
+        });
+        notifs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        if (isMounted) {
+          setRawNotifications(notifs);
+          setLoadingNotifications(false);
+
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem(cacheKey, JSON.stringify(notifs));
+              sessionStorage.setItem(cacheTimeKey, Date.now().toString());
+            } catch (e) {}
+          }
+        }
+      } catch (err: any) {
+        console.warn("[NotificationContext] notifications fetch notice:", err?.message || err);
+        if (isMounted) setLoadingNotifications(false);
+      }
+    };
+
+    fetchNotifications();
+    return () => { isMounted = false; };
   }, [user, isAdmin]);
 
   // Computed Processed Notifications (Filtered by cleared set, read state merged)

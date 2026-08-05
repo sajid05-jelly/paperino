@@ -302,10 +302,14 @@ export async function syncKnowafestToFirestore(): Promise<SyncResult> {
       return syncResult;
     }
 
-    // Fetch existing pulse updates for deduplication check
+    // Fetch recent pulse updates for deduplication check (only needed fields, limit 50 to conserve reads)
     let existingDocs: any[] = [];
     try {
-      const existingSnap = await adminDb.collection("pulse_updates").get();
+      const existingSnap = await adminDb
+        .collection("pulse_updates")
+        .select("title", "link", "sourceUrl", "sources", "sourceName", "source", "primarySource")
+        .limit(50)
+        .get();
       existingDocs = existingSnap.docs.map(d => ({
         docId: d.id,
         ...d.data(),
@@ -392,6 +396,23 @@ export async function syncKnowafestToFirestore(): Promise<SyncResult> {
           };
 
           await adminDb.collection("pulse_updates").add(newDoc);
+          
+          // Also create a public notification so users see it in the notification bell
+          try {
+            const locStr = [ev.college, ev.city].filter(Boolean).join(", ");
+            await adminDb.collection("notifications").add({
+              userId: "ALL",
+              title: `🎯 New Opportunity: ${ev.eventTitle}`,
+              message: `${ev.eventCategory || "Opportunity"} hosted by ${ev.organizer || ev.college || "Partner"}. ${locStr ? `Location: ${locStr}` : "Mode: " + ev.eventMode}`,
+              type: "pulse_new",
+              read: false,
+              isRead: false,
+              createdAt: Date.now(),
+            });
+          } catch (notifErr) {
+            console.warn("[Knowafest Notification Warning]:", notifErr);
+          }
+
           imported++;
           logs.push({ title: ev.eventTitle, action: "imported", sourceUrl: ev.sourceUrl });
         }

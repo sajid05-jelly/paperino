@@ -18,10 +18,11 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }): Promise<Metadata> {
   const { deptId, semId, subjectId } = await params;
   
-  const { subjectName, deptName, deptCode } = await getSubjectDetails(deptId, semId, subjectId);
+  const { subjectName, subjectCode, deptName, deptCode } = await getSubjectDetails(deptId, semId, subjectId);
 
-  const title = `${subjectName} Notes, PYQs & Study Materials | SRM | Paperino`;
-  const description = `Access ${subjectName} notes, syllabus, previous year question papers (PYQs), important questions and study materials for ${deptCode} (${deptName}) Semester ${semId} SRM Institute of Science and Technology students on Paperino.`;
+  const codeDisplay = subjectCode ? ` (${subjectCode})` : "";
+  const title = `${subjectName}${codeDisplay} Study Materials, Notes & PYQs | ${deptCode} | Paperino`;
+  const description = `Study ${subjectName}${codeDisplay} resources on Paperino, including available notes, study materials, previous year question papers (PYQs) and academic resources for ${deptCode} (${deptName}) Semester ${semId} SRM students.`;
   const pageUrl = `https://paperino-eta.vercel.app/courses/${deptId}/semesters/${semId}/subjects/${subjectId}`;
 
   return {
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: { params: Promise<{ deptId: s
       url: pageUrl,
       type: "website",
       siteName: "Paperino",
-      images: [{ url: "/og-image.png?v=2", width: 1200, height: 630, alt: `${subjectName} Study Materials - Paperino` }],
+      images: [{ url: "/og-image.png?v=2", width: 1200, height: 630, alt: `${subjectName}${codeDisplay} Study Materials - Paperino` }],
     },
     twitter: {
       card: "summary_large_image",

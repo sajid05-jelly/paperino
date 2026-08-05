@@ -11,6 +11,8 @@ export interface UnifiedSubject {
   departmentName?: string; // e.g. 'Bachelor of Technology', 'Master of Computer Applications'
   semesterId: string; // e.g. '1', '2'
   status?: string;
+  updatedAt?: any;
+  createdAt?: any;
 }
 
 export interface UnifiedDepartment {
@@ -19,6 +21,8 @@ export interface UnifiedDepartment {
   code: string;
   totalSemesters: number;
   status?: string;
+  updatedAt?: any;
+  createdAt?: any;
 }
 
 import { cache } from "react";
@@ -108,6 +112,8 @@ export const getAllUnifiedData = cache(async (): Promise<{
           code: d.code || d.name || d.id.toUpperCase(),
           totalSemesters: d.totalSemesters || 8,
           status: d.status || "approved",
+          updatedAt: d.updatedAt || d.createdAt || null,
+          createdAt: d.createdAt || null,
         });
       }
     });
@@ -132,6 +138,8 @@ export const getAllUnifiedData = cache(async (): Promise<{
             departmentName: deptObj ? deptObj.name : deptId.toUpperCase(),
             semesterId: semId,
             status: s.status || "approved",
+            updatedAt: s.updatedAt || s.createdAt || null,
+            createdAt: s.createdAt || null,
           });
         }
       }
@@ -156,8 +164,11 @@ export const getAllUnifiedData = cache(async (): Promise<{
  */
 export async function getSubjectDetails(deptId: string, semId: string, subjectId: string): Promise<{
   subjectName: string;
+  subjectCode: string;
   deptName: string;
   deptCode: string;
+  updatedAt?: any;
+  createdAt?: any;
 }> {
   const { departments, subjects } = await getAllUnifiedData();
   
@@ -168,12 +179,16 @@ export async function getSubjectDetails(deptId: string, semId: string, subjectId
   const foundDept = departments.find(d => d.id === deptId);
 
   let subjectName = foundSubject ? foundSubject.name : subjectId.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
+  let subjectCode = foundSubject?.code || "";
   let deptName = foundDept ? foundDept.name : (deptId === "btech" ? "Bachelor of Technology" : deptId.toUpperCase());
   let deptCode = foundDept ? foundDept.code : (deptId === "btech" ? "B.Tech" : deptId.toUpperCase());
 
   return {
     subjectName,
+    subjectCode,
     deptName,
     deptCode,
+    updatedAt: foundSubject?.updatedAt || foundDept?.updatedAt || null,
+    createdAt: foundSubject?.createdAt || foundDept?.createdAt || null,
   };
 }

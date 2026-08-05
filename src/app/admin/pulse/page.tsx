@@ -318,7 +318,7 @@ export default function AdminPulsePage() {
         </div>
 
         {/* Failed selector or critical error diagnostic box */}
-        {(syncInfo.failedSelectorReason || syncInfo.error) && (
+        {((syncInfo.failedSelectorReason || syncInfo.error) && syncInfo.eventsExtractedCount === 0) && (
           <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
             <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-400" />
             <div>

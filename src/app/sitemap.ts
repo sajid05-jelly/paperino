@@ -94,10 +94,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch all unified courses, semesters, and subjects (Static + Firestore)
   const { departments, subjects } = await getAllUnifiedData();
 
+  // Helper to format lastModified safely from Firestore timestamp, number, or Date
+  const parseLastModified = (rawTs: any): Date => {
+    if (!rawTs) return new Date();
+    if (typeof rawTs.toDate === "function") return rawTs.toDate();
+    if (rawTs instanceof Date) return rawTs;
+    if (typeof rawTs === "number" || typeof rawTs === "string") {
+      const d = new Date(rawTs);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date();
+  };
+
   // Dynamically generate Course landing URLs
   const coursePages: MetadataRoute.Sitemap = departments.map((d) => ({
     url: `${BASE_URL}/courses/${d.id}`,
-    lastModified: new Date(),
+    lastModified: parseLastModified(d.updatedAt || d.createdAt),
     changeFrequency: 'weekly',
     priority: 0.85,
   }));
@@ -108,7 +120,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (let sem = 1; sem <= (d.totalSemesters || 8); sem++) {
       semesterPages.push({
         url: `${BASE_URL}/courses/${d.id}/semesters/${sem}`,
-        lastModified: new Date(),
+        lastModified: parseLastModified(d.updatedAt || d.createdAt),
         changeFrequency: 'weekly',
         priority: 0.8,
       });
@@ -118,7 +130,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Dynamically generate ALL Subject URLs across ALL courses & semesters
   const subjectPages: MetadataRoute.Sitemap = subjects.map((s) => ({
     url: `${BASE_URL}/courses/${s.departmentId}/semesters/${s.semesterId}/subjects/${s.id}`,
-    lastModified: new Date(),
+    lastModified: parseLastModified(s.updatedAt || s.createdAt),
     changeFrequency: 'weekly',
     priority: 0.85,
   }));

@@ -13,9 +13,18 @@ interface CreateCourseModalProps {
   onClose: () => void;
   initialDeptId?: string;
   initialSemester?: string;
+  lockDepartment?: boolean;
+  lockSemester?: boolean;
 }
 
-export default function CreateCourseModal({ isOpen, onClose, initialDeptId, initialSemester }: CreateCourseModalProps) {
+export default function CreateCourseModal({ 
+  isOpen, 
+  onClose, 
+  initialDeptId, 
+  initialSemester,
+  lockDepartment = false,
+  lockSemester = false
+}: CreateCourseModalProps) {
   const { departments, createDepartment, createSubject } = useSubjects();
   const { playSuccess } = useSound();
   const { user, isContributor, isAdmin } = useAuth();
@@ -203,17 +212,19 @@ export default function CreateCourseModal({ isOpen, onClose, initialDeptId, init
                       setSelectedDeptId(val);
                     }
                   }}
-                  disabled={loading}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer"
+                  disabled={loading || lockDepartment}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {visibleDepartments.map(d => (
                     <option key={d.id} value={d.id} className="bg-[#07050d] text-white">
                       {d.name} ({d.code})
                     </option>
                   ))}
-                  <option value="create_new" className="bg-[#07050d] text-fuchsia-400 font-semibold">
-                    + Create New Department
-                  </option>
+                  {!lockDepartment && (
+                    <option value="create_new" className="bg-[#07050d] text-fuchsia-400 font-semibold">
+                      + Create New Department
+                    </option>
+                  )}
                 </select>
               </div>
 
@@ -272,8 +283,8 @@ export default function CreateCourseModal({ isOpen, onClose, initialDeptId, init
                 <select 
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
-                  disabled={loading}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer"
+                  disabled={loading || lockSemester}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {getSemesterOptions().map(s => (
                     <option key={s} value={s} className="bg-[#07050d] text-white">Semester {s}</option>

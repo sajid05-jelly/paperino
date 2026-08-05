@@ -123,6 +123,8 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
         onClose={() => setIsSuggestModalOpen(false)}
         initialDeptId={deptId}
         initialSemester={semId}
+        lockDepartment={true}
+        lockSemester={true}
       />
 
       <SuggestSubjectModal

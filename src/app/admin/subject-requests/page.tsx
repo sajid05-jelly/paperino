@@ -43,6 +43,7 @@ export default function SubjectRequestsAdminPage() {
       if (res.ok) {
         const list = await res.json();
         setRequests(list);
+        setLoading(false);
         return;
       }
     } catch (apiErr) {
