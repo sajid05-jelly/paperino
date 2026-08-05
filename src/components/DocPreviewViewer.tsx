@@ -164,6 +164,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
           if (isMounted) {
             setPdfDoc(loadedPdf);
             setNumPages(loadedPdf.numPages);
+            // Hide full screen loading spinner immediately as soon as PDF metadata is parsed
             setLoading(false);
           }
           return;

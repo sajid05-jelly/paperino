@@ -352,9 +352,10 @@ export async function GET(req: NextRequest) {
       "Content-Type": finalMime,
       "Content-Length": fileBuffer.length.toString(),
       "Content-Disposition": dispositionType,
-      "Cache-Control": "no-store, no-cache, must-revalidate",
-      "Pragma": "no-cache",
-      "Expires": "0"
+      "Cache-Control": isInline 
+        ? "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" 
+        : "no-store, no-cache, must-revalidate",
+      "Pragma": isInline ? "cache" : "no-cache",
     }
   });
 }
