@@ -9,10 +9,9 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Volume2, VolumeX, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2 } from "lucide-react";
+import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2 } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
-import { useSound } from "@/hooks/useSound";
 
 const THEMES = [
   { id: "cosmic-violet", name: "Cosmic Violet", primary: "bg-violet-500", accent: "bg-fuchsia-500", shadow: "shadow-[0_0_15px_rgba(139,92,246,0.5)]" },
@@ -30,7 +29,6 @@ export default function Navbar() {
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { soundEnabled, toggleSound } = useSound();
   const pathname = usePathname();
   const [isLabsOpen, setIsLabsOpen] = useState(false);
   const [isLabsMobileOpen, setIsLabsMobileOpen] = useState(false);
@@ -265,18 +263,6 @@ export default function Navbar() {
               </svg>
             </a>
 
-            {/* Sound */}
-            <button
-              onClick={toggleSound}
-              title={soundEnabled ? "Mute UI Sounds" : "Enable UI Sounds"}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-violet-400 hover:bg-violet-500/10 transition-all duration-200 cursor-pointer"
-            >
-              {soundEnabled
-                ? <Volume2 size={15} className="drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" aria-hidden="true" />
-                : <VolumeX size={15} aria-hidden="true" />
-              }
-            </button>
-
             {/* Theme */}
             <button
               onClick={() => setIsThemeOpen(true)}
@@ -319,19 +305,6 @@ export default function Navbar() {
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" strokeWidth="2.5" />
                 </svg>
               </a>
-
-              {/* Sound Toggle */}
-              <button
-                onClick={toggleSound}
-                title={soundEnabled ? "Mute UI Sounds" : "Enable UI Sounds"}
-                aria-label={soundEnabled ? "Mute UI Sounds" : "Enable UI Sounds"}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-violet-400 hover:text-violet-300 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-              >
-                {soundEnabled
-                  ? <Volume2 size={14} className="drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" aria-hidden="true" />
-                  : <VolumeX size={14} aria-hidden="true" />
-                }
-              </button>
 
               {/* Theme Customize */}
               <button

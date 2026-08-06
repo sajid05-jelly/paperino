@@ -692,16 +692,16 @@ export default function CareerDnaPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
             
             {/* Form Editor column */}
-            <div className="lg:col-span-2 bg-[#0c0916]/80 border border-white/10 rounded-[2.5rem] p-6 sm:p-10 shadow-2xl relative">
-              <div className="flex justify-between items-center mb-8 border-b border-white/[0.05] pb-6">
+            <div className="lg:col-span-2 bg-[#0c0916]/80 border border-white/10 rounded-[2.5rem] p-4 sm:p-10 shadow-2xl relative overflow-hidden">
+              <div className="flex justify-between items-start gap-3 sm:items-center mb-8 border-b border-white/[0.05] pb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <GraduationCap className="text-purple-400" />
-                    {profile ? "Edit Career DNA Profile" : "Onboard Career DNA"}
+                  <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    <GraduationCap className="text-purple-400 shrink-0" />
+                    <span>{profile ? "Edit Career DNA Profile" : "Onboard Career DNA"}</span>
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">Fill out your profile details below.</p>
                 </div>
-                <div className="text-sm font-medium text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+                <div className="text-xs sm:text-sm font-medium text-purple-400 bg-purple-500/10 px-2.5 sm:px-3 py-1 rounded-full border border-purple-500/20 whitespace-nowrap shrink-0">
                   Step {formatSerial(activeStep)} of {formatSerial(4)}
                 </div>
               </div>
@@ -967,22 +967,23 @@ export default function CareerDnaPage() {
                     </div>
 
                     {/* Languages Input */}
+                    {/* Programming Languages Input */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1 font-medium">Programming Languages</label>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-1.5 sm:gap-2 mb-2">
                         <input
                           type="text"
                           value={langInput}
                           onChange={e => setLangInput(e.target.value)}
                           placeholder="Or type custom language..."
-                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                          className="flex-1 min-w-0 px-3 sm:px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white placeholder:text-[11px] sm:placeholder:text-xs"
                         />
                         <button
                           type="button"
                           onClick={() => {
                             setActiveDropdown(activeDropdown === "languages" ? null : "languages");
                           }}
-                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 sm:px-3 py-2 shrink-0 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer whitespace-nowrap"
                         >
                           Choose ▼
                         </button>
@@ -994,7 +995,7 @@ export default function CareerDnaPage() {
                               setLangInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
+                          className="px-3 py-2 shrink-0 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer whitespace-nowrap"
                         >
                           Add
                         </button>
@@ -1051,20 +1052,20 @@ export default function CareerDnaPage() {
                     {/* Languages Known Input (Spoken/Written Languages) */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1 font-medium">Languages Known (Spoken/Written)</label>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-1.5 sm:gap-2 mb-2">
                         <input
                           type="text"
                           value={spokenInput}
                           onChange={e => setSpokenInput(e.target.value)}
                           placeholder="Or type custom spoken language..."
-                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                          className="flex-1 min-w-0 px-3 sm:px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white placeholder:text-[11px] sm:placeholder:text-xs"
                         />
                         <button
                           type="button"
                           onClick={() => {
                             setActiveDropdown(activeDropdown === "languagesKnown" ? null : "languagesKnown");
                           }}
-                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 sm:px-3 py-2 shrink-0 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer whitespace-nowrap"
                         >
                           Choose ▼
                         </button>
@@ -1076,7 +1077,7 @@ export default function CareerDnaPage() {
                               setSpokenInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
+                          className="px-3 py-2 shrink-0 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer whitespace-nowrap"
                         >
                           Add
                         </button>
@@ -1131,22 +1132,23 @@ export default function CareerDnaPage() {
                     </div>
 
                     {/* Frameworks Input */}
+                    {/* Frameworks Input */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1 font-medium">Frameworks</label>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-1.5 sm:gap-2 mb-2">
                         <input
                           type="text"
                           value={frameworkInput}
                           onChange={e => setFrameworkInput(e.target.value)}
                           placeholder="Or type custom framework..."
-                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                          className="flex-1 min-w-0 px-3 sm:px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white placeholder:text-[11px] sm:placeholder:text-xs"
                         />
                         <button
                           type="button"
                           onClick={() => {
                             setActiveDropdown(activeDropdown === "frameworks" ? null : "frameworks");
                           }}
-                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 sm:px-3 py-2 shrink-0 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer whitespace-nowrap"
                         >
                           Choose ▼
                         </button>
@@ -1158,7 +1160,7 @@ export default function CareerDnaPage() {
                               setFrameworkInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
+                          className="px-3 py-2 shrink-0 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer whitespace-nowrap"
                         >
                           Add
                         </button>
@@ -1215,20 +1217,20 @@ export default function CareerDnaPage() {
                     {/* Tools Input */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1 font-medium">Tools</label>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-1.5 sm:gap-2 mb-2">
                         <input
                           type="text"
                           value={toolInput}
                           onChange={e => setToolInput(e.target.value)}
                           placeholder="Or type custom tool..."
-                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                          className="flex-1 min-w-0 px-3 sm:px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white placeholder:text-[11px] sm:placeholder:text-xs"
                         />
                         <button
                           type="button"
                           onClick={() => {
                             setActiveDropdown(activeDropdown === "tools" ? null : "tools");
                           }}
-                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 sm:px-3 py-2 shrink-0 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer whitespace-nowrap"
                         >
                           Choose ▼
                         </button>
@@ -1240,7 +1242,7 @@ export default function CareerDnaPage() {
                               setToolInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
+                          className="px-3 py-2 shrink-0 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer whitespace-nowrap"
                         >
                           Add
                         </button>
@@ -1297,20 +1299,20 @@ export default function CareerDnaPage() {
                     {/* Certifications Input */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1 font-medium">Certifications</label>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-1.5 sm:gap-2 mb-2">
                         <input
                           type="text"
                           value={certInput}
                           onChange={e => setCertInput(e.target.value)}
                           placeholder="Or type custom certification..."
-                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                          className="flex-1 min-w-0 px-3 sm:px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white placeholder:text-[11px] sm:placeholder:text-xs"
                         />
                         <button
                           type="button"
                           onClick={() => {
                             setActiveDropdown(activeDropdown === "certifications" ? null : "certifications");
                           }}
-                          className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 sm:px-3 py-2 shrink-0 rounded-xl bg-white/5 border border-white/10 text-gray-300 text-xs font-medium hover:bg-white/10 flex items-center gap-1 cursor-pointer whitespace-nowrap"
                         >
                           Choose ▼
                         </button>
@@ -1322,7 +1324,7 @@ export default function CareerDnaPage() {
                               setCertInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
+                          className="px-3 py-2 shrink-0 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer whitespace-nowrap"
                         >
                           Add
                         </button>
@@ -1379,13 +1381,13 @@ export default function CareerDnaPage() {
                     {/* Projects Input */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1.5 font-medium">Key Projects</label>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-1.5 sm:gap-2 mb-2">
                         <input
                           type="text"
                           value={projectInput}
                           onChange={e => setProjectInput(e.target.value)}
                           placeholder="e.g. Ecommerce Platform using MERN Stack"
-                          className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white"
+                          className="flex-1 min-w-0 px-3 sm:px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none text-xs text-white placeholder:text-[11px] sm:placeholder:text-xs"
                         />
                         <button
                           type="button"
@@ -1395,7 +1397,7 @@ export default function CareerDnaPage() {
                               setProjectInput("");
                             }
                           }}
-                          className="px-3 rounded-xl bg-purple-600 text-white text-xs font-bold"
+                          className="px-3 py-2 shrink-0 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer whitespace-nowrap"
                         >
                           Add
                         </button>

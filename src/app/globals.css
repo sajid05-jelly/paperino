@@ -249,6 +249,22 @@ body {
   overflow: hidden;
 }
 
+/* ── Strict Single-Line Semester Title Rule ── */
+.semester-card-title {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  width: max-content !important;
+  max-width: none !important;
+}
+
+@media (max-width: 639px) {
+  .semester-card-title {
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+  }
+}
+
 .vision-glass::after {
   content: '';
   position: absolute;

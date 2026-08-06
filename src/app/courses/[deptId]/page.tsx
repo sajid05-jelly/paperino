@@ -123,26 +123,30 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 w-full relative z-10">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 w-full relative z-10">
           {semesters.map((sem, i) => (
-            <Link key={sem} href={`/courses/${deptId}/semesters/${sem}`}>
+            <Link key={sem} href={`/courses/${deptId}/semesters/${sem}`} className="w-full block flex-1">
               <div 
-                className="vision-glass p-5 md:p-6 rounded-[1.5rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[140px] animate-in fade-in slide-in-from-bottom-8" 
+                className="vision-glass p-3.5 sm:p-5 md:p-6 rounded-[1.25rem] sm:rounded-[1.5rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[125px] sm:min-h-[140px] animate-in fade-in slide-in-from-bottom-8 w-full" 
                 style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="flex items-center justify-between mb-4 relative z-10">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
-                    <Calendar size={20} />
+                <div className="flex items-center justify-between mb-3 sm:mb-4 relative z-10 w-full">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
+                    <Calendar size={18} className="sm:hidden" />
+                    <Calendar size={20} className="hidden sm:block" />
                   </div>
-                  <BookOpen size={18} className="text-gray-500 group-hover:text-purple-400 transition-colors" />
+                  <BookOpen size={16} className="text-gray-500 group-hover:text-purple-400 transition-colors sm:block hidden" />
                 </div>
-                <div className="relative z-10">
-                  <h3 className="text-xl md:text-2xl font-bold text-white mb-1 tracking-tight group-hover:text-purple-300 transition-colors">
+                <div className="relative z-10 w-full">
+                  <h3 
+                    className="semester-card-title text-[13px] sm:text-xl md:text-2xl font-bold text-white mb-1 tracking-tight group-hover:text-purple-300 transition-colors whitespace-nowrap break-keep w-max max-w-none"
+                    style={{ whiteSpace: "nowrap", wordBreak: "keep-all", overflowWrap: "normal", width: "max-content", maxWidth: "none" }}
+                  >
                     Semester {sem}
                   </h3>
-                  <p className="text-xs md:text-sm text-gray-400 font-medium tracking-wide flex items-center gap-1 group-hover:text-purple-400 transition-colors">
-                    View subjects <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 font-medium tracking-wide flex items-center gap-1 group-hover:text-purple-400 transition-colors whitespace-nowrap">
+                    View subjects <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
                   </p>
                 </div>
               </div>

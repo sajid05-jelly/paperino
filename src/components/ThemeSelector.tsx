@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Palette, X, Check, Volume2, VolumeX } from "lucide-react";
+import { Palette, X, Check } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
-import { useSound } from "@/hooks/useSound";
 
 const THEMES = [
   { id: "cosmic-violet", name: "Cosmic Violet", primary: "bg-violet-500", accent: "bg-fuchsia-500", shadow: "shadow-[0_0_15px_rgba(139,92,246,0.5)]" },
@@ -17,7 +16,6 @@ const THEMES = [
 export default function ThemeSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { soundEnabled, toggleSound } = useSound();
 
   return (
     <>
@@ -56,18 +54,6 @@ export default function ThemeSelector() {
             Follow on Instagram
           </span>
         </a>
-
-        {/* Sound Toggle */}
-        <button
-          onClick={toggleSound}
-          title={soundEnabled ? "Mute UI Sounds" : "Enable UI Sounds"}
-          className="group relative bg-black/50 backdrop-blur-md border border-white/10 border-l-0 rounded-r-xl sm:rounded-r-2xl flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-violet-500/50 hover:bg-violet-500/10 w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[48px] md:h-[48px] text-gray-400 hover:text-white overflow-visible"
-        >
-          {soundEnabled
-            ? <Volume2 size={16} className="sm:w-5 sm:h-5 text-violet-400 group-hover:drop-shadow-[0_0_8px_rgba(139,92,246,0.8)] transition-all duration-300" />
-            : <VolumeX size={16} className="sm:w-5 sm:h-5 group-hover:drop-shadow-[0_0_8px_rgba(139,92,246,0.8)] transition-all duration-300" />
-          }
-        </button>
 
         {/* Theme Button */}
         <button
