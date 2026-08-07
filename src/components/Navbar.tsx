@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { onSnapshot, doc } from "firebase/firestore";
@@ -59,6 +59,25 @@ export default function Navbar() {
       console.warn("Tagline read error:", err);
     });
     return () => unsubscribe();
+  }, []);
+
+  const labsRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on route change
+  useEffect(() => {
+    setIsLabsOpen(false);
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Click-outside listener for Paperino Labs dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (labsRef.current && !labsRef.current.contains(e.target as Node)) {
+        setIsLabsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -160,10 +179,10 @@ export default function Navbar() {
             )}
 
             {/* 🧪 Paperino Labs Dropdown */}
-            <div className="relative flex-shrink-0">
+            <div ref={labsRef} className="relative flex-shrink-0">
               <button
-                onClick={() => setIsLabsOpen(!isLabsOpen)}
-                onBlur={() => setTimeout(() => setIsLabsOpen(false), 200)}
+                type="button"
+                onClick={() => setIsLabsOpen(prev => !prev)}
                 className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-600/10 to-cyan-500/10 backdrop-blur-xl border border-violet-500/20 hover:border-cyan-500/40 shadow-[0_0_15px_rgba(139,92,246,0.08)] hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] transition-all duration-500 flex items-center gap-2 font-bold text-xs xl:text-sm text-white hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group"
               >
                 <span className="flex items-center gap-1.5 text-glow relative z-10">
@@ -182,42 +201,49 @@ export default function Navbar() {
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.03] via-transparent to-transparent pointer-events-none rounded-2xl" />
                   <Link
                     href="/ats"
+                    onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <BrainCircuit size={15} className="text-violet-400 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> ATS Analyzer
                   </Link>
                   <Link
                     href="/exam-emergency"
+                    onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <ShieldAlert size={15} className="text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Exam Emergency
                   </Link>
                   <Link
                     href="/attendance-mafia"
+                    onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <ShieldCheck size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Attendance Shield
                   </Link>
                   <Link
                     href="/survival-notes"
+                    onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <GraduationCap size={15} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Senior Insights
                   </Link>
                   <Link
                     href="/career-dna"
+                    onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <BrainCircuit size={15} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Career DNA
                   </Link>
                   <Link
                     href="/free-class-finder"
+                    onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <Building2 size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Free Class Finder
                   </Link>
                   <Link
                     href="/github-intelligence"
+                    onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <FolderGit2 size={15} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.9)] group-hover/item:text-cyan-400 group-hover/item:drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] transition-all shrink-0" /> GitHub Intelligence
