@@ -10,7 +10,9 @@ const ALLOWED_ADMIN_EMAILS = [
   "admin.paperinosam14@gmail.com",
   "gameplayitlifeitis@gmail.com",
   "gameplayitlifeis@gmail.com",
-  "gameplayitlife@gmail.com"
+  "gameplayitlife@gmail.com",
+  "dejasvini28@gmail.com",
+  "kaushika13official@gmail.com"
 ];
 
 // Helper to verify admin permissions

@@ -92,7 +92,9 @@ export async function GET(req: NextRequest) {
         "sudharajsekar2005@gmail.com",
         "admin.paperinoirfan27@gmail.com",
         "admin.paperinosam14@gmail.com",
-        "gameplayitlifeitis@gmail.com"
+        "gameplayitlifeitis@gmail.com",
+        "dejasvini28@gmail.com",
+        "kaushika13official@gmail.com"
       ];
       if (userEmail && allowedAdmins.includes(userEmail.toLowerCase())) {
         isAdmin = true;

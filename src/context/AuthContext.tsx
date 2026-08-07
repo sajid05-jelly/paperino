@@ -136,7 +136,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "admin.paperinosam14@gmail.com",
         "gameplayitlifeitis@gmail.com",
         "gameplayitlifeis@gmail.com",
-        "gameplayitlife@gmail.com"
+        "gameplayitlife@gmail.com",
+        "dejasvini28@gmail.com",
+        "kaushika13official@gmail.com"
       ];
       
       const envAdmins = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",") || [];

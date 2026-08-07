@@ -5,7 +5,9 @@ const allowedAdmins = [
   "sudharajsekar2005@gmail.com",
   "admin.paperinoirfan27@gmail.com",
   "admin.paperinosam14@gmail.com",
-  "gameplayitlifeitis@gmail.com"
+  "gameplayitlifeitis@gmail.com",
+  "dejasvini28@gmail.com",
+  "kaushika13official@gmail.com"
 ];
 
 const adminNames = [
