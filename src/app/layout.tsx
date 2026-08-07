@@ -97,6 +97,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`} suppressHydrationWarning style={{ overflowX: 'clip', maxWidth: '100%', width: '100%' }}>
       <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7388792038614675"
+          crossOrigin="anonymous"
+        />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             try {
