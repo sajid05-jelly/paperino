@@ -100,18 +100,20 @@
   --color-purple-600: var(--primary-600);
 }
 
-/* ── Global Overflow Prevention (iOS Safari fix) ─────────────── */
+/* ── Global Touch & iOS WebKit Instant Click Optimization ─────────────── */
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
   overflow-x: hidden;
   max-width: 100%;
   width: 100%;
+  touch-action: manipulation;
 }
 
 body {
@@ -123,12 +125,26 @@ body {
   max-width: 100%;
   width: 100%;
   position: relative;
+  touch-action: manipulation;
   /* Premium glowing mesh background */
   background-image: 
     radial-gradient(circle at 15% 50%, rgba(var(--primary-rgb), 0.15), transparent 50%),
     radial-gradient(circle at 85% 30%, rgba(var(--accent-rgb), 0.15), transparent 50%),
     radial-gradient(circle at 50% 80%, rgba(var(--secondary-rgb), 0.1), transparent 60%);
   background-attachment: fixed;
+}
+
+/* Fast touch response for all interactive elements (Removes 300ms iOS tap delay) */
+a, button, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Fix iOS WebKit background render lag on mobile screens */
+@media (max-width: 1024px), (pointer: coarse) {
+  body {
+    background-attachment: scroll !important;
+  }
 }
 
 /* ── Custom Scrollbar ───────────────────────────────────────── */
