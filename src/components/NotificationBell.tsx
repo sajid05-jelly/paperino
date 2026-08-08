@@ -118,9 +118,9 @@ export function NotificationBell() {
 
       {/* Dropdown Panel */}
       {open && (
-        <div className="absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl bg-[#0e091b]/95 backdrop-blur-2xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.6)] overflow-hidden text-white animate-in fade-in zoom-in-95 duration-150">
+        <div className="max-sm:fixed max-sm:left-3.5 max-sm:right-3.5 max-sm:top-16 max-sm:w-auto max-sm:mt-0 absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl bg-[#0e091b]/95 backdrop-blur-2xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.6)] overflow-hidden text-white animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[calc(100vh-80px)] sm:max-h-none">
           {/* Header */}
-          <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-white">Notifications</span>
               {totalUnread > 0 && (
@@ -165,7 +165,7 @@ export function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-white/[0.04]">
+          <div className="max-h-[360px] sm:max-h-[380px] max-sm:max-h-[calc(100vh-180px)] overflow-y-auto divide-y divide-white/[0.04]">
             {totalCount === 0 ? (
               <div className="py-12 text-center px-4">
                 <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-gray-500">

@@ -175,9 +175,23 @@ export default function PaperinoLoader() {
         .pl-ring-glow-1 { animation: pl-ring-glow 3s ease-in-out infinite; }
         .pl-ring-glow-2 { animation: pl-ring-glow 4s ease-in-out .8s infinite; }
         .pl-ring-glow-3 { animation: pl-ring-glow 5s ease-in-out 1.5s infinite; }
+
+        .pl-holo-pos-0 { left: 2%; top: 12%; }
+        .pl-holo-pos-1 { left: 2%; top: 70%; }
+        .pl-holo-pos-2 { right: 2%; top: 12%; }
+        .pl-holo-pos-3 { right: 2%; top: 70%; }
+        .pl-holo-pos-4 { left: 50%; top: 4%; transform: translateX(-50%); }
+
+        @media (min-width: 640px) {
+          .pl-holo-pos-0 { left: 6%; top: 22%; }
+          .pl-holo-pos-1 { left: 4%; top: 55%; }
+          .pl-holo-pos-2 { right: 6%; top: 18%; }
+          .pl-holo-pos-3 { right: 5%; top: 52%; }
+          .pl-holo-pos-4 { left: 50%; top: 10%; transform: translateX(-50%); }
+        }
       `}</style>
 
-      <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center overflow-hidden"
+      <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center overflow-hidden px-3"
         style={{ background: "#04030e", fontFamily: "'Inter','Outfit',system-ui,sans-serif" }}>
 
         {/* ── AURORA BACKGROUND ── */}
@@ -220,38 +234,27 @@ export default function PaperinoLoader() {
 
         {/* ── FEATURE HOLOGRAMS (floating sides) ── */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          {FEATURE_HOLOGRAMS.map((f, i) => {
-            const positions = [
-              { left: "6%",  top: "22%" },
-              { left: "4%",  top: "55%" },
-              { right: "6%", top: "18%" },
-              { right: "5%", top: "52%" },
-              { left: "50%", top: "10%", transform: "translateX(-50%)" },
-            ];
-            const pos = positions[i] || {};
-            return (
-              <div key={f.label}
-                className="pl-holo absolute flex flex-col items-center gap-1.5 px-3.5 py-2.5 rounded-2xl"
-                style={{
-                  ...pos,
-                  background: "rgba(255,255,255,0.028)",
-                  border: "1px solid rgba(139,92,246,0.2)",
-                  backdropFilter: "blur(16px)",
-                  "--hd": `${4 + i * 0.6}s`,
-                  "--hdelay": `${f.delay}s`,
-                } as unknown as React.CSSProperties}>
-                <span className="text-xl">{f.emoji}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-widest"
-                  style={{ color: "rgba(167,139,250,0.75)" }}>
-                  {f.label}
-                </span>
-              </div>
-            );
-          })}
+          {FEATURE_HOLOGRAMS.map((f, i) => (
+            <div key={f.label}
+              className={`pl-holo pl-holo-pos-${i} absolute flex flex-col items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl max-sm:scale-95`}
+              style={{
+                background: "rgba(255,255,255,0.028)",
+                border: "1px solid rgba(139,92,246,0.2)",
+                backdropFilter: "blur(16px)",
+                "--hd": `${4 + i * 0.6}s`,
+                "--hdelay": `${f.delay}s`,
+              } as unknown as React.CSSProperties}>
+              <span className="text-base sm:text-xl">{f.emoji}</span>
+              <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider sm:tracking-widest whitespace-nowrap"
+                style={{ color: "rgba(167,139,250,0.75)" }}>
+                {f.label}
+              </span>
+            </div>
+          ))}
         </div>
 
         {/* ── MAIN LOGO SCENE ── */}
-        <div className="relative flex items-center justify-center w-56 h-56 mb-8">
+        <div className="relative flex items-center justify-center w-48 h-48 sm:w-56 sm:h-56 mb-4 sm:mb-8 scale-90 sm:scale-100 flex-shrink-0">
 
           {/* Orbital traveling particles */}
           {[
@@ -352,16 +355,16 @@ export default function PaperinoLoader() {
         </div>
 
         {/* ── BOOT MESSAGE ── */}
-        <div className="h-7 flex items-center justify-center mb-6">
+        <div className="h-7 flex items-center justify-center mb-4 sm:mb-6 px-4">
           <p key={msgIdx}
-            className={`text-sm font-mono tracking-wider pl-msg-fade ${msgVisible ? "pl-msg-visible" : "pl-msg-hidden"}`}
+            className={`text-xs sm:text-sm font-mono tracking-wider text-center pl-msg-fade ${msgVisible ? "pl-msg-visible" : "pl-msg-hidden"}`}
             style={{ color: "rgba(167,139,250,0.85)" }}>
             {BOOT_MESSAGES[msgIdx]}
           </p>
         </div>
 
         {/* ── NEON PROGRESS LINE ── */}
-        <div className="w-64 sm:w-80 flex flex-col items-center gap-2">
+        <div className="w-56 sm:w-80 max-w-[80vw] flex flex-col items-center gap-2">
           <div className="w-full h-[3px] rounded-full overflow-hidden"
             style={{ background: "rgba(255,255,255,0.06)" }}>
             <div className="pl-progress-bar h-full rounded-full" />
@@ -380,7 +383,7 @@ export default function PaperinoLoader() {
         </div>
 
         {/* ── WATERMARK ── */}
-        <p className="absolute bottom-6 text-[10px] uppercase tracking-widest"
+        <p className="absolute bottom-3 sm:bottom-6 text-[10px] uppercase tracking-widest text-center"
           style={{ color: "rgba(148,163,184,0.28)" }}>
           Paperino · SRM Study Hub
         </p>
