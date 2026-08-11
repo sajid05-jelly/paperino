@@ -32,6 +32,15 @@ const nextConfig: NextConfig = {
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()"
           }
         ]
+      },
+      {
+        source: "/:path*.(png|jpg|jpeg|svg|webp|ico|woff2|mp3)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ];
   }

@@ -107,9 +107,22 @@ function FreeClassFinderContent() {
     return () => clearInterval(interval);
   }, [cooldownSeconds]);
 
-  // Run Backend Background Cleanup Trigger
+  // Run Backend Background Cleanup Trigger (throttled to max once every 5 minutes per user)
   useEffect(() => {
-    fetch("/api/free-class-finder").catch(() => {});
+    try {
+      const LAST_CLEANUP_KEY = "free_class_finder_last_cleanup_ms";
+      const lastCleanup = localStorage.getItem(LAST_CLEANUP_KEY);
+      const now = Date.now();
+      const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+      if (!lastCleanup || now - parseInt(lastCleanup, 10) > FIVE_MINUTES_MS) {
+        localStorage.setItem(LAST_CLEANUP_KEY, now.toString());
+        fetch("/api/free-class-finder").catch(() => {});
+      }
+    } catch (e) {
+      // Fallback if localStorage is unavailable
+      fetch("/api/free-class-finder").catch(() => {});
+    }
   }, []);
 
   // Fetch Admin Configuration & Module Feature Toggle

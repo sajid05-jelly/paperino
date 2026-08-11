@@ -248,14 +248,18 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
     fetchMaterials(false);
   }, [deptId, semId, subjectId, user, isAdmin]);
 
-  // Analytics tracking for Most Visited Subject
+  // Analytics tracking for Most Visited Subject (deduplicated per session)
   useEffect(() => {
     if (subjectId) {
-      fetch("/api/track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "visit_subject", id: subjectId, name: subjectName })
-      }).catch(err => console.error("Analytics tracking failed:", err));
+      const sessionKey = `tracked_subj_${subjectId}`;
+      if (typeof window !== "undefined" && !sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, "1");
+        fetch("/api/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "visit_subject", id: subjectId, name: subjectName })
+        }).catch(err => console.error("Analytics tracking failed:", err));
+      }
     }
   }, [subjectId, subjectName]);
 

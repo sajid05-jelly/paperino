@@ -32,6 +32,10 @@ export default function robots(): MetadataRoute.Robots {
           '/settings',
         ],
       },
+      {
+        userAgent: ['GPTBot', 'Bytespider', 'CCBot', 'ClaudeBot', 'AnthropicAI'],
+        disallow: ['/'],
+      },
     ],
     sitemap: 'https://paperino-eta.vercel.app/sitemap.xml',
   };
