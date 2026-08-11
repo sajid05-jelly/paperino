@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { getAbsoluteUrl } from '@/lib/siteConfig';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,17 +8,20 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: [
           '/',
-          '/free-class-finder',
-          '/career-dna',
-          '/github-intelligence',
-          '/btech',
+          '/srm',
+          '/srm/*',
           '/courses',
           '/courses/*',
+          '/btech',
+          '/btech/*',
           '/pyq',
           '/ats',
           '/gpa',
           '/calculator',
           '/grades',
+          '/free-class-finder',
+          '/career-dna',
+          '/github-intelligence',
           '/leaderboard',
           '/team',
           '/privacy',
@@ -30,6 +34,8 @@ export default function robots(): MetadataRoute.Robots {
           '/login',
           '/profile',
           '/settings',
+          '/contributor',
+          '/contributor/*',
         ],
       },
       {
@@ -37,6 +43,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/'],
       },
     ],
-    sitemap: 'https://paperino-eta.vercel.app/sitemap.xml',
+    sitemap: getAbsoluteUrl('/sitemap.xml'),
   };
 }

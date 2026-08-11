@@ -8,6 +8,7 @@ import { useSubjects } from "@/context/SubjectsContext";
 import CreateCourseModal from "@/components/CreateCourseModal";
 import SuggestSubjectModal from "@/components/SuggestSubjectModal";
 import { useAuth } from "@/context/AuthContext";
+import { getSubjectSeoPath } from "@/lib/seoUtils";
 
 export default function SemesterSubjectsPage({ params }: { params: Promise<{ deptId: string, semId: string }> }) {
   const resolvedParams = use(params);
@@ -105,23 +106,32 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {deptSubjects.map(sub => (
-            <Link key={sub.id} href={`/courses/${deptId}/semesters/${semId}/subjects/${sub.id}`}>
-              <div className="vision-glass p-6 h-full group cursor-pointer relative overflow-hidden vision-hover border border-white/5 hover:border-purple-500/30 transition-all">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-colors">
-                    <Book size={24} />
+          {deptSubjects.map(sub => {
+            const seoPath = getSubjectSeoPath({
+              id: sub.id,
+              name: sub.name,
+              code: sub.code,
+              departmentId: deptId,
+              semesterId: semId,
+            });
+            return (
+              <Link key={sub.id} href={seoPath}>
+                <div className="vision-glass p-6 h-full group cursor-pointer relative overflow-hidden vision-hover border border-white/5 hover:border-purple-500/30 transition-all">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                      <Book size={24} />
+                    </div>
+                    <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
                   </div>
-                  <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
+                  <h3 className="text-xl font-semibold text-white mb-2">{sub.name}</h3>
+                  {sub.code && (
+                    <p className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">{sub.code}</p>
+                  )}
+                  <p className="text-sm text-gray-400">View PYQs, Notes, and Important Questions.</p>
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{sub.name}</h3>
-                {sub.code && (
-                  <p className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">{sub.code}</p>
-                )}
-                <p className="text-sm text-gray-400">View PYQs, Notes, and Important Questions.</p>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
 

@@ -1,90 +1,90 @@
 import { MetadataRoute } from 'next';
 import { getAllUnifiedData } from '@/lib/unifiedSubjectData';
-
-const BASE_URL = 'https://paperino-eta.vercel.app';
+import { getSubjectSeoPath } from '@/lib/seoUtils';
+import { SITE_CONFIG, getAbsoluteUrl } from '@/lib/siteConfig';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: BASE_URL,
+      url: SITE_CONFIG.baseUrl,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1.0,
     },
     {
-      url: `${BASE_URL}/btech`,
+      url: getAbsoluteUrl('/srm'),
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.95,
+    },
+    {
+      url: getAbsoluteUrl('/courses'),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/pyq`,
+      url: getAbsoluteUrl('/btech'),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/courses`,
+      url: getAbsoluteUrl('/pyq'),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/ats`,
+      url: getAbsoluteUrl('/ats'),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     {
-      url: `${BASE_URL}/gpa`,
+      url: getAbsoluteUrl('/gpa'),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     {
-      url: `${BASE_URL}/calculator`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/grades`,
+      url: getAbsoluteUrl('/grades'),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
-      url: `${BASE_URL}/leaderboard`,
+      url: getAbsoluteUrl('/leaderboard'),
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.8,
     },
     {
-      url: `${BASE_URL}/team`,
+      url: getAbsoluteUrl('/team'),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
-      url: `${BASE_URL}/free-class-finder`,
+      url: getAbsoluteUrl('/free-class-finder'),
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/career-dna`,
+      url: getAbsoluteUrl('/career-dna'),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/github-intelligence`,
+      url: getAbsoluteUrl('/github-intelligence'),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/privacy`,
+      url: getAbsoluteUrl('/privacy'),
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,
@@ -106,21 +106,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return new Date();
   };
 
-  // Dynamically generate Course landing URLs
-  const coursePages: MetadataRoute.Sitemap = departments.map((d) => ({
-    url: `${BASE_URL}/courses/${d.id}`,
-    lastModified: parseLastModified(d.updatedAt || d.createdAt),
-    changeFrequency: 'weekly',
-    priority: 0.85,
-  }));
+  // Dynamically generate Course landing URLs (both /srm/[course] and /courses/[dept])
+  const coursePages: MetadataRoute.Sitemap = [];
+  departments.forEach((d) => {
+    const lastMod = parseLastModified(d.updatedAt || d.createdAt);
+    coursePages.push({
+      url: getAbsoluteUrl(`/srm/${d.id.toLowerCase()}`),
+      lastModified: lastMod,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    });
+    coursePages.push({
+      url: getAbsoluteUrl(`/courses/${d.id}`),
+      lastModified: lastMod,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    });
+  });
 
   // Dynamically generate Semester URLs for all courses
   const semesterPages: MetadataRoute.Sitemap = [];
   departments.forEach((d) => {
+    const lastMod = parseLastModified(d.updatedAt || d.createdAt);
     for (let sem = 1; sem <= (d.totalSemesters || 8); sem++) {
       semesterPages.push({
-        url: `${BASE_URL}/courses/${d.id}/semesters/${sem}`,
-        lastModified: parseLastModified(d.updatedAt || d.createdAt),
+        url: getAbsoluteUrl(`/srm/${d.id.toLowerCase()}/semester-${sem}`),
+        lastModified: lastMod,
+        changeFrequency: 'weekly',
+        priority: 0.85,
+      });
+      semesterPages.push({
+        url: getAbsoluteUrl(`/courses/${d.id}/semesters/${sem}`),
+        lastModified: lastMod,
         changeFrequency: 'weekly',
         priority: 0.8,
       });
@@ -128,14 +145,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   // Dynamically generate ALL Subject URLs across ALL courses & semesters
-  const subjectPages: MetadataRoute.Sitemap = subjects.map((s) => ({
-    url: `${BASE_URL}/courses/${s.departmentId}/semesters/${s.semesterId}/subjects/${s.id}`,
-    lastModified: parseLastModified(s.updatedAt || s.createdAt),
-    changeFrequency: 'weekly',
-    priority: 0.85,
-  }));
+  const subjectPages: MetadataRoute.Sitemap = [];
+  const subjectUrlSet = new Set<string>();
+
+  subjects.forEach((s) => {
+    const lastMod = parseLastModified(s.updatedAt || s.createdAt);
+    const seoUrl = getAbsoluteUrl(getSubjectSeoPath(s));
+    
+    if (!subjectUrlSet.has(seoUrl)) {
+      subjectUrlSet.add(seoUrl);
+      subjectPages.push({
+        url: seoUrl,
+        lastModified: lastMod,
+        changeFrequency: 'weekly',
+        priority: 0.9,
+      });
+    }
+
+    const legacyUrl = getAbsoluteUrl(`/courses/${s.departmentId}/semesters/${s.semesterId}/subjects/${s.id}`);
+    if (!subjectUrlSet.has(legacyUrl)) {
+      subjectUrlSet.add(legacyUrl);
+      subjectPages.push({
+        url: legacyUrl,
+        lastModified: lastMod,
+        changeFrequency: 'weekly',
+        priority: 0.85,
+      });
+    }
+  });
 
   return [...staticPages, ...coursePages, ...semesterPages, ...subjectPages];
 }
-
-
