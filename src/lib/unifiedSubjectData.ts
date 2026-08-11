@@ -33,21 +33,20 @@ let inMemoryUnifiedData: {
   subjects: UnifiedSubject[];
 } | null = null;
 let lastUnifiedFetchTime = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL for server-side SEO & SSG
+const CACHE_TTL_MS = 60 * 1000; // 1 minute TTL for instant dynamic detection of new admin-created subjects
 
 /**
  * Unified Data Provider for All Courses, Semesters, and Subjects in Paperino.
  * Combines both static default subjects and dynamic Firestore departments/subjects.
  * Serves as the Single Source of Truth for Sitemap, Routing, Metadata & Structured Data.
- * Wrapped with React cache() & 1-hour TTL cache for zero redundant build/request reads.
  */
-export const getAllUnifiedData = cache(async (): Promise<{
+export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
   departments: UnifiedDepartment[];
   subjects: UnifiedSubject[];
 }> => {
   const now = Date.now();
-  if (inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
-    logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 1h server cache`);
+  if (!forceRefetch && inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
+    logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 1m server cache`);
     return inMemoryUnifiedData;
   }
 

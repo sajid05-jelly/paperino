@@ -67,12 +67,43 @@ const NotificationContext = createContext<NotificationContextType>({
 
 export const usePulseNotifications = () => useContext(NotificationContext);
 
+export function parseNotificationTimestamp(raw: any): number {
+  if (!raw) return 0;
+  if (typeof raw === "number") return raw;
+  if (typeof raw.toMillis === "function") return raw.toMillis();
+  if (typeof raw.seconds === "number") return raw.seconds * 1000;
+  if (raw instanceof Date) return raw.getTime();
+  if (typeof raw === "string") {
+    const parsed = new Date(raw).getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+  return 0;
+}
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { user, isAdmin, lastPulseReadAt } = useAuth();
+  const { user, isAdmin, role, lastPulseReadAt } = useAuth();
   const [updates, setUpdates] = useState<PulseUpdate[]>([]);
   const [latestToast, setLatestToast] = useState<PulseUpdate | null>(null);
   const [localReadTime, setLocalReadTime] = useState<number>(0);
+  const [nowTicker, setNowTicker] = useState<number>(Date.now());
   const router = useRouter();
+
+  // Role check to preserve Admin & Lead Admin notifications permanently
+  const isUserAdminRole = useMemo(() => {
+    if (isAdmin) return true;
+    if (!role) return false;
+    const r = role.toLowerCase().trim();
+    return r === "admin" || r === "lead-admin" || r === "lead_admin" || r === "super-admin" || r === "super_admin";
+  }, [isAdmin, role]);
+
+  // Live 60s ticker for dynamic real-time expiry without page refresh (Normal users only)
+  useEffect(() => {
+    if (!user || isUserAdminRole) return;
+    const interval = setInterval(() => {
+      setNowTicker(Date.now());
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, isUserAdminRole]);
 
   // Raw Firestore Notifications
   const [rawNotifications, setRawNotifications] = useState<PaperinoNotification[]>([]);
@@ -196,7 +227,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         logFirestoreRead("notifications", `getDocs(limit(15)) for uid: ${user.uid}`);
         const q = query(
           collection(db, "notifications"),
-          where("userId", "in", [user.uid, "ALL", ...(isAdmin ? ["ADMIN"] : [])]),
+          where("userId", "in", [user.uid, "ALL", ...(isUserAdminRole ? ["ADMIN"] : [])]),
           limit(15)
         );
 
@@ -227,12 +258,47 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     fetchNotifications();
     return () => { isMounted = false; };
-  }, [user, isAdmin]);
+  }, [user, isUserAdminRole]);
 
-  // Computed Processed Notifications (Filtered by cleared set, read state merged)
+  // Background cleanup for expired normal user notifications in Firestore (Scoped strictly to user's own docs)
+  useEffect(() => {
+    if (!user || isUserAdminRole || rawNotifications.length === 0) return;
+
+    const now = Date.now();
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+    const expiredDocs = rawNotifications.filter((n) => {
+      if (n.userId !== user.uid) return false;
+      const createdMs = parseNotificationTimestamp(n.createdAt);
+      return createdMs > 0 && (now - createdMs) >= TWENTY_FOUR_HOURS_MS;
+    });
+
+    if (expiredDocs.length > 0) {
+      expiredDocs.forEach((n) => {
+        deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+      });
+    }
+  }, [user, isUserAdminRole, rawNotifications]);
+
+  // Computed Processed Notifications (Filtered by cleared set, read state merged, and 24h user expiry)
   const notifications = useMemo(() => {
+    const now = nowTicker;
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
     return rawNotifications
-      .filter((n) => !clearedNotifIds.has(n.id))
+      .filter((n) => {
+        // 1. Filter out manually cleared notifications
+        if (clearedNotifIds.has(n.id)) return false;
+
+        // 2. 24-hour auto expiry FOR NORMAL USERS ONLY (Admins & Lead Admins are EXEMPT)
+        if (!isUserAdminRole) {
+          const createdMs = parseNotificationTimestamp(n.createdAt);
+          if (createdMs > 0 && (now - createdMs) >= TWENTY_FOUR_HOURS_MS) {
+            return false;
+          }
+        }
+
+        return true;
+      })
       .map((n) => {
         const isLocallyRead = readNotifIds.has(n.id);
         const isServerRead = n.read || (n as any).isRead;
@@ -242,7 +308,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           isRead: Boolean(isServerRead || isLocallyRead)
         };
       });
-  }, [rawNotifications, readNotifIds, clearedNotifIds]);
+  }, [rawNotifications, readNotifIds, clearedNotifIds, isUserAdminRole, nowTicker]);
 
   // Compute unreadUpdates in-memory
   const unreadUpdates = useMemo(() => {
