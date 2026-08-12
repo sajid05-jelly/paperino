@@ -8,6 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import * as pdfjs from "pdfjs-dist";
 import * as mammoth from "mammoth";
 
+import DOMPurify from "dompurify";
+
 // Configure PDF.js Worker — serve from public/ to avoid CSP/bundler issues
 if (typeof window !== "undefined") {
   pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
@@ -134,9 +136,11 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const arrayBuffer = await res.arrayBuffer();
           const result = await mammoth.convertToHtml({ arrayBuffer });
+          const rawHtml = result.value || "<p class='text-gray-400'>No readable text found in Word document.</p>";
+          const cleanHtml = typeof window !== "undefined" ? DOMPurify.sanitize(rawHtml) : rawHtml;
           if (isMounted) {
             setViewType("docx");
-            setDocxHtml(result.value || "<p class='text-gray-400'>No readable text found in Word document.</p>");
+            setDocxHtml(cleanHtml);
             setLoading(false);
           }
         } catch {
@@ -258,7 +262,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       canvas.style.width = `${Math.floor(displayViewport.width)}px`;
-      canvas.style.height = `${Math.floor(displayViewport.height)}px`;
+      canvas.style.height = "auto";
       canvas.style.maxWidth = "100%";
 
       // Cancel previous active render task for this page slot if present
@@ -487,8 +491,8 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
                 key={slot.pageNum}
                 id={`pdf-page-slot-${mat.id || mat.fileId || 'item'}-${slot.pageNum}`}
                 data-page-num={slot.pageNum}
-                className="flex flex-col items-center mb-8 shadow-2xl rounded-2xl bg-[#120d24] border border-white/10 p-3 relative max-w-full min-h-0"
-                style={{ width: "fit-content", height: "auto" }}
+                className="flex flex-col items-center mb-8 shadow-2xl rounded-2xl bg-[#120d24] border border-white/10 p-3 relative max-w-full"
+                style={{ width: "fit-content" }}
               >
                 <div className="w-full text-xs text-purple-300 font-mono text-center mb-2.5 font-semibold select-none">
                   Page {slot.pageNum} of {numPages}
@@ -498,7 +502,6 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
                   className="relative rounded-lg overflow-hidden bg-white shadow-xl border border-gray-200/20 flex items-center justify-center max-w-full"
                   style={{
                     width: `${displayW}px`,
-                    height: `${displayH}px`,
                     maxWidth: "100%",
                   }}
                 >
@@ -507,7 +510,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
                     className="block rounded-lg"
                     style={{
                       width: "100%",
-                      height: "100%",
+                      height: "auto",
                       maxWidth: "100%",
                     }}
                   />

@@ -447,6 +447,14 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
                           <button 
+                            onClick={() => setPreviewMat(mat)} 
+                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
+                            title={`Preview ${subjectName} ${mat.title}`} 
+                            aria-label={`Preview ${subjectName} ${mat.title}`}
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button 
                             disabled={downloadingId === mat.id}
                             onClick={() => {
                               setDownloadingId(mat.id);
@@ -505,6 +513,14 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
                           <button 
+                            onClick={() => setPreviewMat(mat)} 
+                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
+                            title={`Preview ${subjectName} ${mat.title}`} 
+                            aria-label={`Preview ${subjectName} ${mat.title}`}
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button 
                             disabled={downloadingId === mat.id}
                             onClick={() => {
                               setDownloadingId(mat.id);
@@ -562,6 +578,14 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                           </div>
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
+                          <button 
+                            onClick={() => setPreviewMat(mat)} 
+                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
+                            title={`Preview ${subjectName} ${mat.title}`} 
+                            aria-label={`Preview ${subjectName} ${mat.title}`}
+                          >
+                            <Eye size={14} />
+                          </button>
                           <button 
                             disabled={downloadingId === mat.id}
                             onClick={() => {
@@ -697,9 +721,9 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
 
       {/* PDF / Document Preview Lightbox Overlay */}
       {previewMat && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 pt-20 sm:pt-24 pb-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setPreviewMat(null)}></div>
-          <div className="bg-[#0b0816] w-full max-w-6xl h-[90vh] rounded-3xl border border-white/10 overflow-hidden flex flex-col relative z-10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+          <div className="bg-[#0b0816] w-full max-w-6xl h-[calc(100vh-6rem)] rounded-3xl border border-white/10 overflow-hidden flex flex-col relative z-10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
             
             {/* Header */}
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-[#0e091b] relative z-20 flex-shrink-0">

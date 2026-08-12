@@ -69,11 +69,11 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 pt-20 sm:pt-24 pb-4 bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl h-[85vh] flex flex-col rounded-2xl overflow-hidden border border-white/10 bg-[#0f0f19]/95 backdrop-blur-xl"
+        className="relative w-full max-w-5xl h-[calc(100vh-6rem)] flex flex-col rounded-2xl overflow-hidden border border-white/10 bg-[#0f0f19]/95 backdrop-blur-xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
