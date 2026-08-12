@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FileText, Download, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw } from "lucide-react";
+import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw } from "lucide-react";
 import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
@@ -46,6 +46,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
   const [viewType, setViewType] = useState<ViewerType>("pdfjs");
   const [retryCount, setRetryCount] = useState<number>(0);
 
@@ -340,13 +341,19 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
     };
   }, [scale, viewType, pdfDoc, renderSinglePage]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (onDownload) {
       onDownload();
       return;
     }
     setDownloading(true);
-    triggerSecureDownload(mat, showToast, dismissToast, (l) => setDownloading(l));
+    const success = await triggerSecureDownload(mat, showToast, dismissToast, (l) => setDownloading(l));
+    if (success) {
+      setDownloaded(true);
+      setTimeout(() => {
+        setDownloaded(false);
+      }, 2500);
+    }
   };
 
   return (
@@ -427,10 +434,20 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/10 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              className={`px-5 py-2.5 rounded-xl text-white font-bold text-xs border transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 ${
+                downloaded
+                  ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                  : "bg-white/10 hover:bg-white/20 border-white/10"
+              }`}
             >
-              {downloading ? <Loader2 size={14} className="animate-spin text-white" /> : <Download size={14} />}
-              <span>Download File</span>
+              {downloading ? (
+                <Loader2 size={14} className="animate-spin text-white" />
+              ) : downloaded ? (
+                <Check size={14} className="text-emerald-400" />
+              ) : (
+                <Download size={14} />
+              )}
+              <span>{downloading ? "Downloading..." : downloaded ? "Downloaded" : "Download File"}</span>
             </button>
           </div>
         </div>

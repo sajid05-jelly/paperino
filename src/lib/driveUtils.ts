@@ -77,21 +77,21 @@ export async function triggerSecureDownload(
   showToast?: (msg: string, type: "success" | "error" | "info" | "warning") => string | void,
   dismissToast?: (id: string) => void,
   onLoadingChange?: (loading: boolean) => void
-): Promise<void> {
+): Promise<boolean> {
   if (!mat.id && !mat.fileId) {
     if (mat.fileUrl) {
       window.open(mat.fileUrl, "_blank");
-      return;
+      return true;
     }
     showToast?.("No file available for download", "error");
-    return;
+    return false;
   }
 
   try {
     const user = auth.currentUser;
     if (!user) {
       showToast?.("Please sign in to download this material.", "error");
-      return;
+      return false;
     }
 
     onLoadingChange?.(true);
@@ -172,6 +172,7 @@ export async function triggerSecureDownload(
     window.URL.revokeObjectURL(blobUrl);
 
     showToast?.("Download started successfully", "success");
+    return true;
   } catch (err: any) {
     if (typeof window !== "undefined") {
       (window as any).__activeDownloads = false;
@@ -179,6 +180,7 @@ export async function triggerSecureDownload(
     onLoadingChange?.(false);
     console.error("Secure download failed:", err);
     showToast?.(err.message || "Failed to download material.", "error");
+    return false;
   }
 }
 

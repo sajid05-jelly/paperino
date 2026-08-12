@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc } from "firebase/firestore";
 import Link from "next/link";
-import { FileText, Loader2, Download, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
+import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
@@ -42,6 +42,21 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
   const [previewMat, setPreviewMat] = useState<any | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadedId, setDownloadedId] = useState<string | null>(null);
+
+  const handleDownloadMaterial = async (mat: any) => {
+    if (downloadingId === mat.id) return;
+    setDownloadingId(mat.id);
+    const success = await triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
+      if (!loading) setDownloadingId(null);
+    });
+    if (success) {
+      setDownloadedId(mat.id);
+      setTimeout(() => {
+        setDownloadedId(prev => (prev === mat.id ? null : prev));
+      }, 2500);
+    }
+  };
 
   const semesterSubjects = dynamicSubjects[deptId]?.[semId] || [];
   const foundSubject = semesterSubjects.find(
@@ -456,17 +471,28 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                           </button>
                           <button 
                             disabled={downloadingId === mat.id}
-                            onClick={() => {
-                              setDownloadingId(mat.id);
-                              triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
-                                if (!loading) setDownloadingId(null);
-                              });
-                            }} 
-                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
-                            title={downloadingId === mat.id ? "Downloading..." : `Download ${subjectName} ${mat.title}`}
+                            onClick={() => handleDownloadMaterial(mat)} 
+                            className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                              downloadedId === mat.id
+                                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
+                            }`}
+                            title={
+                              downloadingId === mat.id
+                                ? "Downloading..."
+                                : downloadedId === mat.id
+                                ? "Downloaded"
+                                : `Download ${subjectName} ${mat.title}`
+                            }
                             aria-label={`Download ${subjectName} ${mat.title}`}
                           >
-                            {downloadingId === mat.id ? <Loader2 size={14} className="text-purple-400 animate-spin" /> : <Download size={14} />}
+                            {downloadingId === mat.id ? (
+                              <Loader2 size={14} className="text-purple-400 animate-spin" />
+                            ) : downloadedId === mat.id ? (
+                              <Check size={14} className="text-emerald-400" />
+                            ) : (
+                              <Download size={14} />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -522,17 +548,28 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                           </button>
                           <button 
                             disabled={downloadingId === mat.id}
-                            onClick={() => {
-                              setDownloadingId(mat.id);
-                              triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
-                                if (!loading) setDownloadingId(null);
-                              });
-                            }} 
-                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
-                            title={downloadingId === mat.id ? "Downloading..." : `Download ${subjectName} ${mat.title}`}
+                            onClick={() => handleDownloadMaterial(mat)} 
+                            className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                              downloadedId === mat.id
+                                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
+                            }`}
+                            title={
+                              downloadingId === mat.id
+                                ? "Downloading..."
+                                : downloadedId === mat.id
+                                ? "Downloaded"
+                                : `Download ${subjectName} ${mat.title}`
+                            }
                             aria-label={`Download ${subjectName} ${mat.title}`}
                           >
-                            {downloadingId === mat.id ? <Loader2 size={14} className="text-purple-400 animate-spin" /> : <Download size={14} />}
+                            {downloadingId === mat.id ? (
+                              <Loader2 size={14} className="text-purple-400 animate-spin" />
+                            ) : downloadedId === mat.id ? (
+                              <Check size={14} className="text-emerald-400" />
+                            ) : (
+                              <Download size={14} />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -588,17 +625,28 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                           </button>
                           <button 
                             disabled={downloadingId === mat.id}
-                            onClick={() => {
-                              setDownloadingId(mat.id);
-                              triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
-                                if (!loading) setDownloadingId(null);
-                              });
-                            }} 
-                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
-                            title={downloadingId === mat.id ? "Downloading..." : `Download ${subjectName} ${mat.title}`}
+                            onClick={() => handleDownloadMaterial(mat)} 
+                            className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                              downloadedId === mat.id
+                                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
+                            }`}
+                            title={
+                              downloadingId === mat.id
+                                ? "Downloading..."
+                                : downloadedId === mat.id
+                                ? "Downloaded"
+                                : `Download ${subjectName} ${mat.title}`
+                            }
                             aria-label={`Download ${subjectName} ${mat.title}`}
                           >
-                            {downloadingId === mat.id ? <Loader2 size={14} className="text-purple-400 animate-spin" /> : <Download size={14} />}
+                            {downloadingId === mat.id ? (
+                              <Loader2 size={14} className="text-purple-400 animate-spin" />
+                            ) : downloadedId === mat.id ? (
+                              <Check size={14} className="text-emerald-400" />
+                            ) : (
+                              <Download size={14} />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -734,16 +782,27 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
               <div className="flex items-center gap-3 flex-shrink-0 relative z-30">
                 <button 
                   disabled={downloadingId === previewMat.id}
-                  onClick={() => {
-                    setDownloadingId(previewMat.id);
-                    triggerSecureDownload(previewMat, showToast, dismissToast, (loading) => {
-                      if (!loading) setDownloadingId(null);
-                    });
-                  }} 
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-purple-300 transition-all cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
-                  title={downloadingId === previewMat.id ? "Downloading..." : "Download File"}
+                  onClick={() => handleDownloadMaterial(previewMat)} 
+                  className={`p-2 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                    downloadedId === previewMat.id
+                      ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                      : "bg-white/5 hover:bg-white/10 text-gray-300 hover:text-purple-300"
+                  }`}
+                  title={
+                    downloadingId === previewMat.id
+                      ? "Downloading..."
+                      : downloadedId === previewMat.id
+                      ? "Downloaded"
+                      : "Download File"
+                  }
                 >
-                  {downloadingId === previewMat.id ? <Loader2 size={16} className="text-purple-400 animate-spin" /> : <Download size={16} />}
+                  {downloadingId === previewMat.id ? (
+                    <Loader2 size={16} className="text-purple-400 animate-spin" />
+                  ) : downloadedId === previewMat.id ? (
+                    <Check size={16} className="text-emerald-400" />
+                  ) : (
+                    <Download size={16} />
+                  )}
                 </button>
                 <button 
                   onClick={(e) => {

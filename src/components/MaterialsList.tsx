@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Check } from "lucide-react";
 
 import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
@@ -24,6 +24,7 @@ export default function MaterialsList({ departmentId, semesterId, subjectId }: {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadedId, setDownloadedId] = useState<string | null>(null);
   const { showToast, dismissToast } = useToast();
 
   useEffect(() => {
@@ -66,18 +67,28 @@ export default function MaterialsList({ departmentId, semesterId, subjectId }: {
     return "text-emerald-400";
   };
 
+  const handleDownload = async (mat: Material) => {
+    if (downloadingId === mat.id) return;
+    setDownloadingId(mat.id);
+    const success = await triggerSecureDownload(mat, showToast, dismissToast, (loadingState) => {
+      if (!loadingState) setDownloadingId(null);
+    });
+    if (success) {
+      setDownloadedId(mat.id);
+      setTimeout(() => {
+        setDownloadedId(prev => (prev === mat.id ? null : prev));
+      }, 2500);
+    }
+  };
+
   return (
     <div className="space-y-3">
       {materials.map((mat) => (
         <button
           key={mat.id}
           disabled={downloadingId === mat.id}
-          onClick={() => {
-            setDownloadingId(mat.id);
-            triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
-              if (!loading) setDownloadingId(null);
-            });
-          }}
+          onClick={() => handleDownload(mat)}
+          title={downloadingId === mat.id ? "Downloading..." : downloadedId === mat.id ? "Downloaded" : `Download ${mat.title}`}
           className="w-full flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group text-left disabled:opacity-75 disabled:cursor-not-allowed"
         >
           <div className="flex items-center gap-3">
@@ -86,6 +97,11 @@ export default function MaterialsList({ departmentId, semesterId, subjectId }: {
           </div>
           {downloadingId === mat.id ? (
             <Loader2 size={16} className="text-purple-400 animate-spin" />
+          ) : downloadedId === mat.id ? (
+            <div className="flex items-center gap-1 text-emerald-400 font-medium text-xs">
+              <Check size={16} />
+              <span>Downloaded</span>
+            </div>
           ) : (
             <Download size={16} className="text-gray-500 group-hover:text-white" />
           )}
