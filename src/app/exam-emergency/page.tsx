@@ -52,34 +52,41 @@ export default function ExamEmergencyPage() {
   useEffect(() => {
     if (!user) return;
 
+    let isMounted = true;
     const userRef = doc(db, "users", user.uid);
-    const unsubscribe = onSnapshot(userRef, async (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const count = data.emergencyUsageCount || 0;
-        const lastReset = data.emergencyLastResetDate || "";
-        const todayIST = getTodayIST();
+    
+    getDoc(userRef).then(async (snap) => {
+      if (!isMounted || !snap.exists()) return;
+      const data = snap.data();
+      const count = data.emergencyUsageCount || 0;
+      const lastReset = data.emergencyLastResetDate || "";
+      const todayIST = getTodayIST();
 
-        if (lastReset !== todayIST) {
-          // Perform automatic 12:00 AM IST daily reset
-          try {
-            await updateDoc(userRef, {
-              emergencyUsageCount: 0,
-              emergencyLastResetDate: todayIST
-            });
+      if (lastReset !== todayIST) {
+        // Perform automatic 12:00 AM IST daily reset
+        try {
+          await updateDoc(userRef, {
+            emergencyUsageCount: 0,
+            emergencyLastResetDate: todayIST
+          });
+          if (isMounted) {
             setEmergencyUsageCount(0);
             setEmergencyLastResetDate(todayIST);
-          } catch (err) {
-            console.error("Error resetting emergency usage:", err);
           }
-        } else {
+        } catch (err) {
+          console.error("Error resetting emergency usage:", err);
+        }
+      } else {
+        if (isMounted) {
           setEmergencyUsageCount(count);
           setEmergencyLastResetDate(lastReset);
         }
       }
+    }).catch((err) => {
+      console.warn("[ExamEmergency] User doc fetch notice:", err);
     });
 
-    return () => unsubscribe();
+    return () => { isMounted = false; };
   }, [user]);
 
   // Handle Activation

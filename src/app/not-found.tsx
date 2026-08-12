@@ -155,8 +155,8 @@ export default function NotFound() {
 
         {/* Secondary link */}
         <Link
-          href="/btech"
-          className="text-sm font-medium transition-colors duration-200"
+          href="/courses"
+          className="text-sm font-medium transition-colors duration-200 hover:underline"
           style={{ color: 'var(--primary-400, #a78bfa)' }}
         >
           Browse Study Materials

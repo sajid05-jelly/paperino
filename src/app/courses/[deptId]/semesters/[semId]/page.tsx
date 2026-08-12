@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Book, ChevronRight, Loader2, Plus } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
@@ -13,6 +14,7 @@ import { getSubjectSeoPath } from "@/lib/seoUtils";
 export default function SemesterSubjectsPage({ params }: { params: Promise<{ deptId: string, semId: string }> }) {
   const resolvedParams = use(params);
   const { deptId, semId } = resolvedParams;
+  const router = useRouter();
   
   const { departments, subjects, loading, lazyLoadSubjects } = useSubjects();
   const { user, isAdmin } = useAuth();
@@ -115,20 +117,22 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
               semesterId: semId,
             });
             return (
-              <Link key={sub.id} href={seoPath}>
-                <div className="vision-glass p-6 h-full group cursor-pointer relative overflow-hidden vision-hover border border-white/5 hover:border-purple-500/30 transition-all">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-colors">
-                      <Book size={24} />
-                    </div>
-                    <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
+              <Link 
+                key={sub.id} 
+                href={seoPath}
+                className="vision-glass p-6 h-full block group cursor-pointer relative overflow-hidden vision-hover border border-white/5 hover:border-purple-500/30 transition-all text-left no-underline"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                    <Book size={24} />
                   </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">{sub.name}</h3>
-                  {sub.code && (
-                    <p className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">{sub.code}</p>
-                  )}
-                  <p className="text-sm text-gray-400">View PYQs, Notes, and Important Questions.</p>
+                  <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
                 </div>
+                <h3 className="text-xl font-semibold text-white mb-2">{sub.name}</h3>
+                {sub.code && (
+                  <p className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">{sub.code}</p>
+                )}
+                <p className="text-sm text-gray-400">View PYQs, Notes, and Important Questions.</p>
               </Link>
             );
           })}

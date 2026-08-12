@@ -90,15 +90,20 @@ export async function generateMetadata({
 async function fetchServerMaterials(deptId: string, semId: string, subjectId: string) {
   if (!adminDb) return [];
   try {
-    const snap = await adminDb
+    const fetchPromise = adminDb
       .collection("materials")
       .where("semesterId", "==", semId)
       .where("subjectId", "==", subjectId)
       .get();
 
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+    const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (!snap || !snap.docs) return [];
+
     return snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter((m: any) => (m.status === "approved" || !m.status) && (m.departmentId || "btech") === deptId);
+      .map((d: any) => ({ id: d.id, ...d.data() }))
+      .filter((m: any) => (m.status === "approved" || !m.status) && (m.departmentId || "btech").toLowerCase() === deptId.toLowerCase());
   } catch (e) {
     return [];
   }

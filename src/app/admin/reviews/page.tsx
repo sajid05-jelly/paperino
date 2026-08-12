@@ -44,17 +44,22 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
   const fileName = mat.fileName || mat.title || "File";
   const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(fileName);
   const { showToast, dismissToast } = useToast();
-  const downloadHref = getDownloadHref(mat);
+  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "success">("idle");
 
-  const previewUrl: string | null = (() => {
-    if (mat.fileId) return getDrivePreviewUrl(mat.fileId);
-    if (mat.fileUrl) {
-      const m = mat.fileUrl.match(/\/d\/([\w-]+)/);
-      if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
-      return mat.fileUrl;
+  const handleDownload = async () => {
+    if (downloadState !== "idle") return;
+    setDownloadState("downloading");
+    try {
+      await triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
+        if (!loading) {
+          setDownloadState("success");
+          setTimeout(() => setDownloadState("idle"), 2500);
+        }
+      });
+    } catch {
+      setDownloadState("idle");
     }
-    return null;
-  })();
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -68,7 +73,7 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden border border-white/10 bg-[#0f0f19]/95 backdrop-blur-xl"
+        className="relative w-full max-w-5xl h-[85vh] flex flex-col rounded-2xl overflow-hidden border border-white/10 bg-[#0f0f19]/95 backdrop-blur-xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -82,10 +87,26 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
           </div>
 
           <button
-            onClick={() => triggerSecureDownload(mat, showToast, dismissToast)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer"
+            disabled={downloadState !== "idle"}
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed min-w-[120px] justify-center"
           >
-            <Download size={13} /> Download
+            {downloadState === "downloading" ? (
+              <>
+                <Loader2 size={13} className="animate-spin text-white" />
+                <span>Downloading...</span>
+              </>
+            ) : downloadState === "success" ? (
+              <>
+                <CheckCircle2 size={13} className="text-emerald-300" />
+                <span>✓ Downloaded</span>
+              </>
+            ) : (
+              <>
+                <Download size={13} />
+                <span>Download</span>
+              </>
+            )}
           </button>
 
           <button
@@ -97,10 +118,11 @@ function PreviewModal({ mat, onClose }: PreviewModalProps) {
         </div>
 
         {/* Preview area */}
-        <div className="flex-1 overflow-auto min-h-0 bg-black/30 h-[70vh]">
+        <div className="flex-1 w-full h-full overflow-hidden bg-black/30 min-h-[70vh]">
           <DocPreviewViewer
             mat={mat}
             onDownload={() => triggerSecureDownload(mat, showToast, dismissToast)}
+            className="w-full h-full"
           />
         </div>
       </div>
@@ -820,13 +842,6 @@ export default function AdminReviewsPage() {
                           </button>
                         )}
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => setPreviewMat(mat)}
-                            className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors border border-cyan-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
-                          >
-                            <Eye size={14} /> View File
-                          </button>
-
                           {activeTab === "pending" ? (
                             <button
                               onClick={() => handleReject(mat.id)}

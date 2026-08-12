@@ -9,6 +9,31 @@
 import { auth } from "@/lib/firebase";
 
 /**
+ * Robustly extract raw 10-60 character Google Drive File ID from raw strings or full Drive URLs
+ */
+export function extractDriveFileId(input: string): string {
+  if (!input) return "";
+  const trimmed = input.trim();
+
+  // If it's a Firebase Storage or non-Drive URL, return empty so direct URL preview is used
+  if (trimmed.includes("firebasestorage.googleapis.com") || (trimmed.startsWith("http") && !trimmed.includes("drive.google.com"))) {
+    return "";
+  }
+
+  if (/^[a-zA-Z0-9_-]{10,60}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const matchD = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]{10,60})/);
+  if (matchD && matchD[1]) return matchD[1];
+
+  const matchId = trimmed.match(/[?&]id=([a-zA-Z0-9_-]{10,60})/);
+  if (matchId && matchId[1]) return matchId[1];
+
+  return "";
+}
+
+/**
  * Returns the Paperino backend proxy download URL for a given Drive file ID.
  * The proxy streams the file through our own server so users never touch Drive.
  */
@@ -92,7 +117,11 @@ export async function triggerSecureDownload(
     const { token: downloadToken } = await tokenRes.json();
 
     // 2. Fetch the actual material download stream
-    const downloadUrl = `/api/download?matId=${encodeURIComponent(mat.id || "")}&token=${encodeURIComponent(downloadToken)}`;
+    const matParam = mat.id ? `matId=${encodeURIComponent(mat.id)}` : "";
+    const fileParam = mat.fileId ? `fileId=${encodeURIComponent(mat.fileId)}` : "";
+    const nameParam = (mat.fileName || mat.title) ? `fileName=${encodeURIComponent(mat.fileName || mat.title || "")}` : "";
+    const identifierQuery = [matParam, fileParam, nameParam].filter(Boolean).join("&");
+    const downloadUrl = `/api/download?${identifierQuery}&token=${encodeURIComponent(downloadToken)}`;
 
     const res = await fetch(downloadUrl, {
       method: "GET",
@@ -114,9 +143,29 @@ export async function triggerSecureDownload(
     const blob = await res.blob();
     const blobUrl = window.URL.createObjectURL(blob);
     
+    // Extract server-provided Content-Disposition filename if available
+    let downloadFilename = mat.fileName || mat.title || "material.pdf";
+    const disposition = res.headers.get("Content-Disposition");
+    if (disposition) {
+      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      if (utf8Match && utf8Match[1]) {
+        downloadFilename = decodeURIComponent(utf8Match[1]);
+      } else {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          downloadFilename = decodeURIComponent(match[1]);
+        }
+      }
+    }
+
+    // Ensure .pdf extension if missing on PDF files
+    if (!/\.[a-zA-Z0-9]+$/.test(downloadFilename)) {
+      downloadFilename += ".pdf";
+    }
+    
     const tempLink = document.createElement("a");
     tempLink.href = blobUrl;
-    tempLink.setAttribute("download", mat.fileName || mat.title || "material");
+    tempLink.setAttribute("download", downloadFilename);
     document.body.appendChild(tempLink);
     tempLink.click();
     document.body.removeChild(tempLink);

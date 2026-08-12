@@ -33,7 +33,7 @@ let inMemoryUnifiedData: {
   subjects: UnifiedSubject[];
 } | null = null;
 let lastUnifiedFetchTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 1 minute TTL for instant dynamic detection of new admin-created subjects
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute TTL — reduces Firestore reads while still detecting new subjects reasonably fast
 
 /**
  * Unified Data Provider for All Courses, Semesters, and Subjects in Paperino.
@@ -88,11 +88,21 @@ export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
 
     if (typeof window === "undefined" && adminDb) {
       // Server-side Node / Build execution via Firebase Admin
-      const deptSnap = await adminDb.collection("departments").get();
-      deptDocs = deptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // 3s timeout to prevent hanging when Firestore quota is exhausted
+      const timeoutMs = 3000;
+      const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore fetch timeout")), ms));
 
-      const subSnap = await adminDb.collection("dynamic_subjects").get();
-      subjectDocs = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const [deptResult, subResult] = await Promise.allSettled([
+        Promise.race([adminDb.collection("departments").get(), timeout(timeoutMs)]),
+        Promise.race([adminDb.collection("dynamic_subjects").get(), timeout(timeoutMs)]),
+      ]);
+
+      if (deptResult.status === "fulfilled" && deptResult.value) {
+        deptDocs = (deptResult.value as any).docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      }
+      if (subResult.status === "fulfilled" && subResult.value) {
+        subjectDocs = (subResult.value as any).docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      }
     } else if (db) {
       // Client-side or fallback Firebase Client SDK execution
       const deptSnap = await getDocs(collection(db, "departments"));
@@ -161,7 +171,7 @@ export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
 /**
  * Fetch metadata parameters for a specific subject dynamically from the unified data source.
  */
-export async function getSubjectDetails(deptId: string, semId: string, subjectId: string): Promise<{
+export async function getSubjectDetails(deptId: string, semId: string, subjectIdOrSlug: string): Promise<{
   subjectName: string;
   subjectCode: string;
   deptName: string;
@@ -171,13 +181,26 @@ export async function getSubjectDetails(deptId: string, semId: string, subjectId
 }> {
   const { departments, subjects } = await getAllUnifiedData();
   
-  const foundSubject = subjects.find(
-    s => s.departmentId === deptId && s.semesterId === String(semId) && s.id === subjectId
+  const target = subjectIdOrSlug.toLowerCase().trim();
+  const normalize = (str: string) => (str || "").toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+  const normalizedTarget = normalize(target);
+
+  const deptSubjects = subjects.filter(
+    s => s.departmentId.toLowerCase() === deptId.toLowerCase() && String(s.semesterId) === String(semId)
   );
 
-  const foundDept = departments.find(d => d.id === deptId);
+  const foundSubject = deptSubjects.find(
+    s => s.id.toLowerCase() === target ||
+         normalize(s.id) === normalizedTarget ||
+         normalize(s.name) === normalizedTarget ||
+         (s.code && normalize(s.code).replace(/-/g, "") === target.replace(/[^a-z0-9]/g, "")) ||
+         normalizedTarget.includes(normalize(s.name)) ||
+         normalize(s.name).includes(normalizedTarget)
+  );
 
-  let subjectName = foundSubject ? foundSubject.name : subjectId.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
+  const foundDept = departments.find(d => d.id.toLowerCase() === deptId.toLowerCase());
+
+  let subjectName = foundSubject ? foundSubject.name : subjectIdOrSlug.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
   let subjectCode = foundSubject?.code || "";
   let deptName = foundDept ? foundDept.name : (deptId === "btech" ? "Bachelor of Technology" : deptId.toUpperCase());
   let deptCode = foundDept ? foundDept.code : (deptId === "btech" ? "B.Tech" : deptId.toUpperCase());

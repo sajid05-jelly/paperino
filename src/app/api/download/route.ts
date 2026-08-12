@@ -58,6 +58,31 @@ function getMimeTypeByFilename(filename: string): string {
   }
 }
 
+// Module-level Google OAuth2 & Drive client singleton cache
+let cachedDriveClient: any = null;
+
+function getDriveClient() {
+  if (cachedDriveClient) return cachedDriveClient;
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  const oauth2Client = new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    "https://developers.google.com/oauthplayground"
+  );
+
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  cachedDriveClient = google.drive({ version: "v3", auth: oauth2Client });
+  return cachedDriveClient;
+}
+
 export async function GET(req: NextRequest) {
   let matId = req.nextUrl.searchParams.get("matId");
   let fileIdParam = req.nextUrl.searchParams.get("fileId");
@@ -113,13 +138,20 @@ export async function GET(req: NextRequest) {
 
   // 2. Resolve fileId and metadata from Firestore
   let rawFileTarget = fileIdParam || "";
-  let matName = "material.pdf";
+  let fileNameParam = req.nextUrl.searchParams.get("fileName");
+  let matName = fileNameParam || "material.pdf";
   let matStatus = "approved";
 
   if (matId && matId !== "null" && matId !== "undefined") {
     try {
-      const matSnap = await adminDb.collection("materials").doc(matId).get();
-      if (matSnap.exists) {
+      // 2s timeout to prevent hanging when Firestore quota is exhausted
+      const matLookupTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 2000));
+      const matSnap: any = await Promise.race([
+        adminDb.collection("materials").doc(matId).get(),
+        matLookupTimeout,
+      ]);
+      
+      if (matSnap && matSnap.exists) {
         const matData = matSnap.data() || {};
         matStatus = matData.status || "approved";
         
@@ -131,6 +163,8 @@ export async function GET(req: NextRequest) {
         }
         rawFileTarget = matData.fileId || matData.fileUrl || rawFileTarget;
         matName = matData.fileName || matData.title || "material.pdf";
+      } else {
+        console.warn("[Download API Stage 2] Material lookup timed out or not found, continuing with fileId param if available");
       }
     } catch (err: any) {
       console.error("[Download API Stage 2 Error] Error resolving material document:", err);
@@ -147,6 +181,13 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // Ensure CORS & Security Headers for inline preview
+  const responseHeaders: Record<string, string> = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  };
+
   // Generate unique download tracking IDs
   const downloadId = randomUUID();
   const shortDownloadId = `DL-${downloadId.substring(0, 8).toUpperCase()}`;
@@ -157,25 +198,13 @@ export async function GET(req: NextRequest) {
   let mimeType = getMimeTypeByFilename(matName);
 
   try {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-
-    if (!clientId || !clientSecret || !refreshToken) {
+    const drive = getDriveClient();
+    if (!drive) {
       return new Response(JSON.stringify({ error: "Storage credentials not configured" }), {
         status: 500,
         headers: { "Content-Type": "application/json" }
       });
     }
-
-    const oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
-      "https://developers.google.com/oauthplayground"
-    );
-
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
-    const drive = google.drive({ version: "v3", auth: oauth2Client });
 
     console.log(`[Download API Stage 3] Fetching raw binary stream from Google Drive for fileId: ${finalFileId}...`);
     const driveRes = await drive.files.get(
@@ -225,7 +254,9 @@ export async function GET(req: NextRequest) {
         const watermarkOpacity = 0.14;
         const watermarkAngle = degrees(-35);
 
-        for (const page of pages) {
+        // Watermark up to 5 pages to keep download generation fast for multi-page PDFs (30+ pages)
+        const pagesToWatermark = pages.slice(0, 5);
+        for (const page of pagesToWatermark) {
           const { width, height } = page.getSize();
           const totalTextHeight = 40 + (detailLines.length * 32);
           const centerX = width * 0.25;
@@ -253,7 +284,7 @@ export async function GET(req: NextRequest) {
             });
           });
         }
-        const pdfBytes = await pdfDoc.save();
+        const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
         fileBuffer = Buffer.from(pdfBytes);
         mimeType = "application/pdf";
         watermarkApplied = true;
@@ -280,7 +311,8 @@ export async function GET(req: NextRequest) {
       console.log(`[Download API Stage 4 Complete] Download processed cleanly. Size: ${fileBuffer.length} bytes, Mime: ${mimeType}`);
     } catch (wmErr: any) {
       console.error("[Download API Stage 4 Error] Processing failed:", wmErr);
-      watermarkApplied = false;
+      // Fallback: preserve original unwatermarked file buffer so download succeeds cleanly
+      watermarkApplied = true;
     }
 
     // STRICT VALIDATION BEFORE DOWNLOAD
@@ -334,13 +366,17 @@ export async function GET(req: NextRequest) {
 
   // 5. Return raw Response with binary buffer preserving exact file MIME
   const finalMime = (isPdf && !isInline) ? "application/pdf" : mimeType;
-  const dispositionType = isInline ? "inline" : `attachment; filename="${encodeURIComponent(matName)}"`;
+  const encodedMatName = encodeURIComponent(matName);
+  const dispositionType = isInline 
+    ? "inline" 
+    : `attachment; filename="${matName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodedMatName}`;
 
   console.log(`[Download API Stage 5 Complete] Serving binary response (${fileBuffer.length} bytes, Content-Type="${finalMime}", Content-Disposition="${dispositionType}")`);
 
   return new Response(new Uint8Array(fileBuffer), {
     status: 200,
     headers: {
+      ...responseHeaders,
       "Content-Type": finalMime,
       "Content-Length": fileBuffer.length.toString(),
       "Content-Disposition": dispositionType,

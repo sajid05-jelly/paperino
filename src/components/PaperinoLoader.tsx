@@ -15,12 +15,67 @@ const BOOT_MESSAGES = [
   "Almost Ready...",
 ];
 
+function NeonMaterialsIcon() {
+  return (
+    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-300 pl-neon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" fill="rgba(139,92,246,0.12)" />
+      <path d="M8 6h8" stroke="rgba(196,181,253,0.9)" />
+      <path d="M8 10h6" stroke="rgba(196,181,253,0.7)" />
+      <circle cx="17" cy="14" r="1.2" fill="#c4b5fd" />
+    </svg>
+  );
+}
+
+function NeonCareerIcon() {
+  return (
+    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-300 pl-neon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" stroke="rgba(56,189,248,0.5)" fill="rgba(56,189,248,0.08)" />
+      <circle cx="12" cy="12" r="5" stroke="rgba(56,189,248,0.9)" />
+      <circle cx="12" cy="12" r="1.5" fill="#38bdf8" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="rgba(56,189,248,0.8)" strokeDasharray="1 2" />
+    </svg>
+  );
+}
+
+function NeonResumeIcon() {
+  return (
+    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-300 pl-neon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="rgba(59,130,246,0.1)" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="12" x2="16" y2="12" stroke="rgba(147,197,253,0.9)" />
+      <line x1="8" y1="16" x2="13" y2="16" stroke="rgba(147,197,253,0.7)" />
+      <path d="M7 8h2" stroke="#60a5fa" />
+    </svg>
+  );
+}
+
+function NeonClassroomIcon() {
+  return (
+    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-300 pl-neon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="3" width="16" height="18" rx="2" fill="rgba(99,102,241,0.1)" />
+      <path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2" stroke="rgba(165,180,252,0.85)" />
+      <path d="M12 21v-3" stroke="#818cf8" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function NeonTrophyIcon() {
+  return (
+    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-violet-300 pl-neon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 21h8M12 17v4M6 4h12v5a6 6 0 0 1-12 0V4z" fill="rgba(139,92,246,0.12)" />
+      <path d="M4 6H2a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h2M20 6h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-2" stroke="rgba(196,181,253,0.8)" />
+      <polygon points="12 7 13.2 9.2 15.5 9.5 13.8 11.2 14.2 13.5 12 12.4 9.8 13.5 10.2 11.2 8.5 9.5 10.8 9.2" fill="#c4b5fd" stroke="none" />
+    </svg>
+  );
+}
+
 const FEATURE_HOLOGRAMS = [
-  { emoji: "📚", label: "Materials", delay: 0 },
-  { emoji: "🎯", label: "Career DNA", delay: 0.8 },
-  { emoji: "📄", label: "Resume ATS", delay: 1.6 },
-  { emoji: "🏫", label: "Free Class Finder", delay: 2.4 },
-  { emoji: "🏆", label: "Hackathons", delay: 3.2 },
+  { icon: <NeonMaterialsIcon />, label: "Materials", delay: 0 },
+  { icon: <NeonCareerIcon />, label: "Career DNA", delay: 0.8 },
+  { icon: <NeonResumeIcon />, label: "Resume ATS", delay: 1.6 },
+  { icon: <NeonClassroomIcon />, label: "Free Class Finder", delay: 2.4 },
+  { icon: <NeonTrophyIcon />, label: "Hackathons", delay: 3.2 },
 ];
 
 export default function PaperinoLoader() {
@@ -61,6 +116,16 @@ export default function PaperinoLoader() {
   return (
     <>
       <style>{`
+        @keyframes pl-neon-pulse {
+          0%, 100% { filter: drop-shadow(0 0 3px rgba(167,139,250,0.6)); opacity: 0.88; transform: scale(1); }
+          50% { filter: drop-shadow(0 0 8px rgba(167,139,250,1)) drop-shadow(0 0 14px rgba(96,165,250,0.8)); opacity: 1; transform: scale(1.05); }
+        }
+        .pl-neon-icon {
+          animation: pl-neon-pulse 3.2s ease-in-out infinite;
+          display: inline-block;
+          vertical-align: middle;
+        }
+
         @keyframes pl-aurora1 {
           0%,100% { transform: translate(-12%,-18%) scale(1); opacity:.4; }
           50% { transform: translate(6%,12%) scale(1.18); opacity:.55; }
@@ -239,14 +304,17 @@ export default function PaperinoLoader() {
               className={`pl-holo pl-holo-pos-${i} absolute flex flex-col items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl max-sm:scale-95`}
               style={{
                 background: "rgba(255,255,255,0.028)",
-                border: "1px solid rgba(139,92,246,0.2)",
+                border: "1px solid rgba(139,92,246,0.25)",
                 backdropFilter: "blur(16px)",
+                boxShadow: "0 0 20px rgba(139,92,246,0.15), inset 0 0 12px rgba(139,92,246,0.08)",
                 "--hd": `${4 + i * 0.6}s`,
                 "--hdelay": `${f.delay}s`,
               } as unknown as React.CSSProperties}>
-              <span className="text-base sm:text-xl">{f.emoji}</span>
+              <div className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7">
+                {f.icon}
+              </div>
               <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider sm:tracking-widest whitespace-nowrap"
-                style={{ color: "rgba(167,139,250,0.75)" }}>
+                style={{ color: "rgba(167,139,250,0.85)" }}>
                 {f.label}
               </span>
             </div>

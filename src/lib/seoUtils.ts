@@ -9,6 +9,14 @@ import { SITE_CONFIG, getAbsoluteUrl } from "./siteConfig";
  *  - "Community Connect", "21GNP301L"       -> "community-connect-21gnp301l"
  *  - "Calculus and Linear Algebra", ""        -> "calculus-and-linear-algebra-calc"
  */
+/**
+ * Generate a clean, lowercase, hyphenated URL slug for a subject.
+ * Examples:
+ *  - "Calculus And Linear Algebra", ""        -> "calculus-and-linear-algebra"
+ *  - "Full Stack Web Development", "21CSE354T" -> "full-stack-web-development-21cse354t"
+ *  - "Community Connect", "21GNP301L"       -> "community-connect-21gnp301l"
+ *  - "Fundamental Of Economics (FOE)", ""    -> "fundamental-of-economics-foe"
+ */
 export function getSubjectSlug(subject: { name: string; code?: string; id: string }): string {
   const cleanName = (subject.name || subject.id)
     .toLowerCase()
@@ -16,7 +24,7 @@ export function getSubjectSlug(subject: { name: string; code?: string; id: strin
     .trim()
     .replace(/\s+/g, "-");
 
-  const cleanCode = (subject.code || subject.id)
+  const cleanCode = (subject.code || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
@@ -28,20 +36,20 @@ export function getSubjectSlug(subject: { name: string; code?: string; id: strin
 }
 
 /**
- * Generate canonical relative path for a subject SEO page
- * Example: /srm/btech/semester-5/full-stack-web-development-21cse354t
+ * Generate canonical relative path for a subject page
+ * Example: /courses/btech/semesters/1/subjects/calc
  */
 export function getSubjectSeoPath(subject: {
   id: string;
-  name: string;
+  name?: string;
   code?: string;
   departmentId: string;
   semesterId: string | number;
 }): string {
   const deptSlug = (subject.departmentId || "btech").toLowerCase();
   const semNum = String(subject.semesterId || "1");
-  const subSlug = getSubjectSlug(subject);
-  return `/srm/${deptSlug}/semester-${semNum}/${subSlug}`;
+  const subId = subject.id;
+  return `/courses/${deptSlug}/semesters/${semNum}/subjects/${subId}`;
 }
 
 /**
@@ -72,29 +80,39 @@ export function matchSubjectBySlug(
 
   if (deptSubjects.length === 0) return null;
 
-  const targetSlug = subjectSlug.toLowerCase();
+  const targetSlug = subjectSlug.toLowerCase().trim();
+  const normalize = (str: string) => (str || "").toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+  const normalizedTarget = normalize(targetSlug);
 
-  // 1. Direct slug match
-  const exactMatch = deptSubjects.find(s => getSubjectSlug(s).toLowerCase() === targetSlug);
-  if (exactMatch) return exactMatch;
+  // 1. Direct slug match (e.g. calculus-and-linear-algebra)
+  const exactSlugMatch = deptSubjects.find(s => normalize(getSubjectSlug(s)) === normalizedTarget);
+  if (exactSlugMatch) return exactSlugMatch;
 
-  // 2. ID match fallback
-  const idMatch = deptSubjects.find(s => s.id.toLowerCase() === targetSlug);
+  // 2. Clean subject name match
+  const nameMatch = deptSubjects.find(s => normalize(s.name) === normalizedTarget);
+  if (nameMatch) return nameMatch;
+
+  // 3. Subject ID match (e.g. calc or calculus-and-linear-algebra-calc)
+  const idMatch = deptSubjects.find(
+    s => s.id.toLowerCase() === targetSlug || normalize(s.id) === normalizedTarget || normalizedTarget.endsWith(`-${s.id.toLowerCase()}`)
+  );
   if (idMatch) return idMatch;
 
-  // 3. Code match fallback
+  // 4. Subject code match (e.g. 21cse354t)
   const codeMatch = deptSubjects.find(
-    s => s.code && s.code.toLowerCase().replace(/[^a-z0-9]/g, "") === targetSlug.replace(/[^a-z0-9]/g, "")
+    s => s.code && normalize(s.code).replace(/-/g, "") === targetSlug.replace(/[^a-z0-9]/g, "")
   );
   if (codeMatch) return codeMatch;
 
-  // 4. Loose substring / name match
-  const looseMatch = deptSubjects.find(s => {
-    const slug = getSubjectSlug(s).toLowerCase();
-    return targetSlug.includes(s.id.toLowerCase()) || slug.includes(targetSlug) || targetSlug.includes(slug);
+  // 5. Loose / Partial name & slug match
+  const partialMatch = deptSubjects.find(s => {
+    const sSlug = normalize(getSubjectSlug(s));
+    const sName = normalize(s.name);
+    return sSlug.includes(normalizedTarget) || normalizedTarget.includes(sSlug) ||
+           sName.includes(normalizedTarget) || normalizedTarget.includes(sName);
   });
 
-  return looseMatch || null;
+  return partialMatch || null;
 }
 
 /**

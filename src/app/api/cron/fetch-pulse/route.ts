@@ -254,6 +254,51 @@ async function scrapeLocationFromUrl(url: string): Promise<{ location: string, s
   return null;
 }
 
+// ── AUTOMATIC 24-HOUR USER NOTIFICATION CLEANUP ROUTINE ──────────────────────
+async function cleanExpiredUserNotifications() {
+  if (!adminDb) return;
+  try {
+    const now = Date.now();
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+    
+    // Fetch all admin user IDs from users collection so admin notifications are never touched
+    const adminSnap = await adminDb.collection("users").where("role", "in", ["admin", "lead-admin", "lead_admin", "super-admin"]).get();
+    const adminUids = new Set<string>(["ADMIN"]);
+    adminSnap.docs.forEach(d => adminUids.add(d.id));
+
+    const notifSnap = await adminDb.collection("notifications").get();
+    let deletedCount = 0;
+
+    for (const docSnap of notifSnap.docs) {
+      const data = docSnap.data();
+      const userId = data.userId || data.ownerUid;
+
+      // CRITICAL DATA SAFETY: Bypasses Admin and Lead Admin notifications
+      if (userId === "ADMIN" || (userId && adminUids.has(userId))) {
+        continue;
+      }
+
+      let createdMs = 0;
+      if (typeof data.createdAt === "number") {
+        createdMs = data.createdAt;
+      } else if (data.createdAt?.toMillis) {
+        createdMs = data.createdAt.toMillis();
+      } else if (data.createdAt?.seconds) {
+        createdMs = data.createdAt.seconds * 1000;
+      }
+
+      if (createdMs > 0 && (now - createdMs) >= TWENTY_FOUR_HOURS_MS) {
+        console.log(`[Cron Cleanup] Physically deleting expired user notification ${docSnap.id} (Created ${Math.round((now - createdMs) / 3600000)}h ago)`);
+        await docSnap.ref.delete();
+        deletedCount++;
+      }
+    }
+    console.log(`[Cron Cleanup] Successfully deleted ${deletedCount} expired normal user notifications.`);
+  } catch (e) {
+    console.warn("[Cron Cleanup] User notification cleanup notice:", e);
+  }
+}
+
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization');
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -264,6 +309,9 @@ export async function GET(req: Request) {
   if (!db) {
     return NextResponse.json({ error: 'Firebase Admin DB not initialized' }, { status: 500 });
   }
+
+  // 0. Run physical cleanup for expired normal user notifications
+  await cleanExpiredUserNotifications();
 
   const now = new Date();
   

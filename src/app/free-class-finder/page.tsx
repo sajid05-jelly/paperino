@@ -7,7 +7,7 @@ import {
   Sparkles, Clock, ShieldCheck, Zap, Award, CheckCircle2,
   X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb, Trash2, UserCheck, Radio, Calendar, HelpCircle
 } from "lucide-react";
-import { collection, onSnapshot, doc } from "firebase/firestore";
+import { collection, onSnapshot, doc, query, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -232,10 +232,10 @@ function FreeClassFinderContent() {
     };
 
     try {
-      // 1. Try to use direct realtime onSnapshot listener
       const collectionName = "free_class_reports";
+      const reportsQuery = query(collection(db, collectionName), orderBy("createdAtMs", "desc"), limit(50));
       unsub = onSnapshot(
-        collection(db, collectionName),
+        reportsQuery,
         (snap) => {
           const rawList = snap.docs.map(docSnap => ({
             id: docSnap.id,

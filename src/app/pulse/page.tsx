@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc, limit } from "firebase/firestore";
 import {
   Radio, Pin, ShieldCheck, Clock, Trash2, Share2, Bookmark, FileText,
   Download, ExternalLink, MapPin, Building2, Monitor, CalendarDays, Users,
@@ -145,7 +145,7 @@ export default function PulsePage() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(20));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetched: PulseUpdate[] = [];
       snapshot.forEach(d => fetched.push({ id: d.id, ...d.data() } as PulseUpdate));

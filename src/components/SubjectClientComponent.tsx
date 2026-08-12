@@ -15,8 +15,11 @@ import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/li
 import { useToast } from "@/components/Toast";
 import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
 
+import { getSubjectSlug } from "@/lib/seoUtils";
+
 const contributorCache: Record<string, string> = {};
-const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[] }> = {};
+const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], timestamp: number }> = {};
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10-minute cache TTL
 
 export default function SubjectClientComponent({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }) {
   const resolvedParams = use(params);
@@ -34,13 +37,19 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
   const [materials, setMaterials] = useState<any[]>([]);
   const [survivalNotes, setSurvivalNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
   const [previewMat, setPreviewMat] = useState<any | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const semesterSubjects = dynamicSubjects[deptId]?.[semId] || [];
-  const subject = semesterSubjects.find(s => s.id === subjectId);
+  const foundSubject = semesterSubjects.find(
+    s => s.id.toLowerCase() === subjectId.toLowerCase() || 
+         getSubjectSlug(s) === subjectId.toLowerCase()
+  );
+  const realSubjectId = foundSubject ? foundSubject.id : subjectId;
+  const subject = foundSubject || semesterSubjects.find(s => s.id === subjectId);
   const subjectName = subject?.name || subjectId.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
 
   // Private Workspace Security Gate
@@ -60,56 +69,46 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
   }
 
   const fetchMaterials = async (forceRefetch = false) => {
-    const cacheKey = `${deptId}_${semId}_${subjectId}`;
+    const cacheKey = `${deptId}_${semId}_${realSubjectId}`;
     if (forceRefetch) {
       delete subjectDataCache[cacheKey];
     }
 
-    if (!forceRefetch && subjectDataCache[cacheKey]) {
-      logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
+    const now = Date.now();
+    if (!forceRefetch && subjectDataCache[cacheKey] && (now - subjectDataCache[cacheKey].timestamp < CACHE_TTL_MS)) {
+      logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from 10m session cache");
       setMaterials(subjectDataCache[cacheKey].materials);
       setSurvivalNotes(subjectDataCache[cacheKey].survivalNotes);
+      setFetchError(null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setFetchError(null);
     try {
-      logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials from Firestore");
-      // 1. Fetch Subject Materials
+      logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials from Firestore concurrently");
+      // 1. Fetch Subject Materials & Survival Advice concurrently
       const qMaterials = query(
         collection(db, "materials"),
         where("semesterId", "==", semId),
-        where("subjectId", "==", subjectId)
+        where("subjectId", "==", realSubjectId)
       );
-      const matSnapshot = await getDocs(qMaterials);
-      let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       
-      // Filter by departmentId dynamically (handling old records without deptId as 'btech')
-      matList = matList.filter((m: any) => {
-        const mDept = m.departmentId || "btech";
-        return mDept === deptId;
-      });
-
-      // Filter materials based on role and ownership
-      matList = matList.filter((m: any) => {
-        if (m.status === "approved") return true;
-        if (isAdmin) return true; // Admins see everything (pending, approved, rejected)
-        if (user && m.uploaderId === user.uid) return true; // Owners see their own uploads (pending, approved, rejected)
-        return false;
-      });
-      
-      matList.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
-
-      // 2. Fetch Approved Survival Advice (Senior Insights)
       const qSurvival = query(
         collection(db, "survival_notes"),
         where("departmentId", "==", deptId),
         where("semesterId", "==", semId),
-        where("subjectId", "==", subjectId),
+        where("subjectId", "==", realSubjectId),
         where("status", "==", "approved")
       );
-      const survSnapshot = await getDocs(qSurvival);
+
+      const [matSnapshot, survSnapshot] = await Promise.all([
+        getDocs(qMaterials),
+        getDocs(qSurvival)
+      ]);
+
+      let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       const list: any[] = [];
       
       const contributorIds = new Set<string>();
@@ -133,12 +132,17 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
         const userSnaps = await Promise.all(userPromises);
         userSnaps.forEach(us => {
           if (us.exists()) {
-            const udata = us.data();
-            const urole = udata.role || "student";
+            const data = us.data();
+            const urole = data.role || "";
+            const count = data.uploads || 0;
             let level = "STUDENT";
             if (urole === "admin") {
-              level = "👑 PAPERINO ADMIN";
-            } else if (urole === "moderator") {
+              level = "LEAD ADMIN";
+            } else if (count >= 20) {
+              level = "ELITE CONTRIBUTOR";
+            } else if (count >= 5) {
+              level = "ACTIVE CONTRIBUTOR";
+            } else if (data.isModerator) {
               level = "MODERATOR";
             } else if (urole === "contributor") {
               level = "CONTRIBUTOR";
@@ -165,16 +169,18 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
         return scoreB - scoreA;
       });
 
-      // Save to cache
+      // Save to cache with timestamp
       subjectDataCache[cacheKey] = {
         materials: matList,
-        survivalNotes: list
+        survivalNotes: list,
+        timestamp: Date.now()
       };
 
       setMaterials(matList);
       setSurvivalNotes(list);
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } catch (error: any) {
+      console.error("Error fetching subject data:", error);
+      setFetchError("Unable to load subject materials right now. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -390,13 +396,19 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
           />
         </div>
 
-        {loading ? (
-          <div className="py-20 text-center">
-            <Loader2 className="animate-spin text-purple-500 inline-block mb-3" size={36} />
-            <p className="text-gray-400 text-sm">Synchronizing classroom resources...</p>
+        {fetchError ? (
+          <div className="py-16 text-center max-w-md mx-auto vision-glass p-8 rounded-3xl border border-red-500/20 bg-red-500/5">
+            <p className="text-white font-medium mb-2">{fetchError}</p>
+            <p className="text-xs text-gray-400 mb-6">Network or server error occurred while retrieving study materials.</p>
+            <button
+              onClick={() => fetchMaterials(true)}
+              className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] cursor-pointer"
+            >
+              Retry Loading
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-in fade-in duration-700">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-in fade-in duration-500">
             
             {/* PYQ Section */}
             <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
@@ -412,7 +424,12 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                   )}
                 </div>
 
-                {pyqs.length === 0 ? (
+                {loading ? (
+                  <div className="py-12 text-center text-gray-400 space-y-2">
+                    <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
+                    <p className="text-xs font-mono">Loading PYQs...</p>
+                  </div>
+                ) : pyqs.length === 0 ? (
                   <div className="py-12 text-center text-gray-500">
                     <FileText className="mx-auto mb-2 opacity-30" size={36} />
                     <p className="text-sm">Help Build the PYQ Library</p>
@@ -429,9 +446,6 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                           </div>
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
-                          <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title={`Preview ${subjectName} ${mat.title}`} aria-label={`Preview ${subjectName} ${mat.title}`}>
-                            <Eye size={14} />
-                          </button>
                           <button 
                             disabled={downloadingId === mat.id}
                             onClick={() => {
@@ -468,7 +482,12 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                   )}
                 </div>
 
-                {notes.length === 0 ? (
+                {loading ? (
+                  <div className="py-12 text-center text-gray-400 space-y-2">
+                    <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
+                    <p className="text-xs font-mono">Loading Notes...</p>
+                  </div>
+                ) : notes.length === 0 ? (
                   <div className="py-12 text-center text-gray-500">
                     <FileText className="mx-auto mb-2 opacity-30" size={36} />
                     <p className="text-sm">Expand the Notes Library</p>
@@ -485,9 +504,6 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                           </div>
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
-                          <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title={`Preview ${subjectName} ${mat.title}`} aria-label={`Preview ${subjectName} ${mat.title}`}>
-                            <Eye size={14} />
-                          </button>
                           <button 
                             disabled={downloadingId === mat.id}
                             onClick={() => {
@@ -524,7 +540,12 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                   )}
                 </div>
 
-                {questions.length === 0 ? (
+                {loading ? (
+                  <div className="py-12 text-center text-gray-400 space-y-2">
+                    <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
+                    <p className="text-xs font-mono">Loading Key Questions...</p>
+                  </div>
+                ) : questions.length === 0 ? (
                   <div className="py-12 text-center text-gray-500">
                     <FileText className="mx-auto mb-2 opacity-30" size={36} />
                     <p className="text-sm">Build the Exam Guide</p>
@@ -541,9 +562,6 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                           </div>
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
-                          <button onClick={() => setPreviewMat(mat)} className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5" title={`Preview ${subjectName} ${mat.title}`} aria-label={`Preview ${subjectName} ${mat.title}`}>
-                            <Eye size={14} />
-                          </button>
                           <button 
                             disabled={downloadingId === mat.id}
                             onClick={() => {
@@ -681,15 +699,15 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
       {previewMat && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setPreviewMat(null)}></div>
-          <div className="bg-[#0b0816] w-full max-w-5xl h-[85vh] rounded-3xl border border-white/10 overflow-hidden flex flex-col relative z-10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+          <div className="bg-[#0b0816] w-full max-w-6xl h-[90vh] rounded-3xl border border-white/10 overflow-hidden flex flex-col relative z-10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
             
             {/* Header */}
-            <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between bg-black/30">
-              <div className="min-w-0">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-[#0e091b] relative z-20 flex-shrink-0">
+              <div className="min-w-0 pr-4">
                 <h3 className="text-sm font-bold text-white truncate" title={previewMat.title}>{previewMat.title}</h3>
-                <p className="text-[10px] text-gray-500 font-semibold truncate mt-0.5">{previewMat.fileName}</p>
+                <p className="text-[11px] text-purple-300/70 font-mono truncate mt-0.5">{previewMat.fileName}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-shrink-0 relative z-30">
                 <button 
                   disabled={downloadingId === previewMat.id}
                   onClick={() => {
@@ -698,12 +716,19 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                       if (!loading) setDownloadingId(null);
                     });
                   }} 
-                  className="p-2 text-gray-400 hover:text-purple-400 transition-colors cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-purple-300 transition-all cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
                   title={downloadingId === previewMat.id ? "Downloading..." : "Download File"}
                 >
                   {downloadingId === previewMat.id ? <Loader2 size={16} className="text-purple-400 animate-spin" /> : <Download size={16} />}
                 </button>
-                <button onClick={() => setPreviewMat(null)} className="p-2 text-gray-400 hover:text-white transition-colors" title="Close Preview">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewMat(null);
+                  }} 
+                  className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-gray-300 hover:text-red-400 transition-all cursor-pointer" 
+                  title="Close Preview"
+                >
                   <X size={18} />
                 </button>
               </div>

@@ -34,13 +34,17 @@ export async function POST(req: NextRequest) {
   try {
     const downloadToken = randomUUID();
     
-    // Save to Firestore with 5 min validity period
-    await adminDb.collection("download_tokens").doc(downloadToken).set({
-      uid,
-      token: downloadToken,
-      used: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    // Save to Firestore with 5 min validity period (with 2s fallback timeout to avoid hanging on quota limits)
+    const tokenSaveTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 2000));
+    await Promise.race([
+      adminDb.collection("download_tokens").doc(downloadToken).set({
+        uid,
+        token: downloadToken,
+        used: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }),
+      tokenSaveTimeout,
+    ]);
 
     return NextResponse.json({ success: true, token: downloadToken });
   } catch (err: any) {
