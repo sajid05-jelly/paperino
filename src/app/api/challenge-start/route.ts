@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { verifyServerAuth } from '@/lib/auth-verify';
+import { adminDb } from '@/lib/firebase-admin';
+import * as admin from 'firebase-admin';
 import crypto from 'crypto';
 
-const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'paperino-data';
 const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
 
 const WORD_LIST = [
@@ -52,18 +53,19 @@ export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Auth header missing' }, { status: 401 });
     }
 
     let authUser;
     try {
       authUser = await verifyServerAuth(authHeader);
-    } catch (e) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    } catch (e: any) {
+      console.error("[challenge-start] Token verification error:", e);
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
 
     if (!authUser || !authUser.uid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: User authentication required' }, { status: 401 });
     }
 
     const { uid } = authUser;
@@ -72,117 +74,81 @@ export async function POST(request: Request) {
     try {
       body = await request.json();
     } catch (e) {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid JSON request payload' }, { status: 400 });
     }
 
     const { gameId } = body;
 
     if (!gameId || !VALID_GAMES.includes(gameId)) {
-      return NextResponse.json({ error: 'Invalid gameId' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid gameId parameter' }, { status: 400 });
     }
 
     const now = new Date();
     const challengeDate = now.toISOString().split('T')[0];
     const weekId = getISOWeekId(now);
     
-    const settingsUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/settings/weeklyChallenges`;
-    const settingsRes = await fetch(settingsUrl, {
-      headers: { 'Authorization': authHeader }
-    });
-    
-    if (!settingsRes.ok) {
-      // Allow fallback if settings doc doesn't exist, for the sake of the challenge.
-      // But typically we should fail or use defaults. Let's assume defaults if not found.
-    } else {
-      const settingsDoc = await settingsRes.json();
-      const fields = settingsDoc.fields || {};
-      const enabled = fields.enabled?.booleanValue ?? true;
-      if (!enabled) {
-        return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
-      }
-      
-      const activeGames = fields.activeGames?.arrayValue?.values?.map((v: any) => v.stringValue) || [];
-      if (activeGames.length > 0 && !activeGames.includes(gameId)) {
-        return NextResponse.json({ error: 'This game is not currently active' }, { status: 403 });
-      }
-      
-      const dayNum = now.getDay(); // 0-6
-      const availableDays = fields.availableDays?.arrayValue?.values?.map((v: any) => Number(v.integerValue)) || [];
-      if (availableDays.length > 0 && !availableDays.includes(dayNum)) {
-        return NextResponse.json({ error: 'Challenges are not available today' }, { status: 403 });
-      }
-    }
-
-    const queryUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`;
-    const queryBody = {
-      structuredQuery: {
-        from: [{ collectionId: 'challenge_sessions' }],
-        where: {
-          compositeFilter: {
-            op: 'AND',
-            filters: [
-              { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: uid } } },
-              { fieldFilter: { field: { fieldPath: 'gameId' }, op: 'EQUAL', value: { stringValue: gameId } } },
-              { fieldFilter: { field: { fieldPath: 'challengeDate' }, op: 'EQUAL', value: { stringValue: challengeDate } } },
-              { fieldFilter: { field: { fieldPath: 'isOfficial' }, op: 'EQUAL', value: { booleanValue: true } } }
-            ]
+    // Check config via adminDb if available
+    if (adminDb) {
+      try {
+        const configDoc = await adminDb.collection("settings").doc("weeklyChallenges").get();
+        if (configDoc.exists) {
+          const cfg = configDoc.data() || {};
+          if (cfg.enabled === false) {
+            return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
           }
-        },
-        limit: 1
+          if (cfg.maintenanceMode === true) {
+            return NextResponse.json({ error: 'Weekly challenges are currently under maintenance' }, { status: 403 });
+          }
+          if (cfg.activeGames && Array.isArray(cfg.activeGames) && cfg.activeGames.length > 0 && !cfg.activeGames.includes(gameId)) {
+            return NextResponse.json({ error: 'This game is currently disabled by admin' }, { status: 403 });
+          }
+          if (cfg.availableDays && Array.isArray(cfg.availableDays) && cfg.availableDays.length > 0 && !cfg.availableDays.includes(now.getDay())) {
+            return NextResponse.json({ error: 'Weekly challenges are not available today' }, { status: 403 });
+          }
+        }
+      } catch (err) {
+        console.warn("[challenge-start] Config check warning:", err);
       }
-    };
-
-    const queryRes = await fetch(queryUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(queryBody)
-    });
-
-    if (!queryRes.ok) {
-      return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
     }
 
-    const queryResult = await queryRes.json();
+    // Check official attempts
     let isOfficial = true;
-    if (Array.isArray(queryResult) && queryResult.length > 0 && queryResult[0].document) {
-      const docFields = queryResult[0].document.fields || {};
-      const status = docFields.status?.stringValue;
-      if (status === 'in_progress' || status === 'completed') {
-        isOfficial = false;
+    if (adminDb) {
+      try {
+        const existingSessions = await adminDb.collection("challenge_sessions")
+          .where("userId", "==", uid)
+          .where("gameId", "==", gameId)
+          .where("challengeDate", "==", challengeDate)
+          .where("isOfficial", "==", true)
+          .limit(1)
+          .get();
+
+        if (!existingSessions.empty) {
+          isOfficial = false;
+        }
+      } catch (err) {
+        console.warn("[challenge-start] Attempt check warning:", err);
       }
     }
 
     const sessionId = crypto.randomUUID();
-    const startedAt = now.toISOString();
 
-    const createDocUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/challenge_sessions?documentId=${sessionId}`;
-    const sessionFields = {
-      fields: {
-        userId: { stringValue: uid },
-        gameId: { stringValue: gameId },
-        challengeDate: { stringValue: challengeDate },
-        weekId: { stringValue: weekId },
-        startedAt: { timestampValue: startedAt },
-        status: { stringValue: 'in_progress' },
-        isOfficial: { booleanValue: isOfficial },
-        createdAt: { timestampValue: startedAt }
-      }
+    const sessionData = {
+      userId: uid,
+      gameId,
+      challengeDate,
+      weekId,
+      startedAt: admin.firestore.Timestamp.now(),
+      status: 'in_progress',
+      isOfficial,
+      createdAt: admin.firestore.Timestamp.now()
     };
 
-    const createRes = await fetch(createDocUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(sessionFields)
-    });
-
-    if (!createRes.ok) {
-      return NextResponse.json({ error: 'Failed to create challenge session' }, { status: 500 });
+    if (adminDb) {
+      await adminDb.collection("challenge_sessions").doc(sessionId).set(sessionData);
+    } else {
+      console.error("[challenge-start] adminDb not initialized");
+      return NextResponse.json({ error: 'Server database connection failed' }, { status: 500 });
     }
 
     const seedNum = getSeed(`${gameId}-${challengeDate}`);
@@ -196,8 +162,7 @@ export async function POST(request: Request) {
       const rounds = [];
       for (let r = 0; r < 5; r++) {
         const pattern: string[] = [];
-        const numCells = 3 + r; // Increases difficulty
-        const totalCells = 16; // 4x4
+        const numCells = 3 + r;
         while (pattern.length < numCells) {
           const rRow = Math.floor(rand() * 4);
           const rCol = Math.floor(rand() * 4);
@@ -241,8 +206,8 @@ export async function POST(request: Request) {
       isOfficial,
       puzzleData
     });
-  } catch (error) {
-    console.error('challenge-start error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('challenge-start uncaught error:', error);
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

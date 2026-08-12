@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { verifyServerAuth } from '@/lib/auth-verify';
+import { adminDb } from '@/lib/firebase-admin';
+import * as admin from 'firebase-admin';
 
-const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'paperino-data';
+const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
 
 const WORD_LIST = [
   'algorithm', 'binary', 'compiler', 'database', 'encrypt',
@@ -15,6 +17,19 @@ const WORD_LIST = [
   'tensor', 'neural', 'server', 'docker', 'devops',
   'kotlin', 'github', 'struct', 'lambda', 'cursor'
 ];
+
+function getISOWeekId(date: Date): string {
+  const target = new Date(date.valueOf());
+  const dayNr = (date.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+  }
+  const weekNumber = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+  return `${target.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
+}
 
 function mulberry32(seed: number) {
   return function() {
@@ -37,18 +52,19 @@ export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Auth token required' }, { status: 401 });
     }
 
     let authUser;
     try {
       authUser = await verifyServerAuth(authHeader);
-    } catch (e) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    } catch (e: any) {
+      console.error('[challenge-submit] Auth error:', e);
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
 
     if (!authUser || !authUser.uid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: User authentication failed' }, { status: 401 });
     }
 
     const { uid } = authUser;
@@ -57,49 +73,51 @@ export async function POST(request: Request) {
     try {
       body = await request.json();
     } catch (e) {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid JSON request payload' }, { status: 400 });
     }
 
     const { sessionId, gameData } = body;
+
     if (!sessionId || !gameData) {
-      return NextResponse.json({ error: 'Missing sessionId or gameData' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required parameters: sessionId or gameData' }, { status: 400 });
     }
 
-    const sessionUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/challenge_sessions/${sessionId}`;
-    const sessionRes = await fetch(sessionUrl, {
-      headers: { 'Authorization': authHeader }
-    });
-
-    if (!sessionRes.ok) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Server database connection failed' }, { status: 500 });
     }
 
-    const sessionDoc = await sessionRes.json();
-    const fields = sessionDoc.fields || {};
-    
-    const sessionUserId = fields.userId?.stringValue;
-    const gameId = fields.gameId?.stringValue;
-    const challengeDate = fields.challengeDate?.stringValue;
-    const weekId = fields.weekId?.stringValue;
-    const status = fields.status?.stringValue;
-    const startedAt = fields.startedAt?.timestampValue;
-    const isOfficial = fields.isOfficial?.booleanValue ?? false;
+    // 1. Fetch Session Doc from adminDb
+    const sessionDocRef = adminDb.collection('challenge_sessions').doc(sessionId);
+    const sessionSnap = await sessionDocRef.get();
 
-    if (sessionUserId !== uid) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    if (status !== 'in_progress') {
-      return NextResponse.json({ error: 'Session already completed or invalid' }, { status: 409 });
+    if (!sessionSnap.exists) {
+      return NextResponse.json({ error: 'Challenge session not found' }, { status: 404 });
     }
 
+    const session = sessionSnap.data() || {};
+
+    if (session.userId !== uid) {
+      return NextResponse.json({ error: 'Unauthorized session access' }, { status: 403 });
+    }
+
+    if (session.status !== 'in_progress') {
+      return NextResponse.json({ error: 'Challenge session has already been completed' }, { status: 409 });
+    }
+
+    const { gameId, challengeDate, weekId, isOfficial } = session;
+    const startedAt = session.startedAt ? session.startedAt.toDate() : new Date();
+    const completedAt = new Date();
+    const durationMs = completedAt.getTime() - startedAt.getTime();
+
+    // 2. Validate submission & calculate score server-side
     const seedNum = getSeed(`${gameId}-${challengeDate}`);
     const rand = mulberry32(seedNum);
 
     let score = 0;
-    
+
     if (gameId === 'code-breaker') {
-      const code = [];
-      const digits = [0,1,2,3,4,5,6,7];
+      const code: number[] = [];
+      const digits = [0, 1, 2, 3, 4, 5, 6, 7];
       for (let i = 0; i < 4; i++) {
         const idx = Math.floor(rand() * digits.length);
         code.push(digits[idx]);
@@ -109,12 +127,13 @@ export async function POST(request: Request) {
       const { attempts = [], finalGuess = [] } = gameData;
       const isCorrect = code.join('') === finalGuess.join('');
       if (isCorrect) {
-        const attemptsUsed = attempts.length;
+        const attemptsUsed = attempts.length || 1;
         const maxAttempts = 10;
-        score = Math.max(0, (maxAttempts - attemptsUsed) * 100);
+        const speedBonus = Math.max(0, Math.floor((120000 - durationMs) / 1000));
+        score = Math.max(0, (maxAttempts - attemptsUsed) * 100 + speedBonus);
       }
     } else if (gameId === 'memory-matrix') {
-      const rounds = [];
+      const rounds: string[][] = [];
       for (let r = 0; r < 5; r++) {
         const pattern: string[] = [];
         const numCells = 3 + r;
@@ -128,18 +147,19 @@ export async function POST(request: Request) {
         }
         rounds.push(pattern);
       }
-      
+
       const userRounds = gameData.rounds || [];
       let totalCorrect = 0;
-      for (let r = 0; r < 5; r++) {
-        const correctPattern = rounds[r] || [];
-        const userPattern = (userRounds[r]?.selected || []).map((c: number[]) => `${c[0]},${c[1]}`);
-        userPattern.forEach((cell: string) => {
-          if (correctPattern.includes(cell)) {
+      userRounds.forEach((ur: any, idx: number) => {
+        const expectedPattern = rounds[idx] || [];
+        const selected = ur.selected || [];
+        selected.forEach((cell: number[]) => {
+          const cellStr = `${cell[0]},${cell[1]}`;
+          if (expectedPattern.includes(cellStr)) {
             totalCorrect++;
           }
         });
-      }
+      });
       score = totalCorrect * 10;
     } else if (gameId === 'impossible-room') {
       const clues: string[] = [];
@@ -164,187 +184,105 @@ export async function POST(request: Request) {
       const userAnswers = gameData.answers || [];
       let correct = 0;
       userAnswers.forEach((ans: string, idx: number) => {
-        if (ans.toLowerCase() === correctAnswers[idx]) {
+        if (ans && correctAnswers[idx] && ans.trim().toLowerCase() === correctAnswers[idx].toLowerCase()) {
           correct++;
         }
       });
       score = correct * 150;
     }
 
-    const now = new Date();
-    const completedAt = now.toISOString();
-    const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-
-    // Update session
-    const updateSessionUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/challenge_sessions/${sessionId}?updateMask.fieldPaths=status`;
-    const updateSessionFields = {
-      fields: {
-        ...fields,
-        status: { stringValue: 'completed' }
-      }
-    };
-    
-    await fetch(updateSessionUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(updateSessionFields)
+    // 3. Mark session as completed
+    await sessionDocRef.update({
+      status: 'completed',
+      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+      score,
+      durationMs
     });
 
-    // Get user profile
-    const userUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${uid}`;
-    const userRes = await fetch(userUrl, {
-      headers: { 'Authorization': authHeader }
-    });
-    
-    let displayName = 'Unknown';
+    // 4. Fetch user profile for avatar/displayName
+    let displayName = 'Student';
     let paperinoAvatar = '';
     
-    if (userRes.ok) {
-      const userDoc = await userRes.json();
-      const userFields = userDoc.fields || {};
-      displayName = userFields.displayName?.stringValue || 'Unknown';
-      paperinoAvatar = userFields.paperinoAvatar?.stringValue || '';
+    try {
+      const userSnap = await adminDb.collection('users').doc(uid).get();
+      if (userSnap.exists) {
+        const uData = userSnap.data() || {};
+        displayName = uData.displayName || 'Student';
+        paperinoAvatar = uData.paperinoAvatar || '';
+      }
+    } catch (e) {
+      console.warn('[challenge-submit] User profile lookup error:', e);
     }
 
-    // Create result
+    // 5. Create result document
     const resultDocId = `${sessionId}-res`;
-    const resultUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/challenge_results?documentId=${resultDocId}`;
-    
-    const resultFields = {
-      fields: {
-        userId: { stringValue: uid },
-        displayName: { stringValue: displayName },
-        paperinoAvatar: { stringValue: paperinoAvatar },
-        gameId: { stringValue: gameId },
-        challengeDate: { stringValue: challengeDate },
-        weekId: { stringValue: weekId },
-        startedAt: { timestampValue: startedAt },
-        completedAt: { timestampValue: completedAt },
-        durationMs: { integerValue: durationMs.toString() },
-        score: { integerValue: score.toString() },
-        isOfficial: { booleanValue: isOfficial },
-        createdAt: { timestampValue: completedAt }
-      }
-    };
-
-    await fetch(resultUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(resultFields)
+    await adminDb.collection('challenge_results').doc(resultDocId).set({
+      userId: uid,
+      displayName,
+      paperinoAvatar,
+      gameId,
+      challengeDate,
+      weekId,
+      startedAt: admin.firestore.Timestamp.fromDate(startedAt),
+      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+      durationMs,
+      score,
+      isOfficial: Boolean(isOfficial),
+      createdAt: admin.firestore.Timestamp.fromDate(completedAt)
     });
 
-    // Query leaderboard (Top 10)
-    const queryUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`;
-    const queryBody = {
-      structuredQuery: {
-        from: [{ collectionId: 'challenge_results' }],
-        where: {
-          compositeFilter: {
-            op: 'AND',
-            filters: [
-              { fieldFilter: { field: { fieldPath: 'gameId' }, op: 'EQUAL', value: { stringValue: gameId } } },
-              { fieldFilter: { field: { fieldPath: 'weekId' }, op: 'EQUAL', value: { stringValue: weekId } } },
-              { fieldFilter: { field: { fieldPath: 'isOfficial' }, op: 'EQUAL', value: { booleanValue: true } } }
-            ]
-          }
-        },
-        orderBy: [
-          { field: { fieldPath: 'score' }, direction: 'DESCENDING' },
-          { field: { fieldPath: 'durationMs' }, direction: 'ASCENDING' }
-        ],
-        limit: 10
+    // 6. Query Top 10 Leaderboard via adminDb
+    const topResultsSnap = await adminDb.collection('challenge_results')
+      .where('gameId', '==', gameId)
+      .where('weekId', '==', weekId)
+      .where('isOfficial', '==', true)
+      .orderBy('score', 'desc')
+      .orderBy('durationMs', 'asc')
+      .limit(10)
+      .get();
+
+    const leaderboard: any[] = [];
+    let rankCounter = 1;
+    let userRank = null;
+
+    topResultsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.userId === uid) {
+        userRank = rankCounter;
       }
-    };
-
-    const queryRes = await fetch(queryUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(queryBody)
-    });
-
-    const leaderboard = [];
-    if (queryRes.ok) {
-      const qResult = await queryRes.json();
-      if (Array.isArray(qResult)) {
-        for (const item of qResult) {
-          if (item.document && item.document.fields) {
-            const f = item.document.fields;
-            leaderboard.push({
-              userId: f.userId?.stringValue,
-              displayName: f.displayName?.stringValue,
-              paperinoAvatar: f.paperinoAvatar?.stringValue,
-              score: parseInt(f.score?.integerValue || '0', 10),
-              durationMs: parseInt(f.durationMs?.integerValue || '0', 10)
-            });
-          }
-        }
-      }
-    }
-
-    // Since we don't know the exact rank without querying all results above the user,
-    // we'll approximate rank or check if they are in top 10.
-    const rankIndex = leaderboard.findIndex(r => r.userId === uid);
-    let rank = rankIndex !== -1 ? rankIndex + 1 : -1;
-
-    // If rank == -1, theoretically we should count all users with score > user_score OR (score == user_score AND durationMs < user_durationMs)
-    if (rank === -1 && isOfficial) {
-       const rankQueryBody = {
-        structuredQuery: {
-          from: [{ collectionId: 'challenge_results' }],
-          where: {
-            compositeFilter: {
-              op: 'AND',
-              filters: [
-                { fieldFilter: { field: { fieldPath: 'gameId' }, op: 'EQUAL', value: { stringValue: gameId } } },
-                { fieldFilter: { field: { fieldPath: 'weekId' }, op: 'EQUAL', value: { stringValue: weekId } } },
-                { fieldFilter: { field: { fieldPath: 'isOfficial' }, op: 'EQUAL', value: { booleanValue: true } } },
-                { fieldFilter: { field: { fieldPath: 'score' }, op: 'GREATER_THAN', value: { integerValue: score.toString() } } }
-              ]
-            }
-          },
-          select: { fields: [{ fieldPath: 'userId' }] } // Count aggregation is not fully available in REST easily without aggregations, we'll just fetch or skip
-        }
-      };
-      
-      const rankQueryRes = await fetch(queryUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(rankQueryBody)
+      leaderboard.push({
+        userId: data.userId,
+        displayName: data.displayName || 'Anonymous',
+        paperinoAvatar: data.paperinoAvatar || '',
+        score: data.score || 0,
+        durationMs: data.durationMs || 0,
+        rank: rankCounter++
       });
-      
-      if (rankQueryRes.ok) {
-         const rqResult = await rankQueryRes.json();
-         let higherScoresCount = 0;
-         if (Array.isArray(rqResult)) {
-             higherScoresCount = rqResult.filter(r => r.document).length;
-         }
-         rank = higherScoresCount + 1; // Simplification, ignoring ties
-      }
+    });
+
+    // Calculate user rank if outside top 10
+    if (userRank === null && isOfficial) {
+      const higherScoresSnap = await adminDb.collection('challenge_results')
+        .where('gameId', '==', gameId)
+        .where('weekId', '==', weekId)
+        .where('isOfficial', '==', true)
+        .where('score', '>', score)
+        .get();
+      userRank = higherScoresSnap.size + 1;
     }
 
     return NextResponse.json({
       success: true,
       score,
       durationMs,
-      completedAt,
-      rank,
+      completedAt: completedAt.toISOString(),
+      rank: userRank || 1,
       leaderboard,
       isOfficial
     });
-  } catch (error) {
-    console.error('challenge-submit error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+
+  } catch (error: any) {
+    console.error('[challenge-submit] Uncaught error:', error);
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
