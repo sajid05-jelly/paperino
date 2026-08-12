@@ -257,7 +257,7 @@ service cloud.firestore {
 
     // ── Weekly Challenges ─────────────────────────────────────────────────
     match /challenge_sessions/{sessionId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid
                     && !request.resource.data.diff(resource.data).affectedKeys()

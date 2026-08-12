@@ -68,26 +68,28 @@ export default function WeeklyChallengesPage() {
 
         // Fetch user sessions
         if (user) {
-          const today = getChallengeDate();
-          const sessionsRef = collection(db, "challenge_sessions");
-          const q = query(
-            sessionsRef,
-            where("userId", "==", user.uid),
-            where("challengeDate", "==", today),
-            limit(4)
-          );
-          
-          const sessionSnap = await getDocs(q);
-          const sessionData: Record<string, any> = {};
-          
-          sessionSnap.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data.gameId) {
-              sessionData[data.gameId] = data;
-            }
-          });
-          
-          setSessions(sessionData);
+          try {
+            const today = getChallengeDate();
+            const sessionsRef = collection(db, "challenge_sessions");
+            const q = query(
+              sessionsRef,
+              where("userId", "==", user.uid),
+              where("challengeDate", "==", today),
+              limit(4)
+            );
+            
+            const sessionSnap = await getDocs(q);
+            const sessionMap: Record<string, any> = {};
+            sessionSnap.forEach(docSnap => {
+              const data = docSnap.data();
+              if (data.gameId) {
+                sessionMap[data.gameId] = data;
+              }
+            });
+            setSessions(sessionMap);
+          } catch (sessionErr) {
+            console.warn("Could not fetch user challenge sessions:", sessionErr);
+          }
         }
       } catch (error) {
         console.error("Error loading challenge data:", error);
