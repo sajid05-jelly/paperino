@@ -168,7 +168,7 @@ export default function Navbar() {
           >
             <Link href="/courses" className={getLinkClass("/courses")}>Materials</Link>
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
-            <Link href="/pyq" className={getLinkClass("/pyq")}>PYQs</Link>
+            <Link href="/weekly-challenges" className={getLinkClass("/weekly-challenges")}>Challenges</Link>
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
             
@@ -199,6 +199,13 @@ export default function Navbar() {
               {isLabsOpen && (
                 <div className="absolute right-0 mt-2.5 w-60 rounded-2xl bg-[#07050e]/95 backdrop-blur-3xl border border-white/[0.08] p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.03] via-transparent to-transparent pointer-events-none rounded-2xl" />
+                  <Link
+                    href="/pyq"
+                    onClick={() => setIsLabsOpen(false)}
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                  >
+                    <BrainCircuit size={15} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> PYQ Analyzer
+                  </Link>
                   <Link
                     href="/ats"
                     onClick={() => setIsLabsOpen(false)}
@@ -423,7 +430,7 @@ export default function Navbar() {
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Tools</p>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/courses" className={getMobileLinkClass("/courses")}>Materials</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/pyq" className={getMobileLinkClass("/pyq")}>PYQ Analyzer</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/weekly-challenges" className={getMobileLinkClass("/weekly-challenges")}>Weekly Challenges</Link>
 
               {/* Divider */}
               <div className="h-px bg-white/[0.06] my-3 mx-2" />
@@ -451,6 +458,14 @@ export default function Navbar() {
                 
                 {isLabsMobileOpen && (
                   <div className="px-2 pb-2 space-y-1 animate-in fade-in duration-300">
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                      href="/pyq" 
+                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <BrainCircuit size={16} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] shrink-0" />
+                      <span>PYQ Analyzer</span>
+                    </Link>
                     <Link 
                       onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
                       href="/ats" 

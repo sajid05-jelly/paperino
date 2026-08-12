@@ -7,7 +7,7 @@ import Link from "next/link";
 import { 
   Upload, Activity, Bot, FileText,
   ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, 
-  BrainCircuit, Wrench, Building2, ChevronDown, Sparkles 
+  BrainCircuit, Wrench, Building2, ChevronDown, Sparkles, Gamepad2
 } from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
 
@@ -28,6 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Protected Lead-Admin-Only Routes
   const LEAD_ADMIN_ONLY_PATHS = [
     "/admin/system",
+    "/admin/system/challenges",
     "/admin/maintenance",
     "/admin/header-message",
     "/admin/ats",
@@ -188,6 +189,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       >
                         <Building2 size={15} className="text-violet-400 shrink-0" />
                         <span>Free Class Finder Control</span>
+                      </Link>
+
+                      {/* 6. Challenges Control */}
+                      <Link 
+                        href="/admin/system/challenges" 
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          pathname === "/admin/system/challenges" ? "bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <Gamepad2 size={15} className="text-violet-400 shrink-0" />
+                        <span>Challenges Control</span>
                       </Link>
                     </div>
                   )}
