@@ -473,90 +473,191 @@ export default function WeeklyChallengesPage() {
           <div className="grid gap-6 md:grid-cols-2">
             {GAME_IDS.map(gameId => {
               if (!config.activeGames.includes(gameId)) return null;
-              
+
               const game = GAME_INFO[gameId];
               const IconComponent = ICONS[gameId as keyof typeof ICONS] || Trophy;
               const session = sessions[gameId];
               const isCompleted = session?.status === 'completed';
               const isInProgress = session?.status === 'in-progress';
-              
               const isLocked = !user || !isTodayAvailable;
 
+              // Per-game accent colour tokens (raw values for inline styles)
+              const accentMap: Record<string, { glow: string; border: string; icon: string; btn: string; btnHover: string }> = {
+                'code-breaker':   { glow: 'rgba(74,222,128,0.12)',  border: 'rgba(74,222,128,0.25)',  icon: 'rgba(74,222,128,0.15)',  btn: 'linear-gradient(135deg,#16a34a,#14532d)', btnHover: 'rgba(74,222,128,0.15)' },
+                'memory-matrix':  { glow: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.25)',  icon: 'rgba(96,165,250,0.15)',  btn: 'linear-gradient(135deg,#2563eb,#1e3a8a)', btnHover: 'rgba(96,165,250,0.15)' },
+                'impossible-room':{ glow: 'rgba(192,132,252,0.13)', border: 'rgba(192,132,252,0.28)', icon: 'rgba(192,132,252,0.15)', btn: 'linear-gradient(135deg,#7c3aed,#4c1d95)', btnHover: 'rgba(192,132,252,0.15)' },
+                'word-forge':     { glow: 'rgba(251,146,60,0.11)',  border: 'rgba(251,146,60,0.24)',  icon: 'rgba(251,146,60,0.14)',  btn: 'linear-gradient(135deg,#c2410c,#7c2d12)', btnHover: 'rgba(251,146,60,0.14)' },
+              };
+              const ac = accentMap[gameId] ?? accentMap['impossible-room'];
+
               return (
-                <div 
-                  key={gameId} 
-                  className={`relative flex flex-col rounded-3xl border border-white/5 bg-white/[0.02] p-6 transition-all duration-300 glass-panel ${
-                    isLocked 
-                      ? "opacity-60 grayscale-[0.5]" 
-                      : "hover:-translate-y-1 hover:border-white/10 hover:bg-white/[0.04] shadow-[0_0_30px_rgba(var(--primary-rgb),0.02)] hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]"
-                  }`}
+                <div
+                  key={gameId}
+                  className="wc-card group relative flex flex-col overflow-hidden rounded-3xl p-px transition-all duration-500"
+                  style={{
+                    background: isLocked
+                      ? 'rgba(255,255,255,0.04)'
+                      : `linear-gradient(135deg, ${ac.border} 0%, rgba(255,255,255,0.06) 40%, rgba(34,211,238,0.1) 100%)`,
+                    boxShadow: isLocked
+                      ? 'none'
+                      : `0 0 0 0px ${ac.glow}, 0 8px 32px rgba(0,0,0,0.45)`,
+                    opacity: isLocked ? 0.55 : 1,
+                    filter: isLocked ? 'grayscale(0.4)' : 'none',
+                  }}
                 >
-                  <div className="mb-6 flex items-start justify-between">
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05] ${game.color}`}>
-                      <IconComponent className="h-7 w-7" />
+                  {/* ── Hover glow ring (expands on hover via CSS) ── */}
+                  <style>{`
+                    .wc-card:not(.locked):hover {
+                      transform: translateY(-4px) scale(1.005);
+                      box-shadow: 0 0 0 1px ${ac.border}, 0 20px 50px rgba(0,0,0,0.55), 0 0 40px ${ac.glow} !important;
+                    }
+                    .wc-card:not(.locked):hover .wc-sweep {
+                      transform: translateX(100%) skewX(-12deg);
+                      opacity: 1;
+                    }
+                    .wc-card:not(.locked):hover .wc-icon-ring {
+                      box-shadow: 0 0 0 2px ${ac.border}, 0 0 20px ${ac.glow} !important;
+                    }
+                    .wc-start-btn {
+                      position: relative;
+                      overflow: hidden;
+                    }
+                    .wc-start-btn::before {
+                      content: '';
+                      position: absolute;
+                      inset: 0;
+                      background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 60%);
+                      border-radius: inherit;
+                      pointer-events: none;
+                    }
+                    .wc-start-btn:hover {
+                      filter: brightness(1.15);
+                      box-shadow: 0 0 20px ${ac.glow}, 0 4px 16px rgba(0,0,0,0.4) !important;
+                      transform: translateY(-1px);
+                    }
+                    .wc-dot-pulse {
+                      animation: wc-dot-blink 2s ease-in-out infinite;
+                    }
+                    @keyframes wc-dot-blink {
+                      0%,100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+                      50%      { opacity: 0.6; box-shadow: 0 0 0 3px transparent; }
+                    }
+                  `}</style>
+
+                  {/* ── Inner card surface ── */}
+                  <div
+                    className="relative flex flex-grow flex-col rounded-[calc(1.5rem-1px)] p-6"
+                    style={{
+                      background: 'linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(10,6,25,0.85) 35%, rgba(5,3,15,0.92) 100%)',
+                      backdropFilter: 'blur(18px)',
+                    }}
+                  >
+                    {/* Inner top-edge highlight */}
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[calc(1.5rem-1px)]"
+                      style={{ background: `linear-gradient(90deg, transparent, ${ac.border}, rgba(255,255,255,0.12), ${ac.border}, transparent)` }}
+                    />
+
+                    {/* Ambient corner glow */}
+                    <div
+                      className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full"
+                      style={{ background: `radial-gradient(circle, ${ac.glow} 0%, transparent 70%)`, filter: 'blur(16px)' }}
+                    />
+
+                    {/* Light sweep on hover */}
+                    <div
+                      className="wc-sweep pointer-events-none absolute inset-y-0 -left-full w-1/2 skew-x-[-12deg] opacity-0 transition-all duration-700"
+                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent)' }}
+                    />
+
+                    {/* ── Header row: icon + badge ── */}
+                    <div className="mb-6 flex items-start justify-between">
+                      {/* Glassy icon container */}
+                      <div
+                        className="wc-icon-ring relative flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-500"
+                        style={{
+                          background: `linear-gradient(145deg, ${ac.icon}, rgba(255,255,255,0.03))`,
+                          boxShadow: `0 0 0 1px ${ac.border}, 0 4px 16px rgba(0,0,0,0.35)`,
+                        }}
+                      >
+                        {/* Icon gloss sheen */}
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-2xl" style={{ background: 'linear-gradient(180deg,rgba(255,255,255,0.12),transparent)' }} />
+                        <IconComponent className={`h-7 w-7 ${game.color} relative z-10`} />
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="flex">
+                        {isLocked ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">
+                            <Lock className="h-3 w-3" /> Locked
+                          </span>
+                        ) : isCompleted ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                            <CheckCircle2 className="h-3 w-3" /> Completed
+                          </span>
+                        ) : isInProgress ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">
+                            <Play className="h-3 w-3" /> In Progress
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
+                            <span className="wc-dot-pulse h-1.5 w-1.5 rounded-full bg-green-400" />
+                            Available
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    
-                    {/* Status Badge */}
-                    <div className="flex">
-                      {isLocked ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">
-                          <Lock className="h-3 w-3" /> Locked
-                        </span>
-                      ) : isCompleted ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
-                          <CheckCircle2 className="h-3 w-3" /> Completed
-                        </span>
-                      ) : isInProgress ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">
-                          <Play className="h-3 w-3" /> In Progress
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
-                          <Play className="h-3 w-3" /> Available
-                        </span>
+
+                    {/* ── Body ── */}
+                    <div className="flex-grow">
+                      <h3 className="mb-2 text-xl font-bold tracking-tight text-white">{game.name}</h3>
+                      <p className="mb-6 text-sm leading-relaxed text-gray-400">{game.description}</p>
+
+                      {isCompleted && session && (
+                        <div
+                          className="mb-6 grid grid-cols-2 gap-4 rounded-xl p-4"
+                          style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                        >
+                          <div>
+                            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Score</p>
+                            <p className="text-lg font-bold text-white">{session.score}</p>
+                          </div>
+                          <div>
+                            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Time</p>
+                            <p className="text-lg font-bold text-white">{formatDuration(session.duration || 0)}</p>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  <div className="flex-grow">
-                    <h3 className="mb-2 text-xl font-bold text-white">{game.name}</h3>
-                    <p className="mb-6 text-sm text-gray-400">{game.description}</p>
-                    
-                    {isCompleted && session && (
-                      <div className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-white/5 bg-black/20 p-4">
-                        <div>
-                          <p className="text-xs font-semibold uppercase text-gray-500">Score</p>
-                          <p className="text-lg font-bold text-white">{session.score}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase text-gray-500">Time</p>
-                          <p className="text-lg font-bold text-white">{formatDuration(session.duration || 0)}</p>
-                        </div>
+                    {/* ── Action button ── */}
+                    {!isLocked && (
+                      <div className="mt-auto">
+                        {isCompleted ? (
+                          <Link
+                            href={`/weekly-challenges/${gameId}`}
+                            className="group/btn flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-white/80 transition-all duration-300 hover:text-white"
+                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                          >
+                            View Results
+                            <ChevronRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/weekly-challenges/${gameId}`}
+                            className="wc-start-btn group/btn flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-white transition-all duration-300"
+                            style={{
+                              background: ac.btn,
+                              boxShadow: `0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)`,
+                            }}
+                          >
+                            {isInProgress ? 'Resume Challenge' : 'Start Challenge'}
+                            <ChevronRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                          </Link>
+                        )}
                       </div>
                     )}
                   </div>
-
-                  {!isLocked && (
-                    <div className="mt-auto">
-                      {isCompleted ? (
-                        <Link 
-                          href={`/weekly-challenges/${gameId}`}
-                          className="group flex w-full items-center justify-between rounded-xl bg-white/[0.05] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.1]"
-                        >
-                          View Results
-                          <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                        </Link>
-                      ) : (
-                        <Link 
-                          href={`/weekly-challenges/${gameId}`}
-                          className="group flex w-full items-center justify-between rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-purple-700"
-                        >
-                          {isInProgress ? 'Resume Challenge' : 'Start Challenge'}
-                          <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                        </Link>
-                      )}
-                    </div>
-                  )}
                 </div>
               );
             })}
