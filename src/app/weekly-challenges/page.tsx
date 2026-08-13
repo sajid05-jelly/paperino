@@ -47,7 +47,7 @@ const ICONS = {
 };
 
 export default function WeeklyChallengesPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [sessions, setSessions] = useState<Record<string, any>>({});
@@ -59,7 +59,7 @@ export default function WeeklyChallengesPage() {
         // Fetch config
         const configRef = doc(db, "settings", "weeklyChallenges");
         const configSnap = await getDoc(configRef);
-        let currentConfig = DEFAULT_CONFIG;
+        let currentConfig: any = DEFAULT_CONFIG;
         
         if (configSnap.exists()) {
           currentConfig = { ...DEFAULT_CONFIG, ...configSnap.data() } as any;
@@ -67,28 +67,47 @@ export default function WeeklyChallengesPage() {
         }
 
         // Fetch user sessions
+        // Fetch user results for this active challengeId
         if (user) {
           try {
-            const today = getChallengeDate();
-            const sessionsRef = collection(db, "challenge_sessions");
-            const q = query(
-              sessionsRef,
-              where("userId", "==", user.uid),
-              where("challengeDate", "==", today),
-              limit(4)
-            );
-            
-            const sessionSnap = await getDocs(q);
+            const activeChallengeWeek = currentConfig.currentWeek || getCurrentChallengeWeek();
             const sessionMap: Record<string, any> = {};
-            sessionSnap.forEach(docSnap => {
-              const data = docSnap.data();
-              if (data.gameId) {
-                sessionMap[data.gameId] = data;
+
+            const games = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
+            
+            await Promise.all(games.map(async (gId) => {
+              // Determine active challengeId for this game (based on settings or weekly schedule)
+              let challengeId = `${gId}-${getChallengeDate()}`;
+              if (currentConfig.currentChallengeId) {
+                challengeId = String(currentConfig.currentChallengeId);
+              } else if (activeChallengeWeek) {
+                challengeId = `${gId}-${activeChallengeWeek}`;
               }
-            });
+
+              const resultsRef = collection(db, "challenge_results");
+              const q = query(
+                resultsRef,
+                where("userId", "==", user.uid),
+                where("challengeId", "==", challengeId),
+                where("isOfficial", "==", true),
+                limit(1)
+              );
+              
+              const resSnap = await getDocs(q);
+              if (!resSnap.empty) {
+                const data = resSnap.docs[0].data();
+                sessionMap[gId] = {
+                  status: 'completed',
+                  score: data.score,
+                  duration: data.durationMs,
+                  challengeId: challengeId
+                };
+              }
+            }));
+
             setSessions(sessionMap);
           } catch (sessionErr) {
-            console.warn("Could not fetch user challenge sessions:", sessionErr);
+            console.warn("Could not fetch user challenge results:", sessionErr);
           }
         }
       } catch (error) {
@@ -111,7 +130,10 @@ export default function WeeklyChallengesPage() {
     );
   }
 
-  if (config.maintenanceMode || !config.enabled) {
+  const isAdminBypass = Boolean(isAdmin && (config as any).adminTestMode);
+  const isMaintenanceActive = (config.maintenanceMode || !config.enabled) && !isAdminBypass;
+
+  if (isMaintenanceActive) {
     return (
       <div className="container mx-auto max-w-4xl px-4 py-12 text-center">
         <AlertCircle className="mx-auto mb-4 h-16 w-16 text-yellow-500" />
@@ -121,7 +143,7 @@ export default function WeeklyChallengesPage() {
     );
   }
 
-  const isTodayAvailable = isChallengeDay(config.availableDays);
+  const isTodayAvailable = isChallengeDay(config.availableDays) || isAdminBypass;
   const nextDay = getNextChallengeDay(config.availableDays);
   const nextDayName = DAY_NAMES[nextDay.getDay()];
   const availableDaysString = config.availableDays.map(d => DAY_NAMES[d].substring(0, 3)).join(" · ");
@@ -133,7 +155,7 @@ export default function WeeklyChallengesPage() {
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
             <Trophy className="h-4 w-4" />
-            <span>{getCurrentChallengeWeek().replace('-W', ' Week ')}</span>
+            <span>SOLVE</span>
           </div>
           <h1 className="mb-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">Weekly Challenges</h1>
           <p className="text-lg text-gray-400">Test your skills with premium brain challenges</p>

@@ -6,6 +6,8 @@
  * from Firestore REST API in their authenticated context.
  */
 
+import { adminAuth, adminDb } from "./firebase-admin";
+
 interface VerifiedUser {
   uid: string;
   email: string;
@@ -22,61 +24,58 @@ export async function verifyServerAuth(authHeader: string | null): Promise<Verif
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "paperino-data";
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-  if (!apiKey) {
-    console.error("Firebase API Key missing in environment variables.");
-    return null;
-  }
-
   try {
-    // 1. Verify Firebase ID Token via Identity Toolkit endpoint
-    const lookupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ idToken: token }),
-    });
+    let uid = "";
+    let email = "";
 
-    if (!lookupRes.ok) {
-      console.error("Firebase ID Token verification failed at Identity Toolkit API.");
-      return null;
+    // 1. Verify Firebase ID Token locally if adminAuth is initialized
+    if (adminAuth) {
+      try {
+        const decodedToken = await adminAuth.verifyIdToken(token);
+        uid = decodedToken.uid;
+        email = decodedToken.email || "";
+      } catch (authErr) {
+        console.error("Firebase Admin verifyIdToken failed:", authErr);
+        return null;
+      }
+    } else {
+      // Fallback: Verify via Google REST API if adminAuth is not configured
+      if (!apiKey) {
+        console.error("Firebase API Key missing in environment variables.");
+        return null;
+      }
+
+      const lookupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idToken: token }),
+      });
+
+      if (!lookupRes.ok) {
+        console.error("Firebase ID Token verification failed at Identity Toolkit API.");
+        return null;
+      }
+
+      const lookupData = await lookupRes.json();
+      const userPayload = lookupData.users?.[0];
+
+      if (!userPayload) {
+        console.error("User payload missing in lookup response.");
+        return null;
+      }
+
+      uid = userPayload.localId;
+      email = userPayload.email;
     }
-
-    const lookupData = await lookupRes.json();
-    const userPayload = lookupData.users?.[0];
-
-    if (!userPayload) {
-      console.error("User payload missing in lookup response.");
-      return null;
-    }
-
-    const uid = userPayload.localId;
-    const email = userPayload.email;
 
     if (!uid || !email) {
       console.error("Firebase lookup response missing localId or email.");
       return null;
     }
 
-    // 2. Fetch User Role from Firestore using the user's Auth token (so rules allow it)
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
-    const userDocRes = await fetch(firestoreUrl, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-      },
-    });
-
-    let role = "student"; // Default fallback
-
-    if (userDocRes.ok) {
-      const userDoc = await userDocRes.json();
-      role = userDoc.fields?.role?.stringValue || "student";
-    } else {
-      console.warn(`Could not fetch Firestore user doc for ${uid}. Defaulting to 'student'. Status: ${userDocRes.status}`);
-    }
-
-    // Always enforce allowedAdmins hardcoded list for developers/super-admins
+    // Check hardcoded admin list FIRST — skip Firestore role fetch if already known admin
     const allowedAdmins = [
       "mohamedsajid.sa@gmail.com",
       "sudharajsekar2005@gmail.com",
@@ -88,8 +87,43 @@ export async function verifyServerAuth(authHeader: string | null): Promise<Verif
       "dejasvini28@gmail.com",
       "kaushika13official@gmail.com"
     ];
+
     if (allowedAdmins.includes(email.toLowerCase())) {
-      role = "admin";
+      // Known admin — no need to fetch role from Firestore
+      return { uid, email, role: "admin" };
+    }
+
+    // 2. Fetch User Role from Firestore using Admin SDK (fast) or REST API fallback
+    let role = "student"; // Default fallback
+
+    if (adminDb) {
+      try {
+        const userSnap = await adminDb.collection('users').doc(uid).get();
+        if (userSnap.exists) {
+          role = userSnap.data()?.role || "student";
+        }
+      } catch (roleErr) {
+        console.warn(`Could not fetch Firestore user doc for ${uid} via Admin SDK. Defaulting to 'student'.`, roleErr);
+      }
+    } else {
+      // Fallback to REST API only if Admin SDK is not available
+      try {
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
+        const userDocRes = await fetch(firestoreUrl, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+        if (userDocRes.ok) {
+          const userDoc = await userDocRes.json();
+          role = userDoc.fields?.role?.stringValue || "student";
+        } else {
+          console.warn(`Could not fetch Firestore user doc for ${uid}. Defaulting to 'student'. Status: ${userDocRes.status}`);
+        }
+      } catch (roleErr) {
+        console.warn(`REST API fetch failed for user ${uid}. Defaulting to 'student'.`, roleErr);
+      }
     }
 
     return {

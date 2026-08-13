@@ -6,7 +6,7 @@ import {
   CheckCircle2, Loader2, Save, RefreshCw, ThumbsUp, ThumbsDown,
   ToggleLeft, ToggleRight, AlertTriangle, X
 } from "lucide-react";
-import { collection, onSnapshot, doc, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc, setDoc, query, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -52,10 +52,11 @@ export default function AdminFreeClassFinderPage() {
     return () => unsub();
   }, []);
 
-  // Fetch all reports
+  // Fetch recent reports (limited to latest 100)
   useEffect(() => {
+    const reportsQuery = query(collection(db, "free_class_reports"), limit(100));
     const unsub = onSnapshot(
-      collection(db, "free_class_reports"),
+      reportsQuery,
       (snap) => {
         const list: FreeClassReport[] = [];
         const now = Date.now();

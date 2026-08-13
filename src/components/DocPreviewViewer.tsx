@@ -5,6 +5,7 @@ import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, External
 import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
+import { auth } from "@/lib/firebase";
 import * as pdfjs from "pdfjs-dist";
 import * as mammoth from "mammoth";
 
@@ -100,6 +101,10 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
 
       const cacheKey = `${mat.id}_${mat.fileId}`;
 
+      // Fetch Firebase ID token if user is signed in to authorize pending material preview
+      const userToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const headers: Record<string, string> = userToken ? { Authorization: `Bearer ${userToken}` } : {};
+
       // 1. IMAGE PREVIEW
       if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(extension)) {
         if (isMounted) {
@@ -113,7 +118,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
       // 2. TEXT PREVIEW
       if (["txt", "md", "json", "csv", "log"].includes(extension)) {
         try {
-          const res = await fetch(targetUrl);
+          const res = await fetch(targetUrl, { headers });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const text = await res.text();
           if (isMounted) {
@@ -133,7 +138,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
       // 3. WORD DOC PREVIEW VIA MAMMOTH
       if (["docx", "doc"].includes(extension)) {
         try {
-          const res = await fetch(targetUrl);
+          const res = await fetch(targetUrl, { headers });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const arrayBuffer = await res.arrayBuffer();
           const result = await mammoth.convertToHtml({ arrayBuffer });
@@ -161,8 +166,11 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
         if (pdfBufferCache.has(cacheKey)) {
           pdfArrayBuffer = pdfBufferCache.get(cacheKey)!;
         } else {
-          const pdfResponse = await fetch(targetUrl);
+          const pdfResponse = await fetch(targetUrl, { headers });
           if (!pdfResponse.ok) {
+            if (pdfResponse.status === 403) {
+              throw new Error("403: Forbidden - Access Denied");
+            }
             throw new Error(`Server returned ${pdfResponse.status}: ${pdfResponse.statusText}`);
           }
           pdfArrayBuffer = await pdfResponse.arrayBuffer();

@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 
 export default function CareerDnaManagement() {
   const [careerDnaEnabled, setCareerDnaEnabled] = useState(true);
+  const [careerDnaAdminTestMode, setCareerDnaAdminTestMode] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>("Unknown");
   const [stats, setStats] = useState({
     totalIndexed: 0,
@@ -36,6 +37,7 @@ export default function CareerDnaManagement() {
       if (configDoc.exists()) {
         const data = configDoc.data();
         if (data.careerDnaEnabled !== undefined) setCareerDnaEnabled(data.careerDnaEnabled);
+        if (data.careerDnaAdminTestMode !== undefined) setCareerDnaAdminTestMode(data.careerDnaAdminTestMode);
         if (data.lastUpdatedDna) {
           setLastUpdated(new Date(data.lastUpdatedDna.toMillis ? data.lastUpdatedDna.toMillis() : data.lastUpdatedDna).toLocaleString());
         }
@@ -58,33 +60,27 @@ export default function CareerDnaManagement() {
       todayStart.setHours(0,0,0,0);
 
       activeSnap.forEach(d => {
-        const item = d.data();
-        if (item.deadline && item.deadline < now) {
+        const data = d.data();
+        if (data.deadline && new Date(data.deadline).getTime() < now) {
           expiredCount++;
         } else {
           activeCount++;
         }
-        if (item.postedDate && item.postedDate >= todayStart.getTime()) {
-          syncedTodayCount++;
+        if (data.createdAt) {
+          const created = new Date(data.createdAt.toMillis ? data.createdAt.toMillis() : data.createdAt);
+          if (created >= todayStart) syncedTodayCount++;
         }
       });
 
       setStats({
-        totalIndexed: activeCount > 0 ? activeCount : 25,
-        syncedToday: syncedTodayCount > 0 ? syncedTodayCount : 4,
+        totalIndexed: activeCount,
+        syncedToday: syncedTodayCount,
         expiredRemoved: expiredCount,
         lastSyncTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: "Active & Syncing (Unstop)"
+        status: activeCount > 0 ? "Active & Syncing" : "Idle"
       });
     } catch (err) {
-      console.warn("Soft warning: Unable to query client internships snapshot:", err);
-      setStats({
-        totalIndexed: 25,
-        syncedToday: 4,
-        expiredRemoved: 0,
-        lastSyncTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: "Active & Syncing (Unstop)"
-      });
+      console.warn("Soft warning: Unable to count internships:", err);
     } finally {
       setLoading(false);
     }
@@ -97,6 +93,7 @@ export default function CareerDnaManagement() {
     try {
       await setDoc(doc(db, "platform_config", "features"), {
         careerDnaEnabled,
+        careerDnaAdminTestMode,
         lastUpdatedDna: new Date().toISOString()
       }, { merge: true });
       setSuccess(true);
@@ -162,29 +159,29 @@ export default function CareerDnaManagement() {
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Synced Today</span>
             <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400">
-              <CheckCircle2 size={20} />
+              <Activity size={20} />
             </div>
           </div>
-          <p className="text-3xl font-black text-emerald-400 mb-1">+{stats.syncedToday}</p>
-          <p className="text-xs text-gray-400 font-medium">New Opportunities Added</p>
+          <p className="text-3xl font-black text-white mb-1">{stats.syncedToday}</p>
+          <p className="text-xs text-emerald-300 font-medium">Fresh Unstop & Provider Jobs</p>
         </div>
 
         <div className="glass-panel p-6 rounded-3xl border border-white/10 relative overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Expired Removed</span>
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Expired Filtered</span>
             <div className="p-3 bg-rose-500/10 rounded-2xl border border-rose-500/20 text-rose-400">
-              <AlertCircle size={20} />
+              <Power size={20} />
             </div>
           </div>
-          <p className="text-3xl font-black text-rose-400 mb-1">{stats.expiredRemoved}</p>
-          <p className="text-xs text-gray-400 font-medium">Cleaned from Index</p>
+          <p className="text-3xl font-black text-white mb-1">{stats.expiredRemoved}</p>
+          <p className="text-xs text-rose-300 font-medium">Filtered Dead Links</p>
         </div>
 
         <div className="glass-panel p-6 rounded-3xl border border-white/10 relative overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Engine Status</span>
             <div className="p-3 bg-cyan-500/10 rounded-2xl border border-cyan-500/20 text-cyan-400">
-              <Activity size={20} />
+              <ShieldCheck size={20} />
             </div>
           </div>
           <p className="text-lg font-bold text-cyan-300 mb-1">{stats.status}</p>
@@ -202,7 +199,7 @@ export default function CareerDnaManagement() {
             </h2>
             
             {/* Status Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-white/5 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-white/5 mb-4">
               <div>
                 <h3 className="text-lg font-medium text-white mb-1 flex flex-wrap items-center gap-2">
                   <span>Career DNA Platform Status:</span>
@@ -220,6 +217,27 @@ export default function CareerDnaManagement() {
                   className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${careerDnaEnabled ? 'bg-purple-500' : 'bg-red-600'}`}
                 >
                   <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${careerDnaEnabled ? 'translate-x-9' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Admin Test Mode Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-purple-500/20 bg-purple-500/5 mb-6">
+              <div>
+                <h3 className="text-lg font-medium text-purple-200 mb-1 flex items-center gap-2">
+                  Admin Test Mode
+                  {careerDnaAdminTestMode && <span className="text-[10px] bg-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/40">TEST MODE ACTIVE</span>}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Allows admins to preview experimental Career DNA features without exposing them to public students.
+                </p>
+              </div>
+              <div className="flex justify-end w-full sm:w-auto shrink-0">
+                <button 
+                  onClick={() => setCareerDnaAdminTestMode(!careerDnaAdminTestMode)}
+                  className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${careerDnaAdminTestMode ? 'bg-purple-600' : 'bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${careerDnaAdminTestMode ? 'translate-x-9' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>

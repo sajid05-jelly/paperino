@@ -90,27 +90,25 @@ export async function GET(req: NextRequest) {
 
   console.log("[Download API Stage 1] Incoming preview/download request:", { matId, fileIdParam, isInline });
 
-  // 1. Verify Authentication via Bearer Header
+  // 1. Verify Authentication via Bearer Header OR token query parameter
   const authHeader = req.headers.get("Authorization");
+  const queryTokenParam = req.nextUrl.searchParams.get("token");
   let uid = "GUEST";
   let userName = "Paperino User";
   let userEmail = "student@paperino.app";
   let isAdmin = false;
 
+  let rawToken = "";
   if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
+    rawToken = authHeader.substring(7);
+  }
+
+  if (rawToken) {
     try {
-      const decodedToken = await admin.auth().verifyIdToken(token);
+      const decodedToken = await admin.auth().verifyIdToken(rawToken);
       uid = decodedToken.uid;
       userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Paperino User";
       userEmail = decodedToken.email || "student@paperino.app";
-      
-      if (adminDb) {
-        const userSnap = await adminDb.collection("users").doc(uid).get();
-        if (userSnap.exists && userSnap.data()?.role === "admin") {
-          isAdmin = true;
-        }
-      }
       
       const allowedAdmins = [
         "mohamedsajid.sa@gmail.com",
@@ -126,6 +124,20 @@ export async function GET(req: NextRequest) {
       }
     } catch (err: any) {
       console.warn("[Download API Stage 1 Notice] Auth token decoding notice:", err.message);
+    }
+  } else if (queryTokenParam && adminDb) {
+    try {
+      const tokenDocTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+      const tokenSnap: any = await Promise.race([
+        adminDb.collection("download_tokens").doc(queryTokenParam).get(),
+        tokenDocTimeout
+      ]);
+      if (tokenSnap && tokenSnap.exists) {
+        const tData = tokenSnap.data() || {};
+        uid = tData.uid || "GUEST";
+      }
+    } catch (err: any) {
+      console.warn("[Download API Token Query Notice]:", err.message);
     }
   }
 
@@ -254,8 +266,8 @@ export async function GET(req: NextRequest) {
         const watermarkOpacity = 0.14;
         const watermarkAngle = degrees(-35);
 
-        // Watermark up to 5 pages to keep download generation fast for multi-page PDFs (30+ pages)
-        const pagesToWatermark = pages.slice(0, 5);
+        // Watermark up to 2 pages to keep download generation under ~2-4s for PDFs
+        const pagesToWatermark = pages.slice(0, 2);
         for (const page of pagesToWatermark) {
           const { width, height } = page.getSize();
           const totalTextHeight = 40 + (detailLines.length * 32);

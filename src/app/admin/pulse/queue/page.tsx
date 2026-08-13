@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp, serverTimestamp, limit } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Radio, Check, X, RefreshCw, Edit, ExternalLink, ShieldCheck, Clock, AlertTriangle, BarChart2 } from "lucide-react";
 import Link from "next/link";
@@ -60,7 +60,7 @@ export default function AdminPulseQueuePage() {
   const [mode, setMode] = useState("Offline");
 
   useEffect(() => {
-    const q = query(collection(db, "pulse_queue"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "pulse_queue"), orderBy("createdAt", "desc"), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QueueItem));
       setItems(data);

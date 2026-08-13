@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp, limit } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Radio, Plus, Edit, Trash2, Pin, PinOff, Link as LinkIcon, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -113,7 +113,7 @@ export default function AdminPulsePage() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(25));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
       // Sort pinned posts to top locally to ensure they always show first

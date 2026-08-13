@@ -9,7 +9,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2 } from "lucide-react";
+import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2 } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -168,7 +168,39 @@ export default function Navbar() {
           >
             <Link href="/courses" className={getLinkClass("/courses")}>Materials</Link>
             <Link href="/gpa" className={getLinkClass("/gpa")}>GPA Calc</Link>
-            <Link href="/weekly-challenges" className={getLinkClass("/weekly-challenges")}>Challenges</Link>
+            
+            {/* Gamified Premium Challenges Navbar Button */}
+            {(() => {
+              const isActive = pathname === '/weekly-challenges' || pathname?.startsWith('/weekly-challenges/');
+              return (
+                <Link 
+                  href="/weekly-challenges" 
+                  className={`relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs xl:text-sm font-bold tracking-wide transition-all duration-300 group flex-shrink-0 cursor-pointer overflow-hidden ${
+                    isActive 
+                      ? 'bg-gradient-to-r from-purple-900/90 via-purple-950 to-black text-purple-200 border border-purple-400/50 shadow-[0_0_20px_rgba(168,85,247,0.45)] ring-1 ring-purple-400/30 -translate-y-0.5 scale-[1.02]' 
+                      : 'bg-gradient-to-r from-purple-950/60 via-purple-900/40 to-black/80 text-gray-200 border border-purple-500/25 hover:border-purple-400/60 hover:text-white shadow-[0_0_12px_rgba(147,51,234,0.2)] hover:shadow-[0_0_22px_rgba(168,85,247,0.5)] hover:-translate-y-0.5 hover:scale-[1.02] backdrop-blur-md'
+                  }`}
+                >
+                  {/* Subtle glossy sheen highlight */}
+                  <span className="absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-transparent pointer-events-none rounded-full" />
+                  
+                  {/* Game Icon */}
+                  <Gamepad2 
+                    size={15} 
+                    className={`transition-all duration-300 ${
+                      isActive 
+                        ? 'text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.9)] animate-pulse' 
+                        : 'text-purple-400 group-hover:text-purple-300 group-hover:rotate-12 group-hover:scale-110 drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]'
+                    }`} 
+                  />
+                  
+                  <span className="relative z-10 font-bold">Challenges</span>
+
+                  {/* Active/Hover tiny accent pill */}
+                  <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,1)]' : 'bg-purple-500/40 group-hover:bg-purple-400'}`} />
+                </Link>
+              );
+            })()}
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
             
@@ -430,7 +462,27 @@ export default function Navbar() {
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Tools</p>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/courses" className={getMobileLinkClass("/courses")}>Materials</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/weekly-challenges" className={getMobileLinkClass("/weekly-challenges")}>Weekly Challenges</Link>
+              
+              {(() => {
+                const isActive = pathname === '/weekly-challenges' || pathname?.startsWith('/weekly-challenges/');
+                return (
+                  <Link 
+                    onClick={() => setIsMobileMenuOpen(false)} 
+                    href="/weekly-challenges" 
+                    className={`flex items-center justify-between w-full px-3.5 py-3 rounded-xl transition-all duration-300 border text-sm font-bold tracking-wide cursor-pointer my-1.5 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-purple-900/90 via-purple-950 to-black text-purple-200 border-purple-400/50 shadow-[0_0_20px_rgba(168,85,247,0.3)] ring-1 ring-purple-400/30'
+                        : 'bg-gradient-to-r from-purple-950/40 via-purple-900/20 to-black/60 text-purple-200/90 border-purple-500/20 hover:border-purple-400/50 hover:text-white shadow-[0_0_12px_rgba(147,51,234,0.15)]'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Gamepad2 size={16} className={`text-purple-400 ${isActive ? 'animate-pulse text-purple-300' : ''}`} />
+                      <span>Weekly Challenges</span>
+                    </span>
+                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,1)]' : 'bg-purple-500/40'}`} />
+                  </Link>
+                );
+              })()}
 
               {/* Divider */}
               <div className="h-px bg-white/[0.06] my-3 mx-2" />

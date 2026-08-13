@@ -24,8 +24,8 @@ export default function GameTimer({
         setElapsed(Date.now() - startTime);
       }, 100);
     } else if (!isRunning && startTime) {
-      // Final update when stopped
-      setElapsed(Date.now() - startTime);
+      // Keep showing the final frozen elapsed time since startTime instead of resetting or calculating current time
+      // No-op to preserve elapsed state
     } else {
       setElapsed(0);
     }

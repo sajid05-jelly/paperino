@@ -69,7 +69,26 @@ export default function LeaderboardPage() {
     fetchLeaderboardData();
   }, []);
 
-  const fetchLeaderboardData = async () => {
+  const fetchLeaderboardData = async (force = false) => {
+    const cacheKey = "paperino_leaderboard_cache";
+    const cacheTimeKey = "paperino_leaderboard_cache_time";
+    const now = Date.now();
+
+    if (!force && typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(cacheKey);
+      const cachedTime = sessionStorage.getItem(cacheTimeKey);
+      if (cached && cachedTime && (now - parseInt(cachedTime, 10)) < 5 * 60 * 1000) {
+        try {
+          const parsed = JSON.parse(cached);
+          setSeasonBoard(parsed.seasonList || []);
+          setAllTimeBoard(parsed.allTimeList || []);
+          if (parsed.seasonStartDate) setSeasonStartDate(new Date(parsed.seasonStartDate));
+          setLoading(false);
+          return;
+        } catch (e) {}
+      }
+    }
+
     setLoading(true);
     try {
       // 1. Fetch season start date from settings
@@ -157,6 +176,17 @@ export default function LeaderboardPage() {
         });
       }
       setAllTimeBoard(allTimeList);
+
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("paperino_leaderboard_cache", JSON.stringify({
+            seasonList,
+            allTimeList,
+            seasonStartDate: seasonStartDate ? seasonStartDate.toISOString() : null
+          }));
+          sessionStorage.setItem("paperino_leaderboard_cache_time", Date.now().toString());
+        } catch (e) {}
+      }
 
     } catch (err) {
       console.error("Error fetching leaderboard:", err);

@@ -56,20 +56,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized: Auth header missing' }, { status: 401 });
     }
 
-    let authUser;
-    try {
-      authUser = await verifyServerAuth(authHeader);
-    } catch (e: any) {
-      console.error("[challenge-start] Token verification error:", e);
-      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
-    }
-
-    if (!authUser || !authUser.uid) {
-      return NextResponse.json({ error: 'Unauthorized: User authentication required' }, { status: 401 });
-    }
-
-    const { uid } = authUser;
-    
+    // Parse body immediately (no await needed before auth)
     let body;
     try {
       body = await request.json();
@@ -78,7 +65,6 @@ export async function POST(request: Request) {
     }
 
     const { gameId } = body;
-
     if (!gameId || !VALID_GAMES.includes(gameId)) {
       return NextResponse.json({ error: 'Invalid gameId parameter' }, { status: 400 });
     }
@@ -86,69 +72,104 @@ export async function POST(request: Request) {
     const now = new Date();
     const challengeDate = now.toISOString().split('T')[0];
     const weekId = getISOWeekId(now);
-    
-    // Check config via adminDb if available
-    if (adminDb) {
-      try {
-        const configDoc = await adminDb.collection("settings").doc("weeklyChallenges").get();
-        if (configDoc.exists) {
-          const cfg = configDoc.data() || {};
-          if (cfg.enabled === false) {
-            return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
-          }
-          if (cfg.maintenanceMode === true) {
-            return NextResponse.json({ error: 'Weekly challenges are currently under maintenance' }, { status: 403 });
-          }
-          if (cfg.activeGames && Array.isArray(cfg.activeGames) && cfg.activeGames.length > 0 && !cfg.activeGames.includes(gameId)) {
-            return NextResponse.json({ error: 'This game is currently disabled by admin' }, { status: 403 });
-          }
-          if (cfg.availableDays && Array.isArray(cfg.availableDays) && cfg.availableDays.length > 0 && !cfg.availableDays.includes(now.getDay())) {
-            return NextResponse.json({ error: 'Weekly challenges are not available today' }, { status: 403 });
-          }
-        }
-      } catch (err) {
-        console.warn("[challenge-start] Config check warning:", err);
+
+    // === PARALLEL BATCH 1: Auth + Config fetch at the same time ===
+    const [authUser, configSnap] = await Promise.all([
+      verifyServerAuth(authHeader).catch((e: any) => {
+        console.error("[challenge-start] Token verification error:", e);
+        return null;
+      }),
+      adminDb
+        ? adminDb.collection("settings").doc("weeklyChallenges").get().catch(() => null)
+        : Promise.resolve(null)
+    ]);
+
+    if (!authUser || !authUser.uid) {
+      return NextResponse.json({ error: 'Unauthorized: User authentication required' }, { status: 401 });
+    }
+
+    const { uid } = authUser;
+
+    // Process config
+    let isOfficial = true;
+    let isAdminBypass = false;
+    let challengeId = `${gameId}-${challengeDate}`; // Default fallback if no admin challengeId is set
+
+    if (configSnap && configSnap.exists) {
+      const cfg = configSnap.data() || {};
+      const isUserAdmin = authUser.email?.toLowerCase() === "mohamedsajid.sa@gmail.com" || authUser.role === "admin" || (authUser as any).admin === true;
+      isAdminBypass = Boolean(isUserAdmin && cfg.adminTestMode === true);
+
+      // Use specific admin published challengeId if available, separated by gameId
+      if (cfg.currentChallengeId) {
+        challengeId = String(cfg.currentChallengeId);
+      } else if (cfg.currentWeek) {
+        challengeId = `${gameId}-${cfg.currentWeek}`;
+      }
+
+      if (cfg.enabled === false && !isAdminBypass) {
+        return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
+      }
+      if (cfg.maintenanceMode === true && !isAdminBypass) {
+        return NextResponse.json({ error: 'Weekly challenges are currently under maintenance' }, { status: 403 });
+      }
+      if (cfg.activeGames && Array.isArray(cfg.activeGames) && cfg.activeGames.length > 0 && !cfg.activeGames.includes(gameId) && !isAdminBypass) {
+        return NextResponse.json({ error: 'This game is currently disabled by admin' }, { status: 403 });
+      }
+      if (cfg.availableDays && Array.isArray(cfg.availableDays) && cfg.availableDays.length > 0 && !cfg.availableDays.includes(now.getDay()) && !isAdminBypass) {
+        return NextResponse.json({ error: 'Weekly challenges are not available today' }, { status: 403 });
       }
     }
 
-    // Check official attempts
-    let isOfficial = true;
-    if (adminDb) {
+    // === PARALLEL BATCH 2: Check existing sessions + prepare session ID ===
+    let sessionId: string = crypto.randomUUID();
+
+    if (isAdminBypass) {
+      isOfficial = false;
+    } else if (adminDb) {
       try {
-        const existingSessions = await adminDb.collection("challenge_sessions")
+        // Enforce ONE ATTEMPT per challengeId + userId
+        const existingResults = await adminDb.collection("challenge_results")
           .where("userId", "==", uid)
-          .where("gameId", "==", gameId)
-          .where("challengeDate", "==", challengeDate)
+          .where("challengeId", "==", challengeId)
           .where("isOfficial", "==", true)
           .limit(1)
           .get();
 
-        if (!existingSessions.empty) {
-          isOfficial = false;
+        if (!existingResults.empty) {
+          const prevResult = existingResults.docs[0].data();
+          return NextResponse.json({ 
+            error: 'Challenge Already Completed', 
+            completed: true,
+            score: prevResult.score,
+            durationMs: prevResult.durationMs,
+            challengeId: challengeId
+          }, { status: 409 });
         }
       } catch (err) {
         console.warn("[challenge-start] Attempt check warning:", err);
       }
     }
 
-    const sessionId = crypto.randomUUID();
-
-    const sessionData = {
-      userId: uid,
-      gameId,
-      challengeDate,
-      weekId,
-      startedAt: admin.firestore.Timestamp.now(),
-      status: 'in_progress',
-      isOfficial,
-      createdAt: admin.firestore.Timestamp.now()
-    };
-
+    // Write session — fire and don't await (non-blocking)
     if (adminDb) {
-      await adminDb.collection("challenge_sessions").doc(sessionId).set(sessionData);
+      const sessionData = {
+        userId: uid,
+        gameId,
+        challengeDate,
+        challengeId,
+        weekId,
+        startedAt: admin.firestore.Timestamp.now(),
+        status: 'in_progress',
+        isOfficial,
+        createdAt: admin.firestore.Timestamp.now()
+      };
+      adminDb.collection("challenge_sessions").doc(sessionId).set(sessionData).catch((dbErr: any) => {
+        console.error("[challenge-start] session write failed:", dbErr.message);
+      });
     } else {
-      console.error("[challenge-start] adminDb not initialized");
-      return NextResponse.json({ error: 'Server database connection failed' }, { status: 500 });
+      console.warn("[challenge-start] adminDb not initialized, using local simulation mode");
+      sessionId = `local-fallback-${crypto.randomBytes(8).toString('hex')}`;
     }
 
     const seedNum = getSeed(`${gameId}-${challengeDate}`);

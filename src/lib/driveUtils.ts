@@ -116,60 +116,27 @@ export async function triggerSecureDownload(
 
     const { token: downloadToken } = await tokenRes.json();
 
-    // 2. Fetch the actual material download stream
+    // 2. Direct browser download trigger via token URL
     const matParam = mat.id ? `matId=${encodeURIComponent(mat.id)}` : "";
     const fileParam = mat.fileId ? `fileId=${encodeURIComponent(mat.fileId)}` : "";
     const nameParam = (mat.fileName || mat.title) ? `fileName=${encodeURIComponent(mat.fileName || mat.title || "")}` : "";
     const identifierQuery = [matParam, fileParam, nameParam].filter(Boolean).join("&");
     const downloadUrl = `/api/download?${identifierQuery}&token=${encodeURIComponent(downloadToken)}`;
 
-    const res = await fetch(downloadUrl, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`
+    // Create immediate direct download iframe or link trigger
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.setAttribute("download", mat.fileName || mat.title || "material.pdf");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      if (typeof window !== "undefined") {
+        (window as any).__activeDownloads = false;
       }
-    });
-
-    if (typeof window !== "undefined") {
-      (window as any).__activeDownloads = false;
-    }
-    onLoadingChange?.(false);
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || "This material is temporarily unavailable.");
-    }
-
-    const blob = await res.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
-    
-    // Extract server-provided Content-Disposition filename if available
-    let downloadFilename = mat.fileName || mat.title || "material.pdf";
-    const disposition = res.headers.get("Content-Disposition");
-    if (disposition) {
-      const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      if (utf8Match && utf8Match[1]) {
-        downloadFilename = decodeURIComponent(utf8Match[1]);
-      } else {
-        const match = disposition.match(/filename="?([^";]+)"?/i);
-        if (match && match[1]) {
-          downloadFilename = decodeURIComponent(match[1]);
-        }
-      }
-    }
-
-    // Ensure .pdf extension if missing on PDF files
-    if (!/\.[a-zA-Z0-9]+$/.test(downloadFilename)) {
-      downloadFilename += ".pdf";
-    }
-    
-    const tempLink = document.createElement("a");
-    tempLink.href = blobUrl;
-    tempLink.setAttribute("download", downloadFilename);
-    document.body.appendChild(tempLink);
-    tempLink.click();
-    document.body.removeChild(tempLink);
-    window.URL.revokeObjectURL(blobUrl);
+      onLoadingChange?.(false);
+    }, 1000);
 
     showToast?.("Download started successfully", "success");
     return true;

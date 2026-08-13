@@ -86,27 +86,82 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server database connection failed' }, { status: 500 });
     }
 
-    // 1. Fetch Session Doc from adminDb
-    const sessionDocRef = adminDb.collection('challenge_sessions').doc(sessionId);
-    const sessionSnap = await sessionDocRef.get();
-
-    if (!sessionSnap.exists) {
-      return NextResponse.json({ error: 'Challenge session not found' }, { status: 404 });
-    }
-
-    const session = sessionSnap.data() || {};
-
-    if (session.userId !== uid) {
-      return NextResponse.json({ error: 'Unauthorized session access' }, { status: 403 });
-    }
-
-    if (session.status !== 'in_progress') {
-      return NextResponse.json({ error: 'Challenge session has already been completed' }, { status: 409 });
-    }
-
-    const { gameId, challengeDate, weekId, isOfficial } = session;
-    const startedAt = session.startedAt ? session.startedAt.toDate() : new Date();
+    let gameId = '';
+    let challengeDate = '';
+    let challengeId = '';
+    let weekId = '';
+    let isOfficial = false;
+    let startedAt = new Date();
     const completedAt = new Date();
+    let isLocalFallback = sessionId.startsWith('local-fallback-');
+
+    if (isLocalFallback) {
+      // Decode simulated local fallback values
+      gameId = body.gameData?.gameId || 'code-breaker';
+      const now = new Date();
+      challengeDate = now.toISOString().split('T')[0];
+      challengeId = `${gameId}-${challengeDate}`;
+      weekId = getISOWeekId(now);
+      isOfficial = false;
+      const clientDuration = body.gameData?.durationMs || 10000;
+      startedAt = new Date(completedAt.getTime() - clientDuration);
+    } else {
+      // 1. Fetch Session Doc from adminDb
+      const sessionDocRef = adminDb.collection('challenge_sessions').doc(sessionId);
+      let sessionSnap;
+      try {
+        sessionSnap = await sessionDocRef.get();
+      } catch (err: any) {
+        console.warn("[challenge-submit] session retrieval failed due to quota limit, resolving via fallback:", err.message);
+        isLocalFallback = true;
+        gameId = body.gameData?.gameId || 'code-breaker';
+        const now = new Date();
+        challengeDate = now.toISOString().split('T')[0];
+        challengeId = `${gameId}-${challengeDate}`;
+        weekId = getISOWeekId(now);
+        isOfficial = false;
+        const clientDuration = body.gameData?.durationMs || 10000;
+        startedAt = new Date(completedAt.getTime() - clientDuration);
+      }
+
+      if (!isLocalFallback) {
+        if (!sessionSnap || !sessionSnap.exists) {
+          return NextResponse.json({ error: 'Challenge session not found' }, { status: 404 });
+        }
+
+        const session = sessionSnap.data() || {};
+
+        if (session.userId !== uid) {
+          return NextResponse.json({ error: 'Unauthorized session access' }, { status: 403 });
+        }
+
+        if (session.status !== 'in_progress') {
+          return NextResponse.json({ error: 'Challenge session has already been completed' }, { status: 409 });
+        }
+
+        gameId = session.gameId;
+        challengeDate = session.challengeDate;
+        challengeId = session.challengeId || `${gameId}-${challengeDate}`;
+        weekId = session.weekId;
+        isOfficial = session.isOfficial;
+        startedAt = session.startedAt ? session.startedAt.toDate() : new Date();
+      }
+    }
+
+    // Atomic double submission guard on result
+    if (adminDb && isOfficial) {
+      const existingResults = await adminDb.collection("challenge_results")
+        .where("userId", "==", uid)
+        .where("challengeId", "==", challengeId)
+        .where("isOfficial", "==", true)
+        .limit(1)
+        .get();
+
+      if (!existingResults.empty) {
+        return NextResponse.json({ error: 'Challenge already submitted' }, { status: 409 });
+      }
+    }
+
     const durationMs = completedAt.getTime() - startedAt.getTime();
 
     // 2. Validate submission & calculate score server-side
@@ -125,21 +180,31 @@ export async function POST(request: Request) {
       }
       
       const { attempts = [], finalGuess = [] } = gameData;
-      const isCorrect = code.join('') === finalGuess.join('');
+      const isCorrect = code.length === finalGuess.length && code.every((d, idx) => d === finalGuess[idx]);
       if (isCorrect) {
-        const attemptsUsed = attempts.length || 1;
-        const maxAttempts = 10;
-        const speedBonus = Math.max(0, Math.floor((120000 - durationMs) / 1000));
-        score = Math.max(0, (maxAttempts - attemptsUsed) * 100 + speedBonus);
+        const guessCount = attempts.length || 1;
+        const durationSeconds = durationMs / 1000;
+        const baseScore = 100;
+        const timePenalty = Math.min(60, Math.floor(durationSeconds / 2));
+        const guessPenalty = Math.min(30, (guessCount - 1) * 5);
+        const rawScore = baseScore - timePenalty - guessPenalty;
+        score = Math.max(10, Math.min(100, rawScore));
       }
     } else if (gameId === 'memory-matrix') {
       const rounds: string[][] = [];
+      const ROUND_CONFIGS = [
+        { round: 1, size: 3, targets: 3 },
+        { round: 2, size: 4, targets: 4 },
+        { round: 3, size: 5, targets: 6 },
+        { round: 4, size: 6, targets: 8 },
+        { round: 5, size: 7, targets: 10 },
+      ];
       for (let r = 0; r < 5; r++) {
+        const cfg = ROUND_CONFIGS[r];
         const pattern: string[] = [];
-        const numCells = 3 + r;
-        while (pattern.length < numCells) {
-          const rRow = Math.floor(rand() * 4);
-          const rCol = Math.floor(rand() * 4);
+        while (pattern.length < cfg.targets) {
+          const rRow = Math.floor(rand() * cfg.size);
+          const rCol = Math.floor(rand() * cfg.size);
           const cellStr = `${rRow},${rCol}`;
           if (!pattern.includes(cellStr)) {
             pattern.push(cellStr);
@@ -149,18 +214,30 @@ export async function POST(request: Request) {
       }
 
       const userRounds = gameData.rounds || [];
-      let totalCorrect = 0;
+      let accumulatedScore = 0;
+      
       userRounds.forEach((ur: any, idx: number) => {
         const expectedPattern = rounds[idx] || [];
+        const totalTargets = expectedPattern.length;
+        if (totalTargets === 0) return;
+        
         const selected = ur.selected || [];
-        selected.forEach((cell: number[]) => {
-          const cellStr = `${cell[0]},${cell[1]}`;
+        let correctCount = 0;
+        
+        selected.forEach((cell: any) => {
+          const cellStr = Array.isArray(cell) ? `${cell[0]},${cell[1]}` : String(cell);
           if (expectedPattern.includes(cellStr)) {
-            totalCorrect++;
+            correctCount++;
           }
         });
+
+        // 20 max points per round (20 * correct / totalTargets)
+        const roundContribution = (correctCount / totalTargets) * 20;
+        accumulatedScore += roundContribution;
       });
-      score = totalCorrect * 10;
+
+      // Clamp score to a maximum of 100
+      score = Math.max(0, Math.min(100, Math.round(accumulatedScore)));
     } else if (gameId === 'impossible-room') {
       const clues: string[] = [];
       for (let i = 0; i < 5; i++) {
@@ -175,100 +252,164 @@ export async function POST(request: Request) {
       });
       score = validClues * 200 + (userLockCode === lockCode ? 500 : 0);
     } else if (gameId === 'word-forge') {
-      const correctAnswers: string[] = [];
-      for (let r = 0; r < 6; r++) {
-        const wordIdx = Math.floor(rand() * WORD_LIST.length);
-        correctAnswers.push(WORD_LIST[wordIdx]);
-      }
-      
+      const FIXED_CORRECT_ANSWERS = ['RATE', 'COMPUTER', 'DATABASE', 'SYNTAX', 'ALGORITHM', 'COMPILER'];
       const userAnswers = gameData.answers || [];
-      let correct = 0;
-      userAnswers.forEach((ans: string, idx: number) => {
-        if (ans && correctAnswers[idx] && ans.trim().toLowerCase() === correctAnswers[idx].toLowerCase()) {
-          correct++;
+      const times = gameData.times || []; // actual seconds spent per round
+      
+      let correctCount = 0;
+      let totalTimeSpeedBonusSum = 0;
+
+      FIXED_CORRECT_ANSWERS.forEach((expectedAns, idx) => {
+        const userAns = userAnswers[idx];
+        if (userAns && userAns.trim().toUpperCase() === expectedAns) {
+          correctCount++;
+          
+          // Speed Bonus calculation per correct round:
+          // Maximum round time limit is 30s.
+          const roundTimeSpent = times[idx] !== undefined ? Number(times[idx]) : 15;
+          // Faster answers get higher bonuses:
+          // Very fast (< 5s): +5 bonus
+          // Fast (< 10s): +4 bonus
+          // Normal (< 18s): +3 bonus
+          // Slow (< 25s): +1 bonus
+          // Over 25s: +0 bonus
+          let speedBonus = 0;
+          if (roundTimeSpent < 5) speedBonus = 5;
+          else if (roundTimeSpent < 10) speedBonus = 4;
+          else if (roundTimeSpent < 18) speedBonus = 3;
+          else if (roundTimeSpent < 25) speedBonus = 1;
+          
+          totalTimeSpeedBonusSum += speedBonus;
         }
       });
-      score = correct * 150;
+
+      // 6 rounds total.
+      // Base Score = (correctCount / 6) * 70 points
+      const accuracyScore = (correctCount / 6) * 70;
+      
+      // Speed Score = speed bonus contribution up to 30 points max
+      // Each correct round gives max 5 speed points (6 rounds * 5 = 30 max points)
+      const speedScore = totalTimeSpeedBonusSum;
+
+      // Normalise final score out of 100
+      score = Math.max(0, Math.min(100, Math.round(accuracyScore + speedScore)));
     }
 
-    // 3. Mark session as completed
-    await sessionDocRef.update({
-      status: 'completed',
-      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
-      score,
-      durationMs
-    });
-
-    // 4. Fetch user profile for avatar/displayName
+    // === PARALLEL BATCH 1: Session update + User profile fetch at the same time ===
     let displayName = 'Student';
     let paperinoAvatar = '';
-    
-    try {
-      const userSnap = await adminDb.collection('users').doc(uid).get();
-      if (userSnap.exists) {
+
+    if (adminDb) {
+      const sessionUpdatePromise = !isLocalFallback
+        ? adminDb.collection('challenge_sessions').doc(sessionId).update({
+            status: 'completed',
+            completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+            score,
+            durationMs
+          }).catch((err: any) => {
+            console.warn("[challenge-submit] failed to update session:", err.message);
+          })
+        : Promise.resolve();
+
+      const userProfilePromise = adminDb.collection('users').doc(uid).get().catch((e: any) => {
+        console.warn('[challenge-submit] User profile lookup error:', e);
+        return null;
+      });
+
+      const [, userSnap] = await Promise.all([sessionUpdatePromise, userProfilePromise]);
+
+      if (userSnap && userSnap.exists) {
         const uData = userSnap.data() || {};
         displayName = uData.displayName || 'Student';
         paperinoAvatar = uData.paperinoAvatar || '';
       }
-    } catch (e) {
-      console.warn('[challenge-submit] User profile lookup error:', e);
     }
 
-    // 5. Create result document
-    const resultDocId = `${sessionId}-res`;
-    await adminDb.collection('challenge_results').doc(resultDocId).set({
-      userId: uid,
-      displayName,
-      paperinoAvatar,
-      gameId,
-      challengeDate,
-      weekId,
-      startedAt: admin.firestore.Timestamp.fromDate(startedAt),
-      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
-      durationMs,
-      score,
-      isOfficial: Boolean(isOfficial),
-      createdAt: admin.firestore.Timestamp.fromDate(completedAt)
-    });
-
-    // 6. Query Top 10 Leaderboard via adminDb
-    const topResultsSnap = await adminDb.collection('challenge_results')
-      .where('gameId', '==', gameId)
-      .where('weekId', '==', weekId)
-      .where('isOfficial', '==', true)
-      .orderBy('score', 'desc')
-      .orderBy('durationMs', 'asc')
-      .limit(10)
-      .get();
-
+    // === PARALLEL BATCH 2: Result write + Leaderboard query at the same time ===
     const leaderboard: any[] = [];
-    let rankCounter = 1;
-    let userRank = null;
+    let userRank: number | null = null;
 
-    topResultsSnap.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (data.userId === uid) {
-        userRank = rankCounter;
-      }
-      leaderboard.push({
-        userId: data.userId,
-        displayName: data.displayName || 'Anonymous',
-        paperinoAvatar: data.paperinoAvatar || '',
-        score: data.score || 0,
-        durationMs: data.durationMs || 0,
-        rank: rankCounter++
+    if (adminDb) {
+      const resultDocId = `${sessionId}-res`;
+      const resultWritePromise = adminDb.collection('challenge_results').doc(resultDocId).set({
+        userId: uid,
+        displayName,
+        paperinoAvatar,
+        gameId,
+        challengeId,
+        challengeDate,
+        weekId,
+        startedAt: admin.firestore.Timestamp.fromDate(startedAt),
+        completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+        durationMs,
+        score,
+        isOfficial: Boolean(isOfficial),
+        createdAt: admin.firestore.Timestamp.fromDate(completedAt)
+      }).catch((err: any) => {
+        console.warn("[challenge-submit] failed to write result doc:", err.message);
       });
-    });
 
-    // Calculate user rank if outside top 10
-    if (userRank === null && isOfficial) {
-      const higherScoresSnap = await adminDb.collection('challenge_results')
-        .where('gameId', '==', gameId)
-        .where('weekId', '==', weekId)
+      // Query results from challengeId leaderboard: Sorted by score (desc), then durationMs (asc)
+      const leaderboardPromise = adminDb.collection('challenge_results')
+        .where('challengeId', '==', challengeId)
         .where('isOfficial', '==', true)
-        .where('score', '>', score)
-        .get();
-      userRank = higherScoresSnap.size + 1;
+        .orderBy('score', 'desc')
+        .orderBy('durationMs', 'asc')
+        .limit(10)
+        .get()
+        .catch((err: any) => {
+          console.warn("[challenge-submit] leaderboard retrieval failed:", err.message);
+          return null;
+        });
+
+      const [, topResultsSnap] = await Promise.all([resultWritePromise, leaderboardPromise]);
+
+      if (topResultsSnap) {
+        let rankCounter = 1;
+        topResultsSnap.forEach((docSnap: any) => {
+          const data = docSnap.data();
+          if (data.userId === uid) {
+            userRank = rankCounter;
+          }
+          leaderboard.push({
+            userId: data.userId,
+            displayName: data.displayName || 'Anonymous',
+            paperinoAvatar: data.paperinoAvatar || '',
+            score: data.score || 0,
+            durationMs: data.durationMs || 0,
+            rank: rankCounter++
+          });
+        });
+
+        // Dynamic ranking logic: count how many users completed challengeId with either higher score or equal score with faster durationMs
+        if (userRank === null && isOfficial) {
+          try {
+            const allResultsSnap = await adminDb.collection('challenge_results')
+              .where('challengeId', '==', challengeId)
+              .where('isOfficial', '==', true)
+              .get();
+            
+            let rankCalculated = 1;
+            allResultsSnap.forEach((docSnap: any) => {
+              const data = docSnap.data();
+              if (data.userId === uid) return; // skip self
+              
+              if (data.score > score) {
+                rankCalculated++;
+              } else if (data.score === score && data.durationMs < durationMs) {
+                rankCalculated++;
+              }
+            });
+            userRank = rankCalculated;
+          } catch (err: any) {
+            console.warn("[challenge-submit] rank calculation failed:", err.message);
+          }
+        }
+      }
+    }
+
+    if (leaderboard.length === 0) {
+      userRank = null;
     }
 
     return NextResponse.json({
@@ -276,7 +417,7 @@ export async function POST(request: Request) {
       score,
       durationMs,
       completedAt: completedAt.toISOString(),
-      rank: userRank || 1,
+      rank: isOfficial ? (userRank || 1) : null,
       leaderboard,
       isOfficial
     });

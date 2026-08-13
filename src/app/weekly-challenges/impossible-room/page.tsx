@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import GameTimer from "@/components/challenges/GameTimer";
 import GameResult from "@/components/challenges/GameResult";
+import ChallengeGameShell from "@/components/challenges/ChallengeGameShell";
 import {
-  Clock, BookOpen, Lock, Sparkles, Flower2, Monitor, Sun, Lightbulb, Unlock, Key, Search, ArrowLeft, Check, AlertCircle, X, Shield
+  Clock, BookOpen, Lock, Sparkles, Flower2, Monitor, Sun, Lightbulb, Unlock, Key, Search, ArrowLeft, Check, AlertCircle, X, Shield, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type GameState = "intro" | "playing" | "submitting" | "result";
+type GameState = "intro" | "loading" | "playing" | "submitting" | "result";
 
 interface RoomObject {
   id: string;
@@ -116,12 +117,71 @@ export default function ImpossibleRoomPage() {
   const [codeError, setCodeError] = useState("");
   const [resultData, setResultData] = useState<any>(null);
   const [error, setError] = useState("");
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  const [checkingAttempt, setCheckingAttempt] = useState(true);
+
+  const isCreatingSession = useRef(false);
+
+  useEffect(() => {
+    async function checkAttempt() {
+      if (!user) return;
+      try {
+        setCheckingAttempt(true);
+        const token = await user.getIdToken();
+        const configRes = await fetch("/api/challenge-start", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ gameId: "impossible-room" })
+        });
+        const configData = await configRes.json();
+        
+        if (configRes.status === 409 && configData.completed) {
+          const submitRes = await fetch("/api/challenge-submit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              sessionId: `local-fallback-${user.uid}`,
+              gameData: {
+                cluesFound: [],
+                lockCode: "",
+                gameId: "impossible-room",
+                durationMs: configData.durationMs || 0
+              }
+            })
+          });
+          const submitData = await submitRes.json();
+          setResultData({
+            score: configData.score,
+            durationMs: configData.durationMs,
+            rank: submitData.rank,
+            isOfficial: true,
+            leaderboard: submitData.leaderboard || []
+          });
+          setGameState("result");
+        } else if (!configRes.ok) {
+          setError(configData.error || "Failed to contact game servers");
+        }
+      } catch (err: any) {
+        console.error("Checking challenge attempt failed:", err);
+      } finally {
+        setCheckingAttempt(false);
+      }
+    }
+    checkAttempt();
+  }, [user]);
 
   const startGame = async () => {
+    if (isCreatingSession.current) return;
     try {
+      isCreatingSession.current = true;
       setError("");
-      setGameState("submitting");
+      setGameState("loading");
       
       const token = await user?.getIdToken();
       if (!token) throw new Error("Please sign in to play");
@@ -149,6 +209,8 @@ export default function ImpossibleRoomPage() {
     } catch (err: any) {
       setError(err.message || "Failed to start room");
       setGameState("intro");
+    } finally {
+      isCreatingSession.current = false;
     }
   };
 
@@ -166,6 +228,18 @@ export default function ImpossibleRoomPage() {
     nextCode[index] = val;
     setUserLockCode(nextCode);
     setCodeError("");
+
+    if (val && index < 3) {
+      const nextInput = document.getElementById(`ir-input-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !userLockCode[index] && index > 0) {
+      const prevInput = document.getElementById(`ir-input-${index - 1}`);
+      prevInput?.focus();
+    }
   };
 
   const handleSubmitEscape = async () => {
@@ -196,15 +270,35 @@ export default function ImpossibleRoomPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to submit escape attempt");
+      if (!res.ok) {
+        console.error('Submit failed:', data.error);
+        setResultData({
+          score: 0,
+          durationMs: startTime ? Date.now() - startTime : 0,
+          rank: null,
+          isOfficial: false,
+          leaderboard: []
+        });
+        setGameState("result");
+        return;
+      }
 
       setResultData(data);
       setGameState("result");
     } catch (err: any) {
-      setCodeError(err.message || "Escape failed");
-      setGameState("playing");
+      console.error('Submit error:', err);
+      setResultData({
+        score: 0,
+        durationMs: startTime ? Date.now() - startTime : 0,
+        rank: null,
+        isOfficial: false,
+        leaderboard: []
+      });
+      setGameState("result");
     }
   };
+
+
 
   if (gameState === "intro") {
     return (
@@ -215,7 +309,7 @@ export default function ImpossibleRoomPage() {
           className="w-full glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 text-center flex flex-col items-center gap-6"
         >
           <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
-            <Lock size={32} />
+            <Unlock size={32} />
           </div>
           <div>
             <h1 className="text-3xl font-extrabold text-white mb-2">The Impossible Room</h1>
@@ -244,11 +338,43 @@ export default function ImpossibleRoomPage() {
     );
   }
 
+  if (gameState === "loading") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 text-center flex flex-col items-center gap-6"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30">
+            <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1">Preparing Challenge</h2>
+            <p className="text-xs text-gray-400">Securing your session...</p>
+            <p className="text-xs text-amber-300/80 font-medium animate-pulse mt-2">Please wait for 25 seconds while we set up your challenge session...</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (gameState === "submitting") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <Sparkles className="w-10 h-10 text-purple-400 animate-spin" />
-        <p className="text-sm text-purple-300 font-medium">Verifying room session...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 text-center flex flex-col items-center gap-6"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30">
+            <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1">Submitting Challenge</h2>
+            <p className="text-xs text-gray-400">Saving official results...</p>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -266,118 +392,122 @@ export default function ImpossibleRoomPage() {
           onViewLeaderboard={() => {}}
           onPlayAgain={() => window.location.reload()}
           onBackToHub={() => router.push("/weekly-challenges")}
+          leaderboard={resultData.leaderboard}
         />
       </div>
     );
   }
 
+  const rulesContent = (
+    <ul className="space-y-2.5 list-disc list-inside text-sm">
+      <li>Inspect interactive objects scattered in the room.</li>
+      <li>Find the <strong>5 critical clues</strong> to resolve the lock digits.</li>
+      <li>Enter the combination in the Vault Master Lock interface.</li>
+      <li>Your escape time is recorded for the challenge leaderboards.</li>
+    </ul>
+  );
+
   return (
-    <div className="min-h-screen p-4 md:p-6 max-w-4xl mx-auto flex flex-col justify-between">
-      
-      {/* Header bar */}
-      <div className="w-full flex justify-between items-center glass-panel p-4 rounded-2xl border border-purple-500/20 mb-6">
-        <button 
-          onClick={() => setShowExitConfirm(true)}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft size={14} /> Leave
-        </button>
+    <ChallengeGameShell
+      gameId="impossible-room"
+      gameName="The Impossible Room"
+      gameIcon={<Unlock size={20} />}
+      attemptText={`Clues Discovered: ${foundClues.size} / 5`}
+      timerNode={<GameTimer isRunning={gameState === "playing"} startTime={startTime} />}
+      rulesContent={rulesContent}
+      gameState={gameState}
+    >
+      <div className="w-full space-y-8 mt-2">
+        {/* Main Room Layout Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
+          {ROOM_OBJECTS.map((obj) => {
+            const IconComp = obj.icon;
+            const isInspected = inspectedIds.has(obj.id);
+            const isFound = foundClues.has(obj.id);
 
-        <div className="text-center">
-          <h2 className="text-base font-bold text-white">The Impossible Room</h2>
-          <p className="text-xs text-purple-300 font-semibold">Clues Discovered: {foundClues.size} / 5</p>
-        </div>
-
-        <GameTimer isRunning={gameState === "playing"} startTime={startTime} />
-      </div>
-
-      {/* Main Room Layout Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        {ROOM_OBJECTS.map((obj) => {
-          const IconComp = obj.icon;
-          const isInspected = inspectedIds.has(obj.id);
-          const isFound = foundClues.has(obj.id);
-
-          return (
-            <motion.button
-              key={obj.id}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleInspect(obj)}
-              className={`glass-panel vision-glass p-5 rounded-2xl border transition-all text-left flex flex-col justify-between h-36 cursor-pointer relative overflow-hidden ${
-                isFound 
-                  ? "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)]" 
-                  : isInspected 
-                  ? "border-purple-500/30 bg-purple-500/5" 
-                  : "border-white/10 hover:border-purple-500/30"
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div className={`p-2.5 rounded-xl ${isFound ? "bg-emerald-500/20 text-emerald-300" : "bg-purple-500/20 text-purple-300"}`}>
-                  <IconComp size={20} />
+            return (
+              <motion.button
+                key={obj.id}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleInspect(obj)}
+                className={`glass-panel vision-glass p-5 rounded-2xl border transition-all text-left flex flex-col justify-between h-36 cursor-pointer relative overflow-hidden ${
+                  isFound 
+                    ? "border-emerald-500/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)]" 
+                    : isInspected 
+                    ? "border-purple-500/30 bg-purple-500/5" 
+                    : "border-white/10 hover:border-purple-500/30"
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className={`p-2.5 rounded-xl ${isFound ? "bg-emerald-500/20 text-emerald-300" : "bg-purple-500/20 text-purple-300"}`}>
+                    <IconComp size={20} />
+                  </div>
+                  {isFound && (
+                    <span className="bg-emerald-500/30 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Check size={10} /> Clue
+                    </span>
+                  )}
                 </div>
-                {isFound && (
-                  <span className="bg-emerald-500/30 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Check size={10} /> Clue
-                  </span>
-                )}
-              </div>
 
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">{obj.category}</span>
-                <h3 className="text-xs font-bold text-white truncate">{obj.name}</h3>
-              </div>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Master Lock Input Card */}
-      <div className="glass-panel vision-glass p-6 rounded-3xl border border-purple-500/20 max-w-lg mx-auto w-full text-center space-y-4">
-        <div className="flex items-center justify-center gap-2 text-purple-300">
-          <Shield size={18} />
-          <h3 className="text-sm font-bold uppercase tracking-wider">Vault Master Lock</h3>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">{obj.category}</span>
+                  <h3 className="text-xs font-bold text-white truncate">{obj.name}</h3>
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
 
-        <div className="flex justify-center gap-3">
-          {userLockCode.map((digit, idx) => (
-            <input
-              key={idx}
-              type="text"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleDigitInput(idx, e.target.value)}
-              className="w-12 h-14 bg-black/60 border border-purple-500/30 rounded-xl text-center text-xl font-bold text-white focus:outline-none focus:border-purple-400 shadow-inner"
-              placeholder="•"
-            />
-          ))}
+        {/* Master Lock Input Card */}
+        <div className="glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 max-w-xl mx-auto w-full text-center space-y-6">
+          <div className="flex items-center justify-center gap-2 text-purple-300">
+            <Shield size={18} />
+            <h3 className="text-sm font-bold uppercase tracking-wider">Vault Master Lock</h3>
+          </div>
+
+          <div className="flex justify-center gap-4">
+            {userLockCode.map((digit, idx) => (
+              <input
+                key={idx}
+                id={`ir-input-${idx}`}
+                type="text"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleDigitInput(idx, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(idx, e)}
+                className="w-14 h-16 bg-black/60 border border-purple-500/30 rounded-xl text-center text-2xl font-black text-white focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 shadow-inner"
+                placeholder="—"
+              />
+            ))}
+          </div>
+
+          {codeError && (
+            <p className="text-xs text-rose-400 font-medium">{codeError}</p>
+          )}
+
+          <button
+            onClick={handleSubmitEscape}
+            className="liquid-btn w-full py-4 text-xs font-bold uppercase tracking-wider"
+          >
+            Submit Combination & Escape
+          </button>
         </div>
-
-        {codeError && (
-          <p className="text-xs text-rose-400 font-medium">{codeError}</p>
-        )}
-
-        <button
-          onClick={handleSubmitEscape}
-          className="liquid-btn w-full py-3 text-xs font-bold uppercase tracking-wider"
-        >
-          Submit Combination & Escape
-        </button>
       </div>
 
       {/* Inspection Dialog Modal */}
       <AnimatePresence>
         {selectedObj && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-panel vision-glass p-6 rounded-3xl border border-purple-500/30 max-w-md w-full relative space-y-4"
+              className="glass-panel vision-glass p-8 rounded-3xl border border-purple-500/30 max-w-md w-full relative space-y-5"
             >
               <button 
                 onClick={() => setSelectedObj(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 text-gray-400 hover:text-white"
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-white/5 text-gray-400 hover:text-white transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -392,7 +522,7 @@ export default function ImpossibleRoomPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-gray-300 leading-relaxed bg-black/40 p-4 rounded-2xl border border-white/5">
+              <p className="text-xs text-gray-350 leading-relaxed bg-black/40 p-4 rounded-2xl border border-white/5">
                 {selectedObj.description}
               </p>
 
@@ -407,7 +537,7 @@ export default function ImpossibleRoomPage() {
 
               <button 
                 onClick={() => setSelectedObj(null)}
-                className="liquid-btn w-full py-2.5 text-xs font-bold uppercase"
+                className="liquid-btn w-full py-3 text-xs font-bold uppercase"
               >
                 Close Inspection
               </button>
@@ -415,21 +545,6 @@ export default function ImpossibleRoomPage() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Exit Confirmation Modal */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="glass-panel p-6 rounded-3xl border border-white/10 max-w-sm w-full text-center space-y-4">
-            <h3 className="text-lg font-bold text-white">Abandon Escape Attempt?</h3>
-            <p className="text-xs text-gray-400">Leaving will forfeit your current attempt session.</p>
-            <div className="flex justify-center gap-3">
-              <button onClick={() => setShowExitConfirm(false)} className="px-4 py-2 rounded-xl text-xs bg-white/10 text-white font-semibold">Stay in Room</button>
-              <button onClick={() => router.push('/weekly-challenges')} className="px-4 py-2 rounded-xl text-xs bg-rose-600 text-white font-semibold">Abandon & Exit</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
+    </ChallengeGameShell>
   );
 }

@@ -17,7 +17,8 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  limit
 } from "firebase/firestore";
 import { 
   BookOpen, 
@@ -87,7 +88,8 @@ export default function SeniorInsightsPage() {
     try {
       const q = query(
         collection(db, "survival_notes"),
-        where("status", "==", "approved")
+        where("status", "==", "approved"),
+        limit(50)
       );
       const snap = await getDocs(q);
       const list: SurvivalNote[] = [];

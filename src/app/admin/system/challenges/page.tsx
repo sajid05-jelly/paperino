@@ -19,6 +19,7 @@ function getIsoWeek() {
 
 export default function ChallengesControlPage() {
   const [wcEnabled, setWcEnabled] = useState(true);
+  const [wcAdminTestMode, setWcAdminTestMode] = useState(false);
   const [wcMaintenanceMode, setWcMaintenanceMode] = useState(false);
   const [wcLeaderboardEnabled, setWcLeaderboardEnabled] = useState(true);
   const [wcOpenTime, setWcOpenTime] = useState("00:00");
@@ -42,6 +43,7 @@ export default function ChallengesControlPage() {
         if (snap.exists()) {
           const data = snap.data();
           setWcEnabled(data.enabled ?? true);
+          setWcAdminTestMode(data.adminTestMode ?? false);
           setWcMaintenanceMode(data.maintenanceMode ?? false);
           setWcLeaderboardEnabled(data.leaderboardEnabled ?? true);
           setWcOpenTime(data.openTime || "00:00");
@@ -78,6 +80,7 @@ export default function ChallengesControlPage() {
     try {
       await setDoc(doc(db, "settings", "weeklyChallenges"), {
         enabled: wcEnabled,
+        adminTestMode: wcAdminTestMode,
         maintenanceMode: wcMaintenanceMode,
         leaderboardEnabled: wcLeaderboardEnabled,
         openTime: wcOpenTime,
@@ -139,8 +142,21 @@ export default function ChallengesControlPage() {
                 <h3 className="text-sm font-semibold text-white">Feature Enabled</h3>
                 <p className="text-xs text-gray-500">Turns the entire feature on or off globally.</p>
               </div>
-              <button onClick={() => setWcEnabled(!wcEnabled)} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors cursor-pointer ${wcEnabled ? 'bg-violet-600' : 'bg-white/10'}`}>
-                <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${wcEnabled ? 'translate-x-6.5' : 'translate-x-1'}`} />
+              <button onClick={() => setWcEnabled(!wcEnabled)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcEnabled ? 'bg-violet-600' : 'bg-white/10'}`}>
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcEnabled ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-purple-500/20 bg-purple-500/5">
+              <div>
+                <h3 className="text-sm font-semibold text-purple-200 flex items-center gap-2">
+                  Admin Test Mode
+                  {wcAdminTestMode && <span className="text-[10px] bg-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/40">TEST MODE ACTIVE</span>}
+                </h3>
+                <p className="text-xs text-gray-400">Allows admins to preview and test experimental challenge versions without exposing them to public students.</p>
+              </div>
+              <button onClick={() => setWcAdminTestMode(!wcAdminTestMode)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcAdminTestMode ? 'bg-purple-600' : 'bg-white/10'}`}>
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcAdminTestMode ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
               </button>
             </div>
 
@@ -149,8 +165,8 @@ export default function ChallengesControlPage() {
                 <h3 className="text-sm font-semibold text-white">Maintenance Mode</h3>
                 <p className="text-xs text-gray-500">Locks challenges specifically without affecting the rest of the site.</p>
               </div>
-              <button onClick={() => setWcMaintenanceMode(!wcMaintenanceMode)} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors cursor-pointer ${wcMaintenanceMode ? 'bg-rose-600' : 'bg-white/10'}`}>
-                <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${wcMaintenanceMode ? 'translate-x-6.5' : 'translate-x-1'}`} />
+              <button onClick={() => setWcMaintenanceMode(!wcMaintenanceMode)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcMaintenanceMode ? 'bg-rose-600' : 'bg-white/10'}`}>
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcMaintenanceMode ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
               </button>
             </div>
 
@@ -159,8 +175,8 @@ export default function ChallengesControlPage() {
                 <h3 className="text-sm font-semibold text-white">Global Leaderboard</h3>
                 <p className="text-xs text-gray-500">Show or hide the challenge leaderboard to users.</p>
               </div>
-              <button onClick={() => setWcLeaderboardEnabled(!wcLeaderboardEnabled)} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors cursor-pointer ${wcLeaderboardEnabled ? 'bg-violet-600' : 'bg-white/10'}`}>
-                <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${wcLeaderboardEnabled ? 'translate-x-6.5' : 'translate-x-1'}`} />
+              <button onClick={() => setWcLeaderboardEnabled(!wcLeaderboardEnabled)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcLeaderboardEnabled ? 'bg-violet-600' : 'bg-white/10'}`}>
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcLeaderboardEnabled ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
               </button>
             </div>
 

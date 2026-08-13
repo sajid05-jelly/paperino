@@ -7,7 +7,7 @@ import Link from "next/link";
 import { 
   Upload, Activity, Bot, FileText,
   ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, 
-  BrainCircuit, Wrench, Building2, ChevronDown, Sparkles, Gamepad2
+  BrainCircuit, Wrench, Building2, ChevronDown, Sparkles, Gamepad2, FlaskConical
 } from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
 

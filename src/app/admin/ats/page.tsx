@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 
 export default function ATSManagement() {
   const [atsEnabled, setAtsEnabled] = useState(true);
+  const [atsAdminTestMode, setAtsAdminTestMode] = useState(false);
   const [maintenanceTitle, setMaintenanceTitle] = useState("🚧 ATS Analyzer Building in Progress");
   const [maintenanceMessage, setMaintenanceMessage] = useState("We are currently improving our ATS Engine to provide more accurate recruiter insights, keyword matching, and resume recommendations. Please check back later.");
   
@@ -26,6 +27,7 @@ export default function ATSManagement() {
         if (configDoc.exists()) {
           const data = configDoc.data();
           if (data.atsEnabled !== undefined) setAtsEnabled(data.atsEnabled);
+          if (data.atsAdminTestMode !== undefined) setAtsAdminTestMode(data.atsAdminTestMode);
           if (data.maintenanceTitle) setMaintenanceTitle(data.maintenanceTitle);
           if (data.maintenanceMessage) setMaintenanceMessage(data.maintenanceMessage);
           if (data.lastUpdated) {
@@ -55,6 +57,7 @@ export default function ATSManagement() {
     try {
       await setDoc(doc(db, "platform_config", "features"), {
         atsEnabled,
+        atsAdminTestMode,
         maintenanceTitle,
         maintenanceMessage,
         lastUpdated: new Date().toISOString()
@@ -72,8 +75,9 @@ export default function ATSManagement() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="h-64 flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin"></div>
+        <p className="text-emerald-400 font-mono animate-pulse">Loading ATS Configuration...</p>
       </div>
     );
   }
@@ -102,7 +106,7 @@ export default function ATSManagement() {
             </h2>
             
             {/* Status Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-white/5 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-white/5 mb-4">
               <div>
                 <h3 className="text-lg font-medium text-white mb-1">ATS Analyzer Mode</h3>
                 <p className="text-sm text-gray-400">
@@ -117,6 +121,27 @@ export default function ATSManagement() {
                   className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${atsEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}
                 >
                   <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${atsEnabled ? 'translate-x-9' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Admin Test Mode Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-black/40 border border-purple-500/20 bg-purple-500/5 mb-8">
+              <div>
+                <h3 className="text-lg font-medium text-purple-200 mb-1 flex items-center gap-2">
+                  Admin Test Mode
+                  {atsAdminTestMode && <span className="text-[10px] bg-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/40">TEST MODE ACTIVE</span>}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Allows admins to preview experimental ATS analyzer features without exposing them to public students.
+                </p>
+              </div>
+              <div className="flex justify-end w-full sm:w-auto shrink-0">
+                <button 
+                  onClick={() => setAtsAdminTestMode(!atsAdminTestMode)}
+                  className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none ${atsAdminTestMode ? 'bg-purple-600' : 'bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${atsAdminTestMode ? 'translate-x-9' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>

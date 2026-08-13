@@ -5,7 +5,7 @@ import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment, write
 import { db } from "@/lib/firebase";
 import {
   CheckCircle2, Trash2, Ban, Loader2, ShieldAlert, FileText,
-  Eye, Download, X, FileIcon, ImageIcon, RotateCcw, AlertOctagon,
+  Download, RotateCcw, AlertOctagon,
   Calendar, UserCheck, Sparkles
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
@@ -15,7 +15,6 @@ import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/li
 import { notifyUser } from "@/lib/notifications";
 import UserAvatar from "@/components/UserAvatar";
 import { logAdminAction } from "@/lib/admin-logger";
-import DocPreviewViewer from "@/components/DocPreviewViewer";
 
 interface Material {
   id: string;
@@ -33,103 +32,6 @@ interface Material {
   status?: string;
 }
 
-/* ─── Preview Modal ──────────────────────────────────────────────── */
-
-interface PreviewModalProps {
-  mat: Material;
-  onClose: () => void;
-}
-
-function PreviewModal({ mat, onClose }: PreviewModalProps) {
-  const fileName = mat.fileName || mat.title || "File";
-  const isImage = /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(fileName);
-  const { showToast, dismissToast } = useToast();
-  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "success">("idle");
-
-  const handleDownload = async () => {
-    if (downloadState !== "idle") return;
-    setDownloadState("downloading");
-    try {
-      await triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
-        if (!loading) {
-          setDownloadState("success");
-          setTimeout(() => setDownloadState("idle"), 2500);
-        }
-      });
-    } catch {
-      setDownloadState("idle");
-    }
-  };
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 pt-20 sm:pt-24 pb-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-5xl h-[calc(100vh-6rem)] flex flex-col rounded-2xl overflow-hidden border border-white/10 bg-[#0f0f19]/95 backdrop-blur-xl"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-            {isImage ? <ImageIcon size={16} className="text-cyan-400" /> : <FileIcon size={16} className="text-cyan-400" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold truncate text-sm">{fileName}</p>
-            <p className="text-gray-500 text-xs mt-0.5">{mat.category} · Sem {mat.semesterId}</p>
-          </div>
-
-          <button
-            disabled={downloadState !== "idle"}
-            onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed min-w-[120px] justify-center"
-          >
-            {downloadState === "downloading" ? (
-              <>
-                <Loader2 size={13} className="animate-spin text-white" />
-                <span>Downloading...</span>
-              </>
-            ) : downloadState === "success" ? (
-              <>
-                <CheckCircle2 size={13} className="text-emerald-300" />
-                <span>✓ Downloaded</span>
-              </>
-            ) : (
-              <>
-                <Download size={13} />
-                <span>Download</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={onClose}
-            className="ml-1 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors flex items-center justify-center"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Preview area */}
-        <div className="flex-1 w-full h-full overflow-hidden bg-black/30 min-h-[70vh]">
-          <DocPreviewViewer
-            mat={mat}
-            onDownload={() => triggerSecureDownload(mat, showToast, dismissToast)}
-            className="w-full h-full"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Main Page ──────────────────────────────────────────────────── */
 
 export default function AdminReviewsPage() {
@@ -139,7 +41,10 @@ export default function AdminReviewsPage() {
   const [pendingInsights, setPendingInsights] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [previewMat, setPreviewMat] = useState<Material | null>(null);
+
+  // Download state tracking per material
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadedId, setDownloadedId] = useState<string | null>(null);
 
   // Pagination State for Materials
   const [lastVisibleMat, setLastVisibleMat] = useState<any>(null);
@@ -149,7 +54,21 @@ export default function AdminReviewsPage() {
   // Permanent Delete Modal State
   const [deleteConfirmMat, setDeleteConfirmMat] = useState<Material | null>(null);
   
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
+
+  const handleDownloadMaterial = async (mat: Material) => {
+    if (downloadingId === mat.id) return;
+    setDownloadingId(mat.id);
+    const success = await triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
+      if (!loading) setDownloadingId(null);
+    });
+    if (success) {
+      setDownloadedId(mat.id);
+      setTimeout(() => {
+        setDownloadedId(prev => (prev === mat.id ? null : prev));
+      }, 2500);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === "insights") {
@@ -598,8 +517,6 @@ export default function AdminReviewsPage() {
     }
   };
 
-  const closePreview = useCallback(() => setPreviewMat(null), []);
-
   const filteredMaterials = materials.filter(m => {
     if (activeTab === "pending") return !m.status || m.status === "pending";
     if (activeTab === "rejected") return m.status === "rejected";
@@ -608,9 +525,6 @@ export default function AdminReviewsPage() {
 
   return (
     <>
-      {/* Preview Modal */}
-      {previewMat && <PreviewModal mat={previewMat} onClose={closePreview} />}
-
       <div className="w-full space-y-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -818,11 +732,35 @@ export default function AdminReviewsPage() {
 
                       {/* Right: Actions */}
                       <div className="flex flex-col sm:flex-row xl:flex-col gap-2 flex-shrink-0 justify-center">
+                        <button
+                          onClick={() => handleDownloadMaterial(mat)}
+                          disabled={downloadingId === mat.id}
+                          title="Download Material"
+                          className="px-3.5 py-2 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 transition-colors border border-violet-500/25 flex items-center justify-center gap-1.5 text-xs font-semibold shadow-[0_0_12px_rgba(139,92,246,0.15)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {downloadingId === mat.id ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin text-violet-400" />
+                              <span>Downloading...</span>
+                            </>
+                          ) : downloadedId === mat.id ? (
+                            <>
+                              <CheckCircle2 size={14} className="text-emerald-400" />
+                              <span className="text-emerald-300">Downloaded</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download size={14} className="text-violet-400" />
+                              <span>Download</span>
+                            </>
+                          )}
+                        </button>
+
                         {activeTab === "pending" ? (
                           <button
                             onClick={() => handleApprove(mat.id)}
                             disabled={actionLoading === mat.id}
-                            className="flex-1 xl:flex-none px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-[0_0_15px_rgba(16,185,129,0.2)] transition-all flex items-center justify-center gap-2 text-sm"
+                            className="flex-1 xl:flex-none px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-[0_0_15px_rgba(16,185,129,0.2)] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
                           >
                             {actionLoading === mat.id
                               ? <Loader2 size={16} className="animate-spin" />
@@ -833,7 +771,7 @@ export default function AdminReviewsPage() {
                           <button
                             onClick={() => handleRestore(mat.id)}
                             disabled={actionLoading === mat.id}
-                            className="flex-1 xl:flex-none px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-all flex items-center justify-center gap-2 text-sm"
+                            className="flex-1 xl:flex-none px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
                           >
                             {actionLoading === mat.id
                               ? <Loader2 size={16} className="animate-spin" />
@@ -846,7 +784,7 @@ export default function AdminReviewsPage() {
                             <button
                               onClick={() => handleReject(mat.id)}
                               disabled={actionLoading === mat.id}
-                              className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 transition-colors border border-orange-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
+                              className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 transition-colors border border-orange-500/20 flex items-center justify-center gap-1.5 text-xs font-medium cursor-pointer"
                             >
                               <Ban size={14} /> Reject
                             </button>
@@ -854,7 +792,7 @@ export default function AdminReviewsPage() {
                             <button
                               onClick={() => setDeleteConfirmMat(mat)}
                               disabled={actionLoading === mat.id}
-                              className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center gap-1.5 text-xs font-medium"
+                              className="flex-1 xl:flex-none px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center gap-1.5 text-xs font-medium cursor-pointer"
                             >
                               <Trash2 size={14} /> Delete
                             </button>
@@ -865,7 +803,7 @@ export default function AdminReviewsPage() {
                               onClick={() => handleBlockUser(mat.uploaderId!)}
                               disabled={actionLoading !== null}
                               title="Block this contributor from Paperino"
-                              className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center"
+                              className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors border border-rose-500/20 flex items-center justify-center cursor-pointer"
                             >
                               <Ban size={14} />
                             </button>
