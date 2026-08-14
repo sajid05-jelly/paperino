@@ -22,7 +22,6 @@ export default function robots(): MetadataRoute.Robots {
           '/free-class-finder',
           '/career-dna',
           '/github-intelligence',
-          '/leaderboard',
           '/team',
           '/privacy',
         ],

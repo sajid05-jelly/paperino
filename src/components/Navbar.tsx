@@ -135,9 +135,6 @@ export default function Navbar() {
     if (href === '/pulse') {
       return `${baseClass} border-transparent hover:bg-white/5 menu-pulse-mobile-glow ${isActive ? 'active-mobile' : ''}`;
     }
-    if (href === '/leaderboard') {
-      return `${baseClass} border-transparent hover:bg-white/5 menu-leaderboard-mobile-glow ${isActive ? 'active-mobile' : ''}`;
-    }
 
     if (isActive) {
       return `${baseClass} bg-violet-500/20 text-violet-300 border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]`;
@@ -221,7 +218,6 @@ export default function Navbar() {
                 </span>
               )}
             </div>
-            <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
             {user && !isAdmin && (
               <div className="relative inline-flex items-center">
                 <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
@@ -530,7 +526,6 @@ export default function Navbar() {
 
               {/* Discover */}
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
               <div className="relative w-full">
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
                 {pulseUnreadCount > 0 && (
