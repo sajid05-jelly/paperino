@@ -213,13 +213,14 @@ export async function POST(req: NextRequest) {
       console.log(`✔ Document ID: ${docId}`);
       console.log(`✔ Collection path: ${COLLECTION_NAME}`);
 
-      // ── Create Public Broadcast Notification for All Users ─────────────────────
+      // ── Create Public Broadcast Notification for All Other Users ─────────────────
       try {
         await adminDb.collection("notifications").add({
           userId: "ALL",
           ownerUid: "ALL",
-          title: "📢 Free Classroom Available!",
-          message: `Room ${formattedRoom} (${cleanCollege} - ${block.trim()}) is reported free! Click to view details.`,
+          creatorUid: uid,
+          title: "🟢 New Free Classroom",
+          message: `Room ${formattedRoom} is available now • Floor ${floor || 1} • ${block.trim()}`,
           type: "free_class_reported",
           roomId: formattedRoom,
           read: false,

@@ -34,7 +34,7 @@ const TYPE_META: Record<
   subject_approved: { dot: "bg-emerald-400", icon: "📚" },
   subject_rejected: { dot: "bg-rose-400", icon: "📚" },
   premium_unlocked: { dot: "bg-amber-400 animate-pulse", icon: "🚀" },
-  free_class_reported: { dot: "bg-purple-400 animate-pulse", icon: "📢" },
+  free_class_reported: { dot: "bg-emerald-400 animate-pulse", icon: "🟢" },
   free_class_expired: { dot: "bg-amber-400", icon: "⏰" },
 };
 

@@ -311,6 +311,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         // 1. Filter out manually cleared notifications
         if (clearedNotifIds.has(n.id)) return false;
 
+        // 2. Do not show notifications to the user who created them
+        if (user && (n as any).creatorUid && (n as any).creatorUid === user.uid) {
+          return false;
+        }
+
         // 2. 24-hour auto expiry FOR NORMAL USERS ONLY (Admins & Lead Admins are EXEMPT)
         if (!isUserAdminRole) {
           const createdMs = parseNotificationTimestamp(n.createdAt);
