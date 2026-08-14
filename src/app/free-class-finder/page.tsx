@@ -7,7 +7,7 @@ import {
   Sparkles, Clock, ShieldCheck, Zap, Award, CheckCircle2,
   X, Wind, Users, AlertCircle, Loader2, MapPin, GraduationCap, Timer, Info, Lightbulb, Trash2, UserCheck, Radio, Calendar, HelpCircle
 } from "lucide-react";
-import { collection, onSnapshot, doc, query, limit, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, doc, query, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -107,23 +107,7 @@ function FreeClassFinderContent() {
     return () => clearInterval(interval);
   }, [cooldownSeconds]);
 
-  // Run Backend Background Cleanup Trigger (throttled to max once every 5 minutes per user)
-  useEffect(() => {
-    try {
-      const LAST_CLEANUP_KEY = "free_class_finder_last_cleanup_ms";
-      const lastCleanup = localStorage.getItem(LAST_CLEANUP_KEY);
-      const now = Date.now();
-      const FIVE_MINUTES_MS = 5 * 60 * 1000;
-
-      if (!lastCleanup || now - parseInt(lastCleanup, 10) > FIVE_MINUTES_MS) {
-        localStorage.setItem(LAST_CLEANUP_KEY, now.toString());
-        fetch("/api/free-class-finder").catch(() => {});
-      }
-    } catch (e) {
-      // Fallback if localStorage is unavailable
-      fetch("/api/free-class-finder").catch(() => {});
-    }
-  }, []);
+  // Backend cleanup runs on POST (create/delete) operations only — no client-side trigger needed
 
   // Fetch Admin Configuration & Module Feature Toggle
   useEffect(() => {
@@ -233,7 +217,9 @@ function FreeClassFinderContent() {
 
     try {
       const collectionName = "free_class_reports";
-      const reportsQuery = query(collection(db, collectionName), orderBy("createdAtMs", "desc"), limit(50));
+      // Simple query without orderBy to avoid composite index requirement
+      // Sorting is done in processReportsData()
+      const reportsQuery = query(collection(db, collectionName), limit(100));
       unsub = onSnapshot(
         reportsQuery,
         (snap) => {

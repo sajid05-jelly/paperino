@@ -33,7 +33,8 @@ async function runFreeClassCleanup() {
 
 export async function GET(req: NextRequest) {
   try {
-    await runFreeClassCleanup();
+    // NOTE: Do NOT run runFreeClassCleanup() here — it deletes documents
+    // before they can be returned to the client. Cleanup runs separately on POST.
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -53,21 +54,39 @@ export async function GET(req: NextRequest) {
 
     await adminAuth.verifyIdToken(token);
 
-    const snapshot = await adminDb.collection(COLLECTION_NAME).orderBy("createdAtMs", "desc").limit(50).get();
-    const list = snapshot.docs.map(docSnap => {
+    // Simple query without orderBy to avoid composite index requirements
+    const snapshot = await adminDb.collection(COLLECTION_NAME).limit(100).get();
+    const now = Date.now();
+    const list: any[] = [];
+
+    for (const docSnap of snapshot.docs) {
       const data = docSnap.data();
       const formattedData = { ...data };
+
+      // Convert Firestore Timestamps to milliseconds for JSON serialization
       if (data.createdAt && typeof data.createdAt.toMillis === "function") {
         formattedData.createdAt = data.createdAt.toMillis();
       }
       if (data.expiresAt && typeof data.expiresAt.toMillis === "function") {
         formattedData.expiresAt = data.expiresAt.toMillis();
       }
-      return {
+
+      // Calculate expiry time from available fields
+      const expiresAtMs = formattedData.expiresAtMs
+        || formattedData.expiresAt
+        || ((formattedData.createdAtMs || formattedData.createdAt || now) + (formattedData.expectedFreeDurationMinutes || 30) * 60 * 1000);
+
+      // Skip expired reports — they'll be cleaned up separately
+      if (expiresAtMs <= now) continue;
+
+      list.push({
         id: docSnap.id,
         ...formattedData
-      };
-    });
+      });
+    }
+
+    // Sort by createdAtMs descending in JS (avoids index requirement)
+    list.sort((a, b) => (b.createdAtMs || b.createdAt || 0) - (a.createdAtMs || a.createdAt || 0));
 
     return new Response(JSON.stringify(list), {
       status: 200,
@@ -85,6 +104,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Run cleanup on write operations (safe because we're not reading data to return)
+    runFreeClassCleanup().catch(() => {});
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized", message: "Please login to submit a classroom report." }), {
@@ -205,20 +227,23 @@ export async function POST(req: NextRequest) {
       console.log(`✔ Document ID: ${docId}`);
       console.log(`✔ Collection path: ${COLLECTION_NAME}`);
 
-      // ── Create Public Broadcast Notification for All Other Users ─────────────────
+      // ── Create Public Broadcast Notification for All Users ─────────────────
+      // Uses deterministic doc ID based on roomId to prevent duplicate notifications
+      // from retries, StrictMode, or double-clicks.
       try {
-        await adminDb.collection("notifications").add({
+        const notifDocId = `free_class_${formattedRoom}_${now}`;
+        await adminDb.collection("notifications").doc(notifDocId).set({
           userId: "ALL",
           ownerUid: "ALL",
-          creatorUid: uid,
           title: "🟢 New Free Classroom",
-          message: `Room ${formattedRoom} is available now • Floor ${floor || 1} • ${block.trim()}`,
+          message: `Room ${formattedRoom} is available now • Floor ${floor || 1} • ${block.trim()} • ${cleanCollege}`,
           type: "free_class_reported",
           roomId: formattedRoom,
           read: false,
           isRead: false,
           createdAt: now
         });
+        console.log(`✔ Notification created: ${notifDocId}`);
       } catch (notifErr) {
         console.warn("[API Notifications Warning]:", notifErr);
       }

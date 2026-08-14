@@ -213,7 +213,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return () => { isMounted = false; };
   }, [user]);
 
-  // 2. Bounded Cached Fetch for User & Public Notifications (limit(15), 5-min TTL, sessionStorage backed)
+  // 2. Realtime Notification Listener (onSnapshot for immediate updates, getDocs fallback)
   useEffect(() => {
     if (!user) {
       setRawNotifications([]);
@@ -221,65 +221,64 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    let isMounted = true;
-    const cacheKey = `paperino_notifs_${user.uid}`;
-    const cacheTimeKey = `paperino_notifs_time_${user.uid}`;
+    let unsubscribe: (() => void) | null = null;
 
-    // Check sessionStorage cache
-    if (typeof window !== "undefined") {
-      const cached = sessionStorage.getItem(cacheKey);
-      const cachedTime = sessionStorage.getItem(cacheTimeKey);
-      const now = Date.now();
-
-      if (cached && cachedTime && (now - parseInt(cachedTime, 10)) < 5 * 60 * 1000) {
-        try {
-          const parsed = JSON.parse(cached);
-          logFirestoreCacheHit("notifications", `Serving ${parsed.length} notifications from 5m session cache`);
-          setRawNotifications(parsed);
-          setLoadingNotifications(false);
-          return;
-        } catch (e) {
-          // Cache parse error, proceed to fetch
-        }
-      }
-    }
-
-    const fetchNotifications = async () => {
-      try {
-        logFirestoreRead("notifications", `getDocs(limit(15)) for uid: ${user.uid}`);
-        const q = query(
-          collection(db, "notifications"),
-          where("userId", "in", [user.uid, "ALL", ...(isUserAdminRole ? ["ADMIN"] : [])]),
-          limit(15)
-        );
-
-        const snap = await getDocs(q);
-        const notifs: PaperinoNotification[] = [];
-        snap.forEach((d) => {
-          const data = d.data();
-          notifs.push({ id: d.id, ...data } as PaperinoNotification);
-        });
-        notifs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-        if (isMounted) {
-          setRawNotifications(notifs);
-          setLoadingNotifications(false);
-
-          if (typeof window !== "undefined") {
-            try {
-              sessionStorage.setItem(cacheKey, JSON.stringify(notifs));
-              sessionStorage.setItem(cacheTimeKey, Date.now().toString());
-            } catch (e) {}
-          }
-        }
-      } catch (err: any) {
-        console.warn("[NotificationContext] notifications fetch notice:", err?.message || err);
-        if (isMounted) setLoadingNotifications(false);
-      }
+    const processNotifSnapshot = (notifs: PaperinoNotification[]) => {
+      notifs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setRawNotifications(notifs);
+      setLoadingNotifications(false);
     };
 
-    fetchNotifications();
-    return () => { isMounted = false; };
+    try {
+      logFirestoreRead("notifications", `onSnapshot(limit(30)) for uid: ${user.uid}`);
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "in", [user.uid, "ALL", ...(isUserAdminRole ? ["ADMIN"] : [])]),
+        limit(30)
+      );
+
+      unsubscribe = onSnapshot(
+        q,
+        (snap) => {
+          const notifs: PaperinoNotification[] = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            notifs.push({ id: d.id, ...data } as PaperinoNotification);
+          });
+          processNotifSnapshot(notifs);
+        },
+        (err) => {
+          // Fallback to one-time fetch if onSnapshot fails (e.g. permission issues)
+          console.warn("[NotificationContext] onSnapshot fallback:", err?.message);
+          const fallbackFetch = async () => {
+            try {
+              const fallbackQ = query(
+                collection(db, "notifications"),
+                where("userId", "in", [user.uid, "ALL", ...(isUserAdminRole ? ["ADMIN"] : [])]),
+                limit(30)
+              );
+              const fallbackSnap = await getDocs(fallbackQ);
+              const notifs: PaperinoNotification[] = [];
+              fallbackSnap.forEach((d) => {
+                notifs.push({ id: d.id, ...d.data() } as PaperinoNotification);
+              });
+              processNotifSnapshot(notifs);
+            } catch (fallbackErr: any) {
+              console.warn("[NotificationContext] getDocs fallback notice:", fallbackErr?.message);
+              setLoadingNotifications(false);
+            }
+          };
+          fallbackFetch();
+        }
+      );
+    } catch (err: any) {
+      console.warn("[NotificationContext] notification listener setup error:", err?.message);
+      setLoadingNotifications(false);
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user, isUserAdminRole]);
 
   // Background cleanup for expired normal user notifications in Firestore (Scoped strictly to user's own docs)
@@ -310,11 +309,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       .filter((n) => {
         // 1. Filter out manually cleared notifications
         if (clearedNotifIds.has(n.id)) return false;
-
-        // 2. Do not show notifications to the user who created them
-        if (user && (n as any).creatorUid && (n as any).creatorUid === user.uid) {
-          return false;
-        }
 
         // 2. 24-hour auto expiry FOR NORMAL USERS ONLY (Admins & Lead Admins are EXEMPT)
         if (!isUserAdminRole) {
