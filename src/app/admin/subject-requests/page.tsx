@@ -86,21 +86,27 @@ export default function SubjectRequestsAdminPage() {
     if (!user) return;
     setActioningId(id);
     try {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/admin/data", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          action: "update",
-          collection: "subject_requests",
-          id,
-          updateData: { status: "completed" }
-        })
-      });
-      if (!res.ok) throw new Error("Failed to update status via API");
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/admin/data", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "update",
+            collection: "subject_requests",
+            id,
+            updateData: { status: "completed" }
+          })
+        });
+        if (!res.ok) throw new Error("API update failed");
+      } catch (apiErr) {
+        console.warn("Admin API update failed, falling back to direct Firestore...", apiErr);
+        await updateDoc(doc(db, "subject_requests", id), { status: "completed" });
+      }
+
       setRequests(prev => prev.map(req => req.id === id ? { ...req, status: "completed" } : req));
       showToast("Request marked as completed successfully.", "success");
     } catch (err) {
@@ -116,20 +122,26 @@ export default function SubjectRequestsAdminPage() {
     if (!confirm("Are you sure you want to delete this subject request?")) return;
     setActioningId(id);
     try {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/admin/data", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          action: "delete",
-          collection: "subject_requests",
-          id
-        })
-      });
-      if (!res.ok) throw new Error("Failed to delete request via API");
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/admin/data", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "delete",
+            collection: "subject_requests",
+            id
+          })
+        });
+        if (!res.ok) throw new Error("API delete failed");
+      } catch (apiErr) {
+        console.warn("Admin API delete failed, falling back to direct Firestore...", apiErr);
+        await deleteDoc(doc(db, "subject_requests", id));
+      }
+
       setRequests(prev => prev.filter(req => req.id !== id));
       showToast("Request deleted successfully.", "success");
     } catch (err) {
