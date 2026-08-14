@@ -180,9 +180,13 @@ export async function POST(request: Request) {
       }
       
       const { attempts = [], finalGuess = [] } = gameData;
-      const isCorrect = code.length === finalGuess.length && code.every((d, idx) => d === finalGuess[idx]);
+      const numCode = code.map(Number);
+      const numFinalGuess = (Array.isArray(finalGuess) ? finalGuess : []).map(Number);
+      const isCorrect = numCode.length === 4 && 
+                        numFinalGuess.length === 4 && 
+                        numCode.every((d, idx) => d === numFinalGuess[idx]);
       if (isCorrect) {
-        const guessCount = attempts.length || 1;
+        const guessCount = (attempts && attempts.length) || 1;
         const durationSeconds = durationMs / 1000;
         const baseScore = 100;
         const timePenalty = Math.min(60, Math.floor(durationSeconds / 2));

@@ -76,8 +76,15 @@ export default function GameResult({
     return () => cancelAnimationFrame(animationFrame);
   }, [score]);
 
-  const getRankBadge = (rankNum: number | null) => {
-    if (!rankNum) return <span className="text-2xl font-bold text-gray-500">—</span>;
+  const getRankBadge = (rankNum: number | null | undefined) => {
+    if (rankNum === undefined || rankNum === null) {
+      return (
+        <span className="text-xs font-semibold text-purple-300 animate-pulse flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping inline-block" />
+          Calculating rank...
+        </span>
+      );
+    }
     
     let colorClass = "bg-white/10 text-gray-300 border-white/20";
     if (rankNum === 1) colorClass = "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]";
