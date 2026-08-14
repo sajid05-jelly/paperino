@@ -157,7 +157,7 @@ export default function CodeBreakerPage() {
       const seedNum = getSeed(`code-breaker-${data.challengeDate}`);
       const rand = mulberry32(seedNum);
       const code: number[] = [];
-      const digits = [0,1,2,3,4,5,6,7];
+      const digits = [0, 1, 2, 3, 4, 5, 6, 7];
       for (let i = 0; i < 4; i++) {
         const idx = Math.floor(rand() * digits.length);
         code.push(digits[idx]);
@@ -190,6 +190,14 @@ export default function CodeBreakerPage() {
 
   const isSubmittingGame = useRef(false);
 
+  const getFeedback = (guess: number[], targetCode: number[] = secretCode) => {
+    return guess.map((g, i) => {
+      if (g === targetCode[i]) return 'correct'; // Green (correct digit & position)
+      if (targetCode.includes(g)) return 'misplaced'; // Yellow (correct digit, wrong position)
+      return 'absent'; // Gray (digit not in code)
+    });
+  };
+
   const handleGuessSubmit = () => {
     if (gameState !== 'playing' || isSubmittingGame.current) return;
     if (currentGuess.some(d => d === '')) {
@@ -206,12 +214,21 @@ export default function CodeBreakerPage() {
       return;
     }
 
+    // Validate digits range [0-7]
+    if (numGuess.some(d => isNaN(d) || d < 0 || d > 7)) {
+      setValidationMsg('All digits must be between 0 and 7.');
+      return;
+    }
+
     const newAttempts = [...attempts, numGuess];
     setAttempts(newAttempts);
     setCurrentGuess(['', '', '', '']);
     setValidationMsg('');
     
-    const isWin = numGuess.length === secretCode.length && numGuess.every((d, idx) => d === secretCode[idx]);
+    // Check if the current guess matches secret code exactly
+    const isWin = secretCode.length === 4 && 
+                  numGuess.length === 4 && 
+                  numGuess.every((d, idx) => d === secretCode[idx]);
     
     if (isWin) {
       submitGame(newAttempts);
@@ -274,14 +291,6 @@ export default function CodeBreakerPage() {
       });
       setGameState('result');
     }
-  };
-
-  const getFeedback = (guess: number[]) => {
-    return guess.map((g, i) => {
-      if (g === secretCode[i]) return 'correct'; // Green
-      if (secretCode.includes(g)) return 'misplaced'; // Yellow
-      return 'absent'; // Gray
-    });
   };
 
 
