@@ -23,7 +23,7 @@ function FreeClassFinderContent() {
 
   const [reports, setReports] = useState<FreeClassReport[]>([]);
   const [config, setConfig] = useState<FreeClassConfig>(DEFAULT_FREE_CLASS_CONFIG);
-  const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
+  const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
 
   // Search and Filter states
@@ -132,19 +132,19 @@ function FreeClassFinderContent() {
       (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          setIsEnabled(data.enabled ?? false);
+          setIsEnabled(data.enabled ?? true);
           setConfig({
             expiryMinutes: data.expiryMinutes || 30,
             minConfidenceThreshold: data.minConfidenceThreshold || 60,
             reportRateLimitMinutes: data.reportRateLimitMinutes || 5
           });
         } else {
-          setIsEnabled(false);
+          setIsEnabled(true);
         }
       },
       (err) => {
         console.warn("Free class finder config listener notice:", err.message);
-        setIsEnabled(false);
+        setIsEnabled(true);
       }
     );
     return () => unsub();
