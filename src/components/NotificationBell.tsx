@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
-import { usePulseNotifications } from "@/context/NotificationContext";
 import type { PaperinoNotification } from "@/lib/notifications";
 import { Bell, CheckCheck, Trash2, X, Sparkles, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -43,7 +42,6 @@ const TYPE_META: Record<
 
 export function NotificationBell() {
   const router = useRouter();
-  const { unreadUpdates, markAllAsRead: markAllPulseRead } = usePulseNotifications();
   const {
     notifications: standardNotifications,
     unreadCount: standardUnread,
@@ -57,11 +55,10 @@ export function NotificationBell() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
 
-  const totalUnread = unreadUpdates.length + standardUnread;
-  const totalCount = unreadUpdates.length + standardNotifications.length;
+  const totalUnread = standardUnread;
+  const totalCount = standardNotifications.length;
 
   const handleMarkAllRead = async () => {
-    await markAllPulseRead();
     await markAllStandardRead();
   };
 
@@ -178,37 +175,6 @@ export function NotificationBell() {
               </div>
             ) : (
               <div>
-                {/* Pulse Updates Section */}
-                {unreadUpdates.map((p) => {
-                  return (
-                    <button
-                      key={`pulse-${p.id}`}
-                      onClick={() => {
-                        markAllPulseRead();
-                        setOpen(false);
-                        router.push("/pulse");
-                      }}
-                      className="w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors group hover:bg-white/[0.04] bg-cyan-500/[0.04]"
-                    >
-                      <div className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-base bg-white/5 border border-white/5 mt-0.5 text-cyan-400">
-                        📻
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">New Update</span>
-                        </div>
-                        <p className="text-sm leading-snug mb-0.5 text-white font-semibold">
-                          {p.title}
-                        </p>
-                        <p className="text-[10px] text-gray-600 mt-1.5">
-                          {p.createdAt ? timeAgo(p.createdAt.toDate().getTime()) : "just now"}
-                        </p>
-                      </div>
-                      <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 bg-cyan-400 shadow-[0_0_6px_currentColor]" />
-                    </button>
-                  );
-                })}
-
                 {/* Standard Notifications Section */}
                 {standardNotifications.map((n) => {
                   const meta = TYPE_META[n.type] ?? {
