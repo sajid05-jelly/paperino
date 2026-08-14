@@ -134,12 +134,12 @@ function FreeClassFinderContent() {
     return () => unsub();
   }, []);
 
-  // Fetch Reports Real-time using onSnapshot with standard API polling fallback if permissions error occurs
+  // Fetch Reports using client-side Firestore only (NO server API polling to avoid quota exhaustion)
+  // The client SDK benefits from IndexedDB persistence/cache enabled in firebase.ts
   useEffect(() => {
     if (isEnabled === false || !user) return;
 
     let unsub: (() => void) | null = null;
-    let fallbackInterval: NodeJS.Timeout | null = null;
 
     const processReportsData = (rawList: any[]) => {
       const list: FreeClassReport[] = [];
@@ -153,7 +153,7 @@ function FreeClassFinderContent() {
         const falseVotes = data.falseVotes || 0;
 
         if (expiresAtMs <= currentTime) return; // Expired
-        if (falseVotes >= 5) return; // Deleted/Fake threshold = 5
+        if (falseVotes >= 5) return; // Fake threshold
         if (data.status === "flagged") return;
 
         const rep: FreeClassReport = {
@@ -192,33 +192,8 @@ function FreeClassFinderContent() {
       setLoading(false);
     };
 
-    const startPollingFallback = () => {
-      if (fallbackInterval) return;
-      console.warn("[Free Class Finder] Falling back to server-side polling due to client Firestore rules constraints.");
-      
-      const fetchReports = async () => {
-        try {
-          const token = await user.getIdToken();
-          const res = await fetch("/api/free-class-finder", {
-            headers: { "Authorization": `Bearer ${token}` }
-          });
-          if (!res.ok) throw new Error("Failed to fetch reports from server");
-          const rawList = await res.json();
-          processReportsData(rawList);
-        } catch (err) {
-          console.warn("Failed to fetch free classrooms list in fallback:", err);
-          setLoading(false);
-        }
-      };
-
-      fetchReports();
-      fallbackInterval = setInterval(fetchReports, 5000);
-    };
-
     try {
       const collectionName = "free_class_reports";
-      // Simple query without orderBy to avoid composite index requirement
-      // Sorting is done in processReportsData()
       const reportsQuery = query(collection(db, collectionName), limit(100));
       unsub = onSnapshot(
         reportsQuery,
@@ -230,18 +205,29 @@ function FreeClassFinderContent() {
           processReportsData(rawList);
         },
         (err) => {
-          // If onSnapshot fails (e.g. Missing or insufficient permissions), start polling
-          console.warn(`[Free Class Finder] Realtime snapshot notice (Expected if rules aren't deployed): ${err.message}`);
-          startPollingFallback();
+          // onSnapshot failed — try a single getDocs as fallback (NO infinite polling)
+          console.warn(`[Free Class Finder] onSnapshot notice: ${err.message}. Trying single getDocs fallback.`);
+          import("firebase/firestore").then(({ getDocs }) => {
+            getDocs(reportsQuery).then((snap) => {
+              const rawList = snap.docs.map(docSnap => ({
+                id: docSnap.id,
+                ...docSnap.data()
+              }));
+              processReportsData(rawList);
+            }).catch((fallbackErr) => {
+              console.warn("[Free Class Finder] getDocs fallback also failed:", fallbackErr.message);
+              setLoading(false);
+            });
+          });
         }
       );
     } catch (e) {
-      startPollingFallback();
+      console.warn("[Free Class Finder] Listener setup failed:", e);
+      setLoading(false);
     }
 
     return () => {
       if (unsub) unsub();
-      if (fallbackInterval) clearInterval(fallbackInterval);
     };
   }, [config.expiryMinutes, isEnabled, user]);
 

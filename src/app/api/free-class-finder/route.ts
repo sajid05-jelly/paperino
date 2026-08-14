@@ -55,7 +55,9 @@ export async function GET(req: NextRequest) {
     await adminAuth.verifyIdToken(token);
 
     // Simple query without orderBy to avoid composite index requirements
+    console.log(`[FCF API GET] Querying collection: ${COLLECTION_NAME}`);
     const snapshot = await adminDb.collection(COLLECTION_NAME).limit(100).get();
+    console.log(`[FCF API GET] Firestore returned ${snapshot.docs.length} total documents`);
     const now = Date.now();
     const list: any[] = [];
 
@@ -77,13 +79,18 @@ export async function GET(req: NextRequest) {
         || ((formattedData.createdAtMs || formattedData.createdAt || now) + (formattedData.expectedFreeDurationMinutes || 30) * 60 * 1000);
 
       // Skip expired reports — they'll be cleaned up separately
-      if (expiresAtMs <= now) continue;
+      if (expiresAtMs <= now) {
+        console.log(`[FCF API GET] Skipping expired doc: ${docSnap.id}, expiresAtMs=${expiresAtMs}, now=${now}`);
+        continue;
+      }
 
       list.push({
         id: docSnap.id,
         ...formattedData
       });
     }
+
+    console.log(`[FCF API GET] Returning ${list.length} active reports`);
 
     // Sort by createdAtMs descending in JS (avoids index requirement)
     list.sort((a, b) => (b.createdAtMs || b.createdAt || 0) - (a.createdAtMs || a.createdAt || 0));
