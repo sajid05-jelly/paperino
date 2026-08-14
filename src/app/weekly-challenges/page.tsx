@@ -17,7 +17,10 @@ import {
   ChevronRight,
   Play,
   CheckCircle2,
-  LockKeyhole
+  LockKeyhole,
+  Rocket,
+  Sparkles,
+  Gamepad2
 } from "lucide-react";
 import { 
   GAME_IDS, 
@@ -135,10 +138,35 @@ export default function WeeklyChallengesPage() {
 
   if (isMaintenanceActive) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-12 text-center">
-        <AlertCircle className="mx-auto mb-4 h-16 w-16 text-yellow-500" />
-        <h1 className="mb-2 text-3xl font-bold text-white">Maintenance Mode</h1>
-        <p className="text-gray-400">Weekly challenges are currently undergoing maintenance. Please check back later.</p>
+      <div className="relative min-h-[70vh] flex flex-col items-center justify-center px-4 py-16 text-center">
+        {/* Ambient Glow backing */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+        <div className="relative max-w-lg mx-auto p-8 sm:p-10 rounded-3xl border border-purple-500/20 bg-gradient-to-b from-purple-950/30 via-slate-900/60 to-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(139,92,246,0.15)]">
+          {/* Animated Icon Badge */}
+          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-400/30 shadow-[0_0_25px_rgba(168,85,247,0.3)]">
+            <Rocket className="h-10 w-10 text-purple-300 animate-bounce" />
+            <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-cyan-400 animate-pulse" />
+          </div>
+
+          <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            🚀 Challenges are getting ready!
+          </h1>
+
+          <p className="text-lg font-medium text-purple-200/90 mb-2">
+            We’re currently building and upgrading the weekly challenges.
+          </p>
+
+          <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+            New puzzles, improved gameplay & fresh challenges are on the way.
+          </p>
+
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-300 tracking-wide uppercase shadow-[0_0_15px_rgba(168,85,247,0.1)]">
+            <Gamepad2 className="h-4 w-4 text-cyan-400" />
+            <span>Please check back soon!</span>
+          </div>
+        </div>
       </div>
     );
   }
