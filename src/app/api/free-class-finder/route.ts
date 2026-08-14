@@ -93,9 +93,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Run automatic cleanup on incoming API actions
-    runFreeClassCleanup().catch(() => {});
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized", message: "Please login to submit a classroom report." }), {
@@ -156,38 +153,11 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Enforce limit of max 2 active reports per user
-      const activeUserSnap = await adminDb.collection(COLLECTION_NAME)
-        .where("reporterUid", "==", uid)
-        .where("status", "==", "active")
-        .get();
-
-      // Check current expiry times too since some might not have been swept yet
-      let activeCount = 0;
-      activeUserSnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        const createdAt = data.createdAtMs || (data.createdAt?.toMillis ? data.createdAt.toMillis() : now);
-        const durationMin = data.expectedFreeDurationMinutes || 30;
-        const expiresAtMs = data.expiresAtMs || (data.expiresAt?.toMillis ? data.expiresAt.toMillis() : (createdAt + durationMin * 60 * 1000));
-        if (expiresAtMs > now) {
-          activeCount++;
-        }
-      });
-
-      if (activeCount >= 2) {
-        return new Response(JSON.stringify({ error: "Forbidden", message: "You already have 2 active reports. Delete one before creating another." }), {
-          status: 403,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-
       const formattedRoom = roomNumber.toUpperCase().includes(block.toUpperCase())
         ? roomNumber.trim().toUpperCase()
         : `${block.trim().toUpperCase()}-${roomNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}`;
       const docId = formattedRoom;
       const reportRef = adminDb.collection(COLLECTION_NAME).doc(docId);
-      const existingSnap = await reportRef.get();
-
       // Format server IST timestamp fields
       const dateObj = new Date(now);
       const istOptions: Intl.DateTimeFormatOptions = { timeZone: "Asia/Kolkata" };
@@ -197,66 +167,47 @@ export async function POST(req: NextRequest) {
         day: "numeric",
         month: "long",
         year: "numeric"
-      }); // e.g. "31 July 2026"
+      });
 
       const createdDay = dateObj.toLocaleDateString("en-US", {
         ...istOptions,
         weekday: "long"
-      }); // e.g. "Friday"
+      });
 
       const createdTime = dateObj.toLocaleTimeString("en-US", {
         ...istOptions,
         hour: "numeric",
         minute: "2-digit",
         hour12: true
-      }) + " IST"; // e.g. "10:58 AM IST"
+      }) + " IST";
 
       const timezone = "Asia/Kolkata (IST)";
 
-      if (existingSnap.exists) {
-        const existingData = existingSnap.data() || {};
-        await reportRef.update({
-          collegeName: cleanCollege,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          createdAtMs: now,
-          createdDate,
-          createdDay,
-          createdTime,
-          timezone,
-          expiresAt: expiresAtTimestamp,
-          expiresAtMs: expiresAtMs,
-          expectedFreeDurationMinutes: durationMinutes,
-          reporterCount: (existingData.reporterCount || 1) + 1,
-          capacity: capacity ? parseInt(capacity, 10) : (existingData.capacity || null),
-          hasAC: hasAC !== undefined ? !!hasAC : !!existingData.hasAC,
-          status: "active"
-        });
-      } else {
-        await reportRef.set({
-          collegeName: cleanCollege,
-          block: block.trim(),
-          floor: parseInt(floor, 10) || 1,
-          roomNumber: formattedRoom,
-          capacity: capacity ? parseInt(capacity, 10) : null,
-          hasAC: !!hasAC,
-          expectedFreeDurationMinutes: durationMinutes,
-          reporterUid: uid,
-          reporterName: userName,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          createdAtMs: now,
-          createdDate,
-          createdDay,
-          createdTime,
-          timezone,
-          expiresAt: expiresAtTimestamp,
-          expiresAtMs: expiresAtMs,
-          trueVotes: 0,
-          falseVotes: 0,
-          voters: {},
-          reporterCount: 1,
-          status: "active"
-        });
-      }
+      // Write report with merge: true (Zero pre-read required!)
+      await reportRef.set({
+        collegeName: cleanCollege,
+        block: block.trim(),
+        floor: parseInt(floor, 10) || 1,
+        roomNumber: formattedRoom,
+        capacity: capacity ? parseInt(capacity, 10) : null,
+        hasAC: !!hasAC,
+        expectedFreeDurationMinutes: durationMinutes,
+        reporterUid: uid,
+        reporterName: userName,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAtMs: now,
+        createdDate,
+        createdDay,
+        createdTime,
+        timezone,
+        expiresAt: expiresAtTimestamp,
+        expiresAtMs: expiresAtMs,
+        trueVotes: 0,
+        falseVotes: 0,
+        voters: {},
+        reporterCount: admin.firestore.FieldValue.increment(1),
+        status: "active"
+      }, { merge: true });
 
       console.log(`✔ Firestore document created`);
       console.log(`✔ Document ID: ${docId}`);
