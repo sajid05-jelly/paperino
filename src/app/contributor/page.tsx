@@ -12,6 +12,7 @@ import {
 import { useSubjects } from "@/context/SubjectsContext";
 import { getDownloadHref, triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
+import { useBadges } from "@/context/BadgeContext";
 
 interface Material {
   id: string;
@@ -36,6 +37,7 @@ export default function ContributorDashboardPage() {
     premiumEndDate 
   } = useAuth();
   const { showToast, dismissToast } = useToast();
+  const { userStatusUpdates, dashboardUnreadCount, markDashboardSeen } = useBadges();
   
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,15 @@ export default function ContributorDashboardPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   // Dashboard Tab Selector
-  const [dashboardTab, setDashboardTab] = useState<"overview" | "uploads">("overview");
+  const [dashboardTab, setDashboardTab] = useState<"overview" | "uploads" | "updates">("overview");
+
+  // When switching to the updates tab, mark status notifications as read
+  const handleSelectTab = (tab: "overview" | "uploads" | "updates") => {
+    setDashboardTab(tab);
+    if (tab === "updates") {
+      markDashboardSeen();
+    }
+  };
 
   const { subjects: dynamicSubjects } = useSubjects();
   const [downloadsCount, setDownloadsCount] = useState(0);
@@ -246,18 +256,30 @@ export default function ContributorDashboardPage() {
       {/* Tabs Menu */}
       <div className="flex border-b border-white/10 gap-6 overflow-x-auto pb-px">
         <button 
-          onClick={() => setDashboardTab("overview")} 
-          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap ${dashboardTab === "overview" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
+          onClick={() => handleSelectTab("overview")} 
+          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${dashboardTab === "overview" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
         >
           <Info size={16} /> Overview & Rewards
           {dashboardTab === "overview" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
         </button>
         <button 
-          onClick={() => setDashboardTab("uploads")} 
-          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap ${dashboardTab === "uploads" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
+          onClick={() => handleSelectTab("uploads")} 
+          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${dashboardTab === "uploads" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
         >
           <FileText size={16} /> My Uploads ({materials.length})
           {dashboardTab === "uploads" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
+        </button>
+        <button 
+          onClick={() => handleSelectTab("updates")} 
+          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${dashboardTab === "updates" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
+        >
+          <Bell size={16} /> Submission Updates
+          {dashboardUnreadCount > 0 && (
+            <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-1 text-[9px] font-black text-white shadow-[0_0_10px_rgba(217,70,239,0.7)] ml-1">
+              {dashboardUnreadCount >= 10 ? "10+" : dashboardUnreadCount}
+            </span>
+          )}
+          {dashboardTab === "updates" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
         </button>
       </div>
 
@@ -393,6 +415,72 @@ export default function ContributorDashboardPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )
+          )}
+
+          {/* SUBMISSION UPDATES & STATUS NOTIFICATIONS TAB */}
+          {dashboardTab === "updates" && (
+            userStatusUpdates.length === 0 ? (
+              <div className="text-center py-16 text-gray-500 space-y-3">
+                <Bell size={40} className="mx-auto opacity-30 text-fuchsia-400" />
+                <p className="text-sm">No submission status updates yet.</p>
+                <p className="text-xs text-gray-600">When you submit materials, subjects, courses, or senior insights and admins review them, the status will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                    Review Status History ({userStatusUpdates.length})
+                  </h4>
+                  <span className="text-[10px] text-gray-500 font-medium">Auto-updated from live review queue</span>
+                </div>
+
+                <div className="space-y-3">
+                  {userStatusUpdates.map((item) => {
+                    const isApproved = item.status === "approved";
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={`p-4 rounded-2xl border transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 ${
+                          isApproved 
+                            ? "border-emerald-500/20 bg-emerald-500/[0.03] hover:bg-emerald-500/[0.06]" 
+                            : "border-rose-500/20 bg-rose-500/[0.03] hover:bg-rose-500/[0.06]"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                            isApproved ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                          }`}>
+                            {isApproved ? <CheckCircle2 size={20} /> : <Trash2 size={20} />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                                isApproved 
+                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]" 
+                                  : "bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+                              }`}>
+                                {isApproved ? "Accepted ✅" : "Rejected ❌"}
+                              </span>
+                              <span className="text-[10px] font-mono uppercase text-gray-500 bg-white/5 px-2 py-0.5 rounded">
+                                {item.type.toUpperCase()}
+                              </span>
+                            </div>
+                            <h4 className="text-white font-semibold text-base leading-tight">{item.title}</h4>
+                            {item.subtitle && <p className="text-xs text-gray-400 mt-0.5">{item.subtitle}</p>}
+                          </div>
+                        </div>
+
+                        <div className="text-right self-end md:self-center shrink-0">
+                          <span className="text-[11px] font-medium text-gray-500">
+                            {new Date(item.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )
           )}

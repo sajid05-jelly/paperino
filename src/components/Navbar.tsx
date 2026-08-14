@@ -26,7 +26,13 @@ const THEMES = [
 export default function Navbar() {
   const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion } = useAuth();
   const { pulseUnreadCount } = usePulseNotifications();
-  const { freeClassUnreadCount, labsTotalUnreadCount, markFreeClassSeen, adminTotalUnreadCount } = useBadges();
+  const { 
+    freeClassUnreadCount, 
+    labsTotalUnreadCount, 
+    markFreeClassSeen, 
+    adminTotalUnreadCount,
+    dashboardUnreadCount
+  } = useBadges();
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
@@ -217,7 +223,14 @@ export default function Navbar() {
             </div>
             <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
             {user && !isAdmin && (
-              <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
+              <div className="relative inline-flex items-center">
+                <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
+                {dashboardUnreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 z-20 flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-1 text-[9px] font-black text-white shadow-[0_0_10px_rgba(217,70,239,0.7)] ring-2 ring-[#07050e] animate-in zoom-in duration-300">
+                    {dashboardUnreadCount >= 10 ? "10+" : dashboardUnreadCount}
+                  </span>
+                )}
+              </div>
             )}
 
             {/* 🧪 Paperino Labs Dropdown with WhatsApp-style Badge */}
@@ -527,7 +540,14 @@ export default function Navbar() {
                 )}
               </div>
               {user && !isAdmin && (
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
+                <div className="relative w-full">
+                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
+                  {dashboardUnreadCount > 0 && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(217,70,239,0.7)]">
+                      {dashboardUnreadCount >= 10 ? "10+" : dashboardUnreadCount}
+                    </span>
+                  )}
+                </div>
               )}
 
               {/* Collapsible Mobile Paperino Labs Dropdown with Badge */}

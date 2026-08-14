@@ -116,7 +116,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
               {adminPendingCoursesCount > 0 && (
                 <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(59,130,246,0.7)]">
-                  {adminPendingCoursesCount > 99 ? "99+" : adminPendingCoursesCount}
+                  {adminPendingCoursesCount >= 10 ? "10+" : adminPendingCoursesCount}
                 </span>
               )}
             </Link>
@@ -128,7 +128,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
               {adminPendingReviewsCount > 0 && (
                 <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
-                  {adminPendingReviewsCount > 99 ? "99+" : adminPendingReviewsCount}
+                  {adminPendingReviewsCount >= 10 ? "10+" : adminPendingReviewsCount}
                 </span>
               )}
             </Link>
@@ -236,7 +236,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
               {adminSubjectRequestsCount > 0 && (
                 <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(245,158,11,0.7)]">
-                  {adminSubjectRequestsCount > 99 ? "99+" : adminSubjectRequestsCount}
+                  {adminSubjectRequestsCount >= 10 ? "10+" : adminSubjectRequestsCount}
                 </span>
               )}
             </Link>

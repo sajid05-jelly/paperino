@@ -5,8 +5,8 @@ import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from "
 import { db } from "@/lib/firebase";
 import { CheckCircle2, Trash2, Calendar, User, BookOpen, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
-
 import { useAuth } from "@/context/AuthContext";
+import { useBadges } from "@/context/BadgeContext";
 
 interface SubjectRequest {
   id: string;
@@ -30,6 +30,11 @@ export default function SubjectRequestsAdminPage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const { showToast } = useToast();
   const { user } = useAuth();
+  const { markAdminSectionSeen } = useBadges();
+
+  useEffect(() => {
+    markAdminSectionSeen("subject_requests");
+  }, [markAdminSectionSeen]);
 
   const fetchRequests = async () => {
     if (!user) return;

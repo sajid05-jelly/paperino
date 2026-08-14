@@ -7,6 +7,7 @@ import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, Gr
 import { useSound } from "@/hooks/useSound";
 import { useSubjects } from "@/context/SubjectsContext";
 import { notifyUser } from "@/lib/notifications";
+import { useBadges } from "@/context/BadgeContext";
 
 interface DepartmentRequest {
   id: string;
@@ -33,8 +34,13 @@ interface SubjectRequest {
 }
 
 export default function AdminCoursesPage() {
+  const { markAdminSectionSeen } = useBadges();
   const [activeReviewType, setActiveReviewType] = useState<"departments" | "subjects">("departments");
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "rejected">("pending");
+
+  useEffect(() => {
+    markAdminSectionSeen("courses");
+  }, [markAdminSectionSeen]);
   
   const [departmentsList, setDepartmentsList] = useState<DepartmentRequest[]>([]);
   const [subjectsList, setSubjectsList] = useState<SubjectRequest[]>([]);

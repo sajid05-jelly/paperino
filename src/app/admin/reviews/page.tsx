@@ -15,6 +15,7 @@ import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/li
 import { notifyUser } from "@/lib/notifications";
 import UserAvatar from "@/components/UserAvatar";
 import { logAdminAction } from "@/lib/admin-logger";
+import { useBadges } from "@/context/BadgeContext";
 
 interface Material {
   id: string;
@@ -36,7 +37,12 @@ interface Material {
 
 export default function AdminReviewsPage() {
   const { user } = useAuth();
+  const { markAdminSectionSeen } = useBadges();
   const [activeTab, setActiveTab] = useState<"pending" | "insights" | "rejected">("pending");
+
+  useEffect(() => {
+    markAdminSectionSeen("reviews");
+  }, [markAdminSectionSeen]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [pendingInsights, setPendingInsights] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
