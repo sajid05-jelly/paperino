@@ -624,7 +624,7 @@ function FreeClassFinderContent() {
   }
 
   return (
-    <div className="min-h-screen text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{
+    <div className="min-h-screen text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden z-10" style={{
       background: "radial-gradient(ellipse 80% 60% at 20% 10%, rgba(109,40,217,0.18) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(76,29,149,0.22) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%), linear-gradient(135deg, #07030f 0%, #0a041a 30%, #060210 60%, #050308 100%)"
     }}>
       {/* ── JSON-LD STRUCTURED DATA FOR SEO ── */}
