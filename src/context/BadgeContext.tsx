@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef, ReactNode } from "react";
 import { collection, query, limit, onSnapshot, getDocs, where, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -75,36 +75,37 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    let unsub: (() => void) | null = null;
-    try {
-      const q = query(collection(db, "free_class_reports"), limit(25));
-      unsub = onSnapshot(
-        q,
-        (snap) => {
-          const now = Date.now();
-          const items: { id: string; createdAt: number; expiresAt: number }[] = [];
-          snap.forEach((d) => {
-            const data = d.data();
-            const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || now);
-            const durationMin = data.expectedFreeDurationMinutes || 30;
-            const expiresAt = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : createdAt + durationMin * 60 * 1000);
-            
-            if (!data.isDeleted && data.status !== "flagged" && (data.falseVotes || 0) < 5) {
-              items.push({ id: d.id, createdAt, expiresAt });
-            }
-          });
+    let isMounted = true;
+    const fetchActiveReportsForBadge = async () => {
+      try {
+        const q = query(collection(db, "free_class_reports"), limit(25));
+        const snap = await getDocs(q);
+        const now = Date.now();
+        const items: { id: string; createdAt: number; expiresAt: number }[] = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || now);
+          const durationMin = data.expectedFreeDurationMinutes || 30;
+          const expiresAt = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : createdAt + durationMin * 60 * 1000);
+          
+          if (!data.isDeleted && data.status !== "flagged" && (data.falseVotes || 0) < 5) {
+            items.push({ id: d.id, createdAt, expiresAt });
+          }
+        });
+        if (isMounted) {
           setActiveReportsTimeList(items);
-        },
-        (err) => {
-          console.warn("[BadgeContext] Free class reports listener fallback:", err.message);
         }
-      );
-    } catch (e) {
-      console.warn("[BadgeContext] Listener setup error:", e);
-    }
+      } catch (e: any) {
+        console.warn("[BadgeContext] Free class badge count fallback:", e?.message || e);
+      }
+    };
+
+    fetchActiveReportsForBadge();
+    const interval = setInterval(fetchActiveReportsForBadge, 5 * 60 * 1000); // 5-minute background refresh
 
     return () => {
-      if (unsub) unsub();
+      isMounted = false;
+      clearInterval(interval);
     };
   }, [user]);
 
@@ -148,9 +149,17 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const fetchUserStatusUpdates = useCallback(async () => {
+  const lastUserStatusFetchTimeRef = useRef<number>(0);
+
+  const fetchUserStatusUpdates = useCallback(async (forceRefresh: boolean = false) => {
     if (!user) {
       setUserStatusUpdates([]);
+      return;
+    }
+
+    const now = Date.now();
+    // Cache for 3 minutes per session to prevent repeated sweeps across 4 collections on rapid navigation
+    if (!forceRefresh && (now - lastUserStatusFetchTimeRef.current) < 3 * 60 * 1000 && userStatusUpdates.length > 0) {
       return;
     }
 
@@ -248,10 +257,11 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
       // Sort newest first
       updates.sort((a, b) => b.updatedAt - a.updatedAt);
       setUserStatusUpdates(updates);
+      lastUserStatusFetchTimeRef.current = now;
     } catch (e) {
       console.warn("[BadgeContext] Error fetching user status updates:", e);
     }
-  }, [user]);
+  }, [user, userStatusUpdates.length]);
 
   useEffect(() => {
     if (user) {

@@ -142,14 +142,31 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     return dummyUnsub;
   }, []);
 
-  const refreshSubjects = async () => {
+  const refreshSubjects = async (forceRefresh: boolean = false) => {
     try {
-      // 1. Fetch Departments (0 Materials Collection Sweeps)
-      const deptSnapshot = await getDocs(collection(db, "departments"));
       let deptList: Department[] = [];
-      deptSnapshot.forEach((docSnap) => {
-        deptList.push({ id: docSnap.id, ...docSnap.data() } as Department);
-      });
+
+      // Check session cache first
+      if (!forceRefresh && typeof window !== "undefined") {
+        const cachedDepts = sessionStorage.getItem("paperino_cached_departments");
+        if (cachedDepts) {
+          try {
+            deptList = JSON.parse(cachedDepts);
+          } catch (e) {}
+        }
+      }
+
+      if (deptList.length === 0) {
+        // 1. Fetch Departments (0 Materials Collection Sweeps)
+        const deptSnapshot = await getDocs(collection(db, "departments"));
+        deptSnapshot.forEach((docSnap) => {
+          deptList.push({ id: docSnap.id, ...docSnap.data() } as Department);
+        });
+
+        if (deptList.length > 0 && typeof window !== "undefined") {
+          sessionStorage.setItem("paperino_cached_departments", JSON.stringify(deptList));
+        }
+      }
 
       // Seed B.Tech department virtually/locally if empty, and try to persist it
       if (deptList.length === 0) {

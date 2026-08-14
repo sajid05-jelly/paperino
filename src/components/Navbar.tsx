@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { onSnapshot, doc } from "firebase/firestore";
+import { onSnapshot, doc, getDoc } from "firebase/firestore";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
@@ -49,25 +49,35 @@ export default function Navbar() {
   });
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, "settings", "headerMessage"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const msg = data.message || "The Universe of Study Materials";
-        setTagline(msg);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("paperino_header_tagline", msg);
+    let isMounted = true;
+    const fetchTagline = async () => {
+      try {
+        const cached = typeof window !== "undefined" ? localStorage.getItem("paperino_header_tagline") : null;
+        const cachedTime = typeof window !== "undefined" ? sessionStorage.getItem("paperino_header_tagline_ts") : null;
+        
+        if (cached && cachedTime && (Date.now() - parseInt(cachedTime, 10) < 10 * 60 * 1000)) {
+          return; // Still fresh within 10 minutes
         }
-      } else {
-        const defaultMsg = "The Universe of Study Materials";
-        setTagline(defaultMsg);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("paperino_header_tagline", defaultMsg);
+
+        const snap = await getDoc(doc(db, "settings", "headerMessage"));
+        if (isMounted) {
+          if (snap.exists()) {
+            const data = snap.data();
+            const msg = data.message || "The Universe of Study Materials";
+            setTagline(msg);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("paperino_header_tagline", msg);
+              sessionStorage.setItem("paperino_header_tagline_ts", Date.now().toString());
+            }
+          }
         }
+      } catch (err) {
+        console.warn("Tagline read error:", err);
       }
-    }, (err) => {
-      console.warn("Tagline read error:", err);
-    });
-    return () => unsubscribe();
+    };
+
+    fetchTagline();
+    return () => { isMounted = false; };
   }, []);
 
   const labsRef = useRef<HTMLDivElement>(null);

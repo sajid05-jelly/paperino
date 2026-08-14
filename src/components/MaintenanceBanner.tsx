@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { onSnapshot, doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AlertTriangle, Wrench, X } from 'lucide-react';
 
@@ -13,30 +13,44 @@ export default function MaintenanceBanner() {
   );
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      doc(db, 'settings', 'maintenance'),
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          if (data.isActive === true) {
-            setShowBanner(true);
-            if (data.message && typeof data.message === 'string' && data.message.trim() !== '') {
-              setMessage(data.message);
+    let isMounted = true;
+    const fetchMaintenanceStatus = async () => {
+      try {
+        const cached = typeof window !== 'undefined' ? sessionStorage.getItem('paperino_maint_banner') : null;
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Date.now() - parsed.ts < 5 * 60 * 1000) {
+            if (isMounted) {
+              setShowBanner(parsed.isActive);
+              if (parsed.message) setMessage(parsed.message);
+            }
+            return;
+          }
+        }
+
+        const snap = await getDoc(doc(db, 'settings', 'maintenance'));
+        if (isMounted) {
+          if (snap.exists()) {
+            const data = snap.data();
+            const isActive = data.isActive === true;
+            const msg = data.message && typeof data.message === 'string' && data.message.trim() !== '' ? data.message : message;
+            setShowBanner(isActive);
+            if (isActive && msg) setMessage(msg);
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('paperino_maint_banner', JSON.stringify({ isActive, message: msg, ts: Date.now() }));
             }
           } else {
             setShowBanner(false);
           }
-        } else {
-          setShowBanner(false);
         }
-      },
-      (error) => {
-        console.warn('[MaintenanceBanner] Firestore snapshot error:', error);
-        setShowBanner(false);
+      } catch (error) {
+        console.warn('[MaintenanceBanner] Firestore read fallback:', error);
+        if (isMounted) setShowBanner(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    fetchMaintenanceStatus();
+    return () => { isMounted = false; };
   }, []);
 
   if (!showBanner || dismissed) return null;

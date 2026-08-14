@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { X, Sparkles } from "lucide-react";
 import PaperinoLoader from "@/components/PaperinoLoader";
 
@@ -17,22 +17,48 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   const pathname = usePathname();
   const router = useRouter();
 
-  // 1. Listen to siteConfig in Firestore
+  // 1. Fetch siteConfig from Firestore with session/local caching
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "settings", "siteConfig"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setMaintenanceMode(data.maintenance || false);
-      } else {
-        setMaintenanceMode(false);
+    let isMounted = true;
+    const checkSiteConfig = async () => {
+      try {
+        const cached = typeof window !== "undefined" ? sessionStorage.getItem("paperino_site_config_maint") : null;
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Date.now() - parsed.ts < 5 * 60 * 1000) {
+            if (isMounted) {
+              setMaintenanceMode(parsed.maintenance);
+              setLoadingConfig(false);
+            }
+            return;
+          }
+        }
+
+        const snap = await getDoc(doc(db, "settings", "siteConfig"));
+        if (isMounted) {
+          if (snap.exists()) {
+            const data = snap.data();
+            const maint = data.maintenance || false;
+            setMaintenanceMode(maint);
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("paperino_site_config_maint", JSON.stringify({ maintenance: maint, ts: Date.now() }));
+            }
+          } else {
+            setMaintenanceMode(false);
+          }
+          setLoadingConfig(false);
+        }
+      } catch (err) {
+        console.warn("[MaintenanceGuard] Error reading siteConfig:", err);
+        if (isMounted) {
+          setMaintenanceMode(false);
+          setLoadingConfig(false);
+        }
       }
-      setLoadingConfig(false);
-    }, (err) => {
-      console.error("Error reading siteConfig:", err);
-      setMaintenanceMode(false);
-      setLoadingConfig(false);
-    });
-    return () => unsub();
+    };
+
+    checkSiteConfig();
+    return () => { isMounted = false; };
   }, []);
 
   // 2. Routing Protection & Redirect Logic
