@@ -332,7 +332,7 @@ export default function Navbar() {
             
             {isAdmin && (
               <div className="relative inline-flex items-center">
-                <Link href="/admin" className={getLinkClass("/admin", true)}>Admin</Link>
+                <Link href="/admin/upload" className={getLinkClass("/admin", true)}>Admin</Link>
                 {adminTotalUnreadCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 z-20 flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1 text-[9px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)] ring-2 ring-[#07050e] animate-in zoom-in duration-300">
                     {adminTotalUnreadCount > 99 ? "99+" : adminTotalUnreadCount}
@@ -655,7 +655,7 @@ export default function Navbar() {
                   <div className="h-px bg-white/[0.06] my-3 mx-2" />
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Admin</p>
                   <div className="relative w-full">
-                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin" className={getMobileLinkClass("/admin", true)}>
+                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin/upload" className={getMobileLinkClass("/admin", true)}>
                       Admin Dashboard
                     </Link>
                     {adminTotalUnreadCount > 0 && (
