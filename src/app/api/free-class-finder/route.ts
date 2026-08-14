@@ -24,15 +24,7 @@ async function runFreeClassCleanup() {
       // 1. Delete Firestore Document
       await docSnap.ref.delete();
 
-      // 2. Clean up associated notifications safely
-      try {
-        const notifSnap = await adminDb.collection("notifications").where("roomId", "==", docSnap.id).get();
-        for (const nDoc of notifSnap.docs) {
-          await nDoc.ref.delete();
-        }
-      } catch (e) {
-        console.warn("[Cleanup] Notification cleanup notice:", e);
-      }
+      // 2. Do NOT clean up associated notifications (Notification history must be preserved forever)
     }
   } catch (err: any) {
     console.warn("[Cleanup Routine Notice]:", err?.message || err);
@@ -61,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     await adminAuth.verifyIdToken(token);
 
-    const snapshot = await adminDb.collection(COLLECTION_NAME).orderBy("createdAt", "desc").limit(50).get();
+    const snapshot = await adminDb.collection(COLLECTION_NAME).orderBy("createdAtMs", "desc").limit(50).get();
     const list = snapshot.docs.map(docSnap => {
       const data = docSnap.data();
       const formattedData = { ...data };

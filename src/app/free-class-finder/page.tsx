@@ -259,48 +259,7 @@ function FreeClassFinderContent() {
     };
   }, [config.expiryMinutes, isEnabled, user]);
 
-  // Periodic check to auto-delete expired reports permanently from Firestore
-  useEffect(() => {
-    if (!user || isEnabled === false) return;
-
-    const checkAndSweepExpired = async () => {
-      const currentTime = Date.now();
-      const expired = reports.filter(r => {
-        const targetExpiry = r.expiresAtMs || (r.createdAt + (r.expectedFreeDurationMinutes || 30) * 60 * 1000);
-        return targetExpiry <= currentTime;
-      });
-
-      if (expired.length === 0) return;
-
-      try {
-        const token = await user.getIdToken();
-        for (const r of expired) {
-          console.log(`[Auto-Expiry Sweep] Deleting expired classroom ${r.id} from Firestore...`);
-          await fetch("/api/free-class-finder", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              action: "delete",
-              reportId: r.id
-            })
-          });
-          // Optimistically update local reports state
-          setReports(prev => prev.filter(item => item.id !== r.id));
-        }
-      } catch (err) {
-        console.warn("[Auto-Expiry Sweep Error]:", err);
-      }
-    };
-
-    // Run sweep every 5 seconds
-    const interval = setInterval(checkAndSweepExpired, 5000);
-    return () => clearInterval(interval);
-  }, [reports, user, isEnabled]);
-
-  // Dynamic Live Filter for Reports (Automatically purges expired cards)
+  // Dynamic Live Filter for Reports (Automatically purges expired cards in-memory without deleting notification history)
   const activeLiveReports = useMemo(() => {
     const currentTime = Date.now();
     return reports.filter((r) => {
