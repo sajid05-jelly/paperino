@@ -6,60 +6,36 @@ export const dynamic = "force-dynamic";
 
 const COLLECTION_NAME = "free_class_reports";
 
-// ── AUTOMATIC CLEANUP ROUTINE ────────────────────────────────────────────────
+// ── AUTOMATIC CLEANUP ROUTINE (Targeted to expired items only to prevent quota exhaustion) ──
 async function runFreeClassCleanup() {
   if (!adminDb) return;
   try {
     const now = Date.now();
-    const snap = await adminDb.collection(COLLECTION_NAME).get();
+    // Query only items whose expiresAtMs is in the past (up to 25 items at a time)
+    const snap = await adminDb.collection(COLLECTION_NAME)
+      .where("expiresAtMs", "<=", now)
+      .limit(25)
+      .get();
 
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
-      const createdAt = data.createdAtMs || (data.createdAt?.toMillis ? data.createdAt.toMillis() : now);
-      const durationMin = data.expectedFreeDurationMinutes || 30;
-      const expiresAtMs = data.expiresAtMs || (data.expiresAt?.toMillis ? data.expiresAt.toMillis() : (createdAt + durationMin * 60 * 1000));
-      const trueVotes = data.trueVotes || 0;
-      const falseVotes = data.falseVotes || 0;
+      console.log(`[Cleanup] Deleting expired report ${docSnap.id} from ${COLLECTION_NAME}`);
 
-      const isExpired = expiresAtMs > 0 && expiresAtMs <= now;
-      const isFake = falseVotes >= 5;
+      // 1. Delete Firestore Document
+      await docSnap.ref.delete();
 
-      if (isExpired || isFake) {
-        console.log(`[Cleanup] Deleting report ${docSnap.id} from ${COLLECTION_NAME} (Expired: ${isExpired}, Fake: ${isFake})`);
-
-        // 1. Delete Firestore Document
-        await docSnap.ref.delete();
-
-        // 2. Clean up associated notifications
-        try {
-          const notifSnap = await adminDb.collection("notifications").where("roomId", "==", docSnap.id).get();
-          for (const nDoc of notifSnap.docs) {
-            await nDoc.ref.delete();
-          }
-        } catch (e) {
-          console.warn("[Cleanup] Notification cleanup notice:", e);
+      // 2. Clean up associated notifications safely
+      try {
+        const notifSnap = await adminDb.collection("notifications").where("roomId", "==", docSnap.id).get();
+        for (const nDoc of notifSnap.docs) {
+          await nDoc.ref.delete();
         }
-
-        // 3. Create Expired Notification if expired
-        if (isExpired) {
-          try {
-            await adminDb.collection("notifications").add({
-              userId: "ALL",
-              title: "⏰ Free Classroom Report Expired",
-              message: `Room ${docSnap.id} report has expired and was automatically cleaned up.`,
-              type: "free_class_expired",
-              roomId: docSnap.id,
-              read: false,
-              createdAt: now
-            });
-          } catch (e) {
-            console.warn("[Cleanup] Expired notification notice:", e);
-          }
-        }
+      } catch (e) {
+        console.warn("[Cleanup] Notification cleanup notice:", e);
       }
     }
-  } catch (err) {
-    console.error("[Cleanup Routine Error]:", err);
+  } catch (err: any) {
+    console.warn("[Cleanup Routine Notice]:", err?.message || err);
   }
 }
 
@@ -85,7 +61,7 @@ export async function GET(req: NextRequest) {
 
     await adminAuth.verifyIdToken(token);
 
-    const snapshot = await adminDb.collection(COLLECTION_NAME).orderBy("createdAt", "desc").get();
+    const snapshot = await adminDb.collection(COLLECTION_NAME).orderBy("createdAt", "desc").limit(50).get();
     const list = snapshot.docs.map(docSnap => {
       const data = docSnap.data();
       const formattedData = { ...data };

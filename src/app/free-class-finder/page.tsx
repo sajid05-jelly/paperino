@@ -377,6 +377,8 @@ function FreeClassFinderContent() {
       return;
     }
 
+    if (submitting) return;
+
     setSubmitting(true);
     try {
       const currentTime = Date.now();
@@ -449,7 +451,8 @@ function FreeClassFinderContent() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || data.error || "Failed to submit classroom report.");
+        const errorMsg = data.message || data.error || "Failed to submit classroom report.";
+        throw new Error(errorMsg);
       }
 
       showToast(`⚡ Room ${formattedRoom} added to live free classroom list!`, "success");
@@ -460,7 +463,12 @@ function FreeClassFinderContent() {
       setFormCapacity("");
     } catch (err: any) {
       console.error("[Free Class Finder Submit Error]:", err);
-      showToast("Failed to report classroom: " + err.message, "error");
+      const isQuotaError = err.message?.includes("RESOURCE_EXHAUSTED") || err.message?.includes("Quota exceeded");
+      if (isQuotaError) {
+        showToast("Free Classroom reporting is temporarily unavailable. Please try again later.", "error");
+      } else {
+        showToast(err.message || "Failed to report classroom.", "error");
+      }
     } finally {
       setSubmitting(false);
     }
