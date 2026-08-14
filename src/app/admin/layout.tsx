@@ -10,11 +10,17 @@ import {
   BrainCircuit, Wrench, Building2, ChevronDown, Sparkles, Gamepad2, FlaskConical
 } from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
+import { useBadges } from "@/context/BadgeContext";
 
 const LEAD_ADMIN_EMAIL = "mohamedsajid.sa@gmail.com";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
+  const { 
+    adminSubjectRequestsCount, 
+    adminPendingReviewsCount, 
+    adminPendingCoursesCount 
+  } = useBadges();
   const router = useRouter();
   const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,14 +109,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Manage Materials
             </Link>
 
-            <Link href="/admin/courses" className="flex items-center gap-3 px-4 py-3 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors font-medium border border-blue-500/20">
-              <BookOpen size={20} />
-              Pending Course Requests
+            <Link href="/admin/courses" className="flex items-center justify-between px-4 py-3 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors font-medium border border-blue-500/20">
+              <span className="flex items-center gap-3">
+                <BookOpen size={20} />
+                <span>Pending Course Requests</span>
+              </span>
+              {adminPendingCoursesCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(59,130,246,0.7)]">
+                  {adminPendingCoursesCount > 99 ? "99+" : adminPendingCoursesCount}
+                </span>
+              )}
             </Link>
 
-            <Link href="/admin/reviews" className="flex items-center gap-3 px-4 py-3 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors font-medium border border-rose-500/20">
-              <ShieldAlert size={20} />
-              Pending Reviews
+            <Link href="/admin/reviews" className="flex items-center justify-between px-4 py-3 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors font-medium border border-rose-500/20">
+              <span className="flex items-center gap-3">
+                <ShieldAlert size={20} />
+                <span>Pending Reviews</span>
+              </span>
+              {adminPendingReviewsCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
+                  {adminPendingReviewsCount > 99 ? "99+" : adminPendingReviewsCount}
+                </span>
+              )}
             </Link>
             
             {/* ── System Control Expandable Group (LEAD ADMIN ONLY) ───────────────────────────── */}
@@ -209,9 +229,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <div className="h-px w-full bg-white/10 my-2"></div>
 
-            <Link href="/admin/subject-requests" className="flex items-center gap-3 px-4 py-3 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors font-medium border border-amber-500/20">
-              <BookOpen size={20} />
-              Subject Requests
+            <Link href="/admin/subject-requests" className="flex items-center justify-between px-4 py-3 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors font-medium border border-amber-500/20">
+              <span className="flex items-center gap-3">
+                <BookOpen size={20} />
+                <span>Subject Requests</span>
+              </span>
+              {adminSubjectRequestsCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(245,158,11,0.7)]">
+                  {adminSubjectRequestsCount > 99 ? "99+" : adminSubjectRequestsCount}
+                </span>
+              )}
             </Link>
 
 

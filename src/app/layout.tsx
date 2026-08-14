@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { BadgeProvider } from "@/context/BadgeContext";
 import { SubjectsProvider } from "@/context/SubjectsContext";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import RouteTracker from "@/components/RouteTracker";
@@ -123,31 +124,33 @@ export default function RootLayout({
           <ThemeProvider>
             <AuthProvider>
               <NotificationProvider>
-                <SubjectsProvider>
+                <BadgeProvider>
+                  <SubjectsProvider>
 
-                  {/* Route change tracker */}
-                  <Suspense fallback={null}>
-                    <RouteTracker />
-                  </Suspense>
+                    {/* Route change tracker */}
+                    <Suspense fallback={null}>
+                      <RouteTracker />
+                    </Suspense>
 
-                  {/* Maintenance banner — sits above navbar, reads from Firestore */}
-                  <MaintenanceBanner />
+                    {/* Maintenance banner — sits above navbar, reads from Firestore */}
+                    <MaintenanceBanner />
 
-                  <MaintenanceGuard>
-                    <Navbar />
-                    <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
-                      {children}
-                    </main>
-                    <Footer />
+                    <MaintenanceGuard>
+                      <Navbar />
+                      <main className="flex-1 flex flex-col relative z-20 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
+                        {children}
+                      </main>
+                      <Footer />
 
-                    {/* Floating global elements */}
-                    <FloatingFeedback />
-                    <ThemeSelector />
-                    <AvatarProvider />
-                    <BackToTop />
-                  </MaintenanceGuard>
+                      {/* Floating global elements */}
+                      <FloatingFeedback />
+                      <ThemeSelector />
+                      <AvatarProvider />
+                      <BackToTop />
+                    </MaintenanceGuard>
 
-                </SubjectsProvider>
+                  </SubjectsProvider>
+                </BadgeProvider>
               </NotificationProvider>
             </AuthProvider>
           </ThemeProvider>

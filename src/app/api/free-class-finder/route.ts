@@ -234,27 +234,6 @@ export async function POST(req: NextRequest) {
       console.log(`✔ Document ID: ${docId}`);
       console.log(`✔ Collection path: ${COLLECTION_NAME}`);
 
-      // ── Create Public Broadcast Notification for All Users ─────────────────
-      // Uses deterministic doc ID based on roomId to prevent duplicate notifications
-      // from retries, StrictMode, or double-clicks.
-      try {
-        const notifDocId = `free_class_${formattedRoom}_${now}`;
-        await adminDb.collection("notifications").doc(notifDocId).set({
-          userId: "ALL",
-          ownerUid: "ALL",
-          title: "🟢 New Free Classroom",
-          message: `Room ${formattedRoom} is available now • Floor ${floor || 1} • ${block.trim()} • ${cleanCollege}`,
-          type: "free_class_reported",
-          roomId: formattedRoom,
-          read: false,
-          isRead: false,
-          createdAt: now
-        });
-        console.log(`✔ Notification created: ${notifDocId}`);
-      } catch (notifErr) {
-        console.warn("[API Notifications Warning]:", notifErr);
-      }
-
       return new Response(JSON.stringify({ success: true, roomNumber: formattedRoom, reportId: docId }), {
         status: 200,
         headers: { "Content-Type": "application/json" }

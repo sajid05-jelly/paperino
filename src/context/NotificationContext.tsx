@@ -44,15 +44,6 @@ interface NotificationContextType {
   pulseUnreadCount: number;
   categoryPulseUnreadCounts: Record<string, number>;
   markPulseCategoryAsRead: (category: string) => Promise<void>;
-  
-  // Unified Realtime User Notifications
-  notifications: PaperinoNotification[];
-  notificationsUnreadCount: number;
-  loadingNotifications: boolean;
-  markNotificationRead: (id: string) => Promise<void>;
-  markAllNotificationsRead: () => Promise<void>;
-  clearAllNotifications: () => Promise<void>;
-  deleteSingleNotification: (id: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -64,13 +55,6 @@ const NotificationContext = createContext<NotificationContextType>({
   pulseUnreadCount: 0,
   categoryPulseUnreadCounts: {},
   markPulseCategoryAsRead: async () => {},
-  notifications: [],
-  notificationsUnreadCount: 0,
-  loadingNotifications: true,
-  markNotificationRead: async () => {},
-  markAllNotificationsRead: async () => {},
-  clearAllNotifications: async () => {},
-  deleteSingleNotification: async () => {},
 });
 
 export const usePulseNotifications = () => useContext(NotificationContext);
@@ -89,57 +73,21 @@ export function parseNotificationTimestamp(raw: any): number {
 }
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { user, isAdmin, role, lastPulseReadAt } = useAuth();
+  const { user, lastPulseReadAt } = useAuth();
   const [updates, setUpdates] = useState<PulseUpdate[]>([]);
-  const [latestToast, setLatestToast] = useState<PulseUpdate | null>(null);
   const [localReadTime, setLocalReadTime] = useState<number>(0);
-  const [nowTicker, setNowTicker] = useState<number>(Date.now());
-  const router = useRouter();
-
-  // Role check to preserve Admin & Lead Admin notifications permanently
-  const isUserAdminRole = useMemo(() => {
-    if (isAdmin) return true;
-    if (!role) return false;
-    const r = role.toLowerCase().trim();
-    return r === "admin" || r === "lead-admin" || r === "lead_admin" || r === "super-admin" || r === "super_admin";
-  }, [isAdmin, role]);
-
-  // Live 60s ticker for dynamic real-time expiry without page refresh (Normal users only)
-  useEffect(() => {
-    if (!user || isUserAdminRole) return;
-    const interval = setInterval(() => {
-      setNowTicker(Date.now());
-    }, 60 * 1000);
-    return () => clearInterval(interval);
-  }, [user, isUserAdminRole]);
-
-  // Raw Firestore Notifications
-  const [rawNotifications, setRawNotifications] = useState<PaperinoNotification[]>([]);
-  const [loadingNotifications, setLoadingNotifications] = useState(true);
-
-  // Local Read & Cleared Sets (Synced to LocalStorage for instant error-free UX)
-  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
-  const [clearedNotifIds, setClearedNotifIds] = useState<Set<string>>(new Set());
   const [readPulseIds, setReadPulseIds] = useState<Set<string>>(new Set());
 
-  // Sync LocalStorage Read & Cleared State on Mount / User change
+  // Sync LocalStorage Pulse Read State on Mount / User change
   useEffect(() => {
     if (!user) return;
     try {
-      const readSaved = localStorage.getItem(`paperino_read_notifs_${user.uid}`);
-      if (readSaved) {
-        setReadNotifIds(new Set(JSON.parse(readSaved)));
-      }
-      const clearedSaved = localStorage.getItem(`paperino_cleared_notifs_${user.uid}`);
-      if (clearedSaved) {
-        setClearedNotifIds(new Set(JSON.parse(clearedSaved)));
-      }
       const readPulseSaved = localStorage.getItem(`paperino_read_pulse_${user.uid}`);
       if (readPulseSaved) {
         setReadPulseIds(new Set(JSON.parse(readPulseSaved)));
       }
     } catch (e) {
-      console.warn("Error loading notification cache:", e);
+      console.warn("Error loading pulse cache:", e);
     }
   }, [user]);
 
@@ -148,26 +96,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (user && typeof window !== "undefined") {
       try {
         localStorage.setItem(`paperino_read_pulse_${user.uid}`, JSON.stringify(Array.from(newSet)));
-      } catch (e) {}
-    }
-  };
-
-  // Helper to persist Read IDs
-  const persistReadIds = (newSet: Set<string>) => {
-    setReadNotifIds(newSet);
-    if (user && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(`paperino_read_notifs_${user.uid}`, JSON.stringify(Array.from(newSet)));
-      } catch (e) {}
-    }
-  };
-
-  // Helper to persist Cleared IDs
-  const persistClearedIds = (newSet: Set<string>) => {
-    setClearedNotifIds(newSet);
-    if (user && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(`paperino_cleared_notifs_${user.uid}`, JSON.stringify(Array.from(newSet)));
       } catch (e) {}
     }
   };
@@ -213,124 +141,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return () => { isMounted = false; };
   }, [user]);
 
-  // 2. Realtime Notification Listener (onSnapshot for immediate updates, getDocs fallback)
-  useEffect(() => {
-    if (!user) {
-      setRawNotifications([]);
-      setLoadingNotifications(false);
-      return;
-    }
-
-    let unsubscribe: (() => void) | null = null;
-
-    const processNotifSnapshot = (notifs: PaperinoNotification[]) => {
-      notifs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      setRawNotifications(notifs);
-      setLoadingNotifications(false);
-    };
-
-    try {
-      logFirestoreRead("notifications", `onSnapshot(limit(30)) for uid: ${user.uid}`);
-      const q = query(
-        collection(db, "notifications"),
-        where("userId", "in", [user.uid, "ALL", ...(isUserAdminRole ? ["ADMIN"] : [])]),
-        limit(30)
-      );
-
-      unsubscribe = onSnapshot(
-        q,
-        (snap) => {
-          const notifs: PaperinoNotification[] = [];
-          snap.forEach((d) => {
-            const data = d.data();
-            notifs.push({ id: d.id, ...data } as PaperinoNotification);
-          });
-          processNotifSnapshot(notifs);
-        },
-        (err) => {
-          // Fallback to one-time fetch if onSnapshot fails (e.g. permission issues)
-          console.warn("[NotificationContext] onSnapshot fallback:", err?.message);
-          const fallbackFetch = async () => {
-            try {
-              const fallbackQ = query(
-                collection(db, "notifications"),
-                where("userId", "in", [user.uid, "ALL", ...(isUserAdminRole ? ["ADMIN"] : [])]),
-                limit(30)
-              );
-              const fallbackSnap = await getDocs(fallbackQ);
-              const notifs: PaperinoNotification[] = [];
-              fallbackSnap.forEach((d) => {
-                notifs.push({ id: d.id, ...d.data() } as PaperinoNotification);
-              });
-              processNotifSnapshot(notifs);
-            } catch (fallbackErr: any) {
-              console.warn("[NotificationContext] getDocs fallback notice:", fallbackErr?.message);
-              setLoadingNotifications(false);
-            }
-          };
-          fallbackFetch();
-        }
-      );
-    } catch (err: any) {
-      console.warn("[NotificationContext] notification listener setup error:", err?.message);
-      setLoadingNotifications(false);
-    }
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [user, isUserAdminRole]);
-
-  // Background cleanup for expired normal user notifications in Firestore (Scoped strictly to user's own docs)
-  useEffect(() => {
-    if (!user || isUserAdminRole || rawNotifications.length === 0) return;
-
-    const now = Date.now();
-    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-    const expiredDocs = rawNotifications.filter((n) => {
-      if (n.userId !== user.uid) return false;
-      const createdMs = parseNotificationTimestamp(n.createdAt);
-      return createdMs > 0 && (now - createdMs) >= TWENTY_FOUR_HOURS_MS;
-    });
-
-    if (expiredDocs.length > 0) {
-      expiredDocs.forEach((n) => {
-        deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
-      });
-    }
-  }, [user, isUserAdminRole, rawNotifications]);
-
-  // Computed Processed Notifications (Filtered by cleared set, read state merged, and 24h user expiry)
-  const notifications = useMemo(() => {
-    const now = nowTicker;
-    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-
-    return rawNotifications
-      .filter((n) => {
-        // 1. Filter out manually cleared notifications
-        if (clearedNotifIds.has(n.id)) return false;
-
-        // 2. 24-hour auto expiry FOR NORMAL USERS ONLY (Admins & Lead Admins are EXEMPT)
-        if (!isUserAdminRole) {
-          const createdMs = parseNotificationTimestamp(n.createdAt);
-          if (createdMs > 0 && (now - createdMs) >= TWENTY_FOUR_HOURS_MS) {
-            return false;
-          }
-        }
-
-        return true;
-      })
-      .map((n) => {
-        const isLocallyRead = readNotifIds.has(n.id);
-        const isServerRead = n.read || (n as any).isRead;
-        return {
-          ...n,
-          read: Boolean(isServerRead || isLocallyRead),
-          isRead: Boolean(isServerRead || isLocallyRead)
-        };
-      });
-  }, [rawNotifications, readNotifIds, clearedNotifIds, isUserAdminRole, nowTicker]);
-
   // Compute unreadUpdates in-memory
   const unreadUpdates = useMemo(() => {
     if (!user) return [];
@@ -351,7 +161,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         : new Date(u.createdAt as any);
       return createdDate > lastRead;
     });
-  }, [updates, lastPulseReadAt, localReadTime, user]);
+  }, [updates, lastPulseReadAt, user]);
 
   // Calculate per-item and per-category unread Pulse updates per user
   const unreadPulseItems = useMemo(() => {
@@ -442,119 +252,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const notificationsUnreadCount = useMemo(() => {
-    return notifications.filter((n) => !n.read && !(n as any).isRead).length;
-  }, [notifications]);
-
-  // Mark single notification as read (Instant UI update + Safe Firestore Sync)
-  const markNotificationRead = useCallback(async (id: string) => {
-    if (!user) return;
-    const targetNotif = rawNotifications.find((n) => n.id === id);
-    const ownerUid = targetNotif?.ownerUid || targetNotif?.userId || "ALL";
-
-    console.log(`Current UID: ${user.uid}`);
-    console.log(`Notification ownerUid: ${ownerUid}`);
-    console.log(`Document ID: ${id}`);
-    console.log(`Firestore path: notifications/${id}`);
-
-    // 1. Instant local read update (Badge decreases immediately)
-    const newSet = new Set(readNotifIds);
-    newSet.add(id);
-    persistReadIds(newSet);
-
-    // 2. Safe Firestore Sync (Silently handles any permission boundary)
-    try {
-      await updateDoc(doc(db, "notifications", id), { 
-        read: true, 
-        isRead: true,
-        readAt: serverTimestamp()
-      }).catch((e) => {
-        console.warn("[NotificationContext] Firestore read sync notice:", e.message);
-      });
-    } catch (err: any) {
-      console.warn("[NotificationContext] markNotificationRead notice:", err.message);
-    }
-  }, [user, rawNotifications, readNotifIds]);
-
-  // Mark all notifications as read (Instant UI update + Safe Firestore Batch Sync)
-  const markAllNotificationsRead = useCallback(async () => {
-    if (!user) return;
-
-    // 1. Instant local read update for all notifications
-    const newSet = new Set(readNotifIds);
-    rawNotifications.forEach((n) => newSet.add(n.id));
-    persistReadIds(newSet);
-
-    // 2. Safe Firestore Batch Update for owned docs
-    try {
-      const q = query(
-        collection(db, "notifications"),
-        where("userId", "==", user.uid)
-      );
-      const snap = await getDocs(q);
-      const batch = writeBatch(db);
-      let count = 0;
-      snap.forEach((d) => {
-        const data = d.data();
-        if (!data.read || !data.isRead) {
-          batch.update(d.ref, { 
-            read: true, 
-            isRead: true, 
-            readAt: serverTimestamp() 
-          });
-          count++;
-        }
-      });
-      if (count > 0) {
-        await batch.commit().catch((e) => {
-          console.warn("[NotificationContext] Batch commit notice:", e.message);
-        });
-      }
-    } catch (err: any) {
-      console.warn("[NotificationContext] markAllNotificationsRead notice:", err.message);
-    }
-  }, [user, rawNotifications, readNotifIds]);
-
-  // Clear all notifications permanently (Instant UI clear + Safe Firestore Delete)
-  const clearAllNotifications = useCallback(async () => {
-    if (!user) return;
-
-    // 1. Instant local cleared update
-    const newCleared = new Set(clearedNotifIds);
-    rawNotifications.forEach((n) => newCleared.add(n.id));
-    persistClearedIds(newCleared);
-
-    // 2. Safe Firestore Delete for owned docs
-    try {
-      const q = query(
-        collection(db, "notifications"),
-        where("userId", "==", user.uid)
-      );
-      const snap = await getDocs(q);
-      const batchSize = 500;
-      for (let i = 0; i < snap.docs.length; i += batchSize) {
-        const batch = writeBatch(db);
-        snap.docs.slice(i, i + batchSize).forEach((d) => batch.delete(d.ref));
-        await batch.commit().catch(() => {});
-      }
-    } catch (err: any) {
-      console.warn("[NotificationContext] clearAllNotifications notice:", err.message);
-    }
-  }, [user, rawNotifications, clearedNotifIds]);
-
-  // Delete single notification (Instant UI delete + Safe Firestore Delete)
-  const deleteSingleNotification = useCallback(async (id: string) => {
-    const newCleared = new Set(clearedNotifIds);
-    newCleared.add(id);
-    persistClearedIds(newCleared);
-
-    try {
-      await deleteDoc(doc(db, "notifications", id)).catch(() => {});
-    } catch (err: any) {
-      console.warn("[NotificationContext] deleteSingleNotification notice:", err.message);
-    }
-  }, [clearedNotifIds]);
-
   return (
     <NotificationContext.Provider 
       value={{ 
@@ -566,76 +263,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         pulseUnreadCount,
         categoryPulseUnreadCounts,
         markPulseCategoryAsRead,
-        notifications,
-        notificationsUnreadCount,
-        loadingNotifications,
-        markNotificationRead,
-        markAllNotificationsRead,
-        clearAllNotifications,
-        deleteSingleNotification
       }}
     >
       {children}
-      
-      {/* Custom Real-Time Toast for Pulse Updates */}
-      {latestToast && (
-        <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-full animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="bg-[#0f0c1b]/95 backdrop-blur-2xl border border-cyan-500/30 p-4 rounded-2xl shadow-[0_0_30px_rgba(34,211,238,0.2)]">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex-shrink-0 border border-cyan-500/30">
-                <Radio className="text-cyan-400" size={20} />
-              </div>
-              <div className="flex-1 pt-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-                    New Update
-                  </span>
-                  <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-gray-300 truncate max-w-[100px]">
-                    {latestToast.category}
-                  </span>
-                </div>
-                <h4 className="text-sm font-semibold text-white truncate">
-                  {latestToast.title}
-                </h4>
-                <p className="text-xs text-gray-300 line-clamp-2 mt-0.5">
-                  {latestToast.content}
-                </p>
-              </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-              <button
-                onClick={() => {
-                  markAllAsRead();
-                  setLatestToast(null);
-                  router.push("/pulse");
-                }}
-                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                View in Pulse →
-              </button>
-              <button
-                onClick={() => setLatestToast(null)}
-                className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </NotificationContext.Provider>
   );
 }
 
 export function useNotifications() {
-  const ctx = useContext(NotificationContext);
   return {
-    notifications: ctx.notifications,
-    unreadCount: ctx.notificationsUnreadCount,
-    loading: ctx.loadingNotifications,
-    markRead: ctx.markNotificationRead,
-    markAllRead: ctx.markAllNotificationsRead,
-    clearMyNotifications: ctx.clearAllNotifications,
-    deleteSingleNotification: ctx.deleteSingleNotification,
+    notifications: [],
+    unreadCount: 0,
+    loading: false,
+    markRead: async () => {},
+    markAllRead: async () => {},
+    clearMyNotifications: async () => {},
+    deleteSingleNotification: async () => {},
   };
 }

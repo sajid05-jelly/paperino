@@ -45,78 +45,28 @@ export interface PaperinoNotification {
 }
 
 /**
- * Write a single notification to Firestore for a specific user.
+ * Write a single notification to Firestore for a specific user (NO-OP: Legacy notification system removed).
  */
 export async function createNotification(
-  db: Firestore,
-  userId: string,
-  title: string,
-  message: string,
-  type: NotificationType
+  _db: any,
+  _userId: string,
+  _title: string,
+  _message: string,
+  _type: NotificationType
 ): Promise<void> {
-  try {
-    await addDoc(collection(db, "notifications"), {
-      userId,
-      ownerUid: userId,
-      title,
-      message,
-      type,
-      read: false,
-      isRead: false,
-      createdAt: Date.now(),
-    });
-  } catch (err) {
-    console.error("[Notifications] Failed to create notification:", err);
-  }
+  // No-op: Notifications collection writes disabled to save Firestore quota
 }
 
 export const notifyUser = createNotification;
 
-// Hardcoded admin emails — kept in sync with AuthContext
-const HARDCODED_ADMIN_EMAILS = [
-  "mohamedsajid.sa@gmail.com",
-  "sudharajsekar2005@gmail.com",
-  "admin.paperinoirfan27@gmail.com",
-  "admin.paperinosam14@gmail.com",
-  "gameplayitlifeitis@gmail.com",
-  "gameplayitlifeis@gmail.com",
-  "gameplayitlife@gmail.com",
-  "dejasvini28@gmail.com",
-  "kaushika13official@gmail.com",
-];
-
 /**
- * Broadcast a notification to all admins.
+ * Broadcast a notification to all admins (NO-OP: Legacy notification system removed).
  */
 export async function notifyAdmins(
-  db: Firestore,
-  title: string,
-  message: string,
-  type: NotificationType
+  _db: any,
+  _title: string,
+  _message: string,
+  _type: NotificationType
 ): Promise<void> {
-  try {
-    const adminUids = new Set<string>();
-
-    try {
-      const adminQuery = query(
-        collection(db, "users"),
-        where("role", "==", "admin")
-      );
-      const snap = await getDocs(adminQuery);
-      snap.forEach((d) => adminUids.add(d.id));
-    } catch (e) {
-      console.warn("[Notifications] Query by role==admin skipped:", e);
-    }
-
-    if (adminUids.size === 0) {
-      await createNotification(db, "ADMIN", title, message, type);
-    } else {
-      const promises = Array.from(adminUids).map((uid) =>
-        createNotification(db, uid, title, message, type)
-      );
-      await Promise.all(promises);
-    }
-  } catch (err) {
-    console.error("[Notifications] notifyAdmins failed:", err);
-  }
+  // No-op: Notifications collection writes disabled to save Firestore quota
 }

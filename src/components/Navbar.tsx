@@ -10,9 +10,9 @@ import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
 import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2 } from "lucide-react";
-import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
+import { useBadges } from "@/context/BadgeContext";
 
 const THEMES = [
   { id: "cosmic-violet", name: "Cosmic Violet", primary: "bg-violet-500", accent: "bg-fuchsia-500", shadow: "shadow-[0_0_15px_rgba(139,92,246,0.5)]" },
@@ -26,6 +26,7 @@ const THEMES = [
 export default function Navbar() {
   const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion } = useAuth();
   const { pulseUnreadCount } = usePulseNotifications();
+  const { freeClassUnreadCount, labsTotalUnreadCount, markFreeClassSeen, adminTotalUnreadCount } = useBadges();
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
@@ -219,12 +220,12 @@ export default function Navbar() {
               <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
             )}
 
-            {/* 🧪 Paperino Labs Dropdown */}
+            {/* 🧪 Paperino Labs Dropdown with WhatsApp-style Badge */}
             <div ref={labsRef} className="relative flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setIsLabsOpen(prev => !prev)}
-                className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-600/10 to-cyan-500/10 backdrop-blur-xl border border-violet-500/20 hover:border-cyan-500/40 shadow-[0_0_15px_rgba(139,92,246,0.08)] hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] transition-all duration-500 flex items-center gap-2 font-bold text-xs xl:text-sm text-white hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group"
+                className="relative px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-600/10 to-cyan-500/10 backdrop-blur-xl border border-violet-500/20 hover:border-cyan-500/40 shadow-[0_0_15px_rgba(139,92,246,0.08)] hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] transition-all duration-500 flex items-center gap-2 font-bold text-xs xl:text-sm text-white hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer group"
               >
                 <span className="flex items-center gap-1.5 text-glow relative z-10">
                   <FlaskConical 
@@ -234,12 +235,33 @@ export default function Navbar() {
                   Paperino Labs
                 </span>
 
+                {labsTotalUnreadCount > 0 && (
+                  <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_10px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/40 animate-in zoom-in duration-300">
+                    {labsTotalUnreadCount > 99 ? "99+" : labsTotalUnreadCount}
+                  </span>
+                )}
+
                 <ChevronDown size={14} className={`transition-transform duration-300 relative z-10 text-cyan-400 ${isLabsOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {isLabsOpen && (
-                <div className="absolute right-0 mt-2.5 w-60 rounded-2xl bg-[#07050e]/95 backdrop-blur-3xl border border-white/[0.08] p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-2.5 w-64 rounded-2xl bg-[#07050e]/95 backdrop-blur-3xl border border-white/[0.08] p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.03] via-transparent to-transparent pointer-events-none rounded-2xl" />
+                  <Link
+                    href="/free-class-finder"
+                    onClick={() => { setIsLabsOpen(false); markFreeClassSeen(); }}
+                    className="flex items-center justify-between px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Building2 size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" />
+                      <span>Free Class Finder</span>
+                    </span>
+                    {freeClassUnreadCount > 0 && (
+                      <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/50">
+                        {freeClassUnreadCount > 99 ? "99+" : freeClassUnreadCount}
+                      </span>
+                    )}
+                  </Link>
                   <Link
                     href="/pyq"
                     onClick={() => setIsLabsOpen(false)}
@@ -283,13 +305,6 @@ export default function Navbar() {
                     <BrainCircuit size={15} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Career DNA
                   </Link>
                   <Link
-                    href="/free-class-finder"
-                    onClick={() => setIsLabsOpen(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
-                  >
-                    <Building2 size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Free Class Finder
-                  </Link>
-                  <Link
                     href="/github-intelligence"
                     onClick={() => setIsLabsOpen(false)}
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
@@ -303,7 +318,14 @@ export default function Navbar() {
             <Link href="/developer" className={getLinkClass("/developer", true)}>Developer</Link>
             
             {isAdmin && (
-              <Link href="/admin" className={getLinkClass("/admin", true)}>Admin</Link>
+              <div className="relative inline-flex items-center">
+                <Link href="/admin" className={getLinkClass("/admin", true)}>Admin</Link>
+                {adminTotalUnreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 z-20 flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1 text-[9px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)] ring-2 ring-[#07050e] animate-in zoom-in duration-300">
+                    {adminTotalUnreadCount > 99 ? "99+" : adminTotalUnreadCount}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -393,9 +415,6 @@ export default function Navbar() {
 
             {user ? (
               <div className="flex items-center gap-2 lg:gap-3">
-                {/* Notification Bell */}
-                <NotificationBell />
-
                 <Link 
                   href="/avatar-studio" 
                   className="flex flex-shrink-0 items-center gap-2.5 group p-1 pr-3.5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all cursor-pointer overflow-hidden"
@@ -511,7 +530,7 @@ export default function Navbar() {
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
               )}
 
-              {/* Collapsible Mobile Paperino Labs Dropdown */}
+              {/* Collapsible Mobile Paperino Labs Dropdown with Badge */}
               <div className="mx-3 my-3 bg-gradient-to-br from-violet-600/[0.07] to-cyan-500/[0.07] backdrop-blur-3xl border border-violet-500/20 hover:border-cyan-500/35 rounded-2xl p-1 transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.06)]">
                 <button
                   onClick={() => setIsLabsMobileOpen(!isLabsMobileOpen)}
@@ -521,11 +540,33 @@ export default function Navbar() {
                     <FlaskConical size={15} className="text-cyan-400 animate-pulse" />
                     <span>Paperino Labs</span>
                   </span>
-                  <ChevronDown size={14} className={`transition-transform duration-300 text-cyan-400 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
+                  <div className="flex items-center gap-2">
+                    {labsTotalUnreadCount > 0 && (
+                      <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
+                        {labsTotalUnreadCount > 99 ? "99+" : labsTotalUnreadCount}
+                      </span>
+                    )}
+                    <ChevronDown size={14} className={`transition-transform duration-300 text-cyan-400 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
+                  </div>
                 </button>
                 
                 {isLabsMobileOpen && (
                   <div className="px-2 pb-2 space-y-1 animate-in fade-in duration-300">
+                    <Link 
+                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); markFreeClassSeen(); }} 
+                      href="/free-class-finder" 
+                      className="flex items-center justify-between w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <span className="flex items-center gap-3">
+                        <Building2 size={16} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
+                        <span>Free Class Finder</span>
+                      </span>
+                      {freeClassUnreadCount > 0 && (
+                        <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
+                          {freeClassUnreadCount > 99 ? "99+" : freeClassUnreadCount}
+                        </span>
+                      )}
+                    </Link>
                     <Link 
                       onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
                       href="/pyq" 
@@ -576,14 +617,6 @@ export default function Navbar() {
                     </Link>
                     <Link 
                       onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/free-class-finder" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <Building2 size={16} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
-                      <span>Free Class Finder</span>
-                    </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
                       href="/github-intelligence" 
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
                     >
@@ -596,12 +629,21 @@ export default function Navbar() {
 
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
 
-              {/* Admin */}
+              {/* Admin with Badge in Mobile */}
               {isAdmin && (
                 <>
                   <div className="h-px bg-white/[0.06] my-3 mx-2" />
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Admin</p>
-                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin" className={getMobileLinkClass("/admin", true)}>Admin Dashboard</Link>
+                  <div className="relative w-full">
+                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin" className={getMobileLinkClass("/admin", true)}>
+                      Admin Dashboard
+                    </Link>
+                    {adminTotalUnreadCount > 0 && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
+                        {adminTotalUnreadCount > 99 ? "99+" : adminTotalUnreadCount}
+                      </span>
+                    )}
+                  </div>
                 </>
               )}
             </div>
