@@ -40,6 +40,11 @@ interface NotificationContextType {
   unreadCount: number;
   markAllAsRead: () => Promise<void>;
   
+  // Independent Paperino Pulse Unread Tracking System
+  pulseUnreadCount: number;
+  categoryPulseUnreadCounts: Record<string, number>;
+  markPulseCategoryAsRead: (category: string) => Promise<void>;
+  
   // Unified Realtime User Notifications
   notifications: PaperinoNotification[];
   notificationsUnreadCount: number;
@@ -56,6 +61,9 @@ const NotificationContext = createContext<NotificationContextType>({
   lastPulseReadAt: null,
   unreadCount: 0,
   markAllAsRead: async () => {},
+  pulseUnreadCount: 0,
+  categoryPulseUnreadCounts: {},
+  markPulseCategoryAsRead: async () => {},
   notifications: [],
   notificationsUnreadCount: 0,
   loadingNotifications: true,
@@ -112,6 +120,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Local Read & Cleared Sets (Synced to LocalStorage for instant error-free UX)
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
   const [clearedNotifIds, setClearedNotifIds] = useState<Set<string>>(new Set());
+  const [readPulseIds, setReadPulseIds] = useState<Set<string>>(new Set());
 
   // Sync LocalStorage Read & Cleared State on Mount / User change
   useEffect(() => {
@@ -125,10 +134,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (clearedSaved) {
         setClearedNotifIds(new Set(JSON.parse(clearedSaved)));
       }
+      const readPulseSaved = localStorage.getItem(`paperino_read_pulse_${user.uid}`);
+      if (readPulseSaved) {
+        setReadPulseIds(new Set(JSON.parse(readPulseSaved)));
+      }
     } catch (e) {
       console.warn("Error loading notification cache:", e);
     }
   }, [user]);
+
+  const persistReadPulseIds = (newSet: Set<string>) => {
+    setReadPulseIds(newSet);
+    if (user && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`paperino_read_pulse_${user.uid}`, JSON.stringify(Array.from(newSet)));
+      } catch (e) {}
+    }
+  };
 
   // Helper to persist Read IDs
   const persistReadIds = (newSet: Set<string>) => {
@@ -332,6 +354,77 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
   }, [updates, lastPulseReadAt, localReadTime, user]);
 
+  // Calculate per-item and per-category unread Pulse updates per user
+  const unreadPulseItems = useMemo(() => {
+    if (!user) return [];
+    return updates.filter((u) => !readPulseIds.has(u.id));
+  }, [updates, readPulseIds, user]);
+
+  const categoryPulseUnreadCounts = useMemo(() => {
+    if (!user) return {};
+    const counts: Record<string, number> = {};
+    let totalActiveUnread = 0;
+
+    const isExpiredTs = (ts?: any) => {
+      if (!ts) return false;
+      const ms = typeof ts.toMillis === "function" ? ts.toMillis() : typeof ts.seconds === "number" ? ts.seconds * 1000 : new Date(ts).getTime();
+      return ms > 0 ? Date.now() > ms : false;
+    };
+
+    unreadPulseItems.forEach((u) => {
+      const expired = isExpiredTs((u as any).deadline);
+      if (expired) {
+        counts["Out of Date"] = (counts["Out of Date"] || 0) + 1;
+      } else {
+        totalActiveUnread++;
+        if (u.category) {
+          counts[u.category] = (counts[u.category] || 0) + 1;
+        }
+      }
+    });
+
+    counts["All"] = totalActiveUnread;
+    return counts;
+  }, [unreadPulseItems, user]);
+
+  const pulseUnreadCount = useMemo(() => {
+    if (!user) return 0;
+    return categoryPulseUnreadCounts["All"] || 0;
+  }, [categoryPulseUnreadCounts, user]);
+
+  const markPulseCategoryAsRead = useCallback(async (category: string) => {
+    if (!user) return;
+    const isExpiredTs = (ts?: any) => {
+      if (!ts) return false;
+      const ms = typeof ts.toMillis === "function" ? ts.toMillis() : typeof ts.seconds === "number" ? ts.seconds * 1000 : new Date(ts).getTime();
+      return ms > 0 ? Date.now() > ms : false;
+    };
+
+    const newSet = new Set(readPulseIds);
+    let countChanged = 0;
+
+    updates.forEach((u) => {
+      const expired = isExpiredTs((u as any).deadline);
+      let match = false;
+      if (category === "Out of Date") {
+        match = expired;
+      } else if (category === "All") {
+        match = !expired;
+      } else {
+        match = !expired && u.category === category;
+      }
+
+      if (match && !newSet.has(u.id)) {
+        newSet.add(u.id);
+        countChanged++;
+      }
+    });
+
+    if (countChanged > 0) {
+      persistReadPulseIds(newSet);
+    }
+  }, [user, updates, readPulseIds]);
+
   const markAllAsRead = async () => {
     if (!user) return;
     const now = Date.now();
@@ -471,6 +564,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         lastPulseReadAt,
         unreadCount: unreadUpdates.length, 
         markAllAsRead,
+        pulseUnreadCount,
+        categoryPulseUnreadCounts,
+        markPulseCategoryAsRead,
         notifications,
         notificationsUnreadCount,
         loadingNotifications,

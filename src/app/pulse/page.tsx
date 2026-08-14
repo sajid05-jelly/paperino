@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import FormattedDescription from "@/components/FormattedDescription";
 
+import { usePulseNotifications } from "@/context/NotificationContext";
+
 interface PulseUpdate {
   id: string;
   title: string;
@@ -60,10 +62,18 @@ export default function PulsePage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
+  const { categoryPulseUnreadCounts, markPulseCategoryAsRead } = usePulseNotifications();
   const { showToast } = useToast();
   const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const isLoggedOut = !authLoading && !user;
+
+  // Automatically mark current active category as read
+  useEffect(() => {
+    if (user && activeCategory) {
+      markPulseCategoryAsRead(activeCategory);
+    }
+  }, [user, activeCategory, markPulseCategoryAsRead, updates]);
 
   useEffect(() => {
     try {
@@ -637,9 +647,10 @@ export default function PulsePage() {
         <nav className="flex flex-wrap items-center justify-center gap-2 max-w-full overflow-x-auto py-1" aria-label="Category filter">
           {CATEGORIES.map(cat => {
             const active = activeCategory === cat;
+            const unreadCount = categoryPulseUnreadCounts[cat] || 0;
             return (
               <button key={cat} onClick={() => setActiveCategory(cat)}
-                className="px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap cursor-pointer shrink-0"
+                className="relative inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap cursor-pointer shrink-0"
                 style={active ? {
                   background: "linear-gradient(135deg, rgba(109,40,217,0.85) 0%, rgba(79,70,229,0.85) 100%)",
                   border: "1px solid rgba(167,139,250,0.45)",
@@ -652,7 +663,14 @@ export default function PulsePage() {
                   color: "rgba(148,163,184,0.85)",
                   backdropFilter: "blur(8px)",
                 }}>
-                {cat}
+                <span>{cat}</span>
+                {unreadCount > 0 && (
+                  <span className={`flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-extrabold ${
+                    active ? "bg-white text-purple-950" : "bg-gradient-to-r from-red-600 to-rose-500 text-white shadow-[0_0_8px_rgba(239,68,68,0.6)]"
+                  }`}>
+                    {unreadCount}
+                  </span>
+                )}
               </button>
             );
           })}

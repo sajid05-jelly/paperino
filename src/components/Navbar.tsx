@@ -12,6 +12,7 @@ import AvatarSelectorModal from "./AvatarSelectorModal";
 import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2 } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useTheme } from "@/context/ThemeContext";
+import { usePulseNotifications } from "@/context/NotificationContext";
 
 const THEMES = [
   { id: "cosmic-violet", name: "Cosmic Violet", primary: "bg-violet-500", accent: "bg-fuchsia-500", shadow: "shadow-[0_0_15px_rgba(139,92,246,0.5)]" },
@@ -24,6 +25,7 @@ const THEMES = [
 
 export default function Navbar() {
   const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion } = useAuth();
+  const { pulseUnreadCount } = usePulseNotifications();
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
@@ -204,7 +206,14 @@ export default function Navbar() {
             
             <div className="w-[1px] h-4 bg-white/10 mx-1 hidden xl:block flex-shrink-0"></div>
             
-            <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
+            <div className="relative inline-flex items-center">
+              <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
+              {pulseUnreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 z-20 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_12px_rgba(239,68,68,0.7)] ring-2 ring-[#07050e] animate-in zoom-in duration-300">
+                  {pulseUnreadCount > 9 ? "9+" : pulseUnreadCount}
+                </span>
+              )}
+            </div>
             <Link href="/leaderboard" className={getLinkClass("/leaderboard", true)}>Leaderboard</Link>
             {user && !isAdmin && (
               <Link href="/contributor" className={getLinkClass("/contributor", true)}>Dashboard</Link>
@@ -490,7 +499,14 @@ export default function Navbar() {
               {/* Discover */}
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/leaderboard" className={getMobileLinkClass("/leaderboard", true)}>Leaderboard</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
+              <div className="relative w-full">
+                <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
+                {pulseUnreadCount > 0 && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
+                    {pulseUnreadCount > 9 ? "9+" : pulseUnreadCount}
+                  </span>
+                )}
+              </div>
               {user && !isAdmin && (
                 <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
               )}
