@@ -349,67 +349,66 @@ export async function POST(request: Request) {
         console.warn("[challenge-submit] failed to write result doc:", err.message);
       });
 
-      // Query results from challengeId leaderboard: Sorted by score (desc), then durationMs (asc)
-      const leaderboardPromise = adminDb.collection('challenge_results')
-        .where('challengeId', '==', challengeId)
-        .where('isOfficial', '==', true)
-        .orderBy('score', 'desc')
-        .orderBy('durationMs', 'asc')
-        .limit(10)
-        .get()
-        .catch((err: any) => {
-          console.warn("[challenge-submit] leaderboard retrieval failed:", err.message);
-          return null;
-        });
+      // Await write first so the current user's result is included in ranking calculations
+      await resultWritePromise;
 
-      const [, topResultsSnap] = await Promise.all([resultWritePromise, leaderboardPromise]);
+      // Query all official results for this game's current challengeId to calculate accurate ranks
+      try {
+        const allResultsSnap = await adminDb.collection('challenge_results')
+          .where('challengeId', '==', challengeId)
+          .where('isOfficial', '==', true)
+          .get();
 
-      if (topResultsSnap) {
-        let rankCounter = 1;
-        topResultsSnap.forEach((docSnap: any) => {
-          const data = docSnap.data();
-          if (data.userId === uid) {
-            userRank = rankCounter;
-          }
-          leaderboard.push({
-            userId: data.userId,
-            displayName: data.displayName || 'Anonymous',
-            paperinoAvatar: data.paperinoAvatar || '',
-            score: data.score || 0,
-            durationMs: data.durationMs || 0,
-            rank: rankCounter++
+        const allEntries: any[] = [];
+        allResultsSnap.forEach((docSnap: any) => {
+          const d = docSnap.data();
+          allEntries.push({
+            userId: d.userId,
+            displayName: d.displayName || 'Anonymous',
+            paperinoAvatar: d.paperinoAvatar || '',
+            score: d.score || 0,
+            durationMs: d.durationMs || 0,
+            completedAt: d.completedAt ? (d.completedAt.toDate ? d.completedAt.toDate().getTime() : d.completedAt) : 0
           });
         });
 
-        // Dynamic ranking logic: count how many users completed challengeId with either higher score or equal score with faster durationMs
-        if (userRank === null && isOfficial) {
-          try {
-            const allResultsSnap = await adminDb.collection('challenge_results')
-              .where('challengeId', '==', challengeId)
-              .where('isOfficial', '==', true)
-              .get();
-            
-            let rankCalculated = 1;
-            allResultsSnap.forEach((docSnap: any) => {
-              const data = docSnap.data();
-              if (data.userId === uid) return; // skip self
-              
-              if (data.score > score) {
-                rankCalculated++;
-              } else if (data.score === score && data.durationMs < durationMs) {
-                rankCalculated++;
-              }
-            });
-            userRank = rankCalculated;
-          } catch (err: any) {
-            console.warn("[challenge-submit] rank calculation failed:", err.message);
+        // Ranking Priority: Higher score first; if equal score, faster durationMs first; if still equal, earlier completion
+        allEntries.sort((a, b) => {
+          if (b.score !== a.score) {
+            return b.score - a.score;
           }
-        }
+          if (a.durationMs !== b.durationMs) {
+            return a.durationMs - b.durationMs;
+          }
+          return a.completedAt - b.completedAt;
+        });
+
+        // Assign ranks (1-indexed) and find current user's rank
+        allEntries.forEach((entry, idx) => {
+          const rank = idx + 1;
+          if (entry.userId === uid) {
+            userRank = rank;
+          }
+          // Public leaderboard shows ONLY Top 3
+          if (rank <= 3) {
+            leaderboard.push({
+              userId: entry.userId,
+              displayName: entry.displayName,
+              paperinoAvatar: entry.paperinoAvatar,
+              score: entry.score,
+              durationMs: entry.durationMs,
+              rank
+            });
+          }
+        });
+      } catch (err: any) {
+        console.warn("[challenge-submit] ranking query failed:", err.message);
       }
     }
 
-    if (leaderboard.length === 0) {
-      userRank = null;
+    // Default fallback if no other participants
+    if (userRank === null && isOfficial) {
+      userRank = 1;
     }
 
     return NextResponse.json({
@@ -417,7 +416,7 @@ export async function POST(request: Request) {
       score,
       durationMs,
       completedAt: completedAt.toISOString(),
-      rank: isOfficial ? (userRank || 1) : null,
+      rank: isOfficial ? userRank : null,
       leaderboard,
       isOfficial
     });
