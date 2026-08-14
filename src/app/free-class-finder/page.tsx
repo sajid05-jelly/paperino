@@ -205,20 +205,24 @@ function FreeClassFinderContent() {
           processReportsData(rawList);
         },
         (err) => {
-          // onSnapshot failed — try a single getDocs as fallback (NO infinite polling)
-          console.warn(`[Free Class Finder] onSnapshot notice: ${err.message}. Trying single getDocs fallback.`);
-          import("firebase/firestore").then(({ getDocs }) => {
-            getDocs(reportsQuery).then((snap) => {
-              const rawList = snap.docs.map(docSnap => ({
-                id: docSnap.id,
-                ...docSnap.data()
-              }));
-              processReportsData(rawList);
-            }).catch((fallbackErr) => {
-              console.warn("[Free Class Finder] getDocs fallback also failed:", fallbackErr.message);
+          console.warn(`[Free Class Finder] Client listener notice: ${err.message}. Fetching via server API fallback...`);
+          const fetchViaApi = async () => {
+            try {
+              const token = await user.getIdToken();
+              const res = await fetch("/api/free-class-finder", {
+                headers: { "Authorization": `Bearer ${token}` }
+              });
+              if (res.ok) {
+                const rawList = await res.json();
+                processReportsData(rawList);
+              } else {
+                setLoading(false);
+              }
+            } catch (e) {
               setLoading(false);
-            });
-          });
+            }
+          };
+          fetchViaApi();
         }
       );
     } catch (e) {
