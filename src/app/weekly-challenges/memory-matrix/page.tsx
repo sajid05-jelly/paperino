@@ -92,28 +92,12 @@ export default function MemoryMatrixPage() {
         const configData = await configRes.json();
         
         if (configRes.status === 409 && configData.completed) {
-          const submitRes = await fetch("/api/challenge-submit", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              sessionId: `local-fallback-${currentUser.uid}`,
-              gameData: {
-                rounds: [],
-                gameId: "memory-matrix",
-                durationMs: configData.durationMs || 0
-              }
-            })
-          });
-          const submitData = await submitRes.json();
           setResultData({
             score: configData.score,
             durationMs: configData.durationMs,
-            rank: submitData.rank,
+            rank: configData.rank,
             isOfficial: true,
-            leaderboard: submitData.leaderboard || []
+            leaderboard: configData.leaderboard || []
           });
           setGameState("result");
         } else if (!configRes.ok) {

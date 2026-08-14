@@ -138,11 +138,63 @@ export async function POST(request: Request) {
 
         if (!existingResults.empty) {
           const prevResult = existingResults.docs[0].data();
+          const userScore = prevResult.score || 0;
+          const userDuration = prevResult.durationMs || 0;
+          const userCompletedAt = prevResult.completedAt ? (prevResult.completedAt.toDate ? prevResult.completedAt.toDate().getTime() : prevResult.completedAt) : 0;
+
+          // Fetch all official results for this game's challengeId to compute dynamic ranks and top 3 leaderboard
+          const allResultsSnap = await adminDb.collection("challenge_results")
+            .where("challengeId", "==", challengeId)
+            .where("isOfficial", "==", true)
+            .get();
+
+          const allEntries: any[] = [];
+          allResultsSnap.forEach((docSnap: any) => {
+            const d = docSnap.data();
+            allEntries.push({
+              userId: d.userId,
+              displayName: d.displayName || "Anonymous",
+              paperinoAvatar: d.paperinoAvatar || "",
+              score: d.score || 0,
+              durationMs: d.durationMs || 0,
+              completedAt: d.completedAt ? (d.completedAt.toDate ? d.completedAt.toDate().getTime() : d.completedAt) : 0
+            });
+          });
+
+          // Sort by higher score, then faster time, then earlier submission
+          allEntries.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            if (a.durationMs !== b.durationMs) return a.durationMs - b.durationMs;
+            return a.completedAt - b.completedAt;
+          });
+
+          let calculatedRank: number | null = null;
+          const top3Leaderboard: any[] = [];
+
+          allEntries.forEach((entry, idx) => {
+            const r = idx + 1;
+            if (entry.userId === uid) {
+              calculatedRank = r;
+            }
+            if (r <= 3) {
+              top3Leaderboard.push({
+                userId: entry.userId,
+                displayName: entry.displayName,
+                paperinoAvatar: entry.paperinoAvatar,
+                score: entry.score,
+                durationMs: entry.durationMs,
+                rank: r
+              });
+            }
+          });
+
           return NextResponse.json({ 
-            error: 'Challenge Already Completed', 
+            error: "You've already completed today's official challenge.", 
             completed: true,
-            score: prevResult.score,
-            durationMs: prevResult.durationMs,
+            score: userScore,
+            durationMs: userDuration,
+            rank: calculatedRank || 1,
+            leaderboard: top3Leaderboard,
             challengeId: challengeId
           }, { status: 409 });
         }
