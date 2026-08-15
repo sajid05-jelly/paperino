@@ -168,61 +168,43 @@ export async function POST(request: Request) {
     const seedNum = getSeed(`${gameId}-${challengeDate}`);
     const rand = mulberry32(seedNum);
 
-    let score = 0;
-    let isCompletedSuccessfully = false;
-    let maxAllowedTimeMs = 300000; // Default 5 minutes
+    let accuracyScore = 50; // base completion accuracy
+    let maxAllowedTimeMs = 180000; // 3 minutes standard
 
     if (gameId === 'code-breaker') {
-      maxAllowedTimeMs = 180000; // 3 minutes (180s)
-      const code: number[] = [];
-      const digits = [0, 1, 2, 3, 4, 5, 6, 7];
-      for (let i = 0; i < 4; i++) {
-        const idx = Math.floor(rand() * digits.length);
-        code.push(digits[idx]);
-        digits.splice(idx, 1);
-      }
-      
+      maxAllowedTimeMs = 180000; // 3 minutes
       const { attempts = [], finalGuess = [] } = gameData;
-      const numCode = code.map(Number);
-      const numFinalGuess = (Array.isArray(finalGuess) ? finalGuess : []).map(Number);
-      const isCorrect = numCode.length === 4 && 
-                        numFinalGuess.length === 4 && 
-                        numCode.every((d, idx) => d === numFinalGuess[idx]);
-      
-      // If code matches generated code OR valid final guess submitted
-      if (isCorrect || (Array.isArray(attempts) && attempts.length > 0)) {
-        isCompletedSuccessfully = true;
-      }
+      const guessCount = Array.isArray(attempts) ? Math.max(1, attempts.length) : 1;
+      // 1-3 guesses: 60 pts, 4-6 guesses: 50 pts, 7+ guesses: 40 pts
+      if (guessCount <= 3) accuracyScore = 60;
+      else if (guessCount <= 6) accuracyScore = 55;
+      else if (guessCount <= 8) accuracyScore = 48;
+      else accuracyScore = 40;
     } else if (gameId === 'memory-matrix') {
-      maxAllowedTimeMs = 180000; // 3 minutes (180s)
+      maxAllowedTimeMs = 180000; // 3 minutes
       const userRounds = gameData.rounds || [];
-      // If user played through the 5 memory rounds
-      if (Array.isArray(userRounds) && userRounds.length >= 1) {
-        isCompletedSuccessfully = true;
-      }
+      const totalRounds = Array.isArray(userRounds) ? userRounds.length : 5;
+      accuracyScore = Math.min(60, Math.max(40, Math.round(40 + (totalRounds / 5) * 20)));
     } else if (gameId === 'impossible-room') {
-      maxAllowedTimeMs = 300000; // 5 minutes (300s)
+      maxAllowedTimeMs = 300000; // 5 minutes
       const { cluesFound = [], lockCode: userLockCode = '' } = gameData;
-      // Room Safe Escape: entered 4 digits code
-      if (typeof userLockCode === 'string' && userLockCode.trim().length === 4) {
-        isCompletedSuccessfully = true;
-      }
+      const cluesCount = Array.isArray(cluesFound) ? cluesFound.length : 0;
+      const isCorrectLock = userLockCode === "4927" || userLockCode === "1827" || (typeof userLockCode === "string" && userLockCode.length === 4);
+      accuracyScore = isCorrectLock ? Math.min(60, 45 + cluesCount * 4) : 40;
     } else if (gameId === 'word-forge') {
-      maxAllowedTimeMs = 180000; // 6 rounds * 30s = 180s
+      maxAllowedTimeMs = 180000; // 3 minutes
       const userAnswers = gameData.answers || [];
-      if (Array.isArray(userAnswers) && userAnswers.length > 0) {
-        isCompletedSuccessfully = true;
-      }
+      const correctEstimate = Array.isArray(userAnswers) ? userAnswers.filter((a: any) => typeof a === 'string' && a.trim().length > 0).length : 6;
+      accuracyScore = Math.min(60, Math.max(35, Math.round(35 + (correctEstimate / 6) * 25)));
     }
 
-    // A successfully submitted challenge session is always a completed challenge
-    isCompletedSuccessfully = true;
-
-    const completionScore = 50;
+    // Speed bonus: 0 to 40 points based on actual duration relative to maxAllowedTimeMs
     const actualDuration = Math.max(1000, durationMs);
-    const timeRatio = Math.max(0, 1 - (actualDuration / maxAllowedTimeMs));
-    const timeScore = Math.max(0, Math.min(50, Math.round(50 * timeRatio)));
-    score = Math.max(50, Math.min(100, completionScore + timeScore));
+    const speedRatio = Math.max(0, 1 - (actualDuration / maxAllowedTimeMs));
+    const speedBonus = Math.max(0, Math.min(40, Math.round(40 * speedRatio)));
+
+    // Total Score out of 100 (Accuracy + Speed)
+    let score = Math.max(10, Math.min(100, accuracyScore + speedBonus));
 
     // === PARALLEL BATCH 1: Session update + User profile fetch at the same time ===
     let displayName = 'Student';
