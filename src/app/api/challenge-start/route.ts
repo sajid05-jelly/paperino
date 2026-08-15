@@ -93,16 +93,18 @@ export async function POST(request: Request) {
     // Process config
     let isOfficial = true;
     let isAdminBypass = false;
-    let challengeId = `${gameId}-${challengeDate}`; // Default fallback if no admin challengeId is set
+    let challengeId = `${gameId}-${challengeDate}`; // Default fallback
 
     if (configSnap && configSnap.exists) {
       const cfg = configSnap.data() || {};
       const isUserAdmin = authUser.email?.toLowerCase() === "mohamedsajid.sa@gmail.com" || authUser.role === "admin" || (authUser as any).admin === true;
       isAdminBypass = Boolean(isUserAdmin && cfg.adminTestMode === true);
 
-      // Use specific admin published challengeId if available, separated by gameId
-      if (cfg.currentChallengeId) {
-        challengeId = String(cfg.currentChallengeId);
+      // ChallengeId priority: challengeSessionId > currentChallengeId > currentWeek > date fallback
+      if (cfg.challengeSessionId) {
+        challengeId = `${gameId}-${cfg.challengeSessionId}`;
+      } else if (cfg.currentChallengeId) {
+        challengeId = `${gameId}-${cfg.currentChallengeId}`;
       } else if (cfg.currentWeek) {
         challengeId = `${gameId}-${cfg.currentWeek}`;
       }
@@ -191,6 +193,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ 
             error: "You've already completed today's official challenge.", 
             completed: true,
+            wasAlreadyCompleted: true,
             score: userScore,
             durationMs: userDuration,
             rank: calculatedRank || 1,

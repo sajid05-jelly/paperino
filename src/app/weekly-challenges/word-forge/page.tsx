@@ -90,6 +90,7 @@ export default function WordForgePage() {
 
   const [existingResult, setExistingResult] = useState<any>(null);
   const [checkingAttempt, setCheckingAttempt] = useState(true);
+  const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
 
   useEffect(() => {
     async function checkAttempt() {
@@ -115,6 +116,7 @@ export default function WordForgePage() {
             isOfficial: true,
             leaderboard: configData.leaderboard || []
           });
+          setWasAlreadyCompleted(true);
           setGameState("result");
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
@@ -413,6 +415,7 @@ export default function WordForgePage() {
           durationMs={resultData.durationMs}
           rank={resultData.rank}
           isOfficial={resultData.isOfficial}
+          wasAlreadyCompleted={wasAlreadyCompleted}
           gameId="word-forge"
           gameName="Word Forge"
           onViewLeaderboard={() => {}}

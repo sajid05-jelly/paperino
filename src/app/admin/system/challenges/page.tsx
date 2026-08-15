@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, limit, query
 import { db } from "@/lib/firebase";
 import { 
   Trophy, Save, AlertCircle, Calendar, Gamepad2, 
-  Loader2, CheckCircle2, ShieldAlert, Clock
+  Loader2, CheckCircle2, ShieldAlert, Clock, Rocket
 } from "lucide-react";
 
 function getIsoWeek() {
@@ -30,6 +30,7 @@ export default function ChallengesControlPage() {
     "code-breaker", "memory-matrix", "impossible-room", "word-forge"
   ]);
   const [wcHasResults, setWcHasResults] = useState(false);
+  const [wcChallengeSessionId, setWcChallengeSessionId] = useState<string>("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,6 +54,7 @@ export default function ChallengesControlPage() {
           setWcActiveGames(data.activeGames || [
             "code-breaker", "memory-matrix", "impossible-room", "word-forge"
           ]);
+          setWcChallengeSessionId(data.challengeSessionId || "");
         }
 
         // Bounded query to check participation status (isolated so index/query errors do not fail config loading)
@@ -89,6 +91,7 @@ export default function ChallengesControlPage() {
         availableDays: wcAvailableDays,
         activeGames: wcActiveGames,
         currentWeek: getIsoWeek(),
+        challengeSessionId: wcChallengeSessionId,
         updatedAt: serverTimestamp()
       }, { merge: true });
 
@@ -274,7 +277,32 @@ export default function ChallengesControlPage() {
                 <span className="text-xs font-bold text-violet-300 uppercase">Data Status</span>
                 <span className="text-xs font-medium text-gray-300">{wcHasResults ? '🟢 Results recorded' : '⚪ No results yet'}</span>
               </div>
+              {/* Current Session ID */}
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-violet-300 uppercase">Challenge Session</span>
+                <span className="text-xs font-mono font-medium text-gray-300 truncate max-w-[140px]" title={wcChallengeSessionId || 'Not set'}>
+                  {wcChallengeSessionId ? wcChallengeSessionId.slice(0, 12) + '…' : '⚪ Not set'}
+                </span>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const newId = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                setWcChallengeSessionId(newId);
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30"
+            >
+              <Rocket size={14} /> Start New Challenge Session
+            </button>
+
+            {wcChallengeSessionId && (
+              <p className="text-[10px] text-gray-500 text-center">
+                Starting a new session resets official attempts for all students.
+                Save config after starting to apply.
+              </p>
+            )}
           </div>
         </div>
 

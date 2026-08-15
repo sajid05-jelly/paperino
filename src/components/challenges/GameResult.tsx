@@ -24,6 +24,7 @@ interface GameResultProps {
   onPlayAgain: () => void;
   onBackToHub: () => void;
   leaderboard?: LeaderboardEntry[];
+  wasAlreadyCompleted?: boolean;
 }
 
 const formatDuration = (ms: number) => {
@@ -47,10 +48,15 @@ export default function GameResult({
   onPlayAgain,
   onBackToHub,
   leaderboard = [],
+  wasAlreadyCompleted = false,
 }: GameResultProps) {
   const [displayScore, setDisplayScore] = useState(0);
 
   useEffect(() => {
+    if (wasAlreadyCompleted) {
+      setDisplayScore(score);
+      return;
+    }
     let startTime: number;
     let animationFrame: number;
     const duration = 1500; // ms
@@ -110,9 +116,17 @@ export default function GameResult({
         
         {/* Title Header */}
         <div className="text-center relative z-10">
-          <span className="text-4xl block mb-2">🎉</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white uppercase tracking-wider">Challenge Complete</h2>
+          <span className="text-4xl block mb-2">{wasAlreadyCompleted ? '✅' : '🎉'}</span>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white uppercase tracking-wider">
+            {wasAlreadyCompleted ? 'Attempt Completed' : 'Challenge Complete'}
+          </h2>
           <p className="text-sm text-purple-300 font-semibold tracking-widest mt-1">{gameName}</p>
+          {wasAlreadyCompleted && (
+            <p className="text-xs text-gray-400 mt-3 max-w-md mx-auto leading-relaxed">
+              Your official attempt for this challenge session is already completed. 
+              Come back when the next Weekly Challenge opens.
+            </p>
+          )}
         </div>
 
         {/* 2-Column Split: Result Details left, Leaderboard right */}

@@ -47,6 +47,7 @@ export default function CodeBreakerPage() {
   const [startTime, setStartTime] = useState<number>(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [checkingAttempt, setCheckingAttempt] = useState(true);
+  const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
 
   // Guard reference to prevent duplicate session creation
   const isCreatingSession = useRef(false);
@@ -81,6 +82,7 @@ export default function CodeBreakerPage() {
             isOfficial: true,
             leaderboard: configData.leaderboard || []
           });
+          setWasAlreadyCompleted(true);
           setGameState("result");
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
@@ -396,6 +398,7 @@ export default function CodeBreakerPage() {
           onPlayAgain={() => window.location.reload()}
           onBackToHub={() => router.push("/weekly-challenges")}
           leaderboard={resultData.leaderboard}
+          wasAlreadyCompleted={wasAlreadyCompleted}
         />
       </div>
     );

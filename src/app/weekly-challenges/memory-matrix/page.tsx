@@ -67,6 +67,7 @@ export default function MemoryMatrixPage() {
   const [error, setError] = useState('');
   const [startTime, setStartTime] = useState<number>(0);
   const [checkingAttempt, setCheckingAttempt] = useState(true);
+  const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
 
   const currentCfg = ROUND_CONFIGS[currentRoundIdx] || ROUND_CONFIGS[0];
   const isCreatingSession = useRef(false);
@@ -100,6 +101,7 @@ export default function MemoryMatrixPage() {
             isOfficial: true,
             leaderboard: configData.leaderboard || []
           });
+          setWasAlreadyCompleted(true);
           setGameState("result");
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
@@ -451,6 +453,7 @@ export default function MemoryMatrixPage() {
           durationMs={resultData.durationMs}
           rank={resultData.rank}
           isOfficial={resultData.isOfficial}
+          wasAlreadyCompleted={wasAlreadyCompleted}
           gameId="memory-matrix"
           gameName="Memory Matrix"
           onViewLeaderboard={() => {}}

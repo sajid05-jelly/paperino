@@ -81,8 +81,10 @@ export default function WeeklyChallengesPage() {
 
             games.forEach((gId) => {
               let challengeId = `${gId}-${getChallengeDate()}`;
-              if (currentConfig.currentChallengeId) {
-                challengeId = String(currentConfig.currentChallengeId);
+              if (currentConfig.challengeSessionId) {
+                challengeId = `${gId}-${currentConfig.challengeSessionId}`;
+              } else if (currentConfig.currentChallengeId) {
+                challengeId = `${gId}-${currentConfig.currentChallengeId}`;
               } else if (activeChallengeWeek) {
                 challengeId = `${gId}-${activeChallengeWeek}`;
               }
@@ -645,18 +647,23 @@ export default function WeeklyChallengesPage() {
                       <p className="mb-6 text-sm leading-relaxed text-gray-400">{game.description}</p>
 
                       {isCompleted && session && (
-                        <div
-                          className="mb-6 grid grid-cols-2 gap-4 rounded-xl p-4"
-                          style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
-                        >
-                          <div>
-                            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Score</p>
-                            <p className="text-lg font-bold text-white">{session.score}</p>
+                        <div className="mb-6">
+                          <div
+                            className="grid grid-cols-2 gap-4 rounded-xl p-4"
+                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                          >
+                            <div>
+                              <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Score</p>
+                              <p className="text-lg font-bold text-white">{session.score}</p>
+                            </div>
+                            <div>
+                              <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Time</p>
+                              <p className="text-lg font-bold text-white">{formatDuration(session.duration || 0)}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Time</p>
-                            <p className="text-lg font-bold text-white">{formatDuration(session.duration || 0)}</p>
-                          </div>
+                          <p className="mt-2 text-[10px] text-gray-500 text-center leading-relaxed">
+                            Official attempt completed · Next attempt available when a new challenge session opens
+                          </p>
                         </div>
                       )}
                     </div>

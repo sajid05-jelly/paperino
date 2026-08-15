@@ -119,6 +119,7 @@ export default function ImpossibleRoomPage() {
   const [error, setError] = useState("");
 
   const [checkingAttempt, setCheckingAttempt] = useState(true);
+  const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
 
   const isCreatingSession = useRef(false);
 
@@ -146,6 +147,7 @@ export default function ImpossibleRoomPage() {
             isOfficial: true,
             leaderboard: configData.leaderboard || []
           });
+          setWasAlreadyCompleted(true);
           setGameState("result");
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
@@ -380,6 +382,7 @@ export default function ImpossibleRoomPage() {
           onPlayAgain={() => window.location.reload()}
           onBackToHub={() => router.push("/weekly-challenges")}
           leaderboard={resultData.leaderboard}
+          wasAlreadyCompleted={wasAlreadyCompleted}
         />
       </div>
     );
