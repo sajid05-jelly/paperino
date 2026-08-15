@@ -273,8 +273,8 @@ export default function WordForgePage() {
         setResultData({
           score: finalCalculatedScore,
           durationMs: totalTimeMs > 0 ? totalTimeMs : (startTime ? Date.now() - startTime : 0),
-          rank: null,
-          isOfficial: false,
+          rank: isOfficial ? 1 : null,
+          isOfficial: isOfficial,
           leaderboard: []
         });
         setGameState("result");
@@ -283,7 +283,8 @@ export default function WordForgePage() {
 
       setResultData({
         ...data,
-        score: (data.score && data.score > 0) ? data.score : finalCalculatedScore
+        rank: data.rank ?? (data.isOfficial ? 1 : null),
+        leaderboard: Array.isArray(data.leaderboard) ? data.leaderboard : []
       });
       setGameState("result");
     } catch (err: any) {
@@ -315,8 +316,8 @@ export default function WordForgePage() {
       setResultData({
         score: finalCalculatedScore,
         durationMs: totalTimeMs > 0 ? totalTimeMs : (startTime ? Date.now() - startTime : 0),
-        rank: null,
-        isOfficial: false,
+        rank: isOfficial ? 1 : null,
+        isOfficial: isOfficial,
         leaderboard: []
       });
       setGameState("result");

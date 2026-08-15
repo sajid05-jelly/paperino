@@ -243,18 +243,21 @@ export async function POST(request: Request) {
       // Clamp score to a maximum of 100
       score = Math.max(0, Math.min(100, Math.round(accumulatedScore)));
     } else if (gameId === 'impossible-room') {
-      const clues: string[] = [];
-      for (let i = 0; i < 5; i++) {
-        clues.push(`clue-${Math.floor(rand() * 1000)}`);
-      }
-      const lockCode = Array.from({length: 4}, () => Math.floor(rand() * 10)).join('');
-      
       const { cluesFound = [], lockCode: userLockCode = '' } = gameData;
-      let validClues = 0;
-      cluesFound.forEach((c: string) => {
-        if (clues.includes(c)) validClues++;
-      });
-      score = validClues * 200 + (userLockCode === lockCode ? 500 : 0);
+      // Fixed clues in room: desk-drawer (1), bookshelf-diary (8), vintage-painting (2), desk-lamp (7) -> lock code "1827"
+      const EXPECTED_LOCK_CODE = "1827";
+      const totalClues = Array.isArray(cluesFound) ? cluesFound.length : 0;
+      const clueScore = Math.min(40, totalClues * 10); // 4 clues * 10 = 40 pts
+      const escapeScore = userLockCode === EXPECTED_LOCK_CODE ? 60 : 0; // 60 pts
+      
+      const durationSeconds = durationMs / 1000;
+      let timeBonus = 0;
+      if (escapeScore > 0) {
+        if (durationSeconds < 60) timeBonus = 10;
+        else if (durationSeconds < 120) timeBonus = 5;
+      }
+      
+      score = Math.max(0, Math.min(100, clueScore + escapeScore + timeBonus));
     } else if (gameId === 'word-forge') {
       const FIXED_CORRECT_ANSWERS = ['RATE', 'COMPUTER', 'DATABASE', 'SYNTAX', 'ALGORITHM', 'COMPILER'];
       const userAnswers = gameData.answers || [];

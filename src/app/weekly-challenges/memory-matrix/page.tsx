@@ -53,6 +53,7 @@ export default function MemoryMatrixPage() {
   const router = useRouter();
   const [gameState, setGameState] = useState<GameState>('intro');
   const [sessionId, setSessionId] = useState<string>('');
+  const [isOfficial, setIsOfficial] = useState(false);
   
   const [rounds, setRounds] = useState<string[][]>([]);
   const [currentRoundIdx, setCurrentRoundIdx] = useState(0);
@@ -144,6 +145,7 @@ export default function MemoryMatrixPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to start challenge session');
       
       setSessionId(data.sessionId);
+      setIsOfficial(Boolean(data.isOfficial));
       
       const seedNum = getSeed(`memory-matrix-${data.challengeDate}`);
       const rand = mulberry32(seedNum);
@@ -298,19 +300,17 @@ export default function MemoryMatrixPage() {
   };
 
   const submitGame = async (overrideRounds?: any[]) => {
+    const roundsToSubmit = (overrideRounds && overrideRounds.length > 0) ? overrideRounds : userRounds;
+    let totalAccumulatedScore = 0;
+    roundsToSubmit.forEach((r: any) => {
+      totalAccumulatedScore += (r.score || 0);
+    });
+    const finalCalculatedScore = Math.max(0, Math.min(100, Math.round(totalAccumulatedScore)));
+
     try {
       setGameState('submitting');
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Not authenticated');
-
-      const roundsToSubmit = (overrideRounds && overrideRounds.length > 0) ? overrideRounds : userRounds;
-      
-      // Calculate final score by summing base points + speed bonuses of all completed rounds (max 100)
-      let totalAccumulatedScore = 0;
-      roundsToSubmit.forEach((r: any) => {
-        totalAccumulatedScore += (r.score || 0);
-      });
-      const finalCalculatedScore = Math.max(0, Math.min(100, Math.round(totalAccumulatedScore)));
 
       const res = await fetch('/api/challenge-submit', {
         method: 'POST',
@@ -334,34 +334,27 @@ export default function MemoryMatrixPage() {
         setResultData({
           score: finalCalculatedScore,
           durationMs: Date.now() - startTime,
-          rank: null,
-          isOfficial: false,
+          rank: isOfficial ? 1 : null,
+          isOfficial: isOfficial,
           leaderboard: []
         });
         setGameState('result');
         return;
       }
 
-      // Preserve calculated non-zero score if server returns fallback 0
       setResultData({
         ...data,
-        score: (data.score && data.score > 0) ? data.score : finalCalculatedScore
+        rank: data.rank ?? (data.isOfficial ? 1 : null),
+        leaderboard: Array.isArray(data.leaderboard) ? data.leaderboard : []
       });
       setGameState('result');
     } catch (err: any) {
       console.error('Submit error:', err);
-      const roundsToSubmit = (overrideRounds && overrideRounds.length > 0) ? overrideRounds : userRounds;
-      let totalAccumulatedScore = 0;
-      roundsToSubmit.forEach((r: any) => {
-        totalAccumulatedScore += (r.score || 0);
-      });
-      const finalCalculatedScore = Math.max(0, Math.min(100, Math.round(totalAccumulatedScore)));
-
       setResultData({
         score: finalCalculatedScore,
         durationMs: Date.now() - startTime,
-        rank: null,
-        isOfficial: false,
+        rank: isOfficial ? 1 : null,
+        isOfficial: isOfficial,
         leaderboard: []
       });
       setGameState('result');

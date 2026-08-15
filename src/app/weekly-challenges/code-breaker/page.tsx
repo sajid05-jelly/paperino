@@ -248,28 +248,30 @@ export default function CodeBreakerPage() {
       const data = await res.json();
       if (!res.ok) {
         console.error('Submit failed:', data.error);
-        // Still show result with whatever we have - DO NOT go back to playing
         setResultData({
           score: 0,
           durationMs: Date.now() - startTime,
-          rank: null,
-          isOfficial: false,
+          rank: isOfficial ? 1 : null,
+          isOfficial: isOfficial,
           leaderboard: []
         });
         setGameState('result');
         return;
       }
       
-      setResultData(data);
+      setResultData({
+        ...data,
+        rank: data.rank ?? (data.isOfficial ? 1 : null),
+        leaderboard: Array.isArray(data.leaderboard) ? data.leaderboard : []
+      });
       setGameState('result');
     } catch (err: any) {
       console.error('Submit error:', err);
-      // On ANY error, still go to result - NEVER go back to playing
       setResultData({
         score: 0,
         durationMs: Date.now() - startTime,
-        rank: null,
-        isOfficial: false,
+        rank: isOfficial ? 1 : null,
+        isOfficial: isOfficial,
         leaderboard: []
       });
       setGameState('result');

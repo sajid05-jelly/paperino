@@ -258,23 +258,27 @@ export default function ImpossibleRoomPage() {
         setResultData({
           score: 0,
           durationMs: startTime ? Date.now() - startTime : 0,
-          rank: null,
-          isOfficial: false,
+          rank: isOfficial ? 1 : null,
+          isOfficial: isOfficial,
           leaderboard: []
         });
         setGameState("result");
         return;
       }
 
-      setResultData(data);
+      setResultData({
+        ...data,
+        rank: data.rank ?? (data.isOfficial ? 1 : null),
+        leaderboard: Array.isArray(data.leaderboard) ? data.leaderboard : []
+      });
       setGameState("result");
     } catch (err: any) {
       console.error('Submit error:', err);
       setResultData({
         score: 0,
         durationMs: startTime ? Date.now() - startTime : 0,
-        rank: null,
-        isOfficial: false,
+        rank: isOfficial ? 1 : null,
+        isOfficial: isOfficial,
         leaderboard: []
       });
       setGameState("result");
