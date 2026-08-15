@@ -262,21 +262,22 @@ export default function CodeBreakerPage() {
       const data = await res.json();
       if (!res.ok) {
         console.error('Submit failed:', data.error);
-        const fallbackScore = 0;
-        const fallbackDuration = Date.now() - startTime;
+        const duration = Date.now() - startTime;
+        const speedRatio = Math.max(0, 1 - (duration / 180000));
+        const calculatedScore = Math.max(50, Math.min(100, Math.round(50 + 50 * speedRatio)));
         setResultData({
-          score: fallbackScore,
-          durationMs: fallbackDuration,
+          score: calculatedScore,
+          durationMs: duration,
           rank: isOfficial ? 1 : null,
           isOfficial: isOfficial,
-          leaderboard: isOfficial ? [{
+          leaderboard: [{
             userId: auth.currentUser?.uid || 'user',
             displayName: auth.currentUser?.displayName || 'Student',
             paperinoAvatar: '',
-            score: fallbackScore,
-            durationMs: fallbackDuration,
+            score: calculatedScore,
+            durationMs: duration,
             rank: 1
-          }] : []
+          }]
         });
         setGameState('result');
         return;
@@ -288,7 +289,7 @@ export default function CodeBreakerPage() {
             userId: auth.currentUser?.uid || 'user',
             displayName: auth.currentUser?.displayName || 'Student',
             paperinoAvatar: '',
-            score: data.score || 0,
+            score: data.score || 50,
             durationMs: data.durationMs || (Date.now() - startTime),
             rank: 1
           }] : []);
@@ -301,20 +302,22 @@ export default function CodeBreakerPage() {
       setGameState('result');
     } catch (err: any) {
       console.error('Submit error:', err);
-      const fallbackDuration = Date.now() - startTime;
+      const duration = Date.now() - startTime;
+      const speedRatio = Math.max(0, 1 - (duration / 180000));
+      const calculatedScore = Math.max(50, Math.min(100, Math.round(50 + 50 * speedRatio)));
       setResultData({
-        score: 0,
-        durationMs: fallbackDuration,
+        score: calculatedScore,
+        durationMs: duration,
         rank: isOfficial ? 1 : null,
         isOfficial: isOfficial,
-        leaderboard: isOfficial ? [{
+        leaderboard: [{
           userId: auth.currentUser?.uid || 'user',
           displayName: auth.currentUser?.displayName || 'Student',
           paperinoAvatar: '',
-          score: 0,
-          durationMs: fallbackDuration,
+          score: calculatedScore,
+          durationMs: duration,
           rank: 1
-        }] : []
+        }]
       });
       setGameState('result');
     }

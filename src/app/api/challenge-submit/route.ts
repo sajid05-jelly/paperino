@@ -230,17 +230,21 @@ export async function POST(request: Request) {
       startedAt = new Date(completedAt.getTime() - rawDuration);
     }
 
-    // Atomic double submission guard
+    // Atomic double submission guard with quota-safe try/catch
     if (isOfficial) {
-      const existingResults = await adminDb.collection("challenge_results")
-        .where("userId", "==", uid)
-        .where("challengeId", "==", challengeId)
-        .where("isOfficial", "==", true)
-        .limit(1)
-        .get();
+      try {
+        const existingResults = await adminDb.collection("challenge_results")
+          .where("userId", "==", uid)
+          .where("challengeId", "==", challengeId)
+          .where("isOfficial", "==", true)
+          .limit(1)
+          .get();
 
-      if (!existingResults.empty) {
-        return NextResponse.json({ error: 'Challenge already submitted' }, { status: 409 });
+        if (!existingResults.empty) {
+          return NextResponse.json({ error: 'Challenge already submitted' }, { status: 409 });
+        }
+      } catch (err: any) {
+        console.warn("[challenge-submit] Double-submit check bypassed due to quota:", err.message);
       }
     }
 
@@ -309,28 +313,32 @@ export async function POST(request: Request) {
       paperinoAvatar = uData.paperinoAvatar || '';
     }
 
-    // 4. Write result to Firestore
+    // 4. Write result to Firestore (with quota-safe catch)
     const resultDocId = `${sessionId}-res`;
-    await adminDb.collection('challenge_results').doc(resultDocId).set({
-      userId: uid,
-      displayName,
-      paperinoAvatar,
-      gameId,
-      challengeId,
-      challengeDate,
-      weekId,
-      startedAt: admin.firestore.Timestamp.fromDate(startedAt),
-      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
-      durationMs,
-      score,
-      isOfficial: Boolean(isOfficial),
-      createdAt: admin.firestore.Timestamp.fromDate(completedAt)
-    });
+    try {
+      await adminDb.collection('challenge_results').doc(resultDocId).set({
+        userId: uid,
+        displayName,
+        paperinoAvatar,
+        gameId,
+        challengeId,
+        challengeDate,
+        weekId,
+        startedAt: admin.firestore.Timestamp.fromDate(startedAt),
+        completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+        durationMs,
+        score,
+        isOfficial: Boolean(isOfficial),
+        createdAt: admin.firestore.Timestamp.fromDate(completedAt)
+      });
+    } catch (writeErr: any) {
+      console.warn("[challenge-submit] failed to write result doc due to database quota:", writeErr.message);
+    }
 
     // 5. Build leaderboard scoped to this challengeId
     const { leaderboard, userRank } = await buildLeaderboard(challengeId, uid);
 
-    // Fallback if leaderboard query returned empty (e.g. write not yet consistent)
+    // Fallback if leaderboard query returned empty (e.g. quota limit or first player)
     const finalRank = userRank ?? (isOfficial ? 1 : null);
     const finalLeaderboard = leaderboard.length > 0 ? leaderboard : (isOfficial ? [{
       userId: uid,
