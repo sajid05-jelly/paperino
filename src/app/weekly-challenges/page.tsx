@@ -77,36 +77,39 @@ export default function WeeklyChallengesPage() {
             const sessionMap: Record<string, any> = {};
 
             const games = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
-            
-            await Promise.all(games.map(async (gId) => {
-              // Determine active challengeId for this game (based on settings or weekly schedule)
+            const targetChallengeIds: Record<string, string> = {};
+
+            games.forEach((gId) => {
               let challengeId = `${gId}-${getChallengeDate()}`;
               if (currentConfig.currentChallengeId) {
                 challengeId = String(currentConfig.currentChallengeId);
               } else if (activeChallengeWeek) {
                 challengeId = `${gId}-${activeChallengeWeek}`;
               }
+              targetChallengeIds[challengeId] = gId;
+            });
 
-              const resultsRef = collection(db, "challenge_results");
-              const q = query(
-                resultsRef,
-                where("userId", "==", user.uid),
-                where("challengeId", "==", challengeId),
-                where("isOfficial", "==", true),
-                limit(1)
-              );
-              
-              const resSnap = await getDocs(q);
-              if (!resSnap.empty) {
-                const data = resSnap.docs[0].data();
+            const resultsRef = collection(db, "challenge_results");
+            const q = query(
+              resultsRef,
+              where("userId", "==", user.uid),
+              where("isOfficial", "==", true),
+              limit(10)
+            );
+            
+            const resSnap = await getDocs(q);
+            resSnap.forEach((docSnap) => {
+              const data = docSnap.data();
+              const gId = targetChallengeIds[data.challengeId];
+              if (gId) {
                 sessionMap[gId] = {
                   status: 'completed',
                   score: data.score,
                   duration: data.durationMs,
-                  challengeId: challengeId
+                  challengeId: data.challengeId
                 };
               }
-            }));
+            });
 
             setSessions(sessionMap);
           } catch (sessionErr) {

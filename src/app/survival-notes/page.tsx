@@ -54,6 +54,9 @@ interface SurvivalNote {
   createdAt: any;
 }
 
+// Module-level cache to eliminate N+1 user profile reads during session
+const survivalContributorCache: Record<string, string> = {};
+
 export default function SeniorInsightsPage() {
   const { user, isAdmin } = useAuth();
   const { departments, subjects } = useSubjects();
@@ -101,25 +104,36 @@ export default function SeniorInsightsPage() {
       });
 
       const userRoles: Record<string, string> = {};
+      const uidsToFetch: string[] = [];
       if (contributorIds.size > 0) {
-        const uids = Array.from(contributorIds);
-        const userPromises = uids.map(uid => getDoc(doc(db, "users", uid)));
-        const userSnaps = await Promise.all(userPromises);
-        userSnaps.forEach((us: any) => {
-          if (us.exists()) {
-            const udata = us.data();
-            const urole = udata.role || "student";
-            if (urole === "admin") {
-              userRoles[us.id] = "👑 PAPERINO ADMIN";
-            } else if (urole === "moderator") {
-              userRoles[us.id] = "MODERATOR";
-            } else if (urole === "contributor") {
-              userRoles[us.id] = "CONTRIBUTOR";
-            } else {
-              userRoles[us.id] = "STUDENT";
-            }
+        contributorIds.forEach(uid => {
+          if (survivalContributorCache[uid]) {
+            userRoles[uid] = survivalContributorCache[uid];
+          } else {
+            uidsToFetch.push(uid);
           }
         });
+
+        if (uidsToFetch.length > 0) {
+          const userPromises = uidsToFetch.map(uid => getDoc(doc(db, "users", uid)));
+          const userSnaps = await Promise.all(userPromises);
+          userSnaps.forEach((us: any) => {
+            if (us.exists()) {
+              const udata = us.data();
+              const urole = udata.role || "student";
+              let roleTitle = "STUDENT";
+              if (urole === "admin") {
+                roleTitle = "👑 PAPERINO ADMIN";
+              } else if (urole === "moderator") {
+                roleTitle = "MODERATOR";
+              } else if (urole === "contributor") {
+                roleTitle = "CONTRIBUTOR";
+              }
+              survivalContributorCache[us.id] = roleTitle;
+              userRoles[us.id] = roleTitle;
+            }
+          });
+        }
       }
 
       snap.forEach(docSnap => {
@@ -127,7 +141,7 @@ export default function SeniorInsightsPage() {
         list.push({ 
           id: docSnap.id, 
           ...data,
-          contributorLevel: userRoles[data.contributorId] || "STUDENT"
+          contributorLevel: userRoles[data.contributorId] || data.contributorLevel || "STUDENT"
         } as SurvivalNote);
       });
       

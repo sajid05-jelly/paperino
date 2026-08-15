@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef, ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { collection, query, limit, onSnapshot, getDocs, where, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -69,45 +70,49 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
 
   const [activeReportsTimeList, setActiveReportsTimeList] = useState<{ id: string; createdAt: number; expiresAt: number }[]>([]);
 
-  useEffect(() => {
+  const lastFreeClassCheckRef = useRef<number>(0);
+
+  const fetchActiveReportsForBadge = useCallback(async (forceRefresh: boolean = false) => {
     if (!user) {
       setActiveReportsTimeList([]);
       return;
     }
 
-    let isMounted = true;
-    const fetchActiveReportsForBadge = async () => {
-      try {
-        const q = query(collection(db, "free_class_reports"), limit(25));
-        const snap = await getDocs(q);
-        const now = Date.now();
-        const items: { id: string; createdAt: number; expiresAt: number }[] = [];
-        snap.forEach((d) => {
-          const data = d.data();
-          const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || now);
-          const durationMin = data.expectedFreeDurationMinutes || 30;
-          const expiresAt = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : createdAt + durationMin * 60 * 1000);
-          
-          if (!data.isDeleted && data.status !== "flagged" && (data.falseVotes || 0) < 5) {
-            items.push({ id: d.id, createdAt, expiresAt });
-          }
-        });
-        if (isMounted) {
-          setActiveReportsTimeList(items);
+    const now = Date.now();
+    // Cache for 3 minutes per session - NO global background setInterval
+    if (!forceRefresh && (now - lastFreeClassCheckRef.current) < 3 * 60 * 1000 && activeReportsTimeList.length > 0) {
+      return;
+    }
+
+    try {
+      const q = query(collection(db, "free_class_reports"), limit(25));
+      const snap = await getDocs(q);
+      const items: { id: string; createdAt: number; expiresAt: number }[] = [];
+      snap.forEach((d) => {
+        const data = d.data();
+        const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || now);
+        const durationMin = data.expectedFreeDurationMinutes || 30;
+        const expiresAt = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : createdAt + durationMin * 60 * 1000);
+        
+        if (!data.isDeleted && data.status !== "flagged" && (data.falseVotes || 0) < 5) {
+          items.push({ id: d.id, createdAt, expiresAt });
         }
-      } catch (e: any) {
-        console.warn("[BadgeContext] Free class badge count fallback:", e?.message || e);
-      }
-    };
+      });
+      setActiveReportsTimeList(items);
+      lastFreeClassCheckRef.current = now;
+    } catch (e: any) {
+      console.warn("[BadgeContext] Free class badge count fallback:", e?.message || e);
+    }
+  }, [user, activeReportsTimeList.length]);
 
-    fetchActiveReportsForBadge();
-    const interval = setInterval(fetchActiveReportsForBadge, 5 * 60 * 1000); // 5-minute background refresh
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [user]);
+  // Check badge once on mount/login, without continuous polling
+  useEffect(() => {
+    if (user) {
+      fetchActiveReportsForBadge();
+    } else {
+      setActiveReportsTimeList([]);
+    }
+  }, [user, fetchActiveReportsForBadge]);
 
   const freeClassUnreadCount = useMemo(() => {
     if (!activeReportsTimeList.length) return 0;
@@ -349,12 +354,12 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     };
   }, [user, isAdmin]);
 
-  // Real-time, ultra-lightweight listeners for Admin pending items
+  const pathname = usePathname();
+
+  // Real-time, ultra-lightweight listeners for Admin pending items (ONLY attached when on /admin/* routes)
   useEffect(() => {
-    if (!user || !isAdmin) {
-      setAdminSubjectRequestsRaw([]);
-      setAdminPendingReviewsRaw([]);
-      setAdminPendingCoursesRaw([]);
+    const isOnAdminRoute = pathname?.startsWith("/admin");
+    if (!user || !isAdmin || !isOnAdminRoute) {
       return;
     }
 
@@ -486,7 +491,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
         } catch (e) {}
       });
     };
-  }, [user, isAdmin]);
+  }, [user, isAdmin, pathname]);
 
   const markAdminSectionSeen = useCallback((section: "subject_requests" | "reviews" | "courses") => {
     const now = Date.now();
