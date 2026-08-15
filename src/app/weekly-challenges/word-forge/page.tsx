@@ -283,10 +283,21 @@ export default function WordForgePage() {
         return;
       }
 
+      const officialLeaderboard = Array.isArray(data.leaderboard) && data.leaderboard.length > 0
+        ? data.leaderboard
+        : (isOfficial ? [{
+            userId: user?.uid || 'user',
+            displayName: user?.displayName || 'Student',
+            paperinoAvatar: '',
+            score: data.score ?? 0,
+            durationMs: data.durationMs || (startTime ? Date.now() - startTime : 0),
+            rank: 1
+          }] : []);
+
       setResultData({
         ...data,
-        rank: data.rank ?? (data.isOfficial ? 1 : null),
-        leaderboard: Array.isArray(data.leaderboard) ? data.leaderboard : []
+        rank: data.rank ?? (isOfficial ? 1 : null),
+        leaderboard: officialLeaderboard
       });
       setGameState("result");
     } catch (err: any) {
@@ -314,13 +325,21 @@ export default function WordForgePage() {
       const speedScore = totalTimeSpeedBonusSum;
       const finalCalculatedScore = Math.max(0, Math.min(100, Math.round(accuracyScore + speedScore)));
       const totalTimeMs = timesToSubmit.reduce((acc, curr) => acc + curr, 0) * 1000;
+      const fallbackDuration = totalTimeMs > 0 ? totalTimeMs : (startTime ? Date.now() - startTime : 0);
 
       setResultData({
         score: finalCalculatedScore,
-        durationMs: totalTimeMs > 0 ? totalTimeMs : (startTime ? Date.now() - startTime : 0),
+        durationMs: fallbackDuration,
         rank: isOfficial ? 1 : null,
         isOfficial: isOfficial,
-        leaderboard: []
+        leaderboard: isOfficial ? [{
+          userId: user?.uid || 'user',
+          displayName: user?.displayName || 'Student',
+          paperinoAvatar: '',
+          score: finalCalculatedScore,
+          durationMs: fallbackDuration,
+          rank: 1
+        }] : []
       });
       setGameState("result");
     }

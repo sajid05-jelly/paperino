@@ -418,6 +418,17 @@ export async function POST(request: Request) {
       userRank = 1;
     }
 
+    if (isOfficial && leaderboard.length === 0 && score > 0) {
+      leaderboard.push({
+        userId: uid,
+        displayName: displayName || 'Student',
+        paperinoAvatar: paperinoAvatar || '',
+        score,
+        durationMs,
+        rank: 1
+      });
+    }
+
     return NextResponse.json({
       success: true,
       score,

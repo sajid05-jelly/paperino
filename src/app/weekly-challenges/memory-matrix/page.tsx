@@ -344,20 +344,39 @@ export default function MemoryMatrixPage() {
         return;
       }
 
+      const officialLeaderboard = Array.isArray(data.leaderboard) && data.leaderboard.length > 0
+        ? data.leaderboard
+        : (isOfficial ? [{
+            userId: auth.currentUser?.uid || 'user',
+            displayName: auth.currentUser?.displayName || 'Student',
+            paperinoAvatar: '',
+            score: data.score ?? finalCalculatedScore,
+            durationMs: data.durationMs || (Date.now() - startTime),
+            rank: 1
+          }] : []);
+
       setResultData({
         ...data,
-        rank: data.rank ?? (data.isOfficial ? 1 : null),
-        leaderboard: Array.isArray(data.leaderboard) ? data.leaderboard : []
+        rank: data.rank ?? (isOfficial ? 1 : null),
+        leaderboard: officialLeaderboard
       });
       setGameState('result');
     } catch (err: any) {
       console.error('Submit error:', err);
+      const fallbackDuration = Date.now() - startTime;
       setResultData({
         score: finalCalculatedScore,
-        durationMs: Date.now() - startTime,
+        durationMs: fallbackDuration,
         rank: isOfficial ? 1 : null,
         isOfficial: isOfficial,
-        leaderboard: []
+        leaderboard: isOfficial ? [{
+          userId: auth.currentUser?.uid || 'user',
+          displayName: auth.currentUser?.displayName || 'Student',
+          paperinoAvatar: '',
+          score: finalCalculatedScore,
+          durationMs: fallbackDuration,
+          rank: 1
+        }] : []
       });
       setGameState('result');
     }

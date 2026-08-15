@@ -268,20 +268,39 @@ export default function ImpossibleRoomPage() {
         return;
       }
 
+      const officialLeaderboard = Array.isArray(data.leaderboard) && data.leaderboard.length > 0
+        ? data.leaderboard
+        : (isOfficial ? [{
+            userId: user?.uid || 'user',
+            displayName: user?.displayName || 'Student',
+            paperinoAvatar: '',
+            score: data.score ?? 0,
+            durationMs: data.durationMs || (startTime ? Date.now() - startTime : 0),
+            rank: 1
+          }] : []);
+
       setResultData({
         ...data,
-        rank: data.rank ?? (data.isOfficial ? 1 : null),
-        leaderboard: Array.isArray(data.leaderboard) ? data.leaderboard : []
+        rank: data.rank ?? (isOfficial ? 1 : null),
+        leaderboard: officialLeaderboard
       });
       setGameState("result");
     } catch (err: any) {
       console.error('Submit error:', err);
+      const fallbackDuration = startTime ? Date.now() - startTime : 0;
       setResultData({
         score: 0,
-        durationMs: startTime ? Date.now() - startTime : 0,
+        durationMs: fallbackDuration,
         rank: isOfficial ? 1 : null,
         isOfficial: isOfficial,
-        leaderboard: []
+        leaderboard: isOfficial ? [{
+          userId: user?.uid || 'user',
+          displayName: user?.displayName || 'Student',
+          paperinoAvatar: '',
+          score: 0,
+          durationMs: fallbackDuration,
+          rank: 1
+        }] : []
       });
       setGameState("result");
     }
