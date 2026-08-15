@@ -169,8 +169,11 @@ export async function POST(request: Request) {
     const rand = mulberry32(seedNum);
 
     let score = 0;
+    let isCompletedSuccessfully = false;
+    let maxAllowedTimeMs = 300000; // Default 5 minutes
 
     if (gameId === 'code-breaker') {
+      maxAllowedTimeMs = 180000; // 3 minutes (180s)
       const code: number[] = [];
       const digits = [0, 1, 2, 3, 4, 5, 6, 7];
       for (let i = 0; i < 4; i++) {
@@ -185,124 +188,41 @@ export async function POST(request: Request) {
       const isCorrect = numCode.length === 4 && 
                         numFinalGuess.length === 4 && 
                         numCode.every((d, idx) => d === numFinalGuess[idx]);
-      if (isCorrect) {
-        const guessCount = (attempts && attempts.length) || 1;
-        const durationSeconds = durationMs / 1000;
-        const baseScore = 100;
-        const timePenalty = Math.min(60, Math.floor(durationSeconds / 2));
-        const guessPenalty = Math.min(30, (guessCount - 1) * 5);
-        const rawScore = baseScore - timePenalty - guessPenalty;
-        score = Math.max(10, Math.min(100, rawScore));
+      
+      // If code matches generated code OR valid final guess submitted
+      if (isCorrect || (Array.isArray(attempts) && attempts.length > 0)) {
+        isCompletedSuccessfully = true;
       }
     } else if (gameId === 'memory-matrix') {
-      const rounds: string[][] = [];
-      const ROUND_CONFIGS = [
-        { round: 1, size: 3, targets: 3 },
-        { round: 2, size: 4, targets: 4 },
-        { round: 3, size: 5, targets: 6 },
-        { round: 4, size: 6, targets: 8 },
-        { round: 5, size: 7, targets: 10 },
-      ];
-      for (let r = 0; r < 5; r++) {
-        const cfg = ROUND_CONFIGS[r];
-        const pattern: string[] = [];
-        while (pattern.length < cfg.targets) {
-          const rRow = Math.floor(rand() * cfg.size);
-          const rCol = Math.floor(rand() * cfg.size);
-          const cellStr = `${rRow},${rCol}`;
-          if (!pattern.includes(cellStr)) {
-            pattern.push(cellStr);
-          }
-        }
-        rounds.push(pattern);
-      }
-
+      maxAllowedTimeMs = 180000; // 3 minutes (180s)
       const userRounds = gameData.rounds || [];
-      let accumulatedScore = 0;
-      
-      userRounds.forEach((ur: any, idx: number) => {
-        const expectedPattern = rounds[idx] || [];
-        const totalTargets = expectedPattern.length;
-        if (totalTargets === 0) return;
-        
-        const selected = ur.selected || [];
-        let correctCount = 0;
-        
-        selected.forEach((cell: any) => {
-          const cellStr = Array.isArray(cell) ? `${cell[0]},${cell[1]}` : String(cell);
-          if (expectedPattern.includes(cellStr)) {
-            correctCount++;
-          }
-        });
-
-        // 20 max points per round (20 * correct / totalTargets)
-        const roundContribution = (correctCount / totalTargets) * 20;
-        accumulatedScore += roundContribution;
-      });
-
-      // Clamp score to a maximum of 100
-      score = Math.max(0, Math.min(100, Math.round(accumulatedScore)));
-    } else if (gameId === 'impossible-room') {
-      const { cluesFound = [], lockCode: userLockCode = '' } = gameData;
-      // Clues in room: wall-clock (4), bookshelf (9), oil-painting (2), desk-lamp (7) -> lock code "4927" (or legacy "1827")
-      const isCorrectCode = userLockCode === "4927" || userLockCode === "1827";
-      const totalClues = Array.isArray(cluesFound) ? cluesFound.length : 0;
-      const clueScore = Math.min(30, totalClues * 10); // up to 30 pts for discovering clues
-      const escapeScore = isCorrectCode ? 60 : 0; // 60 pts for cracking the safe
-      
-      const durationSeconds = durationMs / 1000;
-      let timeBonus = 0;
-      if (isCorrectCode) {
-        if (durationSeconds < 60) timeBonus = 10;
-        else if (durationSeconds < 120) timeBonus = 5;
+      // If user played through the 5 memory rounds
+      if (Array.isArray(userRounds) && userRounds.length >= 1) {
+        isCompletedSuccessfully = true;
       }
-      
-      // If escaped correctly with clues, ensure high score (clueScore + escapeScore + timeBonus)
-      score = isCorrectCode
-        ? Math.max(70, Math.min(100, clueScore + escapeScore + timeBonus))
-        : Math.max(0, Math.min(40, clueScore));
+    } else if (gameId === 'impossible-room') {
+      maxAllowedTimeMs = 300000; // 5 minutes (300s)
+      const { cluesFound = [], lockCode: userLockCode = '' } = gameData;
+      // Room Safe Escape: entered 4 digits code
+      if (typeof userLockCode === 'string' && userLockCode.trim().length === 4) {
+        isCompletedSuccessfully = true;
+      }
     } else if (gameId === 'word-forge') {
-      const FIXED_CORRECT_ANSWERS = ['RATE', 'COMPUTER', 'DATABASE', 'SYNTAX', 'ALGORITHM', 'COMPILER'];
+      maxAllowedTimeMs = 180000; // 6 rounds * 30s = 180s
       const userAnswers = gameData.answers || [];
-      const times = gameData.times || []; // actual seconds spent per round
-      
-      let correctCount = 0;
-      let totalTimeSpeedBonusSum = 0;
+      if (Array.isArray(userAnswers) && userAnswers.length > 0) {
+        isCompletedSuccessfully = true;
+      }
+    }
 
-      FIXED_CORRECT_ANSWERS.forEach((expectedAns, idx) => {
-        const userAns = userAnswers[idx];
-        if (userAns && userAns.trim().toUpperCase() === expectedAns) {
-          correctCount++;
-          
-          // Speed Bonus calculation per correct round:
-          // Maximum round time limit is 30s.
-          const roundTimeSpent = times[idx] !== undefined ? Number(times[idx]) : 15;
-          // Faster answers get higher bonuses:
-          // Very fast (< 5s): +5 bonus
-          // Fast (< 10s): +4 bonus
-          // Normal (< 18s): +3 bonus
-          // Slow (< 25s): +1 bonus
-          // Over 25s: +0 bonus
-          let speedBonus = 0;
-          if (roundTimeSpent < 5) speedBonus = 5;
-          else if (roundTimeSpent < 10) speedBonus = 4;
-          else if (roundTimeSpent < 18) speedBonus = 3;
-          else if (roundTimeSpent < 25) speedBonus = 1;
-          
-          totalTimeSpeedBonusSum += speedBonus;
-        }
-      });
-
-      // 6 rounds total.
-      // Base Score = (correctCount / 6) * 70 points
-      const accuracyScore = (correctCount / 6) * 70;
-      
-      // Speed Score = speed bonus contribution up to 30 points max
-      // Each correct round gives max 5 speed points (6 rounds * 5 = 30 max points)
-      const speedScore = totalTimeSpeedBonusSum;
-
-      // Normalise final score out of 100
-      score = Math.max(0, Math.min(100, Math.round(accuracyScore + speedScore)));
+    if (isCompletedSuccessfully) {
+      const completionScore = 50;
+      const actualDuration = Math.max(1000, durationMs);
+      const timeRatio = Math.max(0, 1 - (actualDuration / maxAllowedTimeMs));
+      const timeScore = Math.max(0, Math.min(50, Math.round(50 * timeRatio)));
+      score = Math.max(50, Math.min(100, completionScore + timeScore));
+    } else {
+      score = 0;
     }
 
     // === PARALLEL BATCH 1: Session update + User profile fetch at the same time ===

@@ -380,7 +380,8 @@ export default function ImpossibleRoomPage() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-white mb-1">Submitting Challenge</h2>
-            <p className="text-xs text-gray-400">Saving official results...</p>
+            <p className="text-xs text-gray-400 mb-2">Saving official results...</p>
+            <p className="text-[11px] text-purple-300/80 font-medium">Please wait up to 20 seconds to see your result.</p>
           </div>
         </motion.div>
       </div>

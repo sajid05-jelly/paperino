@@ -418,8 +418,9 @@ export default function WordForgePage() {
             <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white mb-2 leading-snug">Please wait up to 25 seconds while we save your result.</h2>
-            <p className="text-xs text-gray-400 leading-relaxed">Your result is being saved securely. Please do not close or refresh this page.</p>
+            <h2 className="text-xl font-bold text-white mb-1">Submitting Challenge</h2>
+            <p className="text-xs text-gray-400 mb-2">Saving official results...</p>
+            <p className="text-[11px] text-purple-300/80 font-medium">Please wait up to 20 seconds to see your result.</p>
           </div>
         </motion.div>
       </div>
