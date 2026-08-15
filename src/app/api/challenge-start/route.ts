@@ -196,21 +196,50 @@ export async function POST(request: Request) {
 
     // === Check existing result for 1-attempt enforcement ===
     let sessionId: string = crypto.randomUUID();
+    const deterministicResultDocId = `${challengeId}-${uid}-res`;
 
     if (isAdminBypass) {
       isOfficial = false;
     } else if (adminDb) {
       try {
         // Enforce ONE ATTEMPT per challengeId + userId
-        const existingResults = await adminDb.collection("challenge_results")
-          .where("userId", "==", uid)
-          .where("challengeId", "==", challengeId)
-          .where("isOfficial", "==", true)
-          .limit(1)
-          .get();
+        // Step 1: Check deterministic doc directly (fastest, requires zero query index)
+        const directDoc = await adminDb.collection("challenge_results").doc(deterministicResultDocId).get();
+        let prevResult: any = directDoc.exists ? directDoc.data() : null;
 
-        if (!existingResults.empty) {
-          const prevResult = existingResults.docs[0].data();
+        // Step 2: Fallback query if direct doc wasn't found (for legacy documents)
+        if (!prevResult) {
+          const existingResults = await adminDb.collection("challenge_results")
+            .where("userId", "==", uid)
+            .where("challengeId", "==", challengeId)
+            .where("isOfficial", "==", true)
+            .limit(1)
+            .get();
+
+          if (!existingResults.empty) {
+            prevResult = existingResults.docs[0].data();
+          }
+        }
+
+        // Step 3: Check completed session docs as secondary guard
+        if (!prevResult) {
+          const existingSession = await adminDb.collection("challenge_sessions")
+            .where("userId", "==", uid)
+            .where("challengeId", "==", challengeId)
+            .where("status", "==", "completed")
+            .limit(1)
+            .get();
+
+          if (!existingSession.empty) {
+            const sData = existingSession.docs[0].data();
+            prevResult = {
+              score: sData.score || 50,
+              durationMs: sData.durationMs || 0
+            };
+          }
+        }
+
+        if (prevResult) {
           const userScore = prevResult.score || 0;
           const userDuration = prevResult.durationMs || 0;
 

@@ -233,6 +233,11 @@ export async function POST(request: Request) {
     // Atomic double submission guard with quota-safe try/catch
     if (isOfficial) {
       try {
+        const directDoc = await adminDb.collection("challenge_results").doc(`${challengeId}-${uid}-res`).get();
+        if (directDoc.exists) {
+          return NextResponse.json({ error: 'Challenge already submitted' }, { status: 409 });
+        }
+
         const existingResults = await adminDb.collection("challenge_results")
           .where("userId", "==", uid)
           .where("challengeId", "==", challengeId)
@@ -244,7 +249,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Challenge already submitted' }, { status: 409 });
         }
       } catch (err: any) {
-        console.warn("[challenge-submit] Double-submit check bypassed due to quota:", err.message);
+        console.warn("[challenge-submit] Double-submit check warning:", err.message);
       }
     }
 
@@ -313,26 +318,28 @@ export async function POST(request: Request) {
       paperinoAvatar = uData.paperinoAvatar || '';
     }
 
-    // 4. Write result to Firestore (with quota-safe catch)
-    const resultDocId = `${sessionId}-res`;
+    // 4. Write result to Firestore (with deterministic ID for absolute 1-attempt guarantee)
+    const deterministicResultDocId = `${challengeId}-${uid}-res`;
+    const resultPayload = {
+      userId: uid,
+      displayName,
+      paperinoAvatar,
+      gameId,
+      challengeId,
+      challengeDate,
+      weekId,
+      startedAt: admin.firestore.Timestamp.fromDate(startedAt),
+      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+      durationMs,
+      score,
+      isOfficial: Boolean(isOfficial),
+      createdAt: admin.firestore.Timestamp.fromDate(completedAt)
+    };
+
     try {
-      await adminDb.collection('challenge_results').doc(resultDocId).set({
-        userId: uid,
-        displayName,
-        paperinoAvatar,
-        gameId,
-        challengeId,
-        challengeDate,
-        weekId,
-        startedAt: admin.firestore.Timestamp.fromDate(startedAt),
-        completedAt: admin.firestore.Timestamp.fromDate(completedAt),
-        durationMs,
-        score,
-        isOfficial: Boolean(isOfficial),
-        createdAt: admin.firestore.Timestamp.fromDate(completedAt)
-      });
+      await adminDb.collection('challenge_results').doc(deterministicResultDocId).set(resultPayload, { merge: true });
     } catch (writeErr: any) {
-      console.warn("[challenge-submit] failed to write result doc due to database quota:", writeErr.message);
+      console.warn("[challenge-submit] failed to write deterministic result doc:", writeErr.message);
     }
 
     // 5. Build leaderboard scoped to this challengeId
