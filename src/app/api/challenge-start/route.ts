@@ -216,7 +216,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Write session — fire and don't await (non-blocking)
+    // Write session to Firestore
     if (adminDb) {
       const sessionData = {
         userId: uid,
@@ -229,7 +229,7 @@ export async function POST(request: Request) {
         isOfficial,
         createdAt: admin.firestore.Timestamp.now()
       };
-      adminDb.collection("challenge_sessions").doc(sessionId).set(sessionData).catch((dbErr: any) => {
+      await adminDb.collection("challenge_sessions").doc(sessionId).set(sessionData).catch((dbErr: any) => {
         console.error("[challenge-start] session write failed:", dbErr.message);
       });
     } else {
