@@ -130,6 +130,18 @@ export default function CodeBreakerPage() {
       });
       
       const data = await res.json();
+      if (res.status === 409 && data.completed) {
+        setResultData({
+          score: data.score,
+          durationMs: data.durationMs,
+          rank: data.rank,
+          isOfficial: true,
+          leaderboard: data.leaderboard || []
+        });
+        setWasAlreadyCompleted(true);
+        setGameState('result');
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Failed to start game');
       
       setLoadProgress(70);

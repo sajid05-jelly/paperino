@@ -180,9 +180,20 @@ export default function ImpossibleRoomPage() {
         body: JSON.stringify({ gameId: "impossible-room" })
       });
       
-      if (!res.ok) throw new Error("Failed to start session");
-      
       const data = await res.json();
+      if (res.status === 409 && data.completed) {
+        setResultData({
+          score: data.score,
+          durationMs: data.durationMs,
+          rank: data.rank,
+          isOfficial: true,
+          leaderboard: data.leaderboard || []
+        });
+        setWasAlreadyCompleted(true);
+        setGameState("result");
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || "Failed to start session");
       setSessionId(data.sessionId);
       setIsOfficial(data.isOfficial);
       
