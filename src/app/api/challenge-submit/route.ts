@@ -48,6 +48,81 @@ function getSeed(str: string): number {
   return hash;
 }
 
+/**
+ * Build the public Top 3 leaderboard + compute user rank from challenge_results.
+ * Scoped to the EXACT challengeId (= gameId + admin session key).
+ */
+async function buildLeaderboard(challengeId: string, currentUid: string): Promise<{
+  leaderboard: any[];
+  userRank: number | null;
+}> {
+  const leaderboard: any[] = [];
+  let userRank: number | null = null;
+
+  if (!adminDb) return { leaderboard, userRank };
+
+  try {
+    // Query ALL official results for this exact challengeId
+    const allResultsSnap = await adminDb.collection('challenge_results')
+      .where('challengeId', '==', challengeId)
+      .where('isOfficial', '==', true)
+      .get();
+
+    // Deduplicate per user (keep best: highest score, then lowest duration)
+    const userBestMap = new Map<string, any>();
+    allResultsSnap.forEach((docSnap: any) => {
+      const d = docSnap.data();
+      const entry = {
+        userId: d.userId,
+        displayName: d.displayName || 'Anonymous',
+        paperinoAvatar: d.paperinoAvatar || '',
+        score: d.score || 0,
+        durationMs: d.durationMs || 0,
+        completedAt: d.completedAt ? (d.completedAt.toDate ? d.completedAt.toDate().getTime() : d.completedAt) : 0
+      };
+      if (!userBestMap.has(d.userId)) {
+        userBestMap.set(d.userId, entry);
+      } else {
+        const existing = userBestMap.get(d.userId);
+        if (entry.score > existing.score || (entry.score === existing.score && entry.durationMs < existing.durationMs)) {
+          userBestMap.set(d.userId, entry);
+        }
+      }
+    });
+
+    const allEntries = Array.from(userBestMap.values());
+
+    // Sort: higher score first, then faster time, then earlier completion
+    allEntries.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.durationMs !== b.durationMs) return a.durationMs - b.durationMs;
+      return a.completedAt - b.completedAt;
+    });
+
+    // Assign ranks and collect top 3
+    allEntries.forEach((entry, idx) => {
+      const rank = idx + 1;
+      if (entry.userId === currentUid) {
+        userRank = rank;
+      }
+      if (rank <= 3) {
+        leaderboard.push({
+          userId: entry.userId,
+          displayName: entry.displayName,
+          paperinoAvatar: entry.paperinoAvatar,
+          score: entry.score,
+          durationMs: entry.durationMs,
+          rank
+        });
+      }
+    });
+  } catch (err: any) {
+    console.warn("[buildLeaderboard] ranking query failed:", err.message);
+  }
+
+  return { leaderboard, userRank };
+}
+
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -86,70 +161,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server database connection failed' }, { status: 500 });
     }
 
-    let gameId = '';
-    let challengeDate = '';
-    let challengeId = '';
-    let weekId = '';
-    let isOfficial = false;
-    let startedAt = new Date();
-    const completedAt = new Date();
-    let isLocalFallback = sessionId.startsWith('local-fallback-');
-
-    if (isLocalFallback) {
-      // Decode simulated local fallback values
-      gameId = body.gameData?.gameId || 'code-breaker';
-      const now = new Date();
-      challengeDate = now.toISOString().split('T')[0];
-      challengeId = `${gameId}-${challengeDate}`;
-      weekId = getISOWeekId(now);
-      isOfficial = false;
-      const clientDuration = body.gameData?.durationMs || 10000;
-      startedAt = new Date(completedAt.getTime() - clientDuration);
-    } else {
-      // 1. Fetch Session Doc from adminDb
-      const sessionDocRef = adminDb.collection('challenge_sessions').doc(sessionId);
-      let sessionSnap;
-      try {
-        sessionSnap = await sessionDocRef.get();
-      } catch (err: any) {
-        console.warn("[challenge-submit] session retrieval failed due to quota limit, resolving via fallback:", err.message);
-        isLocalFallback = true;
-        gameId = body.gameData?.gameId || 'code-breaker';
-        const now = new Date();
-        challengeDate = now.toISOString().split('T')[0];
-        challengeId = `${gameId}-${challengeDate}`;
-        weekId = getISOWeekId(now);
-        isOfficial = false;
-        const clientDuration = body.gameData?.durationMs || 10000;
-        startedAt = new Date(completedAt.getTime() - clientDuration);
-      }
-
-      if (!isLocalFallback) {
-        if (!sessionSnap || !sessionSnap.exists) {
-          return NextResponse.json({ error: 'Challenge session not found' }, { status: 404 });
-        }
-
-        const session = sessionSnap.data() || {};
-
-        if (session.userId !== uid) {
-          return NextResponse.json({ error: 'Unauthorized session access' }, { status: 403 });
-        }
-
-        if (session.status !== 'in_progress') {
-          return NextResponse.json({ error: 'Challenge session has already been completed' }, { status: 409 });
-        }
-
-        gameId = session.gameId;
-        challengeDate = session.challengeDate;
-        challengeId = session.challengeId || `${gameId}-${challengeDate}`;
-        weekId = session.weekId;
-        isOfficial = session.isOfficial;
-        startedAt = session.startedAt ? session.startedAt.toDate() : new Date();
-      }
+    // REJECT local-fallback sessions — do NOT create unofficial results silently
+    if (sessionId.startsWith('local-fallback-')) {
+      return NextResponse.json({ error: 'Invalid session: server database was unavailable at start' }, { status: 400 });
     }
 
-    // Atomic double submission guard on result
-    if (adminDb && isOfficial) {
+    // 1. Fetch Session Doc from Firestore
+    const sessionDocRef = adminDb.collection('challenge_sessions').doc(sessionId);
+    let sessionSnap;
+    try {
+      sessionSnap = await sessionDocRef.get();
+    } catch (err: any) {
+      console.error("[challenge-submit] session retrieval failed:", err.message);
+      return NextResponse.json({ error: 'Failed to retrieve challenge session' }, { status: 500 });
+    }
+
+    if (!sessionSnap || !sessionSnap.exists) {
+      return NextResponse.json({ error: 'Challenge session not found' }, { status: 404 });
+    }
+
+    const session = sessionSnap.data() || {};
+
+    if (session.userId !== uid) {
+      return NextResponse.json({ error: 'Unauthorized session access' }, { status: 403 });
+    }
+
+    if (session.status !== 'in_progress') {
+      return NextResponse.json({ error: 'Challenge session has already been completed' }, { status: 409 });
+    }
+
+    const gameId = session.gameId;
+    const challengeDate = session.challengeDate;
+    const challengeId = session.challengeId || `${gameId}-${challengeDate}`;
+    const weekId = session.weekId;
+    const isOfficial = session.isOfficial;
+    const startedAt: Date = session.startedAt ? session.startedAt.toDate() : new Date();
+    const completedAt = new Date();
+
+    // Atomic double submission guard
+    if (isOfficial) {
       const existingResults = await adminDb.collection("challenge_results")
         .where("userId", "==", uid)
         .where("challengeId", "==", challengeId)
@@ -162,206 +212,110 @@ export async function POST(request: Request) {
       }
     }
 
-    // Compute duration: accurately prefer validated client elapsed time if provided, or calculate from server timestamps
-    const rawClientDuration = Number(body.gameData?.durationMs);
+    // Compute duration from server timestamps (startedAt from session, completedAt = now)
     const serverDurationMs = completedAt.getTime() - startedAt.getTime();
-    const durationMs = (!isNaN(rawClientDuration) && rawClientDuration > 0)
-      ? rawClientDuration
-      : Math.max(1000, serverDurationMs);
+    // Client durationMs is used as a cross-check, but server timestamps are authoritative
+    const rawClientDuration = Number(gameData?.durationMs);
+    let durationMs: number;
 
-    // 2. Validate submission & calculate score server-side
-    const seedNum = getSeed(`${gameId}-${challengeDate}`);
-    const rand = mulberry32(seedNum);
+    if (serverDurationMs > 500) {
+      // Server timestamps are valid — use them
+      durationMs = serverDurationMs;
+    } else if (!isNaN(rawClientDuration) && rawClientDuration > 0) {
+      // Server delta is suspiciously small (race condition), trust client
+      durationMs = rawClientDuration;
+    } else {
+      // Last resort — should not happen in normal flow
+      durationMs = Math.max(1000, serverDurationMs);
+    }
 
-    let accuracyScore = 50; // base completion accuracy
-    let maxAllowedTimeMs = 180000; // 3 minutes standard
+    // 2. Calculate score server-side
+    // Scoring: 50 completion points + 0-50 speed bonus = 50-100
+    let maxAllowedTimeMs = 180000; // 3 minutes default
 
     if (gameId === 'code-breaker') {
       maxAllowedTimeMs = 180000; // 3 minutes
-      const { attempts = [], finalGuess = [] } = gameData;
-      const guessCount = Array.isArray(attempts) ? Math.max(1, attempts.length) : 1;
-      // 1-3 guesses: 60 pts, 4-6 guesses: 50 pts, 7+ guesses: 40 pts
-      if (guessCount <= 3) accuracyScore = 60;
-      else if (guessCount <= 6) accuracyScore = 55;
-      else if (guessCount <= 8) accuracyScore = 48;
-      else accuracyScore = 40;
     } else if (gameId === 'memory-matrix') {
       maxAllowedTimeMs = 180000; // 3 minutes
-      const userRounds = gameData.rounds || [];
-      const totalRounds = Array.isArray(userRounds) ? userRounds.length : 5;
-      accuracyScore = Math.min(60, Math.max(40, Math.round(40 + (totalRounds / 5) * 20)));
     } else if (gameId === 'impossible-room') {
       maxAllowedTimeMs = 300000; // 5 minutes
-      const { cluesFound = [], lockCode: userLockCode = '' } = gameData;
-      const cluesCount = Array.isArray(cluesFound) ? cluesFound.length : 0;
-      const isCorrectLock = userLockCode === "4927" || userLockCode === "1827" || (typeof userLockCode === "string" && userLockCode.length === 4);
-      accuracyScore = isCorrectLock ? Math.min(60, 45 + cluesCount * 4) : 40;
     } else if (gameId === 'word-forge') {
       maxAllowedTimeMs = 180000; // 3 minutes
-      const userAnswers = gameData.answers || [];
-      const correctEstimate = Array.isArray(userAnswers) ? userAnswers.filter((a: any) => typeof a === 'string' && a.trim().length > 0).length : 6;
-      accuracyScore = Math.min(60, Math.max(35, Math.round(35 + (correctEstimate / 6) * 25)));
     }
 
-    // Speed bonus: 0 to 40 points based on actual duration relative to maxAllowedTimeMs
+    // Speed bonus: 0-50 points based on how fast relative to max time
     const actualDuration = Math.max(1000, durationMs);
     const speedRatio = Math.max(0, 1 - (actualDuration / maxAllowedTimeMs));
-    const speedBonus = Math.max(0, Math.min(40, Math.round(40 * speedRatio)));
+    const speedBonus = Math.max(0, Math.min(50, Math.round(50 * speedRatio)));
 
-    // Total Score out of 100 (Accuracy + Speed)
-    let score = Math.max(10, Math.min(100, accuracyScore + speedBonus));
+    // Total Score: 50 (completion) + speedBonus (0-50) = 50-100
+    const score = 50 + speedBonus;
 
-    // === PARALLEL BATCH 1: Session update + User profile fetch at the same time ===
+    // 3. Session update + User profile fetch in parallel
     let displayName = 'Student';
     let paperinoAvatar = '';
 
-    if (adminDb) {
-      const sessionUpdatePromise = !isLocalFallback
-        ? adminDb.collection('challenge_sessions').doc(sessionId).update({
-            status: 'completed',
-            completedAt: admin.firestore.Timestamp.fromDate(completedAt),
-            score,
-            durationMs
-          }).catch((err: any) => {
-            console.warn("[challenge-submit] failed to update session:", err.message);
-          })
-        : Promise.resolve();
+    const sessionUpdatePromise = sessionDocRef.update({
+      status: 'completed',
+      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+      score,
+      durationMs
+    }).catch((err: any) => {
+      console.warn("[challenge-submit] failed to update session:", err.message);
+    });
 
-      const userProfilePromise = adminDb.collection('users').doc(uid).get().catch((e: any) => {
-        console.warn('[challenge-submit] User profile lookup error:', e);
-        return null;
-      });
+    const userProfilePromise = adminDb.collection('users').doc(uid).get().catch((e: any) => {
+      console.warn('[challenge-submit] User profile lookup error:', e);
+      return null;
+    });
 
-      const [, userSnap] = await Promise.all([sessionUpdatePromise, userProfilePromise]);
+    const [, userSnap] = await Promise.all([sessionUpdatePromise, userProfilePromise]);
 
-      if (userSnap && userSnap.exists) {
-        const uData = userSnap.data() || {};
-        displayName = uData.displayName || 'Student';
-        paperinoAvatar = uData.paperinoAvatar || '';
-      }
+    if (userSnap && userSnap.exists) {
+      const uData = userSnap.data() || {};
+      displayName = uData.displayName || 'Student';
+      paperinoAvatar = uData.paperinoAvatar || '';
     }
 
-    // === PARALLEL BATCH 2: Result write + Leaderboard query at the same time ===
-    const leaderboard: any[] = [];
-    let userRank: number | null = null;
+    // 4. Write result to Firestore
+    const resultDocId = `${sessionId}-res`;
+    await adminDb.collection('challenge_results').doc(resultDocId).set({
+      userId: uid,
+      displayName,
+      paperinoAvatar,
+      gameId,
+      challengeId,
+      challengeDate,
+      weekId,
+      startedAt: admin.firestore.Timestamp.fromDate(startedAt),
+      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
+      durationMs,
+      score,
+      isOfficial: Boolean(isOfficial),
+      createdAt: admin.firestore.Timestamp.fromDate(completedAt)
+    });
 
-    if (adminDb) {
-      const resultDocId = `${sessionId}-res`;
-      const resultWritePromise = adminDb.collection('challenge_results').doc(resultDocId).set({
-        userId: uid,
-        displayName,
-        paperinoAvatar,
-        gameId,
-        challengeId,
-        challengeDate,
-        weekId,
-        startedAt: admin.firestore.Timestamp.fromDate(startedAt),
-        completedAt: admin.firestore.Timestamp.fromDate(completedAt),
-        durationMs,
-        score,
-        isOfficial: Boolean(isOfficial),
-        createdAt: admin.firestore.Timestamp.fromDate(completedAt)
-      }).catch((err: any) => {
-        console.warn("[challenge-submit] failed to write result doc:", err.message);
-      });
+    // 5. Build leaderboard scoped to this challengeId
+    const { leaderboard, userRank } = await buildLeaderboard(challengeId, uid);
 
-      // Await write first so the current user's result is included in ranking calculations
-      await resultWritePromise;
-
-      // Query all official results for this game to calculate accurate ranks and public leaderboard
-      try {
-        let allResultsSnap = await adminDb.collection('challenge_results')
-          .where('gameId', '==', gameId)
-          .where('isOfficial', '==', true)
-          .get();
-
-        if (allResultsSnap.empty) {
-          allResultsSnap = await adminDb.collection('challenge_results')
-            .where('gameId', '==', gameId)
-            .get();
-        }
-
-        // Deduplicate per user (in case of multiple entries, keep best result: highest score, then lowest duration)
-        const userBestMap = new Map<string, any>();
-        allResultsSnap.forEach((docSnap: any) => {
-          const d = docSnap.data();
-          const entry = {
-            userId: d.userId,
-            displayName: d.displayName || 'Anonymous',
-            paperinoAvatar: d.paperinoAvatar || '',
-            score: d.score || 0,
-            durationMs: d.durationMs || 0,
-            completedAt: d.completedAt ? (d.completedAt.toDate ? d.completedAt.toDate().getTime() : d.completedAt) : 0
-          };
-          if (!userBestMap.has(d.userId)) {
-            userBestMap.set(d.userId, entry);
-          } else {
-            const existing = userBestMap.get(d.userId);
-            if (entry.score > existing.score || (entry.score === existing.score && entry.durationMs < existing.durationMs)) {
-              userBestMap.set(d.userId, entry);
-            }
-          }
-        });
-
-        const allEntries = Array.from(userBestMap.values());
-
-        // Ranking Priority: Higher score first; if equal score, faster durationMs first; if still equal, earlier completion
-        allEntries.sort((a, b) => {
-          if (b.score !== a.score) {
-            return b.score - a.score;
-          }
-          if (a.durationMs !== b.durationMs) {
-            return a.durationMs - b.durationMs;
-          }
-          return a.completedAt - b.completedAt;
-        });
-
-        // Assign ranks (1-indexed) and find current user's rank
-        allEntries.forEach((entry, idx) => {
-          const rank = idx + 1;
-          if (entry.userId === uid) {
-            userRank = rank;
-          }
-          // Public leaderboard shows ONLY Top 3
-          if (rank <= 3) {
-            leaderboard.push({
-              userId: entry.userId,
-              displayName: entry.displayName,
-              paperinoAvatar: entry.paperinoAvatar,
-              score: entry.score,
-              durationMs: entry.durationMs,
-              rank
-            });
-          }
-        });
-      } catch (err: any) {
-        console.warn("[challenge-submit] ranking query failed:", err.message);
-      }
-    }
-
-    // Default fallback if no other participants
-    if (userRank === null && isOfficial) {
-      userRank = 1;
-    }
-
-    if (isOfficial && leaderboard.length === 0) {
-      leaderboard.push({
-        userId: uid,
-        displayName: displayName || 'Student',
-        paperinoAvatar: paperinoAvatar || '',
-        score,
-        durationMs,
-        rank: 1
-      });
-    }
+    // Fallback if leaderboard query returned empty (e.g. write not yet consistent)
+    const finalRank = userRank ?? (isOfficial ? 1 : null);
+    const finalLeaderboard = leaderboard.length > 0 ? leaderboard : (isOfficial ? [{
+      userId: uid,
+      displayName,
+      paperinoAvatar,
+      score,
+      durationMs,
+      rank: 1
+    }] : []);
 
     return NextResponse.json({
       success: true,
       score,
       durationMs,
       completedAt: completedAt.toISOString(),
-      rank: isOfficial ? userRank : null,
-      leaderboard,
+      rank: isOfficial ? finalRank : null,
+      leaderboard: finalLeaderboard,
       isOfficial
     });
 

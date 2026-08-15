@@ -261,7 +261,7 @@ export default function ImpossibleRoomPage() {
           gameData: {
             cluesFound: Array.from(foundClues),
             lockCode: enteredCode,
-            durationMs: startTime ? Date.now() - startTime : 17500,
+            durationMs: startTime ? Date.now() - startTime : 0,
             gameId: "impossible-room"
           }
         })
