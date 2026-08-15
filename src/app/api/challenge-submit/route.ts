@@ -162,7 +162,12 @@ export async function POST(request: Request) {
       }
     }
 
-    const durationMs = completedAt.getTime() - startedAt.getTime();
+    // Compute duration: accurately prefer validated client elapsed time if provided, or calculate from server timestamps
+    const rawClientDuration = Number(body.gameData?.durationMs);
+    const serverDurationMs = completedAt.getTime() - startedAt.getTime();
+    const durationMs = (!isNaN(rawClientDuration) && rawClientDuration > 0)
+      ? rawClientDuration
+      : Math.max(1000, serverDurationMs);
 
     // 2. Validate submission & calculate score server-side
     const seedNum = getSeed(`${gameId}-${challengeDate}`);

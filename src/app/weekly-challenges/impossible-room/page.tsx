@@ -260,7 +260,9 @@ export default function ImpossibleRoomPage() {
           sessionId,
           gameData: {
             cluesFound: Array.from(foundClues),
-            lockCode: enteredCode
+            lockCode: enteredCode,
+            durationMs: startTime ? Date.now() - startTime : 17500,
+            gameId: "impossible-room"
           }
         })
       });
