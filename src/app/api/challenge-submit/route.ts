@@ -244,20 +244,23 @@ export async function POST(request: Request) {
       score = Math.max(0, Math.min(100, Math.round(accumulatedScore)));
     } else if (gameId === 'impossible-room') {
       const { cluesFound = [], lockCode: userLockCode = '' } = gameData;
-      // Fixed clues in room: desk-drawer (1), bookshelf-diary (8), vintage-painting (2), desk-lamp (7) -> lock code "1827"
-      const EXPECTED_LOCK_CODE = "1827";
+      // Clues in room: wall-clock (4), bookshelf (9), oil-painting (2), desk-lamp (7) -> lock code "4927" (or legacy "1827")
+      const isCorrectCode = userLockCode === "4927" || userLockCode === "1827";
       const totalClues = Array.isArray(cluesFound) ? cluesFound.length : 0;
-      const clueScore = Math.min(40, totalClues * 10); // 4 clues * 10 = 40 pts
-      const escapeScore = userLockCode === EXPECTED_LOCK_CODE ? 60 : 0; // 60 pts
+      const clueScore = Math.min(30, totalClues * 10); // up to 30 pts for discovering clues
+      const escapeScore = isCorrectCode ? 60 : 0; // 60 pts for cracking the safe
       
       const durationSeconds = durationMs / 1000;
       let timeBonus = 0;
-      if (escapeScore > 0) {
+      if (isCorrectCode) {
         if (durationSeconds < 60) timeBonus = 10;
         else if (durationSeconds < 120) timeBonus = 5;
       }
       
-      score = Math.max(0, Math.min(100, clueScore + escapeScore + timeBonus));
+      // If escaped correctly with clues, ensure high score (clueScore + escapeScore + timeBonus)
+      score = isCorrectCode
+        ? Math.max(70, Math.min(100, clueScore + escapeScore + timeBonus))
+        : Math.max(0, Math.min(40, clueScore));
     } else if (gameId === 'word-forge') {
       const FIXED_CORRECT_ANSWERS = ['RATE', 'COMPUTER', 'DATABASE', 'SYNTAX', 'ALGORITHM', 'COMPILER'];
       const userAnswers = gameData.answers || [];
@@ -418,7 +421,7 @@ export async function POST(request: Request) {
       userRank = 1;
     }
 
-    if (isOfficial && leaderboard.length === 0 && score > 0) {
+    if (isOfficial && leaderboard.length === 0) {
       leaderboard.push({
         userId: uid,
         displayName: displayName || 'Student',
