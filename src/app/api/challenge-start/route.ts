@@ -150,18 +150,28 @@ export async function POST(request: Request) {
             .where("isOfficial", "==", true)
             .get();
 
-          const allEntries: any[] = [];
+          const userBestMap = new Map<string, any>();
           allResultsSnap.forEach((docSnap: any) => {
             const d = docSnap.data();
-            allEntries.push({
+            const entry = {
               userId: d.userId,
               displayName: d.displayName || "Anonymous",
               paperinoAvatar: d.paperinoAvatar || "",
               score: d.score || 0,
               durationMs: d.durationMs || 0,
               completedAt: d.completedAt ? (d.completedAt.toDate ? d.completedAt.toDate().getTime() : d.completedAt) : 0
-            });
+            };
+            if (!userBestMap.has(d.userId)) {
+              userBestMap.set(d.userId, entry);
+            } else {
+              const existing = userBestMap.get(d.userId);
+              if (entry.score > existing.score || (entry.score === existing.score && entry.durationMs < existing.durationMs)) {
+                userBestMap.set(d.userId, entry);
+              }
+            }
           });
+
+          const allEntries = Array.from(userBestMap.values());
 
           // Sort by higher score, then faster time, then earlier submission
           allEntries.sort((a, b) => {
