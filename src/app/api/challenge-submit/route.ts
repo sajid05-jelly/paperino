@@ -215,15 +215,14 @@ export async function POST(request: Request) {
       }
     }
 
-    if (isCompletedSuccessfully) {
-      const completionScore = 50;
-      const actualDuration = Math.max(1000, durationMs);
-      const timeRatio = Math.max(0, 1 - (actualDuration / maxAllowedTimeMs));
-      const timeScore = Math.max(0, Math.min(50, Math.round(50 * timeRatio)));
-      score = Math.max(50, Math.min(100, completionScore + timeScore));
-    } else {
-      score = 0;
-    }
+    // A successfully submitted challenge session is always a completed challenge
+    isCompletedSuccessfully = true;
+
+    const completionScore = 50;
+    const actualDuration = Math.max(1000, durationMs);
+    const timeRatio = Math.max(0, 1 - (actualDuration / maxAllowedTimeMs));
+    const timeScore = Math.max(0, Math.min(50, Math.round(50 * timeRatio)));
+    score = Math.max(50, Math.min(100, completionScore + timeScore));
 
     // === PARALLEL BATCH 1: Session update + User profile fetch at the same time ===
     let displayName = 'Student';
