@@ -268,12 +268,18 @@ export async function POST(request: Request) {
       // Await write first so the current user's result is included in ranking calculations
       await resultWritePromise;
 
-      // Query all official results for this game's current challengeId to calculate accurate ranks
+      // Query all official results for this game to calculate accurate ranks and public leaderboard
       try {
-        const allResultsSnap = await adminDb.collection('challenge_results')
-          .where('challengeId', '==', challengeId)
+        let allResultsSnap = await adminDb.collection('challenge_results')
+          .where('gameId', '==', gameId)
           .where('isOfficial', '==', true)
           .get();
+
+        if (allResultsSnap.empty) {
+          allResultsSnap = await adminDb.collection('challenge_results')
+            .where('gameId', '==', gameId)
+            .get();
+        }
 
         // Deduplicate per user (in case of multiple entries, keep best result: highest score, then lowest duration)
         const userBestMap = new Map<string, any>();

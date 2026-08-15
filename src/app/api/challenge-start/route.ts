@@ -144,11 +144,17 @@ export async function POST(request: Request) {
           const userDuration = prevResult.durationMs || 0;
           const userCompletedAt = prevResult.completedAt ? (prevResult.completedAt.toDate ? prevResult.completedAt.toDate().getTime() : prevResult.completedAt) : 0;
 
-          // Fetch all official results for this game's challengeId to compute dynamic ranks and top 3 leaderboard
-          const allResultsSnap = await adminDb.collection("challenge_results")
-            .where("challengeId", "==", challengeId)
+          // Fetch all official results for this game to compute dynamic ranks and top 3 leaderboard
+          let allResultsSnap = await adminDb.collection("challenge_results")
+            .where("gameId", "==", gameId)
             .where("isOfficial", "==", true)
             .get();
+
+          if (allResultsSnap.empty) {
+            allResultsSnap = await adminDb.collection("challenge_results")
+              .where("gameId", "==", gameId)
+              .get();
+          }
 
           const userBestMap = new Map<string, any>();
           allResultsSnap.forEach((docSnap: any) => {
