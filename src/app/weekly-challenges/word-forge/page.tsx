@@ -272,6 +272,7 @@ export default function WordForgePage() {
         body: JSON.stringify({
           sessionId,
           gameData: {
+            gameId: 'word-forge',
             answers: finalAnswers,
             times: timesToSubmit,
             score: finalCalculatedScore,

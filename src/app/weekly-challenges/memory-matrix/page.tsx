@@ -335,6 +335,7 @@ export default function MemoryMatrixPage() {
         body: JSON.stringify({
           sessionId,
           gameData: {
+            gameId: 'memory-matrix',
             rounds: roundsToSubmit,
             score: finalCalculatedScore,
             durationMs: Date.now() - startTime
