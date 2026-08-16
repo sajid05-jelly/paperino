@@ -182,7 +182,7 @@ export default function GameResult({
           {/* Column Right: Real-time Leaderboard */}
           <div className="lg:col-span-7 bg-black/35 border border-white/5 rounded-2xl p-6 flex flex-col">
             <h3 className="text-xs font-bold uppercase tracking-widest text-purple-300 border-b border-white/5 pb-2 mb-4">
-              Weekly Leaderboard
+              Weekly Leaderboard · Top 5
             </h3>
             
             <div className="flex-1 overflow-y-auto max-h-[360px] space-y-2 pr-1">
@@ -197,6 +197,8 @@ export default function GameResult({
                         entry.rank === 1 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
                         entry.rank === 2 ? 'bg-slate-400/20 text-slate-200 border border-slate-400/30' :
                         entry.rank === 3 ? 'bg-orange-700/20 text-orange-300 border border-orange-700/30' :
+                        entry.rank === 4 ? 'bg-cyan-800/20 text-cyan-300 border border-cyan-700/30' :
+                        entry.rank === 5 ? 'bg-indigo-800/20 text-indigo-300 border border-indigo-700/30' :
                         'bg-white/5 text-gray-400 border border-white/5'
                       }`}>
                         #{entry.rank}

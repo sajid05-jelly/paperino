@@ -49,7 +49,7 @@ function getSeed(str: string): number {
 }
 
 /**
- * Build the public Top 3 leaderboard + compute user rank from challenge_results.
+ * Build the public Top 5 leaderboard + compute user rank from challenge_results.
  * Scoped to the EXACT challengeId (= gameId + admin session key).
  */
 async function buildLeaderboard(challengeId: string, currentUid: string): Promise<{
@@ -99,13 +99,13 @@ async function buildLeaderboard(challengeId: string, currentUid: string): Promis
       return a.completedAt - b.completedAt;
     });
 
-    // Assign ranks and collect top 3
+    // Assign ranks and collect top 5
     allEntries.forEach((entry, idx) => {
       const rank = idx + 1;
       if (entry.userId === currentUid) {
         userRank = rank;
       }
-      if (rank <= 3) {
+      if (rank <= 5) {
         leaderboard.push({
           userId: entry.userId,
           displayName: entry.displayName,
@@ -305,6 +305,7 @@ export async function POST(request: Request) {
       console.warn("[challenge-submit] failed to update session:", err.message);
     });
 
+    // Try multiple sources for display name: Firestore profile → Firebase Auth → email prefix
     const userProfilePromise = adminDb.collection('users').doc(uid).get().catch((e: any) => {
       console.warn('[challenge-submit] User profile lookup error:', e);
       return null;
@@ -314,8 +315,25 @@ export async function POST(request: Request) {
 
     if (userSnap && userSnap.exists) {
       const uData = userSnap.data() || {};
-      displayName = uData.displayName || 'Student';
+      if (uData.displayName && uData.displayName !== 'Student') {
+        displayName = uData.displayName;
+      }
       paperinoAvatar = uData.paperinoAvatar || '';
+    }
+
+    // If still 'Student', try Firebase Auth record (has actual Gmail profile name)
+    if (displayName === 'Student' && admin.auth) {
+      try {
+        const authRecord = await admin.auth().getUser(uid);
+        if (authRecord.displayName) {
+          displayName = authRecord.displayName;
+        } else if (authRecord.email) {
+          // Use email prefix as fallback (e.g., "sajid" from "sajid@gmail.com")
+          displayName = authRecord.email.split('@')[0];
+        }
+      } catch (authErr: any) {
+        console.warn('[challenge-submit] Firebase Auth getUser fallback error:', authErr.message);
+      }
     }
 
     // 4. Write result to Firestore (with deterministic ID for absolute 1-attempt guarantee)
