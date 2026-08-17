@@ -20,7 +20,11 @@ import {
   LockKeyhole,
   Rocket,
   Sparkles,
-  Gamepad2
+  Gamepad2,
+  Target,
+  Brain,
+  Search,
+  Zap
 } from "lucide-react";
 import { 
   GAME_IDS, 
@@ -36,7 +40,7 @@ import {
 const DEFAULT_CONFIG = {
   enabled: true,
   availableDays: [2, 4, 5],
-  activeGames: ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'],
+  activeGames: ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'],
   leaderboardEnabled: true,
   officialAttempts: 1,
   maintenanceMode: false
@@ -47,7 +51,12 @@ const ICONS = {
   'memory-matrix': Grid3X3,
   'impossible-room': DoorOpen,
   'word-forge': TypeIcon,
+  'target-number': Target,
+  'memory-heist': Brain,
+  'the-impostor': Search,
+  'paradox': Zap,
 };
+
 
 export default function WeeklyChallengesPage() {
   const { user, isAdmin } = useAuth();
@@ -76,7 +85,8 @@ export default function WeeklyChallengesPage() {
             const activeChallengeWeek = currentConfig.currentWeek || getCurrentChallengeWeek();
             const sessionMap: Record<string, any> = {};
 
-            const games = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
+            const games = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'];
+
             const targetChallengeIds: Record<string, string> = {};
 
             games.forEach((gId) => {
@@ -520,7 +530,12 @@ export default function WeeklyChallengesPage() {
                 'memory-matrix':  { glow: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.25)',  icon: 'rgba(96,165,250,0.15)',  btn: 'linear-gradient(135deg,#2563eb,#1e3a8a)', btnHover: 'rgba(96,165,250,0.15)' },
                 'impossible-room':{ glow: 'rgba(192,132,252,0.13)', border: 'rgba(192,132,252,0.28)', icon: 'rgba(192,132,252,0.15)', btn: 'linear-gradient(135deg,#7c3aed,#4c1d95)', btnHover: 'rgba(192,132,252,0.15)' },
                 'word-forge':     { glow: 'rgba(251,146,60,0.11)',  border: 'rgba(251,146,60,0.24)',  icon: 'rgba(251,146,60,0.14)',  btn: 'linear-gradient(135deg,#c2410c,#7c2d12)', btnHover: 'rgba(251,146,60,0.14)' },
+                'target-number':  { glow: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.25)', icon: 'rgba(248,113,113,0.15)', btn: 'linear-gradient(135deg,#dc2626,#7f1d1d)', btnHover: 'rgba(248,113,113,0.15)' },
+                'memory-heist':   { glow: 'rgba(34,211,238,0.12)',  border: 'rgba(34,211,238,0.25)',  icon: 'rgba(34,211,238,0.15)',  btn: 'linear-gradient(135deg,#0891b2,#164e63)', btnHover: 'rgba(34,211,238,0.15)' },
+                'the-impostor':   { glow: 'rgba(250,204,21,0.11)',  border: 'rgba(250,204,21,0.24)',  icon: 'rgba(250,204,21,0.14)',  btn: 'linear-gradient(135deg,#ca8a04,#713f12)', btnHover: 'rgba(250,204,21,0.14)' },
+                'paradox':        { glow: 'rgba(244,114,182,0.12)', border: 'rgba(244,114,182,0.25)', icon: 'rgba(244,114,182,0.15)', btn: 'linear-gradient(135deg,#be185d,#831843)', btnHover: 'rgba(244,114,182,0.15)' },
               };
+
               const ac = accentMap[gameId] ?? accentMap['impossible-room'];
 
               return (

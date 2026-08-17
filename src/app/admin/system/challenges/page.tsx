@@ -289,7 +289,11 @@ export default function ChallengesControlPage() {
                   { id: 'code-breaker', name: 'Code Breaker' },
                   { id: 'memory-matrix', name: 'Memory Matrix' },
                   { id: 'impossible-room', name: 'The Impossible Room' },
-                  { id: 'word-forge', name: 'Word Forge' }
+                  { id: 'word-forge', name: 'Word Forge' },
+                  { id: 'target-number', name: '🎯 Target Number' },
+                  { id: 'memory-heist', name: '🧠 Memory Heist' },
+                  { id: 'the-impostor', name: '🕵️ The Impostor' },
+                  { id: 'paradox', name: '🌀 Paradox' },
                 ].map(game => (
                   <label key={game.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
                     <input 

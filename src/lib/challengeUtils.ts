@@ -1,4 +1,4 @@
-export const GAME_IDS = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'] as const;
+export const GAME_IDS = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'] as const;
 
 export type GameId = typeof GAME_IDS[number];
 
@@ -27,7 +27,32 @@ export const GAME_INFO: Record<GameId, { name: string; description: string; icon
     icon: 'Type',
     color: 'text-orange-400',
   },
+  'target-number': {
+    name: 'Target Number',
+    description: 'Reach the target using math',
+    icon: 'Target',
+    color: 'text-red-400',
+  },
+  'memory-heist': {
+    name: 'Memory Heist',
+    description: 'Memorize and recall the scene',
+    icon: 'Brain',
+    color: 'text-cyan-400',
+  },
+  'the-impostor': {
+    name: 'The Impostor',
+    description: 'Find the impostor using clues',
+    icon: 'Search',
+    color: 'text-yellow-400',
+  },
+  'paradox': {
+    name: 'Paradox',
+    description: 'Follow the shifting instructions',
+    icon: 'Zap',
+    color: 'text-pink-400',
+  },
 };
+
 
 export const DAY_NAMES = [
   'Sunday',

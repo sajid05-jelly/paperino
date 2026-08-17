@@ -3,7 +3,8 @@ import { verifyServerAuth } from '@/lib/auth-verify';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 
-const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
+const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'];
+
 
 const WORD_LIST = [
   'algorithm', 'binary', 'compiler', 'database', 'encrypt',
@@ -282,7 +283,16 @@ export async function POST(request: Request) {
       maxAllowedTimeMs = 300000; // 5 minutes
     } else if (gameId === 'word-forge') {
       maxAllowedTimeMs = 180000; // 3 minutes
+    } else if (gameId === 'target-number') {
+      maxAllowedTimeMs = 240000; // 4 minutes
+    } else if (gameId === 'memory-heist') {
+      maxAllowedTimeMs = 180000; // 3 minutes
+    } else if (gameId === 'the-impostor') {
+      maxAllowedTimeMs = 180000; // 3 minutes
+    } else if (gameId === 'paradox') {
+      maxAllowedTimeMs = 120000; // 2 minutes
     }
+
 
     // Speed bonus: 0-50 points based on how fast relative to max time
     const actualDuration = Math.max(1000, durationMs);

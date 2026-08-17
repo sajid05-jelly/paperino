@@ -5,7 +5,8 @@ import * as admin from 'firebase-admin';
 import crypto from 'crypto';
 import { getCanonicalChallengeId } from '@/lib/challengeResolver';
 
-const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
+const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'];
+
 
 const WORD_LIST = [
   'algorithm', 'binary', 'compiler', 'database', 'encrypt',
@@ -325,6 +326,280 @@ export async function POST(request: Request) {
         rounds.push({ scrambled: chars.join(''), length: word.length });
       }
       puzzleData = { rounds };
+    } else if (gameId === 'target-number') {
+      // Build puzzle backwards to guarantee a valid solution exists.
+      // Pick 3-4 numbers, combine them with an operator chain to produce a reachable target.
+      const OPERAND_POOL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25];
+      const pickFromPool = (pool: number[]) => pool[Math.floor(rand() * pool.length)];
+
+      // Pick 6 available numbers (may repeat within reason)
+      const availableNumbers: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        availableNumbers.push(pickFromPool(OPERAND_POOL));
+      }
+
+      // Construct target using first 3-4 of those numbers with simple ops
+      const useCount = 3 + Math.floor(rand() * 2); // 3 or 4
+      let target = availableNumbers[0];
+      const ops = ['+', '-', '*'];
+      for (let i = 1; i < useCount; i++) {
+        const op = ops[Math.floor(rand() * ops.length)];
+        const n = availableNumbers[i];
+        if (op === '+') target = target + n;
+        else if (op === '-') target = Math.abs(target - n);
+        else if (op === '*') target = target * n;
+      }
+
+      // Clamp target to reasonable puzzle range
+      target = Math.max(1, Math.min(999, target));
+
+      puzzleData = {
+        target,
+        availableNumbers,
+        allowedOperators: ['+', '-', '*', '/'],
+      };
+    } else if (gameId === 'memory-heist') {
+      // Generate a 3x3 grid with 6 items placed at random positions (seeded)
+      const ITEMS = ['🔑', '📱', '💻', '📕', '🎧', '☕', '🖊️', '📷', '🔮'];
+      const gridSize = 3;
+      const totalCells = gridSize * gridSize;
+      const itemCount = 6;
+
+      // Pick 6 unique items from pool
+      const itemPool = [...ITEMS];
+      const chosenItems: string[] = [];
+      for (let i = 0; i < itemCount; i++) {
+        const idx = Math.floor(rand() * itemPool.length);
+        chosenItems.push(itemPool[idx]);
+        itemPool.splice(idx, 1);
+      }
+
+      // Assign to 6 unique positions in 3x3 grid
+      const posPool = Array.from({ length: totalCells }, (_, i) => i);
+      const chosenPositions: number[] = [];
+      for (let i = 0; i < itemCount; i++) {
+        const idx = Math.floor(rand() * posPool.length);
+        chosenPositions.push(posPool[idx]);
+        posPool.splice(idx, 1);
+      }
+
+      // Build grid: position -> item (null = empty)
+      const grid: (string | null)[] = Array(totalCells).fill(null);
+      chosenItems.forEach((item, i) => {
+        grid[chosenPositions[i]] = item;
+      });
+
+      // Generate 3 questions from the actual grid state
+      // Question types: (a) position of item, (b) item at position, (c) which row has item
+      const questions: Array<{ question: string; options: string[]; correctAnswer: string }> = [];
+
+      const rowNames = ['top', 'middle', 'bottom'];
+      const colNames = ['left', 'center', 'right'];
+
+      const posToLabel = (pos: number) => {
+        const row = Math.floor(pos / gridSize);
+        const col = pos % gridSize;
+        return `${rowNames[row]}-${colNames[col]}`;
+      };
+
+      // Q1: "Where was the [item]?" — pick a random placed item
+      const q1ItemIdx = Math.floor(rand() * itemCount);
+      const q1Item = chosenItems[q1ItemIdx];
+      const q1Pos = chosenPositions[q1ItemIdx];
+      const correctLabel = posToLabel(q1Pos);
+      // Build 3 wrong position labels
+      const allLabels = Array.from({ length: totalCells }, (_, i) => posToLabel(i)).filter(l => l !== correctLabel);
+      const wrongLabels: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const wi = Math.floor(rand() * allLabels.length);
+        wrongLabels.push(allLabels[wi]);
+        allLabels.splice(wi, 1);
+      }
+      const q1Options = [correctLabel, ...wrongLabels].sort(() => rand() - 0.5);
+      questions.push({ question: `Where was the ${q1Item}?`, options: q1Options, correctAnswer: correctLabel });
+
+      // Q2: "What item was at [position]?" — pick a different filled position
+      const q2ItemIdx = (q1ItemIdx + 1 + Math.floor(rand() * (itemCount - 1))) % itemCount;
+      const q2Pos = chosenPositions[q2ItemIdx];
+      const q2Label = posToLabel(q2Pos);
+      const q2Correct = chosenItems[q2ItemIdx];
+      const wrongItems = chosenItems.filter(it => it !== q2Correct).sort(() => rand() - 0.5).slice(0, 3);
+      const q2Options = [q2Correct, ...wrongItems].sort(() => rand() - 0.5);
+      questions.push({ question: `What was at the ${q2Label} position?`, options: q2Options, correctAnswer: q2Correct });
+
+      // Q3: "How many items were in the top row?"
+      const topRowCount = [0, 1, 2].filter(pos => grid[pos] !== null).length;
+      const q3Options = ['0', '1', '2', '3'].sort(() => rand() - 0.5);
+      questions.push({ question: 'How many items were in the top row?', options: q3Options, correctAnswer: String(topRowCount) });
+
+      puzzleData = {
+        grid,
+        gridSize,
+        items: chosenItems,
+        questions,
+        displaySeconds: 5,
+      };
+    } else if (gameId === 'the-impostor') {
+      // Pre-validated scenario pool — every scenario has exactly one logical answer
+      const SCENARIOS = [
+        {
+          characters: ['Arun', 'Bala', 'Cathy', 'David'],
+          clues: ['Only one person likes both coffee and coding.', 'Arun likes coffee but not coding.', 'Bala likes coding but not coffee.', 'Cathy likes both coffee and coding.', 'David likes neither.'],
+          question: 'Who likes both coffee and coding?',
+          answer: 'Cathy',
+          options: ['Arun', 'Bala', 'Cathy', 'David'],
+        },
+        {
+          characters: ['Alice', 'Bob', 'Carol', 'Dan'],
+          clues: ['Three people are telling the truth. One is lying.', 'Alice says: "I am in Room 1."', 'Bob says: "Alice is not in Room 1."', 'Carol says: "Bob is in Room 2."', 'Dan says: "Carol is telling the truth."'],
+          question: 'Who is lying?',
+          answer: 'Bob',
+          options: ['Alice', 'Bob', 'Carol', 'Dan'],
+        },
+        {
+          characters: ['Priya', 'Raj', 'Sam', 'Tina'],
+          clues: ['Each person has a unique job: Doctor, Engineer, Artist, Chef.', 'Priya is not an Artist.', 'Raj is an Engineer.', 'Sam is not a Doctor.', 'Tina is an Artist.'],
+          question: 'Who is the Doctor?',
+          answer: 'Priya',
+          options: ['Priya', 'Raj', 'Sam', 'Tina'],
+        },
+        {
+          characters: ['Emma', 'Faisal', 'Grace', 'Hiro'],
+          clues: ['One person scored 100 in the test.', 'Emma scored higher than Grace.', 'Faisal scored the lowest.', 'Hiro scored higher than Emma.', 'Only one person scored 100.'],
+          question: 'Who scored 100?',
+          answer: 'Hiro',
+          options: ['Emma', 'Faisal', 'Grace', 'Hiro'],
+        },
+        {
+          characters: ['Lena', 'Marco', 'Nina', 'Omar'],
+          clues: ['One of them stole the key.', 'Lena was in the library all day.', 'Marco was with Lena.', 'Nina was seen near the key cabinet.', 'Omar was outside the building.'],
+          question: 'Who stole the key?',
+          answer: 'Nina',
+          options: ['Lena', 'Marco', 'Nina', 'Omar'],
+        },
+        {
+          characters: ['Kiran', 'Leo', 'Mia', 'Noah'],
+          clues: ['Exactly one person sent the anonymous message.', 'Kiran has no email account.', 'Leo was offline that evening.', 'Mia sent a message at 8PM.', 'Noah was playing games.'],
+          question: 'Who sent the anonymous message?',
+          answer: 'Mia',
+          options: ['Kiran', 'Leo', 'Mia', 'Noah'],
+        },
+        {
+          characters: ['Aria', 'Ben', 'Cara', 'Dev'],
+          clues: ['One person is the team leader.', 'Aria always follows orders.', 'Ben gives orders to Cara.', 'Cara follows Ben\'s orders.', 'Dev follows no one.'],
+          question: 'Who is the team leader?',
+          answer: 'Ben',
+          options: ['Aria', 'Ben', 'Cara', 'Dev'],
+        },
+        {
+          characters: ['Finn', 'Gina', 'Hugo', 'Iris'],
+          clues: ['One person finished the puzzle first.', 'Finn finished after Gina.', 'Hugo finished before Iris.', 'Gina finished before Hugo.', 'Iris finished last.'],
+          question: 'Who finished the puzzle first?',
+          answer: 'Gina',
+          options: ['Finn', 'Gina', 'Hugo', 'Iris'],
+        },
+      ];
+
+      const scenarioIdx = Math.floor(rand() * SCENARIOS.length);
+      const scenario = SCENARIOS[scenarioIdx];
+      puzzleData = { ...scenario };
+    } else if (gameId === 'paradox') {
+      // Pre-validated deterministic instruction chains with exactly one correct answer
+      const CHAINS = [
+        {
+          values: [8, 3, 12, 5],
+          instructions: [
+            { text: 'Select the largest number.', active: true },
+            { text: 'Ignore the previous instruction.', active: false },
+            { text: 'Select the smallest number.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '3',
+          options: ['8', '3', '12', '5'],
+        },
+        {
+          values: [7, 2, 15, 9],
+          instructions: [
+            { text: 'Select the smallest number.', active: true },
+            { text: 'Do exactly the opposite of the previous instruction.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '15',
+          options: ['7', '2', '15', '9'],
+        },
+        {
+          values: [4, 11, 6, 20],
+          instructions: [
+            { text: 'Select the largest number.', active: true },
+            { text: 'Ignore all previous instructions.', active: false },
+            { text: 'Select the number closest to 10.', active: true },
+            { text: 'Keep the previous instruction.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '11',
+          options: ['4', '11', '6', '20'],
+        },
+        {
+          values: [1, 5, 9, 13],
+          instructions: [
+            { text: 'Select the number at position 3 (1-indexed).', active: true },
+            { text: 'Discard the previous instruction.', active: false },
+            { text: 'Select the even number.', active: false },
+            { text: 'Select the number greater than 10.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '13',
+          options: ['1', '5', '9', '13'],
+        },
+        {
+          values: [6, 14, 3, 8],
+          instructions: [
+            { text: 'Select the odd number.', active: true },
+            { text: 'Reverse the previous instruction — select an even number.', active: true },
+            { text: 'Among even numbers, select the smallest.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '6',
+          options: ['6', '14', '3', '8'],
+        },
+        {
+          values: [10, 4, 7, 25],
+          instructions: [
+            { text: 'Select the number that is divisible by 5.', active: true },
+            { text: 'Also consider numbers divisible by 2.', active: false },
+            { text: 'Only the first active instruction matters.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '10',
+          options: ['10', '4', '7', '25'],
+        },
+        {
+          values: [2, 9, 16, 5],
+          instructions: [
+            { text: 'Select a prime number.', active: true },
+            { text: 'Override: select a perfect square.', active: true },
+            { text: 'The latest instruction overrides all.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '16',
+          options: ['2', '9', '16', '5'],
+        },
+        {
+          values: [3, 18, 7, 12],
+          instructions: [
+            { text: 'Select the number divisible by 3.', active: true },
+            { text: 'Ignore this instruction.', active: false },
+            { text: 'Among numbers divisible by 3, select the largest.', active: true },
+          ],
+          question: 'Which number should you select?',
+          answer: '18',
+          options: ['3', '18', '7', '12'],
+        },
+      ];
+
+      const chainIdx = Math.floor(rand() * CHAINS.length);
+      const chain = CHAINS[chainIdx];
+      puzzleData = { ...chain };
     }
 
     return NextResponse.json({
