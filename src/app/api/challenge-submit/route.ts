@@ -49,7 +49,7 @@ function getSeed(str: string): number {
 }
 
 /**
- * Build the public Top 5 leaderboard + compute user rank from challenge_results.
+ * Build the public Top 3 leaderboard + compute user rank from challenge_results.
  * Scoped to the EXACT challengeId (= gameId + admin session key).
  */
 async function buildLeaderboard(challengeId: string, currentUid: string): Promise<{
@@ -105,7 +105,7 @@ async function buildLeaderboard(challengeId: string, currentUid: string): Promis
       if (entry.userId === currentUid) {
         userRank = rank;
       }
-      if (rank <= 5) {
+      if (rank <= 3) {
         leaderboard.push({
           userId: entry.userId,
           displayName: entry.displayName,

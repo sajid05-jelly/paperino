@@ -65,9 +65,9 @@ export default function MemoryMatrixPage() {
   
   const [resultData, setResultData] = useState<any>(null);
   const [error, setError] = useState('');
-  const [startTime, setStartTime] = useState<number>(0);
   const [checkingAttempt, setCheckingAttempt] = useState(true);
-  const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
+const [startTime, setStartTime] = useState<number>(0);
+    const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
 
   const currentCfg = ROUND_CONFIGS[currentRoundIdx] || ROUND_CONFIGS[0];
   const isCreatingSession = useRef(false);
@@ -124,6 +124,26 @@ export default function MemoryMatrixPage() {
     return () => unsubscribe();
   }, []);
 
+  if (checkingAttempt) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-black">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 text-center flex flex-col items-center gap-6"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30">
+            <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1">Checking Attempt</h2>
+            <p className="text-xs text-gray-400">Verifying prior submission...</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   const startGame = async () => {
     if (isCreatingSession.current) return;
     try {
@@ -161,7 +181,7 @@ export default function MemoryMatrixPage() {
       setSessionId(data.sessionId);
       setIsOfficial(Boolean(data.isOfficial));
       
-      const seedNum = getSeed(`memory-matrix-${data.challengeDate}`);
+      const seedNum = getSeed(data.challengeId);
       const rand = mulberry32(seedNum);
       const generatedRounds: string[][] = [];
       
@@ -394,6 +414,8 @@ export default function MemoryMatrixPage() {
       setGameState('result');
     }
   };
+
+
 
 
 

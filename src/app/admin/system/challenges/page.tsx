@@ -34,6 +34,8 @@ export default function ChallengesControlPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [startingSession, setStartingSession] = useState(false);
+  const [sessionSuccess, setSessionSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +75,43 @@ export default function ChallengesControlPage() {
     };
     fetchWcConfig();
   }, []);
+
+  const handleStartNewSession = async () => {
+    setStartingSession(true);
+    setSessionSuccess(false);
+    setError(null);
+    const newId = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setWcChallengeSessionId(newId);
+
+    try {
+      await setDoc(doc(db, "settings", "weeklyChallenges"), {
+        enabled: wcEnabled,
+        adminTestMode: wcAdminTestMode,
+        maintenanceMode: wcMaintenanceMode,
+        leaderboardEnabled: wcLeaderboardEnabled,
+        openTime: wcOpenTime,
+        closeTime: wcCloseTime,
+        officialAttempts: wcOfficialAttempts,
+        availableDays: wcAvailableDays,
+        activeGames: wcActiveGames,
+        currentWeek: getIsoWeek(),
+        challengeSessionId: newId,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      setSessionSuccess(true);
+      setSuccess(true); // show both generic and specific success
+      setTimeout(() => {
+        setSessionSuccess(false);
+        setSuccess(false);
+      }, 4000);
+    } catch (err) {
+      console.error("Failed to start new challenge session:", err);
+      setError("Failed to start new session. Make sure you are authenticated as an admin.");
+    } finally {
+      setStartingSession(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -288,19 +327,32 @@ export default function ChallengesControlPage() {
 
             <button
               type="button"
-              onClick={() => {
-                const newId = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-                setWcChallengeSessionId(newId);
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30"
+              disabled={startingSession || saving}
+              onClick={handleStartNewSession}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg ${
+                sessionSuccess 
+                  ? "bg-emerald-500 shadow-emerald-500/40" 
+                  : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30"
+              }`}
             >
-              <Rocket size={14} /> Start New Challenge Session
+              {startingSession ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Starting Session...
+                </>
+              ) : sessionSuccess ? (
+                <>
+                  <CheckCircle2 size={14} /> New Session Started!
+                </>
+              ) : (
+                <>
+                  <Rocket size={14} /> Start New Challenge Session
+                </>
+              )}
             </button>
 
             {wcChallengeSessionId && (
-              <p className="text-[10px] text-gray-500 text-center">
-                Starting a new session resets official attempts for all students.
-                Save config after starting to apply.
+              <p className="text-[10px] text-emerald-400/80 text-center font-medium">
+                Active Session: {wcChallengeSessionId}
               </p>
             )}
           </div>

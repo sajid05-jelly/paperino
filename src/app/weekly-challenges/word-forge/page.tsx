@@ -25,44 +25,44 @@ const FIXED_ROUNDS: Round[] = [
   {
     type: 'anagram',
     title: 'Round 1 — Anagram',
-    question: 'R T A E',
-    hint: 'Unscramble the letters to form a word meaning speed or assessment.',
-    correctAnswer: 'RATE'
+    question: 'R P E P A',
+    hint: 'Unscramble the letters to form a common writing material.',
+    correctAnswer: 'PAPER'
   },
   {
     type: 'missing',
     title: 'Round 2 — Missing Letters',
-    question: 'C O M P _ T E R',
-    hint: 'Fill in the missing letter for the central processing machine.',
-    correctAnswer: 'COMPUTER'
+    question: 'P E R S _ V E R _ N C _',
+    hint: 'Fill in the missing letters for persistence in doing something despite difficulty.',
+    correctAnswer: 'PERSEVERANCE'
   },
   {
     type: 'clue',
-    title: 'Round 3 — Word Clue',
-    question: 'An organized, structured collection of data stored electronically.',
-    hint: 'Starts with D, 8 letters.',
-    correctAnswer: 'DATABASE'
+    title: 'Round 3 — Technical Clue',
+    question: 'Connecting computers and devices to communicate.',
+    hint: 'Starts with N, 10 letters.',
+    correctAnswer: 'NETWORKING'
   },
   {
     type: 'anagram',
     title: 'Round 4 — Anagram',
-    question: 'Y N S A T X',
-    hint: 'Unscramble the letters to form the grammatical rules of programming code.',
-    correctAnswer: 'SYNTAX'
+    question: 'K O B S O',
+    hint: 'Unscramble the letters to form reading materials.',
+    correctAnswer: 'BOOKS'
   },
   {
     type: 'missing',
     title: 'Round 5 — Missing Letters',
-    question: 'A L G O R _ T H M',
-    hint: 'Fill in the missing letter for a step-by-step problem-solving procedure.',
-    correctAnswer: 'ALGORITHM'
+    question: 'O P P _ R T _ N I T _',
+    hint: 'Fill in the missing letters for a favorable time or situation.',
+    correctAnswer: 'OPPORTUNITY'
   },
   {
     type: 'clue',
     title: 'Round 6 — Final Word Forge',
-    question: 'A program that converts source code into machine code execution.',
-    hint: 'Starts with C, 8 letters.',
-    correctAnswer: 'COMPILER'
+    question: 'A path through which electric current flows.',
+    hint: 'Starts with C, 7 letters.',
+    correctAnswer: 'CIRCUIT'
   }
 ];
 
@@ -315,7 +315,7 @@ export default function WordForgePage() {
     } catch (err: any) {
       console.error('Submit error:', err);
       const timesToSubmit = overrideTimes || userRoundTimes;
-      const FIXED_CORRECT_ANSWERS = ['RATE', 'COMPUTER', 'DATABASE', 'SYNTAX', 'ALGORITHM', 'COMPILER'];
+      const FIXED_CORRECT_ANSWERS = ['PAPER', 'PERSEVERANCE', 'NETWORKING', 'BOOKS', 'OPPORTUNITY', 'CIRCUIT'];
       let correctCount = 0;
       let totalTimeSpeedBonusSum = 0;
 
@@ -379,7 +379,7 @@ export default function WordForgePage() {
 
           <div className="w-full bg-black/40 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-gray-400">
             <div className="flex justify-between"><span>Rounds</span><span className="text-purple-300 font-bold">6 Unique Rounds</span></div>
-            <div className="flex justify-between"><span>Time per Round</span><span className="text-purple-300 font-bold">30 Seconds</span></div>
+            <div className="flex justify-between"><span>Time Limit</span><span className="text-purple-300 font-bold">None (Speed Bonus)</span></div>
             <div className="flex justify-between"><span>Puzzle Types</span><span className="text-purple-300 font-bold">Anagram, Missing, Clue</span></div>
           </div>
 

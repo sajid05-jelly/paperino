@@ -110,14 +110,14 @@ export default function GameResult({
       initial={{ opacity: 0, scale: 0.98, y: 15 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="w-full max-w-6xl mx-auto px-4 py-8"
+      className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8"
     >
-      <div className="glass-panel vision-glass rounded-3xl p-6 md:p-10 relative overflow-hidden border border-purple-500/20 shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col gap-8">
+      <div className="glass-panel vision-glass rounded-3xl p-4 sm:p-6 md:p-10 relative overflow-hidden border border-purple-500/20 shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col gap-5 sm:gap-8">
         
         {/* Title Header */}
         <div className="text-center relative z-10">
           <span className="text-4xl block mb-2">{wasAlreadyCompleted ? '✅' : '🎉'}</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white uppercase tracking-wider">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white uppercase tracking-wider">
             {wasAlreadyCompleted ? 'Attempt Completed' : 'Challenge Complete'}
           </h2>
           <p className="text-sm text-purple-300 font-semibold tracking-widest mt-1">{gameName}</p>
@@ -130,31 +130,31 @@ export default function GameResult({
         </div>
 
         {/* 2-Column Split: Result Details left, Leaderboard right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 relative z-10 items-stretch">
           
           {/* Column Left: Result Details */}
-          <div className="lg:col-span-5 bg-black/35 border border-white/5 rounded-2xl p-6 flex flex-col justify-between items-center text-center">
+          <div className="lg:col-span-5 bg-black/35 border border-white/5 rounded-2xl p-4 sm:p-6 flex flex-col justify-between items-center text-center">
             <div className="w-full space-y-6">
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-white/5 pb-2">Your Result</h3>
               
               <div className="py-4">
                 <span className="text-gray-400 uppercase tracking-widest text-[11px] font-bold block mb-1">Final Score</span>
-                <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-purple-400">
+                <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-purple-400">
                   {displayScore} / 100
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 w-full pt-4">
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col items-center">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full pt-4">
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 sm:p-3.5 flex flex-col items-center min-w-0">
                   <span className="text-gray-400 text-[10px] uppercase tracking-wider mb-1 flex items-center gap-1 font-semibold">
                     <Clock size={11} /> Time
                   </span>
-                  <span className="text-lg font-bold text-white font-mono">
+                  <span className="text-sm sm:text-lg font-bold text-white font-mono whitespace-nowrap">
                     {formatDuration(durationMs)}
                   </span>
                 </div>
                 
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col items-center">
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 sm:p-3.5 flex flex-col items-center min-w-0">
                   <span className="text-gray-400 text-[10px] uppercase tracking-wider mb-1 font-semibold">Rank</span>
                   {getRankBadge(rank)}
                 </div>
@@ -162,7 +162,7 @@ export default function GameResult({
             </div>
 
             {/* Actions Panel nested inside the result section */}
-            <div className="w-full flex flex-col gap-3 mt-8 border-t border-white/5 pt-6">
+            <div className="w-full flex flex-col gap-3 mt-4 sm:mt-8 border-t border-white/5 pt-4 sm:pt-6">
               <button 
                 onClick={onViewLeaderboard}
                 className="liquid-btn w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -180,17 +180,17 @@ export default function GameResult({
           </div>
 
           {/* Column Right: Real-time Leaderboard */}
-          <div className="lg:col-span-7 bg-black/35 border border-white/5 rounded-2xl p-6 flex flex-col">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-purple-300 border-b border-white/5 pb-2 mb-4">
-              Weekly Leaderboard · Top 5
+          <div className="lg:col-span-7 bg-black/35 border border-white/5 rounded-2xl p-4 sm:p-6 flex flex-col">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-purple-300 border-b border-white/5 pb-2 mb-3 sm:mb-4">
+              Weekly Leaderboard · Top 3
             </h3>
             
-            <div className="flex-1 overflow-y-auto max-h-[360px] space-y-2 pr-1">
+            <div className="flex-1 overflow-y-auto max-h-[280px] sm:max-h-[360px] space-y-2 pr-1">
               {leaderboard && leaderboard.length > 0 ? (
                 leaderboard.map((entry, idx) => (
                   <div 
                     key={idx} 
-                    className="flex justify-between items-center text-xs p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all cursor-default"
+                    className="flex justify-between items-center text-xs p-2.5 sm:p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all cursor-default"
                   >
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 flex items-center justify-center rounded-full font-black text-[10px] ${
@@ -203,15 +203,15 @@ export default function GameResult({
                       }`}>
                         #{entry.rank}
                       </span>
-                      <span className="text-gray-200 font-bold text-sm">
+                      <span className="text-gray-200 font-bold text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">
                         {entry.displayName}
                       </span>
                     </div>
                     
-                    <div className="text-right font-mono flex items-center gap-2">
-                      <span className="text-purple-300 font-extrabold text-sm">{entry.score} pts</span>
+                    <div className="text-right font-mono flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                      <span className="text-purple-300 font-extrabold text-xs sm:text-sm">{entry.score} pts</span>
                       <span className="text-gray-600 font-normal">|</span>
-                      <span className="text-gray-450 font-medium">{(entry.durationMs / 1000).toFixed(1)}s</span>
+                      <span className="text-gray-450 font-medium text-xs">{(entry.durationMs / 1000).toFixed(1)}s</span>
                     </div>
                   </div>
                 ))

@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 export default function BTechRedirect() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/courses/btech");
+    router.replace("/srm/btech");
   }, [router]);
 
   return (

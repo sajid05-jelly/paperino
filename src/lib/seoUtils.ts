@@ -35,10 +35,6 @@ export function getSubjectSlug(subject: { name: string; code?: string; id: strin
   return cleanName || subject.id.toLowerCase();
 }
 
-/**
- * Generate canonical relative path for a subject page
- * Example: /courses/btech/semesters/1/subjects/calc
- */
 export function getSubjectSeoPath(subject: {
   id: string;
   name?: string;
@@ -48,8 +44,8 @@ export function getSubjectSeoPath(subject: {
 }): string {
   const deptSlug = (subject.departmentId || "btech").toLowerCase();
   const semNum = String(subject.semesterId || "1");
-  const subId = subject.id;
-  return `/courses/${deptSlug}/semesters/${semNum}/subjects/${subId}`;
+  const slug = getSubjectSlug({ name: subject.name || subject.id, code: subject.code, id: subject.id });
+  return `/srm/${deptSlug}/semester-${semNum}/${slug}`;
 }
 
 /**

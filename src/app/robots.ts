@@ -11,9 +11,6 @@ export default function robots(): MetadataRoute.Robots {
           '/srm',
           '/srm/*',
           '/courses',
-          '/courses/*',
-          '/btech',
-          '/btech/*',
           '/pyq',
           '/ats',
           '/gpa',
@@ -24,6 +21,7 @@ export default function robots(): MetadataRoute.Robots {
           '/github-intelligence',
           '/team',
           '/privacy',
+          '/weekly-challenges',
         ],
         disallow: [
           '/admin',

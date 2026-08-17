@@ -10,7 +10,7 @@ export default function BTechSubjectRedirect({ params }: { params: Promise<{ sem
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(`/courses/btech/semesters/${semId}/subjects/${subjectId}`);
+    router.replace(`/srm/btech/semester-${semId}`);
   }, [router, semId, subjectId]);
 
   return (

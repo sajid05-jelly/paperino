@@ -100,7 +100,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return new Date();
   };
 
-  // Dynamically generate Course landing URLs (both /srm/[course] and /courses/[dept])
+  // Dynamically generate Course landing URLs for primary /srm/[course] hierarchy
   const coursePages: MetadataRoute.Sitemap = [];
   departments.forEach((d) => {
     const lastMod = parseLastModified(d.updatedAt || d.createdAt);
@@ -110,15 +110,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.9,
     });
-    coursePages.push({
-      url: getAbsoluteUrl(`/courses/${d.id}`),
-      lastModified: lastMod,
-      changeFrequency: 'weekly',
-      priority: 0.85,
-    });
   });
 
-  // Dynamically generate Semester URLs for all courses
+  // Dynamically generate Semester URLs for all courses (/srm/[course]/semester-[sem])
   const semesterPages: MetadataRoute.Sitemap = [];
   departments.forEach((d) => {
     const lastMod = parseLastModified(d.updatedAt || d.createdAt);
@@ -129,16 +123,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly',
         priority: 0.85,
       });
-      semesterPages.push({
-        url: getAbsoluteUrl(`/courses/${d.id}/semesters/${sem}`),
-        lastModified: lastMod,
-        changeFrequency: 'weekly',
-        priority: 0.8,
-      });
     }
   });
 
-  // Dynamically generate ALL Subject URLs across ALL courses & semesters
+  // Dynamically generate ALL Canonical Subject URLs across ALL courses & semesters
   const subjectPages: MetadataRoute.Sitemap = [];
   const subjectUrlSet = new Set<string>();
 
@@ -153,17 +141,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: lastMod,
         changeFrequency: 'weekly',
         priority: 0.9,
-      });
-    }
-
-    const legacyUrl = getAbsoluteUrl(`/courses/${s.departmentId}/semesters/${s.semesterId}/subjects/${s.id}`);
-    if (!subjectUrlSet.has(legacyUrl)) {
-      subjectUrlSet.add(legacyUrl);
-      subjectPages.push({
-        url: legacyUrl,
-        lastModified: lastMod,
-        changeFrequency: 'weekly',
-        priority: 0.85,
       });
     }
   });

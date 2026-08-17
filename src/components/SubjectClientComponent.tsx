@@ -16,6 +16,7 @@ import { useToast } from "@/components/Toast";
 import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
 
 import { getSubjectSlug } from "@/lib/seoUtils";
+import { SITE_CONFIG } from "@/lib/siteConfig";
 
 const contributorCache: Record<string, string> = {};
 const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], timestamp: number }> = {};
@@ -362,11 +363,11 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                 "@type": "CollectionPage",
                 "name": `${subjectName} Notes, PYQs & Study Materials | SRM | Paperino`,
                 "description": `Access ${subjectName} notes, syllabus, previous year question papers (PYQs), important questions and study materials for SRM Institute of Science and Technology students on Paperino.`,
-                "url": `https://paperino-eta.vercel.app/courses/${deptId}/semesters/${semId}/subjects/${subjectId}`,
+                "url": `${SITE_CONFIG.baseUrl}/srm/${deptId.toLowerCase()}/semester-${semId}`,
                 "provider": {
                   "@type": "Organization",
                   "name": "Paperino",
-                  "url": "https://paperino-eta.vercel.app"
+                  "url": SITE_CONFIG.baseUrl
                 },
                 "about": {
                   "@type": "EducationalOccupationalProgram",
@@ -384,25 +385,25 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
                       "@type": "ListItem",
                       "position": 1,
                       "name": "Home",
-                      "item": "https://paperino-eta.vercel.app"
+                      "item": SITE_CONFIG.baseUrl
                     },
                     {
                       "@type": "ListItem",
                       "position": 2,
-                      "name": "B.Tech",
-                      "item": "https://paperino-eta.vercel.app/btech"
+                      "name": "SRM Courses",
+                      "item": `${SITE_CONFIG.baseUrl}/srm`
                     },
                     {
                       "@type": "ListItem",
                       "position": 3,
                       "name": `Semester ${semId}`,
-                      "item": `https://paperino-eta.vercel.app/courses/${deptId}/semesters/${semId}`
+                      "item": `${SITE_CONFIG.baseUrl}/srm/${deptId.toLowerCase()}/semester-${semId}`
                     },
                     {
                       "@type": "ListItem",
                       "position": 4,
                       "name": subjectName,
-                      "item": `https://paperino-eta.vercel.app/courses/${deptId}/semesters/${semId}/subjects/${subjectId}`
+                      "item": `${SITE_CONFIG.baseUrl}/srm/${deptId.toLowerCase()}/semester-${semId}`
                     }
                   ]
                 }

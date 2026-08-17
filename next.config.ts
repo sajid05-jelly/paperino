@@ -2,6 +2,35 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  async redirects() {
+    return [
+      {
+        source: '/btech',
+        destination: '/srm/btech',
+        permanent: true,
+      },
+      {
+        source: '/btech/semesters/:semId',
+        destination: '/srm/btech/semester-:semId',
+        permanent: true,
+      },
+      {
+        source: '/btech/semesters/:semId/subjects/:subjectId',
+        destination: '/srm/btech/semester-:semId',
+        permanent: true,
+      },
+      {
+        source: '/courses/btech',
+        destination: '/srm/btech',
+        permanent: true,
+      },
+      {
+        source: '/courses/btech/semesters/:semId',
+        destination: '/srm/btech/semester-:semId',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

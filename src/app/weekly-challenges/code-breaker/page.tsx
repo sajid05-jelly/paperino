@@ -151,7 +151,7 @@ export default function CodeBreakerPage() {
       setChallengeDate(data.challengeDate);
       
       // Generate secret code deterministically (digits 0-7, no repeats)
-      const seedNum = getSeed(`code-breaker-${data.challengeDate}`);
+      const seedNum = getSeed(data.challengeId);
       const rand = mulberry32(seedNum);
       const code: number[] = [];
       const digits = [0, 1, 2, 3, 4, 5, 6, 7];

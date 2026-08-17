@@ -3,6 +3,7 @@ import { verifyServerAuth } from '@/lib/auth-verify';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import crypto from 'crypto';
+import { getCanonicalChallengeId } from '@/lib/challengeResolver';
 
 const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge'];
 
@@ -102,7 +103,7 @@ async function buildLeaderboard(challengeId: string, currentUid: string): Promis
       if (entry.userId === currentUid) {
         userRank = rank;
       }
-      if (rank <= 5) {
+      if (rank <= 3) {
         leaderboard.push({
           userId: entry.userId,
           displayName: entry.displayName,
@@ -164,21 +165,17 @@ export async function POST(request: Request) {
     // Process config
     let isOfficial = true;
     let isAdminBypass = false;
-    let challengeId = `${gameId}-${challengeDate}`; // Default fallback
-
+    // Determine admin bypass flag if config exists
     if (configSnap && configSnap.exists) {
       const cfg = configSnap.data() || {};
       const isUserAdmin = authUser.email?.toLowerCase() === "mohamedsajid.sa@gmail.com" || authUser.role === "admin" || (authUser as any).admin === true;
       isAdminBypass = Boolean(isUserAdmin && cfg.adminTestMode === true);
+    }
+    // Resolve canonical challengeId using admin config (or fallback)
+    const challengeId = await getCanonicalChallengeId(gameId, authUser);
 
-      // ChallengeId priority: challengeSessionId > currentChallengeId > currentWeek > date fallback
-      if (cfg.challengeSessionId) {
-        challengeId = `${gameId}-${cfg.challengeSessionId}`;
-      } else if (cfg.currentChallengeId) {
-        challengeId = `${gameId}-${cfg.currentChallengeId}`;
-      } else if (cfg.currentWeek) {
-        challengeId = `${gameId}-${cfg.currentWeek}`;
-      }
+    if (configSnap && configSnap.exists) {
+      const cfg = configSnap.data() || {};
 
       if (cfg.enabled === false && !isAdminBypass) {
         return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
@@ -334,6 +331,7 @@ export async function POST(request: Request) {
       sessionId,
       gameId,
       challengeDate,
+      challengeId,
       weekId,
       isOfficial,
       puzzleData
