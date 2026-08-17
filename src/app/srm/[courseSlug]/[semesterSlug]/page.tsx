@@ -27,11 +27,11 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ courseSlug: string; semId: string }>;
+  params: Promise<{ courseSlug: string; semesterSlug: string }>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
-  const { courseSlug } = resolvedParams;
-  const rawSemId = resolvedParams.semId || "";
+  const { courseSlug, semesterSlug } = resolvedParams;
+  const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
 
   const { departments } = await getAllUnifiedData();
@@ -54,11 +54,11 @@ export async function generateMetadata({
 export default async function SrmSemesterPage({
   params,
 }: {
-  params: Promise<{ courseSlug: string; semId: string }>;
+  params: Promise<{ courseSlug: string; semesterSlug: string }>;
 }) {
   const resolvedParams = await params;
-  const { courseSlug } = resolvedParams;
-  const rawSemId = resolvedParams.semId || "";
+  const { courseSlug, semesterSlug } = resolvedParams;
+  const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
 
   const { departments, subjects } = await getAllUnifiedData();

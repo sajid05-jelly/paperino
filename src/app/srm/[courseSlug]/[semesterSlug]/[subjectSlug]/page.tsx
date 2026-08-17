@@ -15,7 +15,7 @@ export async function generateStaticParams() {
   const { subjects } = await getAllUnifiedData();
   return subjects.map((s) => ({
     courseSlug: s.departmentId.toLowerCase(),
-    semId: String(s.semesterId),
+    semesterSlug: `semester-${s.semesterId}`,
     subjectSlug: getSubjectSlug(s),
   }));
 }
@@ -26,9 +26,12 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ courseSlug: string; semId: string; subjectSlug: string }>;
+  params: Promise<{ courseSlug: string; semesterSlug: string; subjectSlug: string }>;
 }): Promise<Metadata> {
-  const { courseSlug, semId, subjectSlug } = await params;
+  const resolvedParams = await params;
+  const { courseSlug, semesterSlug, subjectSlug } = resolvedParams;
+  const rawSemId = semesterSlug || "";
+  const semId = rawSemId.replace(/^semester-/, "");
   const { subjects, departments } = await getAllUnifiedData();
   const subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
@@ -112,10 +115,12 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
 export default async function SubjectSeoPage({
   params,
 }: {
-  params: Promise<{ courseSlug: string; semId: string; subjectSlug: string }>;
+  params: Promise<{ courseSlug: string; semesterSlug: string; subjectSlug: string }>;
 }) {
   const resolvedParams = await params;
-  const { courseSlug, semId, subjectSlug } = resolvedParams;
+  const { courseSlug, semesterSlug, subjectSlug } = resolvedParams;
+  const rawSemId = semesterSlug || "";
+  const semId = rawSemId.replace(/^semester-/, "");
   const { subjects, departments } = await getAllUnifiedData();
   const subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
