@@ -28,7 +28,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ courseSlug: string; semId: string }>;
 }): Promise<Metadata> {
-  const { courseSlug, semId } = await params;
+  const resolvedParams = await params;
+  const { courseSlug } = resolvedParams;
+  const rawSemId = resolvedParams.semId || "";
+  const semId = rawSemId.replace(/^semester-/, "");
+
   const { departments } = await getAllUnifiedData();
   const dept = departments.find(d => d.id.toLowerCase() === courseSlug.toLowerCase());
 
@@ -51,7 +55,11 @@ export default async function SrmSemesterPage({
 }: {
   params: Promise<{ courseSlug: string; semId: string }>;
 }) {
-  const { courseSlug, semId } = await params;
+  const resolvedParams = await params;
+  const { courseSlug } = resolvedParams;
+  const rawSemId = resolvedParams.semId || "";
+  const semId = rawSemId.replace(/^semester-/, "");
+
   const { departments, subjects } = await getAllUnifiedData();
   const dept = departments.find(d => d.id.toLowerCase() === courseSlug.toLowerCase());
 

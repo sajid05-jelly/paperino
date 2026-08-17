@@ -70,8 +70,9 @@ export function matchSubjectBySlug(
   subjectSlug: string,
   subjects: UnifiedSubject[]
 ): UnifiedSubject | null {
+  const cleanSemId = String(semId || "").replace(/^semester-/, "");
   const deptSubjects = subjects.filter(
-    s => s.departmentId.toLowerCase() === deptId.toLowerCase() && String(s.semesterId) === String(semId)
+    s => s.departmentId.toLowerCase() === deptId.toLowerCase() && String(s.semesterId) === cleanSemId
   );
 
   if (deptSubjects.length === 0) return null;
