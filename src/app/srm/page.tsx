@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getAllUnifiedData } from "@/lib/unifiedSubjectData";
 import { SITE_CONFIG, getAbsoluteUrl } from "@/lib/siteConfig";
 import { Book, GraduationCap, ChevronRight } from "lucide-react";
+import SuggestCourseButton from "@/components/SuggestCourseButton";
 
 export const metadata: Metadata = {
   title: `SRM University Study Hub – B.Tech, MCA, MBA Notes & PYQs | ${SITE_CONFIG.siteName}`,
@@ -32,6 +33,9 @@ export default async function SrmLandingPage() {
         <p className="text-lg text-gray-400">
           Browse verified study materials, question papers, and notes organized by degree program and semester.
         </p>
+        <div className="pt-2 flex justify-center">
+          <SuggestCourseButton />
+        </div>
       </div>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
