@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { auth } from "@/lib/firebase";
@@ -12,9 +12,11 @@ import { useRouter } from "next/navigation";
 type GameState = "intro" | "loading" | "playing" | "submitting" | "result";
 
 interface PuzzleData {
-  target: number;
-  availableNumbers: number[];
-  allowedOperators: string[];
+  rounds: {
+    target: number;
+    availableNumbers: number[];
+    allowedOperators: string[];
+  }[];
 }
 
 /** Safe recursive descent parser — no eval(), validates tokens strictly */
@@ -93,6 +95,8 @@ export default function TargetNumberPage() {
   const [error, setError] = useState("");
   const [checkingAttempt, setCheckingAttempt] = useState(true);
   const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
+  const [currentRoundIdx, setCurrentRoundIdx] = useState(0);
+  const [answers, setAnswers] = useState<string[]>([]);
 
   const isCreatingSession = useRef(false);
   const isSubmitting = useRef(false);
@@ -107,7 +111,7 @@ export default function TargetNumberPage() {
         const res = await fetch("/api/challenge-start", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-          body: JSON.stringify({ gameId: "target-number" })
+          body: JSON.stringify({ gameId: "target-number", checkOnly: true })
         });
         const data = await res.json();
         if (res.status === 409 && data.completed) {
@@ -154,6 +158,8 @@ export default function TargetNumberPage() {
       setExpression("");
       setEvalResult(null);
       setValidationMsg("");
+      setCurrentRoundIdx(0);
+      setAnswers([]);
       setStartTime(Date.now());
       setGameState("playing");
     } catch (err: any) {
@@ -164,11 +170,13 @@ export default function TargetNumberPage() {
     }
   };
 
+  const currentPuzzle = puzzle?.rounds?.[currentRoundIdx];
+
   const handleExpressionChange = (val: string) => {
     setExpression(val);
     setValidationMsg("");
-    if (!puzzle || val.trim() === "") { setEvalResult(null); return; }
-    const result = safeEval(val, puzzle.availableNumbers);
+    if (!currentPuzzle || val.trim() === "") { setEvalResult(null); return; }
+    const result = safeEval(val, currentPuzzle.availableNumbers);
     setEvalResult(result !== null ? result : "invalid");
   };
 
@@ -176,12 +184,23 @@ export default function TargetNumberPage() {
     handleExpressionChange(expression + token);
   };
 
-  const handleSubmit = async () => {
-    if (!puzzle || isSubmitting.current || gameState !== "playing") return;
+  const handleNextOrSubmit = async () => {
+    if (!currentPuzzle || isSubmitting.current || gameState !== "playing") return;
     if (!expression.trim()) { setValidationMsg("Enter an expression first."); return; }
-    const result = safeEval(expression, puzzle.availableNumbers);
+    const result = safeEval(expression, currentPuzzle.availableNumbers);
     if (result === null) { setValidationMsg("Invalid expression or unauthorised numbers used."); return; }
-    if (result !== puzzle.target) { setValidationMsg("= " + result + " — that is not the target (" + puzzle.target + "). Try again!"); return; }
+    if (result !== currentPuzzle.target) { setValidationMsg("= " + result + " — that is not the target (" + currentPuzzle.target + "). Try again!"); return; }
+
+    const newAnswers = [...answers, expression];
+    setAnswers(newAnswers);
+
+    if (currentRoundIdx + 1 < (puzzle?.rounds?.length || 5)) {
+      setCurrentRoundIdx(currentRoundIdx + 1);
+      setExpression("");
+      setEvalResult(null);
+      setValidationMsg("");
+      return;
+    }
 
     try {
       isSubmitting.current = true;
@@ -192,7 +211,7 @@ export default function TargetNumberPage() {
       const res = await fetch("/api/challenge-submit", {
         method: "POST",
         headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, gameData: { gameId: "target-number", expression, result, durationMs } })
+        body: JSON.stringify({ sessionId, gameData: { gameId: "target-number", answers: newAnswers, durationMs } })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -214,14 +233,7 @@ export default function TargetNumberPage() {
     }
   };
 
-  if (checkingAttempt) return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-red-500/20 text-center flex flex-col items-center gap-6">
-        <Loader2 className="w-8 h-8 animate-spin text-red-400" />
-        <p className="text-sm text-gray-400">Checking your attempt...</p>
-      </motion.div>
-    </div>
-  );
+
 
   if (gameState === "intro") return (
     <div className="min-h-screen p-6 flex flex-col items-center justify-center max-w-xl mx-auto">
@@ -284,17 +296,17 @@ export default function TargetNumberPage() {
   );
 
   return (
-    <ChallengeGameShell gameId="target-number" gameName="Target Number" gameIcon={<Target size={20} />} attemptText="Find the expression" timerNode={<GameTimer isRunning={gameState === "playing"} startTime={startTime} />} rulesContent={rulesContent} gameState={gameState}>
+    <ChallengeGameShell gameId="target-number" gameName="Target Number" gameIcon={<Target size={20} />} attemptText={gameState === "playing" ? ("Puzzle " + (currentRoundIdx + 1) + " of " + (puzzle?.rounds?.length || 5)) : "Find the expression"} timerNode={<GameTimer isRunning={gameState === "playing"} startTime={startTime} />} rulesContent={rulesContent} gameState={gameState}>
       <div className="w-full max-w-2xl mx-auto space-y-6 mt-2">
         <div className="glass-panel vision-glass p-6 rounded-3xl border border-red-500/20 text-center">
           <p className="text-xs font-bold uppercase tracking-widest text-red-400 mb-2">TARGET</p>
-          <p className="text-7xl font-black text-white">{puzzle?.target}</p>
+          <p className="text-7xl font-black text-white">{currentPuzzle?.target}</p>
         </div>
 
         <div className="glass-panel vision-glass p-6 rounded-3xl border border-white/10">
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 text-center">Available Numbers — tap to add</p>
           <div className="flex flex-wrap gap-3 justify-center">
-            {puzzle?.availableNumbers.map((n, i) => (
+            {currentPuzzle?.availableNumbers.map((n, i) => (
               <button key={i} onClick={() => appendToExpression(String(n))} className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 text-2xl font-extrabold text-white hover:bg-red-500/20 hover:border-red-400/40 transition-all active:scale-95">
                 {n}
               </button>
@@ -316,16 +328,16 @@ export default function TargetNumberPage() {
           </div>
 
           {evalResult !== null && (
-            <div className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl ${evalResult === "invalid" ? "text-rose-400 bg-rose-500/10 border border-rose-500/20" : evalResult === puzzle?.target ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20" : "text-amber-400 bg-amber-500/10 border border-amber-500/20"}`}>
-              {evalResult === "invalid" ? <XCircle size={16} /> : evalResult === puzzle?.target ? <CheckCircle2 size={16} /> : null}
-              {evalResult === "invalid" ? "Invalid expression or unauthorised number used" : evalResult === puzzle?.target ? ("Correct! = " + evalResult) : ("= " + evalResult + " — need " + puzzle?.target)}
+            <div className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl ${evalResult === "invalid" ? "text-rose-400 bg-rose-500/10 border border-rose-500/20" : evalResult === currentPuzzle?.target ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20" : "text-amber-400 bg-amber-500/10 border border-amber-500/20"}`}>
+              {evalResult === "invalid" ? <XCircle size={16} /> : evalResult === currentPuzzle?.target ? <CheckCircle2 size={16} /> : null}
+              {evalResult === "invalid" ? "Invalid expression or unauthorised number used" : evalResult === currentPuzzle?.target ? ("Correct! = " + evalResult) : ("= " + evalResult + " — need " + currentPuzzle?.target)}
             </div>
           )}
 
           {validationMsg && <p className="text-sm text-rose-400 font-medium">{validationMsg}</p>}
 
-          <button onClick={handleSubmit} disabled={evalResult !== puzzle?.target} className="liquid-btn w-full py-4 text-sm font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">
-            Submit Answer
+          <button onClick={handleNextOrSubmit} disabled={evalResult !== currentPuzzle?.target} className="liquid-btn w-full py-4 text-sm font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">
+            {currentRoundIdx + 1 < (puzzle?.rounds?.length || 5) ? "Next Puzzle" : "Submit Challenge"}
           </button>
         </div>
       </div>

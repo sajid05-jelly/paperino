@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { auth } from "@/lib/firebase";
@@ -17,11 +17,13 @@ interface Instruction {
 }
 
 interface PuzzleData {
-  values: number[];
-  instructions: Instruction[];
-  question: string;
-  answer: string;
-  options: string[];
+  rounds: {
+    values: number[];
+    instructions: Instruction[];
+    question: string;
+    answer: string;
+    options: string[];
+  }[];
 }
 
 export default function ParadoxPage() {
@@ -32,6 +34,8 @@ export default function ParadoxPage() {
   const [startTime, setStartTime] = useState<number>(0);
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [currentRoundIdx, setCurrentRoundIdx] = useState(0);
   const [resultData, setResultData] = useState<any>(null);
   const [error, setError] = useState("");
   const [checkingAttempt, setCheckingAttempt] = useState(true);
@@ -50,7 +54,7 @@ export default function ParadoxPage() {
         const res = await fetch("/api/challenge-start", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-          body: JSON.stringify({ gameId: "paradox" })
+          body: JSON.stringify({ gameId: "paradox", checkOnly: true })
         });
         const data = await res.json();
         if (res.status === 409 && data.completed) {
@@ -95,6 +99,8 @@ export default function ParadoxPage() {
       setIsOfficial(Boolean(data.isOfficial));
       setPuzzle(data.puzzleData as PuzzleData);
       setSelectedAnswer(null);
+      setAnswers([]);
+      setCurrentRoundIdx(0);
       setStartTime(Date.now());
       setGameState("playing");
     } catch (err: any) {
@@ -105,8 +111,20 @@ export default function ParadoxPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!puzzle || !selectedAnswer || isSubmitting.current || gameState !== "playing") return;
+  const currentPuzzle = puzzle?.rounds?.[currentRoundIdx];
+
+  const handleNextOrSubmit = async () => {
+    if (!currentPuzzle || !selectedAnswer || isSubmitting.current || gameState !== "playing") return;
+    
+    const newAnswers = [...answers, selectedAnswer];
+    setAnswers(newAnswers);
+
+    if (currentRoundIdx + 1 < (puzzle?.rounds?.length || 5)) {
+      setCurrentRoundIdx(currentRoundIdx + 1);
+      setSelectedAnswer(null);
+      return;
+    }
+
     try {
       isSubmitting.current = true;
       setGameState("submitting");
@@ -116,7 +134,7 @@ export default function ParadoxPage() {
       const res = await fetch("/api/challenge-submit", {
         method: "POST",
         headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, gameData: { gameId: "paradox", selectedAnswer, durationMs } })
+        body: JSON.stringify({ sessionId, gameData: { gameId: "paradox", answers: newAnswers, durationMs } })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -138,14 +156,7 @@ export default function ParadoxPage() {
     }
   };
 
-  if (checkingAttempt) return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-pink-500/20 text-center flex flex-col items-center gap-6">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-400" />
-        <p className="text-sm text-gray-400">Checking your attempt...</p>
-      </motion.div>
-    </div>
-  );
+
 
   if (gameState === "intro") return (
     <div className="min-h-screen p-6 flex flex-col items-center justify-center max-w-xl mx-auto">
@@ -206,15 +217,15 @@ export default function ParadoxPage() {
     </ul>
   );
 
-  const activeInstructions = puzzle?.instructions.filter(ins => ins.active) || [];
+  const activeInstructions = currentPuzzle?.instructions.filter(ins => ins.active) || [];
 
   return (
-    <ChallengeGameShell gameId="paradox" gameName="Paradox" gameIcon={<Zap size={20} />} attemptText="Follow the instructions" timerNode={<GameTimer isRunning={gameState === "playing"} startTime={startTime} />} rulesContent={rulesContent} gameState={gameState}>
+    <ChallengeGameShell gameId="paradox" gameName="Paradox" gameIcon={<Zap size={20} />} attemptText={gameState === "playing" ? ("Puzzle " + (currentRoundIdx + 1) + " of " + (puzzle?.rounds?.length || 5)) : "Follow the instructions"} timerNode={<GameTimer isRunning={gameState === "playing"} startTime={startTime} />} rulesContent={rulesContent} gameState={gameState}>
       <div className="w-full max-w-2xl mx-auto space-y-6 mt-2">
         {/* Instruction chain */}
         <div className="glass-panel vision-glass p-6 rounded-3xl border border-pink-500/20 space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-pink-400 mb-3">Instructions — follow in order</p>
-          {puzzle?.instructions.map((ins, i) => (
+          {currentPuzzle?.instructions.map((ins, i) => (
             <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${ins.active ? "bg-pink-500/10 border-pink-500/25 text-white" : "bg-black/20 border-white/5 text-gray-500 line-through"}`}>
               <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold shrink-0 mt-0.5 ${ins.active ? "bg-pink-500/30 border border-pink-500/40 text-pink-300" : "bg-white/5 border-white/10 text-gray-600"}`}>{i + 1}</span>
               <p className="text-sm leading-relaxed">{ins.text}</p>
@@ -227,7 +238,7 @@ export default function ParadoxPage() {
         <div className="glass-panel vision-glass p-5 rounded-3xl border border-white/10 text-center">
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Available Values</p>
           <div className="flex gap-3 justify-center flex-wrap">
-            {puzzle?.values.map((v, i) => (
+            {currentPuzzle?.values.map((v, i) => (
               <span key={i} className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 text-xl font-extrabold text-white flex items-center justify-center">{v}</span>
             ))}
           </div>
@@ -235,9 +246,9 @@ export default function ParadoxPage() {
 
         {/* Question + options */}
         <div className="glass-panel vision-glass p-6 rounded-3xl border border-white/10 space-y-4">
-          <p className="text-center text-lg font-bold text-white">{puzzle?.question}</p>
+          <p className="text-center text-lg font-bold text-white">{currentPuzzle?.question}</p>
           <div className="grid grid-cols-2 gap-3">
-            {puzzle?.options.map((opt, i) => (
+            {currentPuzzle?.options.map((opt, i) => (
               <button
                 key={i}
                 onClick={() => setSelectedAnswer(opt)}
@@ -247,8 +258,8 @@ export default function ParadoxPage() {
               </button>
             ))}
           </div>
-          <button onClick={handleSubmit} disabled={!selectedAnswer} className="liquid-btn w-full py-4 text-sm font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">
-            Submit Answer
+          <button onClick={handleNextOrSubmit} disabled={!selectedAnswer} className="liquid-btn w-full py-4 text-sm font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">
+            {currentRoundIdx + 1 < (puzzle?.rounds?.length || 5) ? "Next Puzzle" : "Submit Challenge"}
           </button>
         </div>
       </div>

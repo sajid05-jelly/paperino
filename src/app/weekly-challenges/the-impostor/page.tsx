@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { auth } from "@/lib/firebase";
@@ -12,11 +12,13 @@ import { useRouter } from "next/navigation";
 type GameState = "intro" | "loading" | "playing" | "submitting" | "result";
 
 interface PuzzleData {
-  characters: string[];
-  clues: string[];
-  question: string;
-  options: string[];
-  answer: string;
+  rounds: {
+    characters: string[];
+    clues: string[];
+    question: string;
+    options: string[];
+    answer: string;
+  }[];
 }
 
 export default function TheImpostorPage() {
@@ -27,6 +29,8 @@ export default function TheImpostorPage() {
   const [startTime, setStartTime] = useState<number>(0);
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [currentRoundIdx, setCurrentRoundIdx] = useState(0);
   const [resultData, setResultData] = useState<any>(null);
   const [error, setError] = useState("");
   const [checkingAttempt, setCheckingAttempt] = useState(true);
@@ -45,7 +49,7 @@ export default function TheImpostorPage() {
         const res = await fetch("/api/challenge-start", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-          body: JSON.stringify({ gameId: "the-impostor" })
+          body: JSON.stringify({ gameId: "the-impostor", checkOnly: true })
         });
         const data = await res.json();
         if (res.status === 409 && data.completed) {
@@ -90,6 +94,8 @@ export default function TheImpostorPage() {
       setIsOfficial(Boolean(data.isOfficial));
       setPuzzle(data.puzzleData as PuzzleData);
       setSelectedAnswer(null);
+      setAnswers([]);
+      setCurrentRoundIdx(0);
       setStartTime(Date.now());
       setGameState("playing");
     } catch (err: any) {
@@ -100,8 +106,20 @@ export default function TheImpostorPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!puzzle || !selectedAnswer || isSubmitting.current || gameState !== "playing") return;
+  const currentPuzzle = puzzle?.rounds?.[currentRoundIdx];
+
+  const handleNextOrSubmit = async () => {
+    if (!currentPuzzle || !selectedAnswer || isSubmitting.current || gameState !== "playing") return;
+    
+    const newAnswers = [...answers, selectedAnswer];
+    setAnswers(newAnswers);
+
+    if (currentRoundIdx + 1 < (puzzle?.rounds?.length || 5)) {
+      setCurrentRoundIdx(currentRoundIdx + 1);
+      setSelectedAnswer(null);
+      return;
+    }
+
     try {
       isSubmitting.current = true;
       setGameState("submitting");
@@ -111,7 +129,7 @@ export default function TheImpostorPage() {
       const res = await fetch("/api/challenge-submit", {
         method: "POST",
         headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, gameData: { gameId: "the-impostor", selectedAnswer, durationMs } })
+        body: JSON.stringify({ sessionId, gameData: { gameId: "the-impostor", answers: newAnswers, durationMs } })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -133,14 +151,7 @@ export default function TheImpostorPage() {
     }
   };
 
-  if (checkingAttempt) return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-yellow-500/20 text-center flex flex-col items-center gap-6">
-        <Loader2 className="w-8 h-8 animate-spin text-yellow-400" />
-        <p className="text-sm text-gray-400">Checking your attempt...</p>
-      </motion.div>
-    </div>
-  );
+
 
   if (gameState === "intro") return (
     <div className="min-h-screen p-6 flex flex-col items-center justify-center max-w-xl mx-auto">
@@ -201,12 +212,12 @@ export default function TheImpostorPage() {
   );
 
   return (
-    <ChallengeGameShell gameId="the-impostor" gameName="The Impostor" gameIcon={<Search size={20} />} attemptText="Find the answer" timerNode={<GameTimer isRunning={gameState === "playing"} startTime={startTime} />} rulesContent={rulesContent} gameState={gameState}>
+    <ChallengeGameShell gameId="the-impostor" gameName="The Impostor" gameIcon={<Search size={20} />} attemptText={gameState === "playing" ? ("Scenario " + (currentRoundIdx + 1) + " of " + (puzzle?.rounds?.length || 5)) : "Find the answer"} timerNode={<GameTimer isRunning={gameState === "playing"} startTime={startTime} />} rulesContent={rulesContent} gameState={gameState}>
       <div className="w-full max-w-2xl mx-auto space-y-6 mt-2">
         {/* Clues */}
         <div className="glass-panel vision-glass p-6 rounded-3xl border border-yellow-500/20 space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-3">Clues</p>
-          {puzzle?.clues.map((clue, i) => (
+          {currentPuzzle?.clues.map((clue, i) => (
             <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-black/30 border border-white/5">
               <span className="w-5 h-5 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">{i + 1}</span>
               <p className="text-sm text-gray-200 leading-relaxed">{clue}</p>
@@ -217,12 +228,12 @@ export default function TheImpostorPage() {
         {/* Question */}
         <div className="glass-panel vision-glass p-6 rounded-3xl border border-white/10 text-center">
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Question</p>
-          <p className="text-xl font-bold text-white">{puzzle?.question}</p>
+          <p className="text-xl font-bold text-white">{currentPuzzle?.question}</p>
         </div>
 
         {/* Options */}
         <div className="grid grid-cols-2 gap-3">
-          {puzzle?.options.map((opt, i) => (
+          {currentPuzzle?.options.map((opt, i) => (
             <button
               key={i}
               onClick={() => setSelectedAnswer(opt)}
@@ -234,8 +245,8 @@ export default function TheImpostorPage() {
           ))}
         </div>
 
-        <button onClick={handleSubmit} disabled={!selectedAnswer} className="liquid-btn w-full py-4 text-sm font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">
-          Submit Answer
+        <button onClick={handleNextOrSubmit} disabled={!selectedAnswer} className="liquid-btn w-full py-4 text-sm font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">
+          {currentRoundIdx + 1 < (puzzle?.rounds?.length || 5) ? "Next Scenario" : "Submit Challenge"}
         </button>
       </div>
     </ChallengeGameShell>

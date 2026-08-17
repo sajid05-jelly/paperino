@@ -327,37 +327,32 @@ export async function POST(request: Request) {
       }
       puzzleData = { rounds };
     } else if (gameId === 'target-number') {
-      // Build puzzle backwards to guarantee a valid solution exists.
-      // Pick 3-4 numbers, combine them with an operator chain to produce a reachable target.
       const OPERAND_POOL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25];
       const pickFromPool = (pool: number[]) => pool[Math.floor(rand() * pool.length)];
 
-      // Pick 6 available numbers (may repeat within reason)
-      const availableNumbers: number[] = [];
-      for (let i = 0; i < 6; i++) {
-        availableNumbers.push(pickFromPool(OPERAND_POOL));
+      const rounds = [];
+      for (let r = 0; r < 5; r++) {
+        const availableNumbers: number[] = [];
+        for (let i = 0; i < 6; i++) {
+          availableNumbers.push(pickFromPool(OPERAND_POOL));
+        }
+
+        const useCount = 3 + Math.floor(rand() * 2); // 3 or 4
+        let target = availableNumbers[0];
+        const ops = ['+', '-', '*'];
+        for (let i = 1; i < useCount; i++) {
+          const op = ops[Math.floor(rand() * ops.length)];
+          const n = availableNumbers[i];
+          if (op === '+') target = target + n;
+          else if (op === '-') target = Math.abs(target - n);
+          else if (op === '*') target = target * n;
+        }
+
+        target = Math.max(1, Math.min(999, target));
+        rounds.push({ target, availableNumbers, allowedOperators: ['+', '-', '*', '/'] });
       }
 
-      // Construct target using first 3-4 of those numbers with simple ops
-      const useCount = 3 + Math.floor(rand() * 2); // 3 or 4
-      let target = availableNumbers[0];
-      const ops = ['+', '-', '*'];
-      for (let i = 1; i < useCount; i++) {
-        const op = ops[Math.floor(rand() * ops.length)];
-        const n = availableNumbers[i];
-        if (op === '+') target = target + n;
-        else if (op === '-') target = Math.abs(target - n);
-        else if (op === '*') target = target * n;
-      }
-
-      // Clamp target to reasonable puzzle range
-      target = Math.max(1, Math.min(999, target));
-
-      puzzleData = {
-        target,
-        availableNumbers,
-        allowedOperators: ['+', '-', '*', '/'],
-      };
+      puzzleData = { rounds };
     } else if (gameId === 'memory-heist') {
       // Generate a 3x3 grid with 6 items placed at random positions (seeded)
       const ITEMS = ['🔑', '📱', '💻', '📕', '🎧', '☕', '🖊️', '📷', '🔮'];
@@ -402,32 +397,42 @@ export async function POST(request: Request) {
         return `${rowNames[row]}-${colNames[col]}`;
       };
 
-      // Q1: "Where was the [item]?" — pick a random placed item
+      // Pre-calculate all deterministic indices before any sort() calls
+      // because Array.sort() makes an unpredictable number of comparisons depending on the JS engine.
       const q1ItemIdx = Math.floor(rand() * itemCount);
+      const q2ItemIdx = (q1ItemIdx + 1 + Math.floor(rand() * (itemCount - 1))) % itemCount;
+      
+      const q1WrongIndices = [Math.floor(rand() * (totalCells - 1)), Math.floor(rand() * (totalCells - 2)), Math.floor(rand() * (totalCells - 3))];
+      const q2WrongIndices = [Math.floor(rand() * (itemCount - 1)), Math.floor(rand() * (itemCount - 2)), Math.floor(rand() * (itemCount - 3))];
+
       const q1Item = chosenItems[q1ItemIdx];
       const q1Pos = chosenPositions[q1ItemIdx];
       const correctLabel = posToLabel(q1Pos);
-      // Build 3 wrong position labels
+      
       const allLabels = Array.from({ length: totalCells }, (_, i) => posToLabel(i)).filter(l => l !== correctLabel);
       const wrongLabels: string[] = [];
-      for (let i = 0; i < 3; i++) {
-        const wi = Math.floor(rand() * allLabels.length);
-        wrongLabels.push(allLabels[wi]);
-        allLabels.splice(wi, 1);
-      }
+      q1WrongIndices.forEach(wi => {
+        const i = wi % allLabels.length;
+        wrongLabels.push(allLabels[i]);
+        allLabels.splice(i, 1);
+      });
       const q1Options = [correctLabel, ...wrongLabels].sort(() => rand() - 0.5);
       questions.push({ question: `Where was the ${q1Item}?`, options: q1Options, correctAnswer: correctLabel });
 
-      // Q2: "What item was at [position]?" — pick a different filled position
-      const q2ItemIdx = (q1ItemIdx + 1 + Math.floor(rand() * (itemCount - 1))) % itemCount;
       const q2Pos = chosenPositions[q2ItemIdx];
       const q2Label = posToLabel(q2Pos);
       const q2Correct = chosenItems[q2ItemIdx];
-      const wrongItems = chosenItems.filter(it => it !== q2Correct).sort(() => rand() - 0.5).slice(0, 3);
+      
+      const allWrongItems = chosenItems.filter(it => it !== q2Correct);
+      const wrongItems: string[] = [];
+      q2WrongIndices.forEach(wi => {
+        const i = wi % allWrongItems.length;
+        wrongItems.push(allWrongItems[i]);
+        allWrongItems.splice(i, 1);
+      });
       const q2Options = [q2Correct, ...wrongItems].sort(() => rand() - 0.5);
       questions.push({ question: `What was at the ${q2Label} position?`, options: q2Options, correctAnswer: q2Correct });
 
-      // Q3: "How many items were in the top row?"
       const topRowCount = [0, 1, 2].filter(pos => grid[pos] !== null).length;
       const q3Options = ['0', '1', '2', '3'].sort(() => rand() - 0.5);
       questions.push({ question: 'How many items were in the top row?', options: q3Options, correctAnswer: String(topRowCount) });
@@ -500,9 +505,15 @@ export async function POST(request: Request) {
         },
       ];
 
-      const scenarioIdx = Math.floor(rand() * SCENARIOS.length);
-      const scenario = SCENARIOS[scenarioIdx];
-      puzzleData = { ...scenario };
+      const pool = [...SCENARIOS];
+      const rounds = [];
+      for (let r = 0; r < 5; r++) {
+        if (pool.length === 0) break;
+        const idx = Math.floor(rand() * pool.length);
+        rounds.push({ ...pool[idx] });
+        pool.splice(idx, 1);
+      }
+      puzzleData = { rounds };
     } else if (gameId === 'paradox') {
       // Pre-validated deterministic instruction chains with exactly one correct answer
       const CHAINS = [
@@ -597,9 +608,15 @@ export async function POST(request: Request) {
         },
       ];
 
-      const chainIdx = Math.floor(rand() * CHAINS.length);
-      const chain = CHAINS[chainIdx];
-      puzzleData = { ...chain };
+      const pool = [...CHAINS];
+      const rounds = [];
+      for (let r = 0; r < 5; r++) {
+        if (pool.length === 0) break;
+        const idx = Math.floor(rand() * pool.length);
+        rounds.push({ ...pool[idx] });
+        pool.splice(idx, 1);
+      }
+      puzzleData = { rounds };
     }
 
     return NextResponse.json({

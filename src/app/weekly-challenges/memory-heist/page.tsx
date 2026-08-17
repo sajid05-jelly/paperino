@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { auth } from "@/lib/firebase";
@@ -33,8 +33,10 @@ export default function MemoryHeistPage() {
   const [startTime, setStartTime] = useState<number>(0);
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null);
   const [countdown, setCountdown] = useState(5);
-  const [answers, setAnswers] = useState<string[]>([]);
   const [currentQ, setCurrentQ] = useState(0);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null);
   const [resultData, setResultData] = useState<any>(null);
   const [error, setError] = useState("");
   const [checkingAttempt, setCheckingAttempt] = useState(true);
@@ -54,7 +56,7 @@ export default function MemoryHeistPage() {
         const res = await fetch("/api/challenge-start", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-          body: JSON.stringify({ gameId: "memory-heist" })
+          body: JSON.stringify({ gameId: "memory-heist", checkOnly: true })
         });
         const data = await res.json();
         if (res.status === 409 && data.completed) {
@@ -101,14 +103,15 @@ export default function MemoryHeistPage() {
       if (!res.ok) throw new Error(data.error || "Failed to start session");
       setSessionId(data.sessionId);
       setIsOfficial(Boolean(data.isOfficial));
-      const pd = data.puzzleData as PuzzleData;
-      setPuzzle(pd);
+      setPuzzle(data.puzzleData as PuzzleData);
       setAnswers([]);
       setCurrentQ(0);
+      setSelectedAnswer(null);
+      setIsAnswerCorrect(null);
       setStartTime(Date.now());
 
       // Start memorize phase
-      const displaySecs = pd.displaySeconds || 5;
+      const displaySecs = data.puzzleData.displaySeconds || 5;
       setCountdown(displaySecs);
       setGameState("memorizing");
 
@@ -129,12 +132,24 @@ export default function MemoryHeistPage() {
     }
   };
 
-  const handleAnswer = (answer: string) => {
-    if (!puzzle) return;
-    const newAnswers = [...answers, answer];
+  const handleAnswer = (opt: string) => {
+    if (gameState !== "answering" || selectedAnswer !== null || !puzzle) return;
+    
+    setSelectedAnswer(opt);
+    const correct = puzzle.questions[currentQ].correctAnswer === opt;
+    setIsAnswerCorrect(correct);
+  };
+
+  const handleNextQuestion = () => {
+    if (!selectedAnswer || !puzzle) return;
+
+    const newAnswers = [...answers, selectedAnswer];
     setAnswers(newAnswers);
+
     if (currentQ + 1 < puzzle.questions.length) {
       setCurrentQ(currentQ + 1);
+      setSelectedAnswer(null);
+      setIsAnswerCorrect(null);
     } else {
       submitGame(newAnswers);
     }
@@ -149,13 +164,10 @@ export default function MemoryHeistPage() {
       if (!token) throw new Error("Not authenticated");
       const durationMs = Date.now() - startTime;
 
-      // Client computes correctness count for display only — server score is authoritative
-      const correct = finalAnswers.filter((a, i) => puzzle.questions[i]?.correctAnswer === a).length;
-
       const res = await fetch("/api/challenge-submit", {
         method: "POST",
         headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, gameData: { gameId: "memory-heist", answers: finalAnswers, correctCount: correct, totalQuestions: puzzle.questions.length, durationMs } })
+        body: JSON.stringify({ sessionId, gameData: { gameId: "memory-heist", answers: finalAnswers, durationMs } })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -177,14 +189,7 @@ export default function MemoryHeistPage() {
     }
   };
 
-  if (checkingAttempt) return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-cyan-500/20 text-center flex flex-col items-center gap-6">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-        <p className="text-sm text-gray-400">Checking your attempt...</p>
-      </motion.div>
-    </div>
-  );
+
 
   if (gameState === "intro") return (
     <div className="min-h-screen p-6 flex flex-col items-center justify-center max-w-xl mx-auto">
@@ -246,7 +251,7 @@ export default function MemoryHeistPage() {
 
   return (
     <ChallengeGameShell gameId="memory-heist" gameName="Memory Heist" gameIcon={<Brain size={20} />} attemptText={gameState === "answering" ? ("Q " + (currentQ + 1) + " of " + (puzzle?.questions.length || 3)) : "Memorize"} timerNode={<GameTimer isRunning={gameState === "memorizing" || gameState === "answering"} startTime={startTime} />} rulesContent={rulesContent} gameState={gameState}>
-      <div className="w-full max-w-lg mx-auto space-y-6 mt-2">
+      <div className="w-full max-w-xl mx-auto space-y-6 mt-2">
         {gameState === "memorizing" && puzzle && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
             <div className="text-center">
@@ -266,21 +271,45 @@ export default function MemoryHeistPage() {
           </motion.div>
         )}
 
-        {gameState === "answering" && puzzle && (
-          <motion.div key={currentQ} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-            <div className="glass-panel vision-glass p-6 rounded-3xl border border-white/10 text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Question {currentQ + 1} of {puzzle.questions.length}</p>
-              <p className="text-xl font-bold text-white">{puzzle.questions[currentQ].question}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {puzzle.questions[currentQ].options.map((opt, i) => (
-                <button key={i} onClick={() => handleAnswer(opt)} className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white font-semibold hover:bg-cyan-500/20 hover:border-cyan-400/40 transition-all text-sm">
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        {gameState === "answering" && puzzle && (() => {
+          const currentQuestion = puzzle.questions[currentQ];
+          return (
+            <motion.div key={currentQ} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+              <div className="glass-panel vision-glass p-6 rounded-3xl border border-white/10 text-center">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Question {currentQ + 1} of {puzzle.questions.length}</p>
+                <p className="text-xl font-bold text-white">{currentQuestion.question}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {currentQuestion.options.map((opt, i) => {
+                  let btnClass = "bg-white/5 border-white/10 text-white hover:bg-cyan-500/20 hover:border-cyan-400/40";
+                  if (selectedAnswer !== null) {
+                    if (opt === currentQuestion.correctAnswer) {
+                      btnClass = "bg-emerald-500/20 border-emerald-500/50 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+                    } else if (opt === selectedAnswer) {
+                      btnClass = "bg-rose-500/20 border-rose-500/50 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.2)]";
+                    } else {
+                      btnClass = "bg-white/5 border-white/5 text-gray-500 opacity-50";
+                    }
+                  }
+
+                  return (
+                    <button key={i} onClick={() => handleAnswer(opt)} disabled={selectedAnswer !== null} className={`p-4 rounded-2xl border font-semibold transition-all text-sm ${btnClass}`}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {selectedAnswer && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pt-2">
+                  <button onClick={handleNextQuestion} className="liquid-btn w-full py-4 text-sm font-bold uppercase tracking-wider">
+                    {currentQ + 1 < puzzle.questions.length ? "Next Question" : "Submit Challenge"}
+                  </button>
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        })()}
       </div>
     </ChallengeGameShell>
   );
