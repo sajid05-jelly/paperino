@@ -21,50 +21,30 @@ interface Round {
   correctAnswer: string;
 }
 
-const FIXED_ROUNDS: Round[] = [
-  {
-    type: 'anagram',
-    title: 'Round 1 — Anagram',
-    question: 'R P E P A',
-    hint: 'Unscramble the letters to form a common writing material.',
-    correctAnswer: 'PAPER'
-  },
-  {
-    type: 'missing',
-    title: 'Round 2 — Missing Letters',
-    question: 'P E R S _ V E R _ N C _',
-    hint: 'Fill in the missing letters for persistence in doing something despite difficulty.',
-    correctAnswer: 'PERSEVERANCE'
-  },
-  {
-    type: 'clue',
-    title: 'Round 3 — Technical Clue',
-    question: 'Connecting computers and devices to communicate.',
-    hint: 'Starts with N, 10 letters.',
-    correctAnswer: 'NETWORKING'
-  },
-  {
-    type: 'anagram',
-    title: 'Round 4 — Anagram',
-    question: 'K O B S O',
-    hint: 'Unscramble the letters to form reading materials.',
-    correctAnswer: 'BOOKS'
-  },
-  {
-    type: 'missing',
-    title: 'Round 5 — Missing Letters',
-    question: 'O P P _ R T _ N I T _',
-    hint: 'Fill in the missing letters for a favorable time or situation.',
-    correctAnswer: 'OPPORTUNITY'
-  },
-  {
-    type: 'clue',
-    title: 'Round 6 — Final Word Forge',
-    question: 'A path through which electric current flows.',
-    hint: 'Starts with C, 7 letters.',
-    correctAnswer: 'CIRCUIT'
-  }
+const WORD_BANK = [
+  { word: 'ALGORITHM', hint: 'A step-by-step procedure for calculations.' },
+  { word: 'BINARY', hint: 'A system of numerical notation that has 2 rather than 10 as a base.' },
+  { word: 'COMPILER', hint: 'A program that converts instructions into a machine-code.' },
+  { word: 'DATABASE', hint: 'A structured set of data held in a computer.' },
+  { word: 'ENCRYPT', hint: 'Conceal data by converting it into a code.' },
+  { word: 'FUNCTION', hint: 'A block of code designed to perform a particular task.' },
+  { word: 'HARDWARE', hint: 'The physical parts of a computer.' },
+  { word: 'JAVASCRIPT', hint: 'A programming language commonly used in web development.' },
+  { word: 'KERNEL', hint: 'The core of a computer operating system.' },
+  { word: 'NETWORK', hint: 'A collection of computers and devices connected together.' },
+  { word: 'SOFTWARE', hint: 'The programs and other operating information used by a computer.' },
+  { word: 'TERMINAL', hint: 'A program that allows you to type commands.' },
+  { word: 'VARIABLE', hint: 'A value that can change, depending on conditions.' },
+  { word: 'STORAGE', hint: 'The retention of retrievable data on a computer.' },
+  { word: 'BROWSER', hint: 'A program with a graphical user interface for displaying HTML files.' },
+  { word: 'SERVER', hint: 'A computer or computer program which manages access to a centralized resource.' },
+  { word: 'PYTHON', hint: 'A high-level general-purpose programming language.' },
+  { word: 'SYNTAX', hint: 'The arrangement of words and phrases to create well-formed sentences.' },
+  { word: 'BOOLEAN', hint: 'Denoting a system of algebraic notation used to represent logical propositions.' },
+  { word: 'ITERATE', hint: 'Perform or utter repeatedly.' }
 ];
+
+const FIXED_ROUNDS: Round[] = [];
 
 export default function WordForgePage() {
   const router = useRouter();
@@ -87,6 +67,8 @@ export default function WordForgePage() {
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const roundStartTimeRef = useRef<number>(0);
+
+  const [activeRounds, setActiveRounds] = useState<Round[]>([]);
 
   const [existingResult, setExistingResult] = useState<any>(null);
   const [checkingAttempt, setCheckingAttempt] = useState(true);
@@ -168,6 +150,28 @@ export default function WordForgePage() {
       setSessionId(data.sessionId);
       setIsOfficial(data.isOfficial);
       
+      // Generate dynamic rounds
+      const shuffled = [...WORD_BANK].sort(() => 0.5 - Math.random()).slice(0, 6);
+      const generatedRounds: Round[] = shuffled.map((item, idx) => {
+        const type = idx % 3 === 0 ? 'anagram' : (idx % 3 === 1 ? 'missing' : 'clue');
+        let question = '';
+        if (type === 'anagram') {
+           question = item.word.split('').sort(() => 0.5 - Math.random()).join(' ');
+        } else if (type === 'missing') {
+           question = item.word.split('').map((char, i) => Math.random() > 0.4 ? char : '_').join(' ');
+        } else {
+           question = item.hint;
+        }
+        return {
+          type,
+          title: `Round ${idx + 1} — ${type === 'anagram' ? 'Anagram' : (type === 'missing' ? 'Missing Letters' : 'Technical Clue')}`,
+          question: question,
+          hint: type === 'clue' ? `Starts with ${item.word[0]}, ${item.word.length} letters.` : item.hint,
+          correctAnswer: item.word
+        };
+      });
+      setActiveRounds(generatedRounds);
+
       setUserAnswers([]);
       setUserRoundTimes([]);
       setStartTime(Date.now());
@@ -204,7 +208,7 @@ export default function WordForgePage() {
   const processAnswerSubmit = (inputVal: string) => {
     const elapsedSeconds = Math.max(0.1, (Date.now() - roundStartTimeRef.current) / 1000);
     
-    const currentRound = FIXED_ROUNDS[currentRoundIdx];
+    const currentRound = activeRounds[currentRoundIdx];
     const isCorrect = inputVal.trim().toUpperCase() === currentRound.correctAnswer;
     
     const updatedAnswers = [...userAnswers, inputVal.trim().toUpperCase()];
@@ -223,7 +227,7 @@ export default function WordForgePage() {
 
   const handleNextRound = () => {
     const nextIdx = currentRoundIdx + 1;
-    if (nextIdx < FIXED_ROUNDS.length) {
+    if (nextIdx < activeRounds.length) {
       startRound(nextIdx);
     } else {
       submitFinalAnswers(userAnswers, userRoundTimes);
@@ -238,12 +242,11 @@ export default function WordForgePage() {
 
       const timesToSubmit = overrideTimes || userRoundTimes;
 
-      // Local fallback score calculation:
-      const FIXED_CORRECT_ANSWERS = ['RATE', 'COMPUTER', 'DATABASE', 'SYNTAX', 'ALGORITHM', 'COMPILER'];
       let correctCount = 0;
       let totalTimeSpeedBonusSum = 0;
 
-      FIXED_CORRECT_ANSWERS.forEach((expectedAns, idx) => {
+      activeRounds.forEach((round, idx) => {
+        const expectedAns = round.correctAnswer;
         const userAns = finalAnswers[idx];
         if (userAns && userAns.trim().toUpperCase() === expectedAns) {
           correctCount++;
@@ -458,8 +461,7 @@ export default function WordForgePage() {
       </div>
     );
   }
-
-  const currentRound = FIXED_ROUNDS[currentRoundIdx];
+  const currentRound = activeRounds[currentRoundIdx] || { title: "", type: "", question: "", hint: "", correctAnswer: "" };
 
   const rulesContent = (
     <ul className="space-y-2.5 list-disc list-inside text-sm">

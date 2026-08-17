@@ -121,6 +121,9 @@ export default function ImpossibleRoomPage() {
   const [checkingAttempt, setCheckingAttempt] = useState(true);
   const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
 
+  const [expectedCode, setExpectedCode] = useState<string>("4927");
+  const [roomObjects, setRoomObjects] = useState<RoomObject[]>(ROOM_OBJECTS);
+
   const isCreatingSession = useRef(false);
 
   useEffect(() => {
@@ -197,6 +200,24 @@ export default function ImpossibleRoomPage() {
       setSessionId(data.sessionId);
       setIsOfficial(data.isOfficial);
       
+      // Generate dynamic room code
+      const d1 = Math.floor(Math.random() * 10);
+      const d2 = Math.floor(Math.random() * 10);
+      const d3 = Math.floor(Math.random() * 10);
+      const d4 = Math.floor(Math.random() * 10);
+      setExpectedCode(`${d1}${d2}${d3}${d4}`);
+
+      const newObjects = JSON.parse(JSON.stringify(ROOM_OBJECTS)) as RoomObject[];
+      newObjects[0].digitInfo = { position: 1, value: d1, hint: `1st Digit is ${d1}` };
+      newObjects[0].description = `The hands are frozen permanently pointing directly at ${d1}.`;
+      newObjects[1].digitInfo = { position: 2, value: d2, hint: `2nd Digit is ${d2}` };
+      newObjects[1].description = `A leather-bound tome on Cyber Security has an etched bookmark code ending in ${d2}.`;
+      newObjects[2].digitInfo = { position: 3, value: d3, hint: `3rd Digit is ${d3}` };
+      newObjects[2].description = `Examining the brushwork reveals tiny gold leaf number ${d3} tucked in the canvas corner.`;
+      newObjects[3].digitInfo = { position: 4, value: d4, hint: `4th Digit is ${d4}` };
+      newObjects[3].description = `Flicking the UV toggle illuminates an ultraviolet number ${d4} written on the felt base.`;
+      setRoomObjects(newObjects);
+
       setInspectedIds(new Set());
       setFoundClues(new Set());
       setUserLockCode(["", "", "", ""]);
@@ -242,6 +263,11 @@ export default function ImpossibleRoomPage() {
     const enteredCode = userLockCode.join("");
     if (enteredCode.length !== 4) {
       setCodeError("Please enter all 4 digits");
+      return;
+    }
+
+    if (enteredCode !== expectedCode) {
+      setCodeError("ACCESS DENIED: Incorrect Code");
       return;
     }
 
@@ -455,9 +481,10 @@ export default function ImpossibleRoomPage() {
       <div className="w-full space-y-8 mt-2">
         {/* Main Room Layout Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
-          {ROOM_OBJECTS.map((obj) => {
-            const IconComp = obj.icon;
+          {roomObjects.map((obj) => {
             const isInspected = inspectedIds.has(obj.id);
+            const isSelected = selectedObj?.id === obj.id;
+            const Icon = obj.icon;
             const isFound = foundClues.has(obj.id);
 
             return (
@@ -476,7 +503,7 @@ export default function ImpossibleRoomPage() {
               >
                 <div className="flex justify-between items-start">
                   <div className={`p-2.5 rounded-xl ${isFound ? "bg-emerald-500/20 text-emerald-300" : "bg-purple-500/20 text-purple-300"}`}>
-                    <IconComp size={20} />
+                    <Icon size={20} />
                   </div>
                   {isFound && (
                     <span className="bg-emerald-500/30 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
