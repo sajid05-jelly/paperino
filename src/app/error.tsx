@@ -20,8 +20,11 @@ export default function Error({
           !
         </div>
         <h2 className="text-xl font-bold text-white">Something went wrong</h2>
+        <p className="text-sm text-rose-400 font-mono text-left bg-black/40 p-3 rounded-lg overflow-auto max-h-32 mb-4">
+          {error.message || "An unexpected error occurred."}
+        </p>
         <p className="text-sm text-gray-400">
-          An unexpected error occurred. You can try refreshing the section.
+          Please take a screenshot of this error and share it.
         </p>
         <div className="flex gap-3 justify-center">
           <button

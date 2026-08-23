@@ -656,7 +656,6 @@ function FreeClassFinderContent() {
 
       <title>Free Class Finder for College Students | Find Available Classrooms | Paperino</title>
       <meta name="description" content="Find available classrooms during your free hours with Paperino Free Class Finder. Discover free classrooms shared by students and use your free time for projects, study and learning." />
-      <link rel="canonical" href="https://paperino-eta.vercel.app/free-class-finder" />
       <meta property="og:title" content="Free Class Finder for College Students | Find Available Classrooms | Paperino" />
       <meta property="og:description" content="Find available classrooms during your free hours with Paperino Free Class Finder. Discover free classrooms shared by students and use your free time for projects, study and learning." />
       <meta property="og:url" content="https://paperino-eta.vercel.app/free-class-finder" />

@@ -161,7 +161,7 @@ export default function CoursesPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full relative z-10 mt-4">
               {sortedDepts.map((dept, i) => (
-                <Link key={dept.id} href={`/courses/${dept.id}`}>
+                <Link key={dept.id} href={dept.id.toLowerCase() === 'btech' ? '/srm/btech' : `/courses/${dept.id}`}>
                   <div 
                     className="vision-glass p-6 rounded-[2rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[160px] animate-in fade-in slide-in-from-bottom-8 relative overflow-hidden"
                     style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}

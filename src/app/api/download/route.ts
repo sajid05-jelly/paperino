@@ -266,9 +266,8 @@ export async function GET(req: NextRequest) {
         const watermarkOpacity = 0.14;
         const watermarkAngle = degrees(-35);
 
-        // Watermark up to 2 pages to keep download generation under ~2-4s for PDFs
-        const pagesToWatermark = pages.slice(0, 2);
-        for (const page of pagesToWatermark) {
+        // Watermark all pages
+        for (const page of pages) {
           const { width, height } = page.getSize();
           const totalTextHeight = 40 + (detailLines.length * 32);
           const centerX = width * 0.25;

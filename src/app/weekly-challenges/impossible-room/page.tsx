@@ -207,7 +207,10 @@ export default function ImpossibleRoomPage() {
       const d4 = Math.floor(Math.random() * 10);
       setExpectedCode(`${d1}${d2}${d3}${d4}`);
 
-      const newObjects = JSON.parse(JSON.stringify(ROOM_OBJECTS)) as RoomObject[];
+      const newObjects = ROOM_OBJECTS.map(obj => ({
+        ...obj,
+        digitInfo: obj.digitInfo ? { ...obj.digitInfo } : undefined
+      }));
       newObjects[0].digitInfo = { position: 1, value: d1, hint: `1st Digit is ${d1}` };
       newObjects[0].description = `The hands are frozen permanently pointing directly at ${d1}.`;
       newObjects[1].digitInfo = { position: 2, value: d2, hint: `2nd Digit is ${d2}` };
