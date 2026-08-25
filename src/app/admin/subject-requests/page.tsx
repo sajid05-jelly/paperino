@@ -201,41 +201,41 @@ export default function SubjectRequestsAdminPage() {
             <table className="w-full text-left border-collapse table-auto">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-purple-400 text-xs font-semibold uppercase tracking-wider">
-                  <th className="py-4 px-6">Subject</th>
-                  <th className="py-4 px-6">Department / Course</th>
-                  <th className="py-4 px-6">Semester</th>
-                  <th className="py-4 px-6">Requested By</th>
-                  <th className="py-4 px-6">Date</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                  <th className="py-4 px-4 w-[25%]">Subject</th>
+                  <th className="py-4 px-4 w-[25%]">Department / Course</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Semester</th>
+                  <th className="py-4 px-4 w-[20%]">Requested By</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Status</th>
+                  <th className="py-4 px-4 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="text-gray-300 text-sm font-medium">
                 {requests.map((req) => (
                   <tr key={req.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-4">
                       <p className="text-white font-bold">{req.subjectName}</p>
                       {req.subjectCode && <p className="text-xs text-purple-400 font-bold tracking-widest mt-0.5">{req.subjectCode}</p>}
-                      {req.notes && <p className="text-xs text-gray-500 italic font-light mt-1.5 max-w-xs">{req.notes}</p>}
+                      {req.notes && <p className="text-xs text-gray-500 italic font-light mt-1.5 max-w-[200px] md:max-w-xs">{req.notes}</p>}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-4">
                       <p className="text-white">{req.departmentName}</p>
                       <p className="text-xs text-gray-500">{req.courseName}</p>
                     </td>
-                    <td className="py-4 px-6 text-purple-400 font-bold">{req.semesterName}</td>
-                    <td className="py-4 px-6">
-                      <p className="text-white flex items-center gap-1.5"><User size={13} /> {req.requestedBy}</p>
-                      <p className="text-xs text-gray-500">{req.userEmail}</p>
+                    <td className="py-4 px-4 text-purple-400 font-bold whitespace-nowrap">{req.semesterName}</td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-1.5 text-white whitespace-nowrap">
+                        <User size={13} /> {req.requestedBy}
+                      </div>
+                      <p className="text-xs text-gray-500 truncate max-w-[150px]">{req.userEmail}</p>
                     </td>
-                    <td className="py-4 px-6 text-gray-400 text-xs flex items-center gap-1.5 pt-6"><Calendar size={13} /> {formatDate(req.createdAt)}</td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-4 whitespace-nowrap">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                         req.status === "completed" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
                       }`}>
                         {req.status}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right space-x-2">
+                    <td className="py-4 px-4 text-right space-x-2 whitespace-nowrap">
                       {req.status === "pending" && (
                         <button
                           onClick={() => handleMarkCompleted(req.id)}
@@ -298,8 +298,7 @@ export default function SubjectRequestsAdminPage() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                  <span className="text-[10px] text-gray-500 flex items-center gap-1"><Calendar size={11} /> {formatDate(req.createdAt)}</span>
+                <div className="flex items-center justify-end pt-2 border-t border-white/5">
                   <div className="flex gap-2">
                     {req.status === "pending" && (
                       <button

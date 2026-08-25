@@ -208,6 +208,9 @@ export async function GET(req: NextRequest) {
   // 3. Stream binary file directly from Google Drive Storage
   let fileBuffer: Buffer;
   let mimeType = getMimeTypeByFilename(matName);
+  let isPartial = false;
+  let contentRange = "";
+  let contentLength = "";
 
   try {
     const drive = getDriveClient();
@@ -219,17 +222,30 @@ export async function GET(req: NextRequest) {
     }
 
     console.log(`[Download API Stage 3] Fetching raw binary stream from Google Drive for fileId: ${finalFileId}...`);
-    const driveRes = await drive.files.get(
-      { fileId: finalFileId, alt: "media" },
-      { responseType: "arraybuffer" }
-    );
+    
+    const rangeHeader = req.headers.get("range");
+    const driveOpts: any = { fileId: finalFileId, alt: "media" };
+    const axiosOpts: any = { responseType: "arraybuffer" };
+    
+    if (isInline && rangeHeader) {
+      axiosOpts.headers = { Range: rangeHeader };
+    }
+
+    const driveRes = await drive.files.get(driveOpts, axiosOpts);
 
     fileBuffer = Buffer.from(driveRes.data as ArrayBuffer);
     const driveMime = (driveRes.headers["content-type"] as string) || "";
     if (driveMime && driveMime !== "application/octet-stream") {
       mimeType = driveMime;
     }
-    console.log(`[Download API Stage 3 Complete] Binary stream received. Size: ${fileBuffer.length} bytes, Mime: ${mimeType}`);
+    
+    isPartial = driveRes.status === 206;
+    if (isPartial) {
+      contentRange = (driveRes.headers["content-range"] as string) || "";
+      contentLength = (driveRes.headers["content-length"] as string) || fileBuffer.length.toString();
+    }
+    
+    console.log(`[Download API Stage 3 Complete] Binary stream received. Size: ${fileBuffer.length} bytes, Mime: ${mimeType}, Partial: ${isPartial}`);
 
   } catch (err: any) {
     console.error("[Download API Stage 3 Error] Drive streaming failed:", err);
@@ -384,17 +400,24 @@ export async function GET(req: NextRequest) {
 
   console.log(`[Download API Stage 5 Complete] Serving binary response (${fileBuffer.length} bytes, Content-Type="${finalMime}", Content-Disposition="${dispositionType}")`);
 
+  const responseFinalHeaders: Record<string, string> = {
+    ...responseHeaders,
+    "Content-Type": finalMime,
+    "Content-Length": isPartial ? contentLength : fileBuffer.length.toString(),
+    "Content-Disposition": dispositionType,
+    "Accept-Ranges": "bytes",
+    "Cache-Control": isInline 
+      ? "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" 
+      : "no-store, no-cache, must-revalidate",
+    "Pragma": isInline ? "cache" : "no-cache",
+  };
+  
+  if (isPartial && contentRange) {
+    responseFinalHeaders["Content-Range"] = contentRange;
+  }
+
   return new Response(new Uint8Array(fileBuffer), {
-    status: 200,
-    headers: {
-      ...responseHeaders,
-      "Content-Type": finalMime,
-      "Content-Length": fileBuffer.length.toString(),
-      "Content-Disposition": dispositionType,
-      "Cache-Control": isInline 
-        ? "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" 
-        : "no-store, no-cache, must-revalidate",
-      "Pragma": isInline ? "cache" : "no-cache",
-    }
+    status: isPartial ? 206 : 200,
+    headers: responseFinalHeaders
   });
 }

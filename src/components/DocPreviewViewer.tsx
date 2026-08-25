@@ -161,27 +161,9 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
       // 4. PROGRESSIVE PDF PREVIEW VIA PDF.JS & INTERSECTION OBSERVER
       setViewType("pdfjs");
       try {
-        let pdfArrayBuffer: ArrayBuffer;
-
-        if (pdfBufferCache.has(cacheKey)) {
-          pdfArrayBuffer = pdfBufferCache.get(cacheKey)!;
-        } else {
-          const pdfResponse = await fetch(targetUrl, { headers });
-          if (!pdfResponse.ok) {
-            if (pdfResponse.status === 403) {
-              throw new Error("403: Forbidden - Access Denied");
-            }
-            throw new Error(`Server returned ${pdfResponse.status}: ${pdfResponse.statusText}`);
-          }
-          pdfArrayBuffer = await pdfResponse.arrayBuffer();
-          if (pdfArrayBuffer.byteLength < 100) {
-            throw new Error("Received empty or invalid PDF data");
-          }
-          pdfBufferCache.set(cacheKey, pdfArrayBuffer);
-        }
-
         const loadingTask = pdfjs.getDocument({
-          data: new Uint8Array(pdfArrayBuffer),
+          url: targetUrl,
+          httpHeaders: headers,
           cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/cmaps/`,
           cMapPacked: true,
         });

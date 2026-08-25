@@ -24,7 +24,9 @@ import {
   Target,
   Brain,
   Search,
-  Zap
+  Zap,
+  X,
+  User as UserIcon
 } from "lucide-react";
 import { 
   GAME_IDS, 
@@ -57,12 +59,102 @@ const ICONS = {
   'paradox': Zap,
 };
 
+function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const [data, setData] = useState<{rank: number, displayName: string, score: number}[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    fetch('/api/weekly-leaderboard')
+      .then(res => res.json())
+      .then(d => {
+        if (d.leaderboard) setData(d.leaderboard);
+        setLoading(false);
+      })
+      .catch(e => {
+        console.error(e);
+        setLoading(false);
+      });
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-[#0a0515] border border-purple-500/20 rounded-3xl p-6 shadow-2xl">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+        >
+          <X size={20} />
+        </button>
+        
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400">
+            <Trophy size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Overall Top 5</h2>
+            <p className="text-xs text-purple-300">Current Weekly Challenge</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <div className="animate-spin rounded-full border-b-2 border-t-2 border-purple-500 h-8 w-8"></div>
+          </div>
+        ) : data.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-gray-400 text-sm">No official results yet this week.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {data.map((user, idx) => (
+              <div 
+                key={idx} 
+                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                  idx === 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-100 shadow-[0_0_15px_rgba(245,158,11,0.1)]' :
+                  idx === 1 ? 'bg-slate-300/10 border-slate-300/20 text-slate-200' :
+                  idx === 2 ? 'bg-orange-700/10 border-orange-700/20 text-orange-200' :
+                  'bg-white/[0.02] border-white/5 text-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <span className={`font-black text-lg ${
+                    idx === 0 ? 'text-amber-400' :
+                    idx === 1 ? 'text-slate-300' :
+                    idx === 2 ? 'text-orange-400' :
+                    'text-gray-500'
+                  }`}>
+                    #{user.rank}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-full bg-white/10">
+                      <UserIcon size={14} />
+                    </div>
+                    <span className="font-semibold">{user.displayName}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-lg">{user.score}</span>
+                  <span className="text-[10px] text-gray-500 block -mt-1 uppercase tracking-wider">Pts</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function WeeklyChallengesPage() {
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [sessions, setSessions] = useState<Record<string, any>>({});
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -193,8 +285,33 @@ export default function WeeklyChallengesPage() {
 
   return (
     <>
+      <LeaderboardModal isOpen={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
+
       {/* ─── Decorative Arena Background ─── */}
       <style>{`
+        @keyframes float-trophy {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes sweep-glow {
+          0% { transform: translateX(-100%); opacity: 0; }
+          50% { opacity: 1; }
+          100% { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes shimmer-text {
+          0% { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+        @keyframes sparkle-pulse {
+          0%, 100% { opacity: 0; transform: scale(0.3); }
+          50% { opacity: 1; transform: scale(1); }
+        }
+        .btn-sweep { animation: sweep-glow 4s ease-in-out infinite; }
+        .text-shimmer {
+          background-size: 200% auto;
+          animation: shimmer-text 5s linear infinite;
+        }
+
         @keyframes wc-float-1 {
           0%,100% { transform: translateY(0px) translateX(0px); opacity: 0.35; }
           33%      { transform: translateY(-18px) translateX(6px);  opacity: 0.55; }
@@ -481,12 +598,31 @@ export default function WeeklyChallengesPage() {
               <p className="text-lg text-gray-400">Test your skills with premium brain challenges</p>
             </div>
             
-            <div className="mt-6 rounded-xl border border-white/5 bg-white/[0.02] px-5 py-3 md:mt-0 glass-panel">
-              <div className="flex items-center justify-center gap-3 md:justify-start">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <div className="text-left">
-                  <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Available Days</p>
-                  <p className="text-sm font-medium text-white">{availableDaysString}</p>
+            <div className="mt-6 flex flex-col items-center gap-3 md:flex-row md:mt-0">
+              <button 
+                onClick={() => setShowLeaderboard(true)}
+                className="group relative overflow-hidden rounded-xl border border-purple-500/30 bg-purple-500/10 px-5 py-3 glass-panel hover:bg-purple-500/20 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)] active:scale-95 active:shadow-none transition-all duration-300 flex items-center justify-center gap-3 cursor-pointer"
+              >
+                <div className="btn-sweep absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-purple-400/20 to-transparent pointer-events-none"></div>
+
+                <div className="relative pointer-events-none">
+                  <div className="absolute -inset-1 bg-purple-300/40 rounded-full blur-[3px]" style={{ animation: 'sparkle-pulse 4s infinite' }}></div>
+                  <div className="absolute inset-0 bg-purple-400 blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
+                  <Trophy className="relative h-5 w-5 text-purple-400 group-hover:scale-110 group-hover:text-purple-300 transition-all duration-300" style={{ animation: 'float-trophy 3s ease-in-out infinite' }} />
+                </div>
+                <div className="text-left relative pointer-events-none">
+                  <p className="text-xs font-semibold tracking-wider text-purple-300 uppercase group-hover:text-purple-200 transition-colors">Overall Rank</p>
+                  <p className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white text-shimmer group-hover:from-purple-100 group-hover:to-white transition-all">Leaderboard</p>
+                </div>
+              </button>
+              
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] px-5 py-3 glass-panel">
+                <div className="flex items-center justify-center gap-3 md:justify-start">
+                  <Calendar className="h-5 w-5 text-gray-400" />
+                  <div className="text-left">
+                    <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Available Days</p>
+                    <p className="text-sm font-medium text-white">{availableDaysString}</p>
+                  </div>
                 </div>
               </div>
             </div>
