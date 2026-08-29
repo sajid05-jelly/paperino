@@ -62,18 +62,34 @@ const ICONS = {
 function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const [data, setData] = useState<{rank: number, displayName: string, score: number}[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
+    setErrorMsg(null);
     fetch('/api/weekly-leaderboard')
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+          throw new Error(`API error: ${res.status}`);
+        }
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (err) {
+          console.error("Invalid JSON response:", text.substring(0, 50) + "...");
+          throw new Error("Invalid API response format");
+        }
+      })
       .then(d => {
         if (d.leaderboard) setData(d.leaderboard);
+        else if (d.error) throw new Error(d.error);
         setLoading(false);
       })
       .catch(e => {
-        console.error(e);
+        console.error("Leaderboard fetch failed:", e);
+        setErrorMsg("Failed to load leaderboard");
+        setData([]);
         setLoading(false);
       });
   }, [isOpen]);
@@ -103,6 +119,11 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
         {loading ? (
           <div className="py-12 flex justify-center">
             <div className="animate-spin rounded-full border-b-2 border-t-2 border-purple-500 h-8 w-8"></div>
+          </div>
+        ) : errorMsg ? (
+          <div className="py-12 text-center">
+            <p className="text-rose-400 text-sm font-semibold">{errorMsg}</p>
+            <p className="text-gray-500 text-xs mt-2">Please try again later.</p>
           </div>
         ) : data.length === 0 ? (
           <div className="py-12 text-center">
