@@ -115,11 +115,17 @@ export default function GPACalculatorPage() {
   // --- Semester Calc Logic ---
   const [internal, setInternal] = useState<string>("");
   const [semesterMark, setSemesterMark] = useState<string>("");
+  
+  const [internalMaxStr, setInternalMaxStr] = useState<string>("60");
+  const [semesterMaxStr, setSemesterMaxStr] = useState<string>("75");
 
   const internalNum = parseFloat(internal) || 0;
   const semesterNum = parseFloat(semesterMark) || 0;
+  
+  const internalMax = parseFloat(internalMaxStr) || 60;
+  const semesterMax = parseFloat(semesterMaxStr) || 75;
 
-  const convertedSemester = (semesterNum / 75) * 40;
+  const convertedSemester = semesterMax > 0 ? (semesterNum / semesterMax) * (100 - internalMax) : 0;
   const finalTotal = internalNum + convertedSemester;
 
   const getSemesterGrade = (total: number) => {
@@ -134,7 +140,7 @@ export default function GPACalculatorPage() {
   };
 
   const semGradeInfo = getSemesterGrade(finalTotal);
-  const isSemValid = internal !== "" && semesterMark !== "" && internalNum <= 60 && semesterNum <= 75 && internalNum >= 0 && semesterNum >= 0;
+  const isSemValid = internal !== "" && semesterMark !== "" && internalNum <= internalMax && semesterNum <= semesterMax && internalNum >= 0 && semesterNum >= 0;
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12 md:py-16">
@@ -415,49 +421,81 @@ export default function GPACalculatorPage() {
             
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Internal Mark (Out of 60)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-300">
+                    Internal Mark
+                  </label>
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span>Max:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={internalMaxStr}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                        e.target.value = clean;
+                        setInternalMaxStr(clean);
+                      }}
+                      className="w-16 bg-white/5 border border-white/10 rounded px-2 py-1 text-white outline-none focus:border-purple-400"
+                    />
+                  </div>
+                </div>
                 <div className="relative">
                   <input
                     type="number"
                     min="0"
-                    max="60"
+                    max={internalMax}
                     value={internal}
                     onChange={(e) => {
                       const clean = e.target.value.replace(/^0+(?=\d)/, '');
                       e.target.value = clean;
                       setInternal(clean);
                     }}
-                    placeholder="e.g. 45"
+                    placeholder={`e.g. ${Math.round(internalMax * 0.75)}`}
                     className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors text-lg"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">/ 60</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">/ {internalMax}</span>
                 </div>
-                {internalNum > 60 && <p className="text-red-400 text-sm mt-2">Cannot exceed 60</p>}
+                {internalNum > internalMax && <p className="text-red-400 text-sm mt-2">Cannot exceed {internalMax}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Semester Exam Mark (Out of 75)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-300">
+                    Semester Exam Mark
+                  </label>
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span>Max:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={semesterMaxStr}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/^0+(?=\d)/, '');
+                        e.target.value = clean;
+                        setSemesterMaxStr(clean);
+                      }}
+                      className="w-16 bg-white/5 border border-white/10 rounded px-2 py-1 text-white outline-none focus:border-purple-400"
+                    />
+                  </div>
+                </div>
                 <div className="relative">
                   <input
                     type="number"
                     min="0"
-                    max="75"
+                    max={semesterMax}
                     value={semesterMark}
                     onChange={(e) => {
                       const clean = e.target.value.replace(/^0+(?=\d)/, '');
                       e.target.value = clean;
                       setSemesterMark(clean);
                     }}
-                    placeholder="e.g. 65"
+                    placeholder={`e.g. ${Math.round(semesterMax * 0.8)}`}
                     className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors text-lg"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">/ 75</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">/ {semesterMax}</span>
                 </div>
-                {semesterNum > 75 && <p className="text-red-400 text-sm mt-2">Cannot exceed 75</p>}
+                {semesterNum > semesterMax && <p className="text-red-400 text-sm mt-2">Cannot exceed {semesterMax}</p>}
               </div>
             </div>
           </div>
@@ -466,7 +504,7 @@ export default function GPACalculatorPage() {
           <div className={`glass-panel p-8 rounded-2xl border-t border-white/10 flex flex-col justify-center relative overflow-hidden transition-opacity duration-500 ${isSemValid ? 'opacity-100' : 'opacity-40'}`}>
             {!isSemValid && (
               <div className="absolute inset-0 z-10 bg-black/40 backdrop-blur-[2px] flex items-center justify-center rounded-2xl">
-                <p className="text-gray-300 font-medium bg-black/60 px-6 py-3 rounded-full">Enter marks to see result</p>
+                <p className="text-gray-300 font-medium bg-black/60 px-6 py-3 rounded-full">Enter valid marks to see result</p>
               </div>
             )}
 
@@ -480,7 +518,7 @@ export default function GPACalculatorPage() {
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-bold text-white">{convertedSemester.toFixed(2)}</span>
-                  <span className="text-sm text-gray-500 ml-1">/ 40</span>
+                  <span className="text-sm text-gray-500 ml-1">/ {100 - internalMax}</span>
                 </div>
               </div>
 

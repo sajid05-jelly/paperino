@@ -230,9 +230,24 @@ export async function POST(req: NextRequest) {
         status: "active"
       }, { merge: true });
 
-      console.log(`✔ Firestore document created`);
-      console.log(`✔ Document ID: ${docId}`);
-      console.log(`✔ Collection path: ${COLLECTION_NAME}`);
+      console.log(`✅ Firestore document created`);
+      console.log(`✅ Document ID: ${docId}`);
+      console.log(`✅ Collection path: ${COLLECTION_NAME}`);
+
+      // Create a Paperino Pulse notification event
+      try {
+        await adminDb.collection("pulse_updates").add({
+          title: "New Free Classroom",
+          content: `${userName} just reported a free classroom: ${formattedRoom} at ${block} Block. Available for ~${durationMinutes} mins.`,
+          category: "Free Class Finder",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          deadline: expiresAtTimestamp,
+          createdBy: uid,
+        });
+        console.log(`✅ Pulse update created for Free Class Finder`);
+      } catch (pulseErr) {
+        console.error("Failed to create pulse notification:", pulseErr);
+      }
 
       return new Response(JSON.stringify({ success: true, roomNumber: formattedRoom, reportId: docId }), {
         status: 200,

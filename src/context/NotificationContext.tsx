@@ -31,6 +31,7 @@ export interface PulseUpdate {
   content: string;
   category: string;
   createdAt: any;
+  createdBy?: string;
 }
 
 interface NotificationContextType {
@@ -100,45 +101,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 1. Single Global TTL Cached Fetch for Pulse Updates (5-min TTL to eliminate realtime read multiplication)
+  // 1. Real-time Listener for Pulse Updates
   useEffect(() => {
     if (!user) {
       setUpdates([]);
       return;
     }
 
-    let isMounted = true;
-    const fetchPulseUpdates = async () => {
-      const now = Date.now();
-      if (globalPulseCache && (now - lastPulseFetchTime) < 5 * 60 * 1000) {
-        logFirestoreCacheHit("pulse_updates", "Serving 10 pulse items from 5m client TTL cache");
-        if (isMounted) setUpdates(globalPulseCache);
-        return;
-      }
+    const q = query(
+      collection(db, "pulse_updates"), 
+      orderBy("createdAt", "desc"), 
+      limit(10)
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newUpdates: PulseUpdate[] = [];
+      snapshot.forEach((d) => {
+        newUpdates.push({ id: d.id, ...d.data() } as PulseUpdate);
+      });
+      setUpdates(newUpdates);
+    }, (err: any) => {
+      console.warn("[NotificationContext] pulse_updates onSnapshot notice:", err?.message || err);
+    });
 
-      try {
-        logFirestoreRead("pulse_updates", "getDocs(limit(10)) - 5m TTL cache miss");
-        const q = query(
-          collection(db, "pulse_updates"), 
-          orderBy("createdAt", "desc"), 
-          limit(10)
-        );
-        const snapshot = await getDocs(q);
-        const newUpdates: PulseUpdate[] = [];
-        snapshot.forEach((d) => {
-          newUpdates.push({ id: d.id, ...d.data() } as PulseUpdate);
-        });
-
-        globalPulseCache = newUpdates;
-        lastPulseFetchTime = now;
-        if (isMounted) setUpdates(newUpdates);
-      } catch (err: any) {
-        console.warn("[NotificationContext] pulse_updates fetch notice:", err?.message || err);
-      }
-    };
-
-    fetchPulseUpdates();
-    return () => { isMounted = false; };
+    return () => unsubscribe();
   }, [user]);
 
   // Compute unreadUpdates in-memory
@@ -156,6 +142,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     return updates.filter(u => {
       if (!u.createdAt) return false;
+      if (u.createdBy && u.createdBy === user.uid) return false;
       const createdDate = (u.createdAt && typeof u.createdAt.toDate === "function") 
         ? u.createdAt.toDate() 
         : new Date(u.createdAt as any);
@@ -166,7 +153,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Calculate per-item and per-category unread Pulse updates per user
   const unreadPulseItems = useMemo(() => {
     if (!user) return [];
-    return updates.filter((u) => !readPulseIds.has(u.id));
+    return updates.filter((u) => {
+      // Do not show notifications for content created by the current user
+      if (u.createdBy && u.createdBy === user.uid) return false;
+      return !readPulseIds.has(u.id);
+    });
   }, [updates, readPulseIds, user]);
 
   const categoryPulseUnreadCounts = useMemo(() => {

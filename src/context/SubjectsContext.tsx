@@ -319,7 +319,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       createdAt: serverTimestamp()
     });
 
-    await refreshSubjects();
+    await refreshSubjects(true);
     return generatedId;
   };
 

@@ -25,10 +25,12 @@ const THEMES = [
 
 export default function Navbar() {
   const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion } = useAuth();
-  const { pulseUnreadCount } = usePulseNotifications();
+  const { pulseUnreadCount, categoryPulseUnreadCounts } = usePulseNotifications();
+  const fcfPulseCount = categoryPulseUnreadCounts["Free Class Finder"] || 0;
+  
   const { 
-    freeClassUnreadCount, 
-    labsTotalUnreadCount, 
+
+
     markFreeClassSeen, 
     adminTotalUnreadCount,
     dashboardUnreadCount
@@ -254,9 +256,9 @@ export default function Navbar() {
                   Paperino Labs
                 </span>
 
-                {labsTotalUnreadCount > 0 && (
+                {fcfPulseCount > 0 && (
                   <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_10px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/40 animate-in zoom-in duration-300">
-                    {labsTotalUnreadCount > 99 ? "99+" : labsTotalUnreadCount}
+                    {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
                   </span>
                 )}
 
@@ -275,9 +277,9 @@ export default function Navbar() {
                       <Building2 size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" />
                       <span>Free Class Finder</span>
                     </span>
-                    {freeClassUnreadCount > 0 && (
+                    {fcfPulseCount > 0 && (
                       <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/50">
-                        {freeClassUnreadCount > 99 ? "99+" : freeClassUnreadCount}
+                        {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
                       </span>
                     )}
                   </Link>
@@ -566,9 +568,9 @@ export default function Navbar() {
                     <span>Paperino Labs</span>
                   </span>
                   <div className="flex items-center gap-2">
-                    {labsTotalUnreadCount > 0 && (
+                    {fcfPulseCount > 0 && (
                       <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
-                        {labsTotalUnreadCount > 99 ? "99+" : labsTotalUnreadCount}
+                        {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
                       </span>
                     )}
                     <ChevronDown size={14} className={`transition-transform duration-300 text-cyan-400 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
@@ -586,9 +588,9 @@ export default function Navbar() {
                         <Building2 size={16} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
                         <span>Free Class Finder</span>
                       </span>
-                      {freeClassUnreadCount > 0 && (
+                      {fcfPulseCount > 0 && (
                         <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
-                          {freeClassUnreadCount > 99 ? "99+" : freeClassUnreadCount}
+                          {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
                         </span>
                       )}
                     </Link>

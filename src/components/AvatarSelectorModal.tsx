@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AVATARS } from './UserAvatar';
 import { Sparkles, Check, ChevronRight } from 'lucide-react';
 
@@ -14,7 +14,14 @@ export default function AvatarSelectorModal({ onSelect, isOpen, isFirstLogin = t
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (!isOpen) return null;
+  
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
+if (!isOpen) return null;
 
   const handleSave = async () => {
     if (!selected) return;

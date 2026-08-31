@@ -15,6 +15,7 @@ interface CreateCourseModalProps {
   initialSemester?: string;
   lockDepartment?: boolean;
   lockSemester?: boolean;
+  mode?: "course" | "department";
 }
 
 export default function CreateCourseModal({ 
@@ -23,7 +24,8 @@ export default function CreateCourseModal({
   initialDeptId, 
   initialSemester,
   lockDepartment = false,
-  lockSemester = false
+  lockSemester = false,
+  mode = "course"
 }: CreateCourseModalProps) {
   const { departments, createDepartment, createSubject } = useSubjects();
   const { playSuccess } = useSound();
@@ -46,12 +48,16 @@ export default function CreateCourseModal({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  // Only show approved departments to non-admins
-  const visibleDepartments = departments.filter(d => d.status === "approved" || isAdmin);
+  // Only show approved departments to non-admins, or departments created by them
+  const visibleDepartments = departments.filter(d => d.status === "approved" || isAdmin || (user && d.createdBy === user.uid));
 
   useEffect(() => {
     if (isOpen) {
-      setDeptMode("select");
+      if (mode === "department") {
+        setDeptMode("new");
+      } else {
+        setDeptMode("select");
+      }
       // Set default selected department to the prefilled one or first available
       const firstDept = initialDeptId || visibleDepartments[0]?.id || "";
       setSelectedDeptId(firstDept);
@@ -69,6 +75,17 @@ export default function CreateCourseModal({
       setLoading(false);
     }
   }, [isOpen, departments, initialDeptId, initialSemester]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   // Update semester options when department changes
   useEffect(() => {
@@ -98,13 +115,21 @@ export default function CreateCourseModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (deptMode === "new" && !newDeptName.trim()) {
-      setError("Department Name is required.");
-      return;
-    }
-    if (!subjectName.trim()) {
-      setError("Subject Name is required.");
-      return;
+    if (deptMode === "new") {
+      if (!newDeptName.trim()) {
+        setError("Department Name is required.");
+        return;
+      }
+      const sems = parseInt(newDeptSemesters);
+      if (isNaN(sems) || sems <= 0) {
+        setError("Number of Semesters must be a valid positive number.");
+        return;
+      }
+    } else {
+      if (!subjectName.trim()) {
+        setError("Subject Name is required.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -112,11 +137,10 @@ export default function CreateCourseModal({
 
     try {
       const isSuggestion = !isAdmin;
-      let finalDeptId = selectedDeptId;
 
       if (deptMode === "new") {
-        // Create department request
-        finalDeptId = await createDepartment(
+        // ONLY create department request
+        await createDepartment(
           newDeptName,
           newDeptCode || newDeptName.substring(0, 3).toUpperCase(),
           parseInt(newDeptSemesters) || 8,
@@ -133,7 +157,15 @@ export default function CreateCourseModal({
             "department_suggested"
           );
         }
+
+        setSuccess(true);
+        playSuccess();
+        setTimeout(() => onClose(), 2000);
+        return; // STOP EXECUTION HERE, do not create subject
       }
+
+      // Existing Course/Subject creation logic
+      let finalDeptId = selectedDeptId;
 
       // Create subject request
       await createSubject(
@@ -150,7 +182,7 @@ export default function CreateCourseModal({
         await notifyAdmins(
           db,
           "New Subject Suggested 📚",
-          `${user?.displayName || "A contributor"} suggested a new subject: ${subjectName} under ${deptMode === 'new' ? newDeptName : finalDeptId}.`,
+          `${user?.displayName || "A contributor"} suggested a new subject: ${subjectName} under ${finalDeptId}.`,
           "subject_suggested"
         );
       }
@@ -173,7 +205,7 @@ export default function CreateCourseModal({
 
         <div className="p-6 border-b border-white/5 flex justify-between items-center relative z-10 bg-white/[0.02]">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Plus className="text-fuchsia-400" /> Dynamic Course Creation
+            <Plus className="text-fuchsia-400" /> {mode === "department" ? "Suggest Department" : "Dynamic Course Creation"}
           </h2>
           <button onClick={!loading ? onClose : undefined} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors" disabled={loading}>
             <X size={20} />
@@ -187,7 +219,7 @@ export default function CreateCourseModal({
                 <CheckCircle2 size={40} className="text-emerald-400" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">
-                {(isContributor && !isAdmin) ? "Request Submitted!" : "Course Added!"}
+                {(isContributor && !isAdmin) ? "Request Submitted!" : (mode === "department" ? "Department Added!" : "Course Added!")}
               </h3>
               <p className="text-emerald-400 text-center">
                 {(isContributor && !isAdmin) 
@@ -199,34 +231,36 @@ export default function CreateCourseModal({
             <form onSubmit={handleSubmit} className="space-y-4">
               
               {/* Step 1: Select Department */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Department</label>
-                <select 
-                  value={deptMode === "new" ? "create_new" : selectedDeptId}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "create_new") {
-                      setDeptMode("new");
-                    } else {
-                      setDeptMode("select");
-                      setSelectedDeptId(val);
-                    }
-                  }}
-                  disabled={loading || lockDepartment}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {visibleDepartments.map(d => (
-                    <option key={d.id} value={d.id} className="bg-[#07050d] text-white">
-                      {d.name} ({d.code})
-                    </option>
-                  ))}
-                  {!lockDepartment && (
-                    <option value="create_new" className="bg-[#07050d] text-fuchsia-400 font-semibold">
-                      + Create New Department
-                    </option>
-                  )}
-                </select>
-              </div>
+              {mode !== "department" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Department</label>
+                  <select 
+                    value={deptMode === "new" ? "create_new" : selectedDeptId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "create_new") {
+                        setDeptMode("new");
+                      } else {
+                        setDeptMode("select");
+                        setSelectedDeptId(val);
+                      }
+                    }}
+                    disabled={loading || lockDepartment}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {visibleDepartments.map(d => (
+                      <option key={d.id} value={d.id} className="bg-[#07050d] text-white">
+                        {d.name} ({d.code})
+                      </option>
+                    ))}
+                    {!lockDepartment && (
+                      <option value="create_new" className="bg-[#07050d] text-fuchsia-400 font-semibold">
+                        + Create New Department
+                      </option>
+                    )}
+                  </select>
+                </div>
+              )}
 
               {/* If "Create New Department" Selected, render extra department configuration fields */}
               {deptMode === "new" && (
@@ -278,48 +312,52 @@ export default function CreateCourseModal({
               )}
 
               {/* Step 2: Dynamic Semester Selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Semester</label>
-                <select 
-                  value={semester}
-                  onChange={(e) => setSemester(e.target.value)}
-                  disabled={loading || lockSemester}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {getSemesterOptions().map(s => (
-                    <option key={s} value={s} className="bg-[#07050d] text-white">Semester {s}</option>
-                  ))}
-                </select>
-              </div>
+              {deptMode !== "new" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Semester</label>
+                  <select 
+                    value={semester}
+                    onChange={(e) => setSemester(e.target.value)}
+                    disabled={loading || lockSemester}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {getSemesterOptions().map(s => (
+                      <option key={s} value={s} className="bg-[#07050d] text-white">Semester {s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Step 3: Create Subject details */}
-              <div className="border-t border-white/5 pt-3 space-y-3">
-                <h3 className="text-xs font-bold text-fuchsia-400 uppercase tracking-widest">Subject Information</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Subject Name</label>
-                  <input 
-                    type="text" 
-                    value={subjectName} 
-                    onChange={(e) => setSubjectName(e.target.value)} 
-                    placeholder="e.g. Machine Learning" 
-                    required 
-                    disabled={loading}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors" 
-                  />
-                </div>
+              {deptMode !== "new" && (
+                <div className="border-t border-white/5 pt-3 space-y-3">
+                  <h3 className="text-xs font-bold text-fuchsia-400 uppercase tracking-widest">Subject Information</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1.5">Subject Name</label>
+                    <input 
+                      type="text" 
+                      value={subjectName} 
+                      onChange={(e) => setSubjectName(e.target.value)} 
+                      placeholder="e.g. Machine Learning" 
+                      required 
+                      disabled={loading}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors" 
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Subject Code (Optional)</label>
-                  <input 
-                    type="text" 
-                    value={subjectCode} 
-                    onChange={(e) => setSubjectCode(e.target.value)} 
-                    placeholder="e.g. 21CSC302J" 
-                    disabled={loading}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors uppercase" 
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1.5">Subject Code (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={subjectCode} 
+                      onChange={(e) => setSubjectCode(e.target.value)} 
+                      placeholder="e.g. 21CSC302J" 
+                      disabled={loading}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors uppercase" 
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {error && (
                 <div className="p-3 rounded-xl text-sm bg-red-500/10 border border-red-500/20 text-red-400">
@@ -327,9 +365,23 @@ export default function CreateCourseModal({
                 </div>
               )}
 
+              {deptMode === "new" && mode !== "department" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeptMode("select");
+                    setSelectedDeptId(visibleDepartments[0]?.id || "");
+                  }}
+                  className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors py-2"
+                  disabled={loading}
+                >
+                  &larr; Back to Create Course
+                </button>
+              )}
+
               <button 
                 type="submit" 
-                disabled={loading || !subjectName.trim() || (deptMode === "new" && !newDeptName.trim())} 
+                disabled={loading || (deptMode === "new" ? !newDeptName.trim() : !subjectName.trim())} 
                 className="w-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)]"
               >
                 {loading ? (
@@ -340,7 +392,9 @@ export default function CreateCourseModal({
                 ) : (
                   <>
                     <BookOpen size={18} /> 
-                    {(isContributor && !isAdmin) ? "Submit Suggestion" : "Create Course"}
+                    {deptMode === "new" 
+                      ? ((isContributor && !isAdmin) ? "Suggest Department" : "Create Department")
+                      : ((isContributor && !isAdmin) ? "Submit Suggestion" : "Create Course")}
                   </>
                 )}
               </button>

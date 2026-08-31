@@ -197,8 +197,8 @@ export default function SubjectRequestsAdminPage() {
         <div className="glass-panel rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
           
           {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full text-left border-collapse table-auto">
+          <div className="hidden lg:block">
+            <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-purple-400 text-xs font-semibold uppercase tracking-wider">
                   <th className="py-4 px-4 w-[25%]">Subject</th>
@@ -223,10 +223,10 @@ export default function SubjectRequestsAdminPage() {
                     </td>
                     <td className="py-4 px-4 text-purple-400 font-bold whitespace-nowrap">{req.semesterName}</td>
                     <td className="py-4 px-4">
-                      <div className="flex items-center gap-1.5 text-white whitespace-nowrap">
-                        <User size={13} /> {req.requestedBy}
+                      <div className="flex items-center gap-1.5 text-white truncate">
+                        <User size={13} className="flex-shrink-0" /> <span className="truncate">{req.requestedBy}</span>
                       </div>
-                      <p className="text-xs text-gray-500 truncate max-w-[150px]">{req.userEmail}</p>
+                      <p className="text-xs text-gray-500 truncate w-full">{req.userEmail}</p>
                     </td>
                     <td className="py-4 px-4 whitespace-nowrap">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${

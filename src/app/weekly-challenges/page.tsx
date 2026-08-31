@@ -65,6 +65,17 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
     setErrorMsg(null);

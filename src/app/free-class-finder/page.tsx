@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { useBadges } from "@/context/BadgeContext";
+import { usePulseNotifications } from "@/context/NotificationContext";
 import { 
   FreeClassReport, FreeClassConfig, DEFAULT_FREE_CLASS_CONFIG, 
   calculateCommunityConfidence, getRemainingTimeText, formatTimeAgo, formatTimestampDetails 
@@ -21,12 +22,14 @@ function FreeClassFinderContent() {
   const { user, isAdmin } = useAuth();
   const { showToast } = useToast();
   const { markFreeClassSeen } = useBadges();
+  const { markPulseCategoryAsRead } = usePulseNotifications();
   const searchParams = useSearchParams();
 
   // Clear unread badge when user views Free Class Finder
   useEffect(() => {
     markFreeClassSeen();
-  }, [markFreeClassSeen]);
+    markPulseCategoryAsRead("Free Class Finder");
+  }, [markFreeClassSeen, markPulseCategoryAsRead]);
 
   const [reports, setReports] = useState<FreeClassReport[]>([]);
   const [config, setConfig] = useState<FreeClassConfig>(DEFAULT_FREE_CLASS_CONFIG);

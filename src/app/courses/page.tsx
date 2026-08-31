@@ -12,21 +12,31 @@ import { sortDepartments } from "@/lib/courseSorting";
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { departments, deptMaterialCounts, listenToDeptsWithMaterials, loading } = useSubjects();
-  const { user } = useAuth();
-
+  const { departments, deptMaterialCounts, listenToDeptsWithMaterials, loading, allSubjectsList } = useSubjects();
+  const { user, isAdmin } = useAuth();
+  
   useEffect(() => {
     const unsub = listenToDeptsWithMaterials();
     return () => unsub();
   }, [listenToDeptsWithMaterials]);
 
-  // Filter approved departments only for public display
-  const approvedDepts = departments.filter(d => d.status === "approved");
+  // Filter for approved or admin or created by current user
+  const visibleDepts = departments.filter(d => d.status === "approved" || isAdmin || (user && d.createdBy === user.uid));
+  
+  const filteredDepts = visibleDepts.filter(d => {
+    const searchLower = searchQuery.toLowerCase().trim();
+    if (!searchLower) return true;
 
-  const filteredDepts = approvedDepts.filter(d => 
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const matchDeptName = d.name.toLowerCase().includes(searchLower);
+    const matchDeptCode = d.code.toLowerCase().includes(searchLower);
+
+    const hasMatchingSubject = allSubjectsList.some(s => 
+      s.departmentId === d.id && 
+      (s.name.toLowerCase().includes(searchLower) || (s.code || '').toLowerCase().includes(searchLower))
+    );
+
+    return matchDeptName || matchDeptCode || hasMatchingSubject;
+  });
 
   const sortedDepts = sortDepartments(filteredDepts, deptMaterialCounts);
 
@@ -132,7 +142,7 @@ export default function CoursesPage() {
                   onClick={() => setIsModalOpen(true)}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold transition-all shadow-[0_0_20px_rgba(232,121,249,0.35)] hover:shadow-[0_0_30px_rgba(232,121,249,0.55)] cursor-pointer"
                 >
-                  <Plus size={18} /> Suggest Course
+                  <Plus size={18} /> Suggest Department
                 </button>
               )}
             </div>
@@ -160,46 +170,72 @@ export default function CoursesPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full relative z-10 mt-4">
-              {sortedDepts.map((dept, i) => (
-                <Link key={dept.id} href={dept.id.toLowerCase() === 'btech' ? '/srm/btech' : `/courses/${dept.id}`}>
-                  <div 
-                    className="vision-glass p-6 rounded-[2rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[160px] animate-in fade-in slide-in-from-bottom-8 relative overflow-hidden"
-                    style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              {sortedDepts.map((dept, i) => {
+                let matchingSubjectName = null;
+                const searchLower = searchQuery.toLowerCase().trim();
+                
+                if (searchLower) {
+                  const matchDeptName = dept.name.toLowerCase().includes(searchLower);
+                  const matchDeptCode = dept.code.toLowerCase().includes(searchLower);
+                  
+                  if (!matchDeptName && !matchDeptCode) {
+                    const matchingSubject = allSubjectsList.find(s => 
+                      s.departmentId === dept.id && 
+                      (s.name.toLowerCase().includes(searchLower) || (s.code || '').toLowerCase().includes(searchLower))
+                    );
+                    if (matchingSubject) {
+                      matchingSubjectName = matchingSubject.name;
+                    }
+                  }
+                }
 
-                    <div className="flex items-center justify-between mb-4 relative z-10">
-                      <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
-                        <GraduationCap size={22} />
+                return (
+                  <Link key={dept.id} href={dept.id.toLowerCase() === 'btech' ? '/srm/btech' : `/courses/${dept.id}`}>
+                    <div 
+                      className="vision-glass p-6 rounded-[2rem] group cursor-pointer vision-hover h-full flex flex-col justify-between min-h-[160px] animate-in fade-in slide-in-from-bottom-8 relative overflow-hidden"
+                      style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                      <div className="flex items-center justify-between mb-4 relative z-10">
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-sm">
+                          <GraduationCap size={22} />
+                        </div>
+
+                        <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                          {dept.code}
+                        </span>
                       </div>
 
-                      <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                        {dept.code}
-                      </span>
-                    </div>
-
-                    <div className="relative z-10">
-                      <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
-                        {dept.name}
-                      </h3>
-                      <div className="flex items-center justify-between text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
-                        <span className="flex items-center gap-1">
-                          <Calendar size={12} /> {dept.totalSemesters} Semesters
-                        </span>
-                        <span className="flex items-center gap-0.5 font-semibold">
-                          Explore <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                        </span>
+                      <div className="relative z-10">
+                        <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
+                          {dept.name}
+                        </h3>
+                        {matchingSubjectName && (
+                          <div className="mb-3 text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-md px-2 py-1.5 flex items-start gap-1.5">
+                            <Search size={12} className="mt-0.5 shrink-0 text-purple-400" />
+                            <span className="line-clamp-2">Includes: <strong>{matchingSubjectName}</strong></span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={12} /> {dept.totalSemesters} Semesters
+                          </span>
+                          <span className="flex items-center gap-0.5 font-semibold">
+                            Explore <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      <CreateCourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <CreateCourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} mode="department" />
     </div>
   );
 }
