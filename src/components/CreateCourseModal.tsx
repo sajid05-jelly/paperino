@@ -27,7 +27,7 @@ export default function CreateCourseModal({
   lockSemester = false,
   mode = "course"
 }: CreateCourseModalProps) {
-  const { departments, createDepartment, createSubject } = useSubjects();
+  const { departments, subjects, lazyLoadSubjects, createDepartment, createSubject } = useSubjects();
   const { playSuccess } = useSound();
   const { user, isContributor, isAdmin } = useAuth();
 
@@ -98,6 +98,23 @@ export default function CreateCourseModal({
     }
   }, [selectedDeptId, deptMode, initialDeptId, initialSemester]);
 
+  // Lazy load subjects for selected department and semester
+  useEffect(() => {
+    if (isOpen && deptMode === "select" && selectedDeptId && semester) {
+      lazyLoadSubjects(selectedDeptId, semester);
+    }
+  }, [isOpen, deptMode, selectedDeptId, semester, lazyLoadSubjects]);
+
+  // Duplicate Subject Detection
+  const currentDept = visibleDepartments.find(d => d.id === selectedDeptId);
+  const deptDisplayName = currentDept ? (currentDept.code || currentDept.name) : selectedDeptId.toUpperCase();
+  const existingSubjects = (deptMode === "select" && selectedDeptId && semester) ? (subjects[selectedDeptId]?.[semester] || []) : [];
+  const isDuplicate = deptMode === "select" && subjectName.trim().length > 0 && existingSubjects.some(s => {
+    const nameMatch = s.name.trim().toLowerCase() === subjectName.trim().toLowerCase();
+    const codeMatch = Boolean(subjectCode.trim() && s.code && s.code.trim().toLowerCase() === subjectCode.trim().toLowerCase());
+    return nameMatch || codeMatch;
+  });
+
   if (!isOpen) return null;
 
   // Calculate semester options list dynamically
@@ -166,6 +183,12 @@ export default function CreateCourseModal({
 
       // Existing Course/Subject creation logic
       let finalDeptId = selectedDeptId;
+
+      if (isDuplicate) {
+        setError(`This subject already exists in ${deptDisplayName} – Semester ${semester}.`);
+        setLoading(false);
+        return;
+      }
 
       // Create subject request
       await createSubject(
@@ -341,8 +364,15 @@ export default function CreateCourseModal({
                       placeholder="e.g. Machine Learning" 
                       required 
                       disabled={loading}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 focus:bg-white/10 transition-colors" 
+                      className={`w-full bg-white/5 border rounded-xl p-3 text-white outline-none transition-colors ${
+                        isDuplicate ? 'border-emerald-500/50 focus:border-emerald-500' : 'border-white/10 focus:border-fuchsia-500 focus:bg-white/10'
+                      }`}
                     />
+                    {isDuplicate && (
+                      <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-2 px-0.5 animate-in fade-in duration-200">
+                        <span>✓ This subject already exists in {deptDisplayName} – Semester {semester}.</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -381,7 +411,7 @@ export default function CreateCourseModal({
 
               <button 
                 type="submit" 
-                disabled={loading || (deptMode === "new" ? !newDeptName.trim() : !subjectName.trim())} 
+                disabled={loading || isDuplicate || (deptMode === "new" ? !newDeptName.trim() : !subjectName.trim())} 
                 className="w-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)]"
               >
                 {loading ? (

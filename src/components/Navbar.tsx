@@ -9,7 +9,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2 } from "lucide-react";
+import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -488,188 +488,304 @@ export default function Navbar() {
           />
 
           {/* Drawer Panel */}
-          <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[78vw] max-w-[320px] xl:hidden flex flex-col bg-[#07050e]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-20px_0_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-right duration-300">
+          <div className="fixed top-0 right-0 bottom-0 z-[10000] w-[82vw] max-w-[340px] xl:hidden flex flex-col bg-[#07050e]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-20px_0_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-right duration-300">
 
             {/* Drawer Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
-                <span className="text-sm font-semibold text-white tracking-wide">Menu</span>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.9)] animate-pulse" />
+                <span className="text-sm font-bold text-white tracking-wide">Menu</span>
               </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-colors"
+                aria-label="Close menu"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Scrollable Nav Links */}
-            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-4">
 
-              {/* Main Tools */}
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Tools</p>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/courses" className={getMobileLinkClass("/courses")}>Materials</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/gpa" className={getMobileLinkClass("/gpa")}>GPA Calculator</Link>
-              
-              {(() => {
-                const isActive = pathname === '/weekly-challenges' || pathname?.startsWith('/weekly-challenges/');
-                return (
+              {/* Section 1: TOOLS */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/80 px-2.5 pb-2">Tools</p>
+                <div className="space-y-1.5">
+                  {/* Materials */}
                   <Link 
                     onClick={() => setIsMobileMenuOpen(false)} 
-                    href="/weekly-challenges" 
-                    className={`flex items-center justify-between w-full px-3.5 py-3 rounded-xl transition-all duration-300 border text-sm font-bold tracking-wide cursor-pointer my-1.5 ${
-                      isActive
-                        ? 'bg-gradient-to-r from-purple-900/90 via-purple-950 to-black text-purple-200 border-purple-400/50 shadow-[0_0_20px_rgba(168,85,247,0.3)] ring-1 ring-purple-400/30'
-                        : 'bg-gradient-to-r from-purple-950/40 via-purple-900/20 to-black/60 text-purple-200/90 border-purple-500/20 hover:border-purple-400/50 hover:text-white shadow-[0_0_12px_rgba(147,51,234,0.15)]'
+                    href="/courses" 
+                    className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                      (pathname === '/courses' || pathname?.startsWith('/courses/'))
+                        ? 'bg-violet-500/15 text-violet-200 border-violet-500/35 font-semibold shadow-[0_0_15px_rgba(139,92,246,0.15)]'
+                        : 'bg-white/[0.03] border-white/[0.06] text-gray-300 hover:text-white hover:bg-white/[0.07] hover:border-white/15 font-medium'
                     }`}
                   >
-                    <span className="flex items-center gap-2">
-                      <Gamepad2 size={16} className={`text-purple-400 ${isActive ? 'animate-pulse text-purple-300' : ''}`} />
-                      <span>Weekly Challenges</span>
+                    <span className="flex items-center gap-3">
+                      <BookOpen size={17} className={(pathname === '/courses' || pathname?.startsWith('/courses/')) ? 'text-violet-400' : 'text-gray-400'} />
+                      <span>Materials</span>
                     </span>
-                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,1)]' : 'bg-purple-500/40'}`} />
+                    {(pathname === '/courses' || pathname?.startsWith('/courses/')) && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
+                    )}
                   </Link>
-                );
-              })()}
+
+                  {/* GPA Calculator */}
+                  <Link 
+                    onClick={() => setIsMobileMenuOpen(false)} 
+                    href="/gpa" 
+                    className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                      (pathname === '/gpa' || pathname?.startsWith('/gpa/'))
+                        ? 'bg-violet-500/15 text-violet-200 border-violet-500/35 font-semibold shadow-[0_0_15px_rgba(139,92,246,0.15)]'
+                        : 'bg-white/[0.03] border-white/[0.06] text-gray-300 hover:text-white hover:bg-white/[0.07] hover:border-white/15 font-medium'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Calculator size={17} className={(pathname === '/gpa' || pathname?.startsWith('/gpa/')) ? 'text-violet-400' : 'text-gray-400'} />
+                      <span>GPA Calculator</span>
+                    </span>
+                    {(pathname === '/gpa' || pathname?.startsWith('/gpa/')) && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
+                    )}
+                  </Link>
+
+                  {/* Weekly Challenges */}
+                  {(() => {
+                    const isActive = pathname === '/weekly-challenges' || pathname?.startsWith('/weekly-challenges/');
+                    return (
+                      <Link 
+                        onClick={() => setIsMobileMenuOpen(false)} 
+                        href="/weekly-challenges" 
+                        className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                          isActive
+                            ? 'bg-gradient-to-r from-purple-900/80 via-purple-950 to-black text-purple-200 border-purple-400/50 shadow-[0_0_20px_rgba(168,85,247,0.3)] font-semibold'
+                            : 'bg-purple-950/20 text-purple-200/90 border-purple-500/25 hover:border-purple-400/50 hover:bg-purple-900/30 hover:text-white font-medium'
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <Gamepad2 size={17} className={`text-purple-400 ${isActive ? 'animate-pulse text-purple-300' : ''}`} />
+                          <span>Weekly Challenges</span>
+                        </span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,1)]' : 'bg-purple-500/40'}`} />
+                      </Link>
+                    );
+                  })()}
+                </div>
+              </div>
 
               {/* Divider */}
-              <div className="h-px bg-white/[0.06] my-3 mx-2" />
+              <div className="h-px bg-white/[0.06] mx-1" />
 
-              {/* Discover */}
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Discover</p>
-              <div className="relative w-full">
-                <Link onClick={() => setIsMobileMenuOpen(false)} href="/pulse" className={getMobileLinkClass("/pulse", true)}>Paperino Pulse</Link>
-                {pulseUnreadCount > 0 && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
-                    {pulseUnreadCount > 9 ? "9+" : pulseUnreadCount}
-                  </span>
-                )}
-              </div>
-              {user && !isAdmin && (
-                <div className="relative w-full">
-                  <Link onClick={() => setIsMobileMenuOpen(false)} href="/contributor" className={getMobileLinkClass("/contributor", true)}>Dashboard</Link>
-                  {dashboardUnreadCount > 0 && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(217,70,239,0.7)]">
-                      {dashboardUnreadCount >= 10 ? "10+" : dashboardUnreadCount}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Collapsible Mobile Paperino Labs Dropdown with Badge */}
-              <div className="mx-3 my-3 bg-gradient-to-br from-violet-600/[0.07] to-cyan-500/[0.07] backdrop-blur-3xl border border-violet-500/20 hover:border-cyan-500/35 rounded-2xl p-1 transition-all duration-300 shadow-[0_0_20px_rgba(139,92,246,0.06)]">
-                <button
-                  onClick={() => setIsLabsMobileOpen(!isLabsMobileOpen)}
-                  className="w-full flex items-center justify-between py-3 px-4 text-white hover:text-cyan-300 transition-all font-bold text-sm cursor-pointer rounded-xl"
-                >
-                  <span className="flex items-center gap-2">
-                    <FlaskConical size={15} className="text-cyan-400 animate-pulse" />
-                    <span>Paperino Labs</span>
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {fcfPulseCount > 0 && (
-                      <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
-                        {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
-                      </span>
-                    )}
-                    <ChevronDown size={14} className={`transition-transform duration-300 text-cyan-400 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
-                  </div>
-                </button>
-                
-                {isLabsMobileOpen && (
-                  <div className="px-2 pb-2 space-y-1 animate-in fade-in duration-300">
+              {/* Section 2: DISCOVER */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/80 px-2.5 pb-2">Discover</p>
+                <div className="space-y-1.5">
+                  {/* Paperino Pulse */}
+                  <div className="relative w-full">
                     <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); markFreeClassSeen(); }} 
-                      href="/free-class-finder" 
-                      className="flex items-center justify-between w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
+                      onClick={() => setIsMobileMenuOpen(false)} 
+                      href="/pulse" 
+                      className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                        (pathname === '/pulse' || pathname?.startsWith('/pulse/'))
+                          ? 'bg-cyan-500/15 text-cyan-200 border-cyan-500/40 font-semibold shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                          : 'bg-cyan-500/[0.04] border-cyan-500/20 text-cyan-200/90 hover:bg-cyan-500/10 hover:border-cyan-500/35 hover:text-cyan-100 font-medium'
+                      }`}
                     >
                       <span className="flex items-center gap-3">
-                        <Building2 size={16} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
-                        <span>Free Class Finder</span>
+                        <Zap size={17} className="text-cyan-400 shrink-0" />
+                        <span>Paperino Pulse</span>
                       </span>
-                      {fcfPulseCount > 0 && (
-                        <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
-                          {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
+                      {pulseUnreadCount > 0 ? (
+                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
+                          {pulseUnreadCount > 9 ? "9+" : pulseUnreadCount}
                         </span>
+                      ) : (
+                        (pathname === '/pulse' || pathname?.startsWith('/pulse/')) && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                        )
                       )}
                     </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/pyq" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <BrainCircuit size={16} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] shrink-0" />
-                      <span>PYQ Analyzer</span>
-                    </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/ats" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <BrainCircuit size={16} className="text-violet-400 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)] shrink-0" />
-                      <span>ATS Analyzer</span>
-                    </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/exam-emergency" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <ShieldAlert size={16} className="text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)] shrink-0" />
-                      <span>Exam Emergency</span>
-                    </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/attendance-mafia" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <ShieldCheck size={16} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)] shrink-0" />
-                      <span>Attendance Shield</span>
-                    </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/survival-notes" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <GraduationCap size={16} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] shrink-0" />
-                      <span>Senior Insights</span>
-                    </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/career-dna" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <BrainCircuit size={16} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.6)] shrink-0" />
-                      <span>Career DNA</span>
-                    </Link>
-                    <Link 
-                      onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                      href="/github-intelligence" 
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-white/[0.04] active:bg-white/[0.06] text-gray-300 hover:text-white transition-all text-xs font-bold"
-                    >
-                      <FolderGit2 size={16} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.9)] shrink-0" />
-                      <span>GitHub Intelligence</span>
-                    </Link>
                   </div>
-                )}
+
+                  {/* Dashboard (Contributor) */}
+                  {user && !isAdmin && (
+                    <div className="relative w-full">
+                      <Link 
+                        onClick={() => setIsMobileMenuOpen(false)} 
+                        href="/contributor" 
+                        className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                          (pathname === '/contributor' || pathname?.startsWith('/contributor/'))
+                            ? 'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-500/40 font-semibold shadow-[0_0_15px_rgba(217,70,239,0.2)]'
+                            : 'bg-fuchsia-500/[0.04] border-fuchsia-500/20 text-fuchsia-200/90 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/35 hover:text-fuchsia-100 font-medium'
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <LayoutDashboard size={17} className="text-fuchsia-400 shrink-0" />
+                          <span>Dashboard</span>
+                        </span>
+                        {dashboardUnreadCount > 0 ? (
+                          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(217,70,239,0.7)]">
+                            {dashboardUnreadCount >= 10 ? "10+" : dashboardUnreadCount}
+                          </span>
+                        ) : (
+                          (pathname === '/contributor' || pathname?.startsWith('/contributor/')) && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_rgba(217,70,239,0.8)]" />
+                          )
+                        )}
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Paperino Labs Dropdown */}
+                  <div className="w-full bg-gradient-to-br from-violet-600/[0.07] to-cyan-500/[0.07] border border-violet-500/20 hover:border-cyan-500/35 rounded-xl p-1 transition-all duration-200">
+                    <button
+                      onClick={() => setIsLabsMobileOpen(!isLabsMobileOpen)}
+                      className="w-full flex items-center justify-between min-h-[44px] px-3 py-2 text-white hover:text-cyan-300 transition-all font-semibold text-sm cursor-pointer rounded-lg active:scale-[0.99]"
+                    >
+                      <span className="flex items-center gap-3">
+                        <FlaskConical size={17} className="text-cyan-400 animate-pulse shrink-0" />
+                        <span>Paperino Labs</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {fcfPulseCount > 0 && (
+                          <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
+                            {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
+                          </span>
+                        )}
+                        <ChevronDown size={15} className={`transition-transform duration-300 text-cyan-400 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+                    
+                    {isLabsMobileOpen && (
+                      <div className="px-1.5 pb-1.5 pt-1 space-y-1 animate-in fade-in duration-200 border-t border-white/[0.06] mt-1">
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); markFreeClassSeen(); }} 
+                          href="/free-class-finder" 
+                          className={`flex items-center justify-between w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/free-class-finder' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <Building2 size={15} className="text-emerald-400 shrink-0" />
+                            <span>Free Class Finder</span>
+                          </span>
+                          {fcfPulseCount > 0 && (
+                            <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
+                              {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
+                            </span>
+                          )}
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/pyq" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/pyq' ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <BrainCircuit size={15} className="text-amber-400 shrink-0" />
+                          <span>PYQ Analyzer</span>
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/ats" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/ats' ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <BrainCircuit size={15} className="text-violet-400 shrink-0" />
+                          <span>ATS Analyzer</span>
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/exam-emergency" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/exam-emergency' ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <ShieldAlert size={15} className="text-rose-400 shrink-0" />
+                          <span>Exam Emergency</span>
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/attendance-mafia" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/attendance-mafia' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <ShieldCheck size={15} className="text-emerald-400 shrink-0" />
+                          <span>Attendance Shield</span>
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/survival-notes" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/survival-notes' ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <GraduationCap size={15} className="text-amber-400 shrink-0" />
+                          <span>Senior Insights</span>
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/career-dna" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/career-dna' ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <BrainCircuit size={15} className="text-purple-400 shrink-0" />
+                          <span>Career DNA</span>
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/github-intelligence" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/github-intelligence' ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <FolderGit2 size={15} className="text-purple-400 shrink-0" />
+                          <span>GitHub Intelligence</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Developer */}
+                  <Link 
+                    onClick={() => setIsMobileMenuOpen(false)} 
+                    href="/developer" 
+                    className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                      (pathname === '/developer' || pathname?.startsWith('/developer/'))
+                        ? 'bg-orange-500/15 text-orange-200 border-orange-500/40 font-semibold shadow-[0_0_15px_rgba(249,115,22,0.2)]'
+                        : 'bg-orange-500/[0.04] border-orange-500/20 text-orange-200/90 hover:bg-orange-500/10 hover:border-orange-500/35 hover:text-orange-100 font-medium'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Code2 size={17} className="text-orange-400 shrink-0" />
+                      <span>Developer</span>
+                    </span>
+                    {(pathname === '/developer' || pathname?.startsWith('/developer/')) && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+                    )}
+                  </Link>
+                </div>
               </div>
 
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/developer" className={getMobileLinkClass("/developer", true)}>Developer</Link>
-
-              {/* Admin with Badge in Mobile */}
+              {/* Section 3: ADMIN (if admin) */}
               {isAdmin && (
                 <>
-                  <div className="h-px bg-white/[0.06] my-3 mx-2" />
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-600 px-3 pb-1.5">Admin</p>
-                  <div className="relative w-full">
-                    <Link onClick={() => setIsMobileMenuOpen(false)} href="/admin/upload" className={getMobileLinkClass("/admin", true)}>
-                      Admin Dashboard
-                    </Link>
-                    {adminTotalUnreadCount > 0 && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
-                        {adminTotalUnreadCount > 99 ? "99+" : adminTotalUnreadCount}
-                      </span>
-                    )}
+                  <div className="h-px bg-white/[0.06] mx-1" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/80 px-2.5 pb-2">Admin</p>
+                    <div className="relative w-full">
+                      <Link 
+                        onClick={() => setIsMobileMenuOpen(false)} 
+                        href="/admin/upload" 
+                        className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                          pathname?.startsWith('/admin')
+                            ? 'bg-purple-500/15 text-purple-200 border-purple-500/40 font-semibold shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                            : 'bg-purple-500/[0.04] border-purple-500/20 text-purple-200/90 hover:bg-purple-500/10 hover:border-purple-500/35 hover:text-purple-100 font-medium'
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <LayoutDashboard size={17} className="text-purple-400 shrink-0" />
+                          <span>Admin Dashboard</span>
+                        </span>
+                        {adminTotalUnreadCount > 0 ? (
+                          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
+                            {adminTotalUnreadCount > 99 ? "99+" : adminTotalUnreadCount}
+                          </span>
+                        ) : (
+                          pathname?.startsWith('/admin') && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                          )
+                        )}
+                      </Link>
+                    </div>
                   </div>
                 </>
               )}

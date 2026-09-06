@@ -114,6 +114,11 @@ export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
 
     // Process Dynamic Departments
     deptDocs.forEach((d) => {
+      const codeUpper = (d.code || "").toUpperCase().trim();
+      const nameLower = (d.name || "").toLowerCase().trim();
+      if (codeUpper === "COM" || codeUpper === "BTE" || codeUpper === "BME" || nameLower === "computer network" || nameLower === "btech cse aiml" || nameLower.includes("biomedical eng")) {
+        return;
+      }
       if (d.status === "approved" || !d.status) {
         departmentsMap.set(d.id, {
           id: d.id,

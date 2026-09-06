@@ -168,6 +168,13 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         }
       }
 
+      // Filter out deleted departments
+      deptList = deptList.filter((d) => {
+        const c = (d.code || "").toUpperCase().trim();
+        const n = (d.name || "").toLowerCase().trim();
+        return c !== "COM" && c !== "BTE" && c !== "BME" && n !== "computer network" && n !== "btech cse aiml" && !n.includes("biomedical eng");
+      });
+
       // Seed B.Tech department virtually/locally if empty, and try to persist it
       if (deptList.length === 0) {
         const defaultBTech: Department = {

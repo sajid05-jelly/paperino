@@ -6,6 +6,7 @@ import { GraduationCap, Calendar, Search, ChevronRight, Loader2, Plus, Building2
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 import CreateCourseModal from "@/components/CreateCourseModal";
+import GlobalSubjectSearch from "@/components/GlobalSubjectSearch";
 import { useAuth } from "@/context/AuthContext";
 import { sortDepartments } from "@/lib/courseSorting";
 
@@ -122,21 +123,7 @@ export default function CoursesPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-4 max-w-3xl mx-auto">
-              <div className="relative flex-1 w-full group">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-full blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-65 transition-opacity duration-500"></div>
-                <div className="relative flex items-center bg-[#07050d]/80 border border-white/10 group-focus-within:border-purple-500/50 rounded-full p-2 backdrop-blur-xl shadow-lg transition-colors">
-                  <div className="pl-4 pr-2 text-gray-400 group-focus-within:text-purple-400 transition-colors">
-                    <Search size={18} />
-                  </div>
-                  <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search SRM courses (e.g. B.Tech, MBA, MCA)..." 
-                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 py-2.5 text-sm md:text-base"
-                  />
-                </div>
-              </div>
+              <GlobalSubjectSearch subjects={allSubjectsList} departments={departments} />
               {user && (
                 <button 
                   onClick={() => setIsModalOpen(true)}

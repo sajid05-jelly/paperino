@@ -11,8 +11,6 @@ service cloud.firestore {
     // Check if the current user has the admin role in the database
     function isAdmin() {
       return isSignedIn() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
         (request.auth.token.email in [
           "mohamedsajid.sa@gmail.com",
           "sudharajsekar2005@gmail.com",
@@ -21,7 +19,10 @@ service cloud.firestore {
           "gameplayitlifeitis@gmail.com",
           "gameplayitlifeis@gmail.com",
           "gameplayitlife@gmail.com"
-        ])
+        ]) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         'role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 

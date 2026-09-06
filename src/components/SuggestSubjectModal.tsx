@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { useSound } from "@/hooks/useSound";
 import { sendEmailVerification } from "firebase/auth";
 import { notifyAdmins } from "@/lib/notifications";
+import { useSubjects } from "@/context/SubjectsContext";
 
 interface SuggestSubjectModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export default function SuggestSubjectModal({
   const { user } = useAuth();
   const { showToast } = useToast();
   const { playSuccess } = useSound();
+  const { subjects, lazyLoadSubjects } = useSubjects();
 
   const [subjectName, setSubjectName] = useState("");
   const [subjectCode, setSubjectCode] = useState("");
@@ -35,6 +37,20 @@ export default function SuggestSubjectModal({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isOpen && departmentId && semesterId) {
+      lazyLoadSubjects(departmentId, semesterId);
+    }
+  }, [isOpen, departmentId, semesterId, lazyLoadSubjects]);
+
+  // Duplicate subject detection in selected department + semester
+  const existingSubjects = subjects[departmentId]?.[semesterId] || [];
+  const isDuplicate = subjectName.trim().length > 0 && existingSubjects.some(s => {
+    const nameMatch = s.name.trim().toLowerCase() === subjectName.trim().toLowerCase();
+    const codeMatch = Boolean(subjectCode.trim() && s.code && s.code.trim().toLowerCase() === subjectCode.trim().toLowerCase());
+    return nameMatch || codeMatch;
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -47,19 +63,23 @@ export default function SuggestSubjectModal({
     }
   }, [isOpen]);
 
-  
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = '';
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-if (!isOpen) return null;
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectName.trim()) {
       setError("Subject Name is required.");
+      return;
+    }
+
+    if (isDuplicate) {
+      setError(`This subject already exists in ${departmentName} – Semester ${semesterId}.`);
       return;
     }
 
@@ -189,8 +209,15 @@ if (!isOpen) return null;
                   value={subjectName}
                   onChange={(e) => setSubjectName(e.target.value)}
                   required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-colors"
+                  className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                    isDuplicate ? 'border-emerald-500/50 focus:border-emerald-500' : 'border-white/10 focus:border-purple-500/50'
+                  }`}
                 />
+                {isDuplicate && (
+                  <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-2 px-0.5 animate-in fade-in duration-200">
+                    <span>✓ This subject already exists in {departmentName} – Semester {semesterId}.</span>
+                  </p>
+                )}
               </div>
 
               {/* Subject Code */}
@@ -240,7 +267,7 @@ if (!isOpen) return null;
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isDuplicate}
                 className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-purple-900/30"
               >
                 {loading && <Loader2 size={12} className="animate-spin" />}

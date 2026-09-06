@@ -21,6 +21,10 @@ export default function robots(): MetadataRoute.Robots {
           '/github-intelligence',
           '/team',
           '/privacy',
+          '/about',
+          '/contact',
+          '/terms',
+          '/disclaimer',
           '/weekly-challenges',
         ],
         disallow: [

@@ -31,9 +31,11 @@ export default function Footer() {
         {/* Right Side: Links */}
         <div className="flex flex-wrap justify-center gap-6 md:gap-8 text-sm text-gray-400 font-medium">
           {[
-            { label: "About Paperino", href: "/#about", external: false },
+            { label: "About", href: "/about", external: false },
+            { label: "Contact", href: "/contact", external: false },
             { label: "Privacy Policy", href: "/privacy", external: false },
-            { label: "Contact", href: "https://mail.google.com/mail/?view=cm&fs=1&to=paperino.study@gmail.com&su=Paperino Support", external: true },
+            { label: "Terms", href: "/terms", external: false },
+            { label: "Disclaimer", href: "/disclaimer", external: false },
             { label: "Developer", href: "/developer", external: false },
           ].map((link, i) => (
             link.external ? (

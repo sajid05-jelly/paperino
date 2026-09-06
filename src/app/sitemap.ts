@@ -24,10 +24,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
-      url: getAbsoluteUrl('/btech'),
+      url: getAbsoluteUrl('/about'),
       lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: getAbsoluteUrl('/contact'),
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
     },
     {
       url: getAbsoluteUrl('/pyq'),
@@ -79,6 +85,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: getAbsoluteUrl('/privacy'),
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: getAbsoluteUrl('/terms'),
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
+    {
+      url: getAbsoluteUrl('/disclaimer'),
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,

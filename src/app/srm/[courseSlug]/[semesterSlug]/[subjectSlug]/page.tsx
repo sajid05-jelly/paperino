@@ -124,26 +124,22 @@ export default async function SubjectSeoPage({
   const { subjects, departments } = await getAllUnifiedData();
   let subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
-  // Fallback for newly created dynamic subjects missing from the 5-minute server cache
-  if (!subject && adminDb) {
-    try {
-      // Query by departmentId only to avoid compound index requirements, then filter in memory
-      const snap = await adminDb.collection("dynamic_subjects")
-        .where("departmentId", "==", courseSlug)
-        .get();
-      
-      const fallbackSubjects = snap.docs
-        .map((d: any) => ({ id: d.id, ...d.data() }))
-        .filter((s: any) => String(s.semesterId) === String(semId) && s.status !== "pending");
-      
-      subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, fallbackSubjects as any);
-    } catch (err) {
-      console.warn("[SubjectSeoPage] Fallback lookup failed:", err);
-    }
-  }
-
+  // Fallback: If the subject isn't in the 5-minute server cache, we do NOT throw 404 immediately.
+  // Instead, we construct a "shell" subject from the URL parameters. 
+  // The client-side SubjectClientComponent will hydrate the real data from its own Context.
   if (!subject) {
-    notFound();
+    const titleCaseName = subjectSlug
+      .split("-")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+    subject = {
+      id: subjectSlug,
+      name: titleCaseName,
+      code: "",
+      departmentId: courseSlug,
+      semesterId: semId,
+    } as any;
   }
 
   const deptObj = departments.find(d => d.id === subject.departmentId);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CheckCircle2, Trash2, Calendar, User, BookOpen, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
@@ -84,8 +84,36 @@ export default function SubjectRequestsAdminPage() {
 
   const handleMarkCompleted = async (id: string) => {
     if (!user) return;
+    const reqToAccept = requests.find(r => r.id === id);
+    if (!reqToAccept) return;
+    
     setActioningId(id);
     try {
+      // 1. Insert into dynamic_subjects (so it appears on the course page)
+      const name = reqToAccept.subjectName;
+      const code = reqToAccept.subjectCode;
+      const deptId = reqToAccept.departmentId;
+      const semId = reqToAccept.semesterId;
+      
+      const generatedId = code 
+        ? code.toLowerCase().trim().replace(/[^a-z0-9]/g, "") 
+        : name.toLowerCase().trim().replace(/[^a-z0-9]/g, "-");
+        
+      const docId = `${deptId}_sem${semId}_${generatedId}`;
+
+      await setDoc(doc(db, "dynamic_subjects", docId), {
+        subjectId: generatedId,
+        name: name.trim(),
+        code: code ? code.trim() : "",
+        departmentId: deptId,
+        semesterId: semId,
+        createdBy: "system_admin_accept",
+        contributorId: reqToAccept.requestedBy || null,
+        contributorName: reqToAccept.userEmail ? reqToAccept.userEmail.split('@')[0] : "Contributor",
+        status: "approved",
+        createdAt: serverTimestamp()
+      }, { merge: true });
+
       try {
         const token = await user.getIdToken();
         const res = await fetch("/api/admin/data", {
@@ -108,7 +136,7 @@ export default function SubjectRequestsAdminPage() {
       }
 
       setRequests(prev => prev.map(req => req.id === id ? { ...req, status: "completed" } : req));
-      showToast("Request marked as completed successfully.", "success");
+      showToast("Request accepted and subject published.", "success");
     } catch (err) {
       console.error("Failed to update status:", err);
       showToast("Failed to update request status.", "error");

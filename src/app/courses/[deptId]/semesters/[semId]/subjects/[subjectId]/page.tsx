@@ -103,6 +103,19 @@ export default async function SubjectPage({ params }: { params: Promise<{ deptId
     materialsCount: serverMaterials.length,
   });
 
+  const serverOverview = {
+    subjectName,
+    subjectCode,
+    deptName,
+    deptCode,
+    semId: String(semId),
+    universityName: SITE_CONFIG.universityName,
+    materialsCount: serverMaterials.length,
+    notesCount: notes.length,
+    pyqsCount: pyqs.length,
+    questionsCount: questions.length,
+  };
+
   return (
     <>
       <script
@@ -110,74 +123,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ deptId
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <article className="sr-only opacity-0 h-0 overflow-hidden" aria-hidden="true">
-        <h1>{subjectName} {subjectCode ? `– ${subjectCode}` : ""}</h1>
-        <p>
-          Official study materials, notes, previous year question papers (PYQs), and question banks for {subjectName} {subjectCode ? `(${subjectCode})` : ""}, offered under {deptName} ({deptCode}) Semester {semId} at {SITE_CONFIG.universityName}.
-        </p>
-
-        <section>
-          <h2>Subject Overview</h2>
-          <ul>
-            <li><strong>Subject Name:</strong> {subjectName}</li>
-            {subjectCode && <li><strong>Subject Code:</strong> {subjectCode}</li>}
-            <li><strong>University:</strong> {SITE_CONFIG.universityName}</li>
-            <li><strong>Course / Department:</strong> {deptName} ({deptCode})</li>
-            <li><strong>Semester:</strong> Semester {semId}</li>
-            <li><strong>Available Resources:</strong> {serverMaterials.length} Verified Documents</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>Study Materials</h2>
-          {notes.length > 0 ? (
-            <ul>
-              {notes.map((m: any) => (
-                <li key={m.id}>
-                  <h3>{m.title || m.name || `${subjectName} Notes`}</h3>
-                  <p>{m.description || `Lecture notes and study resources for ${subjectName}.`}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Verified study notes and lecture materials for {subjectName} ({subjectCode || subjectId}) are curated and updated regularly on Paperino.</p>
-          )}
-        </section>
-
-        <section>
-          <h2>Previous Year Question Papers (PYQs)</h2>
-          {pyqs.length > 0 ? (
-            <ul>
-              {pyqs.map((m: any) => (
-                <li key={m.id}>
-                  <h3>{m.title || m.name || `${subjectName} PYQ Paper`}</h3>
-                  <p>{m.description || `Previous year examination paper for ${subjectName} at SRM University.`}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Access previous year semester question papers and test series for {subjectName} {subjectCode ? `(${subjectCode})` : ""}.</p>
-          )}
-        </section>
-
-        <section>
-          <h2>Important Questions & Question Banks</h2>
-          {questions.length > 0 ? (
-            <ul>
-              {questions.map((m: any) => (
-                <li key={m.id}>
-                  <h3>{m.title || m.name || `${subjectName} Question Bank`}</h3>
-                  <p>{m.description || `Important 2-mark and 16-mark semester exam questions for ${subjectName}.`}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Practice most expected semester exam questions, 2-mark answers, and 16-mark question banks for {subjectName}.</p>
-          )}
-        </section>
-      </article>
-
-      <SubjectClientComponent params={params} />
+      <SubjectClientComponent params={params} serverOverview={serverOverview} />
     </>
   );
 }
