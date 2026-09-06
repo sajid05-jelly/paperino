@@ -95,15 +95,23 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
       const identifierQuery = [matParam, fileParam].filter(Boolean).join("&");
 
       let targetUrl = `/api/download?${identifierQuery}&inline=true`;
-      if (!matParam && !fileParam && mat.fileUrl && (mat.fileUrl.startsWith("http://") || mat.fileUrl.startsWith("https://"))) {
+      if (mat.fileUrl && mat.fileUrl.includes("firebasestorage.googleapis.com")) {
+        targetUrl = mat.fileUrl;
+      } else if (!matParam && !fileParam && mat.fileUrl && (mat.fileUrl.startsWith("http://") || mat.fileUrl.startsWith("https://"))) {
         targetUrl = mat.fileUrl;
       }
 
       const cacheKey = `${mat.id}_${mat.fileId}`;
 
       // Fetch Firebase ID token if user is signed in to authorize pending material preview
-      const userToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      const headers: Record<string, string> = userToken ? { Authorization: `Bearer ${userToken}` } : {};
+      let headers: Record<string, string> = {};
+      // ONLY send authorization if the material is not explicitly approved, to maximize Vercel Edge caching for public files
+      if ((mat as any).status !== "approved") {
+        const userToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+        if (userToken) {
+          headers = { Authorization: `Bearer ${userToken}` };
+        }
+      }
 
       // 1. IMAGE PREVIEW
       if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(extension)) {

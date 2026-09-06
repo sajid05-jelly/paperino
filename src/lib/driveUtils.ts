@@ -78,7 +78,7 @@ export async function triggerSecureDownload(
   dismissToast?: (id: string) => void,
   onLoadingChange?: (loading: boolean) => void
 ): Promise<boolean> {
-  if (!mat.id && !mat.fileId) {
+  if ((!mat.id && !mat.fileId) || (mat.fileUrl && mat.fileUrl.includes("firebasestorage.googleapis.com"))) {
     if (mat.fileUrl) {
       window.open(mat.fileUrl, "_blank");
       return true;
