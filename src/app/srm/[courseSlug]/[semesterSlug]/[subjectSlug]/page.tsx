@@ -35,20 +35,32 @@ export async function generateMetadata({
   const { subjects, departments } = await getAllUnifiedData();
   const subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
-  if (!subject) {
-    return {
-      title: `Subject Not Found | ${SITE_CONFIG.siteName}`,
-    };
+  let validSubject = subject;
+  if (!validSubject) {
+    const titleCaseName = subjectSlug
+      .split("-")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+    validSubject = {
+      id: subjectSlug,
+      name: titleCaseName,
+      code: "",
+      departmentId: courseSlug,
+      semesterId: semId,
+    } as any;
   }
+  
+  const finalSubject = validSubject!;
 
-  const deptObj = departments.find(d => d.id === subject.departmentId);
-  const deptName = deptObj ? deptObj.name : subject.departmentId.toUpperCase();
-  const deptCode = deptObj ? deptObj.code : (subject.departmentId === "btech" ? "B.Tech" : subject.departmentId.toUpperCase());
-  const codeDisplay = subject.code ? ` (${subject.code})` : "";
+  const deptObj = departments.find(d => d.id === finalSubject.departmentId);
+  const deptName = deptObj ? deptObj.name : finalSubject.departmentId.toUpperCase();
+  const deptCode = deptObj ? deptObj.code : (finalSubject.departmentId === "btech" ? "B.Tech" : finalSubject.departmentId.toUpperCase());
+  const codeDisplay = finalSubject.code ? ` (${finalSubject.code})` : "";
 
-  const title = `${subject.name}${codeDisplay} Notes, PYQs & Study Materials | ${deptCode} Sem ${semId} | ${SITE_CONFIG.siteName}`;
-  const description = `Access ${subject.name}${codeDisplay} study materials, notes, previous year question papers (PYQs), important questions, and academic resources for ${SITE_CONFIG.universityShortName} ${deptCode} Semester ${semId} students on ${SITE_CONFIG.siteName}.`;
-  const canonicalUrl = getSubjectCanonicalUrl(subject);
+  const title = `${finalSubject.name}${codeDisplay} Notes, PYQs & Study Materials | ${deptCode} Sem ${semId} | ${SITE_CONFIG.siteName}`;
+  const description = `Access ${finalSubject.name}${codeDisplay} study materials, notes, previous year question papers (PYQs), important questions, and academic resources for ${SITE_CONFIG.universityShortName} ${deptCode} Semester ${semId} students on ${SITE_CONFIG.siteName}.`;
+  const canonicalUrl = getSubjectCanonicalUrl(finalSubject);
 
   return {
     title,
@@ -73,7 +85,7 @@ export async function generateMetadata({
           url: SITE_CONFIG.defaultOgImage,
           width: 1200,
           height: 630,
-          alt: `${subject.name}${codeDisplay} Study Materials – ${SITE_CONFIG.siteName}`,
+          alt: `${finalSubject.name}${codeDisplay} Study Materials – ${SITE_CONFIG.siteName}`,
         },
       ],
     },
@@ -127,13 +139,14 @@ export default async function SubjectSeoPage({
   // Fallback: If the subject isn't in the 5-minute server cache, we do NOT throw 404 immediately.
   // Instead, we construct a "shell" subject from the URL parameters. 
   // The client-side SubjectClientComponent will hydrate the real data from its own Context.
-  if (!subject) {
+  let validSubject = subject;
+  if (!validSubject) {
     const titleCaseName = subjectSlug
       .split("-")
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
 
-    subject = {
+    validSubject = {
       id: subjectSlug,
       name: titleCaseName,
       code: "",
@@ -141,41 +154,44 @@ export default async function SubjectSeoPage({
       semesterId: semId,
     } as any;
   }
+  
+  // Safe cast since we guaranteed it exists
+  const finalSubject = validSubject!;
 
-  const deptObj = departments.find(d => d.id === subject.departmentId);
-  const deptName = deptObj ? deptObj.name : subject.departmentId.toUpperCase();
-  const deptCode = deptObj ? deptObj.code : (subject.departmentId === "btech" ? "B.Tech" : subject.departmentId.toUpperCase());
-  const canonicalUrl = getSubjectCanonicalUrl(subject);
+  const deptObj = departments.find(d => d.id === finalSubject.departmentId);
+  const deptName = deptObj ? deptObj.name : finalSubject.departmentId.toUpperCase();
+  const deptCode = deptObj ? deptObj.code : (finalSubject.departmentId === "btech" ? "B.Tech" : finalSubject.departmentId.toUpperCase());
+  const canonicalUrl = getSubjectCanonicalUrl(finalSubject);
 
   // Fetch materials server-side for initial HTML indexing
-  const serverMaterials = await fetchServerMaterials(subject.departmentId, subject.semesterId, subject.id);
+  const serverMaterials = await fetchServerMaterials(finalSubject.departmentId, finalSubject.semesterId, finalSubject.id);
   const pyqs = serverMaterials.filter((m: any) => m.category === "pyq");
   const notes = serverMaterials.filter((m: any) => m.category === "notes");
   const questions = serverMaterials.filter((m: any) => m.category === "questions");
 
   const jsonLd = generateSubjectJsonLd({
-    subjectName: subject.name,
-    subjectCode: subject.code || "",
+    subjectName: finalSubject.name,
+    subjectCode: finalSubject.code || "",
     deptName,
-    semId: String(subject.semesterId),
+    semId: String(finalSubject.semesterId),
     canonicalUrl,
     materialsCount: serverMaterials.length,
   });
 
   // Client Component expects deptId, semId, subjectId params
   const clientParams = Promise.resolve({
-    deptId: subject.departmentId,
-    semId: String(subject.semesterId),
-    subjectId: subject.id,
+    deptId: finalSubject.departmentId,
+    semId: String(finalSubject.semesterId),
+    subjectId: finalSubject.id,
   });
 
   // Build a plain-object overview for the client component to render visibly
   const serverOverview = {
-    subjectName: subject.name,
-    subjectCode: subject.code || "",
+    subjectName: finalSubject.name,
+    subjectCode: finalSubject.code || "",
     deptName,
     deptCode,
-    semId: String(subject.semesterId),
+    semId: String(finalSubject.semesterId),
     universityName: SITE_CONFIG.universityName,
     materialsCount: serverMaterials.length,
     notesCount: notes.length,
