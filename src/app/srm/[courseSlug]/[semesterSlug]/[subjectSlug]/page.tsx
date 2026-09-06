@@ -122,7 +122,25 @@ export default async function SubjectSeoPage({
   const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
   const { subjects, departments } = await getAllUnifiedData();
-  const subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
+  let subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
+
+  // Fallback for newly created dynamic subjects missing from the 5-minute server cache
+  if (!subject && adminDb) {
+    try {
+      // Query by departmentId only to avoid compound index requirements, then filter in memory
+      const snap = await adminDb.collection("dynamic_subjects")
+        .where("departmentId", "==", courseSlug)
+        .get();
+      
+      const fallbackSubjects = snap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((s: any) => String(s.semesterId) === String(semId) && s.status !== "pending");
+      
+      subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, fallbackSubjects as any);
+    } catch (err) {
+      console.warn("[SubjectSeoPage] Fallback lookup failed:", err);
+    }
+  }
 
   if (!subject) {
     notFound();
@@ -155,6 +173,20 @@ export default async function SubjectSeoPage({
     subjectId: subject.id,
   });
 
+  // Build a plain-object overview for the client component to render visibly
+  const serverOverview = {
+    subjectName: subject.name,
+    subjectCode: subject.code || "",
+    deptName,
+    deptCode,
+    semId: String(subject.semesterId),
+    universityName: SITE_CONFIG.universityName,
+    materialsCount: serverMaterials.length,
+    notesCount: notes.length,
+    pyqsCount: pyqs.length,
+    questionsCount: questions.length,
+  };
+
   return (
     <>
       {/* JSON-LD Structured Data for Googlebot */}
@@ -163,81 +195,8 @@ export default async function SubjectSeoPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Crawlable HTML Content for Search Engine Crawlers (Googlebot) */}
-      <article className="sr-only opacity-0 h-0 overflow-hidden" aria-hidden="true">
-        <h1>{subject.name} {subject.code ? `– ${subject.code}` : ""}</h1>
-        <p>
-          Official study materials, notes, previous year question papers (PYQs), and question banks for {subject.name} {subject.code ? `(${subject.code})` : ""}, offered under {deptName} ({deptCode}) Semester {subject.semesterId} at {SITE_CONFIG.universityName}.
-        </p>
-
-        <section>
-          <h2>Subject Overview</h2>
-          <ul>
-            <li><strong>Subject Name:</strong> {subject.name}</li>
-            {subject.code && <li><strong>Subject Code:</strong> {subject.code}</li>}
-            <li><strong>University:</strong> {SITE_CONFIG.universityName}</li>
-            <li><strong>Course / Department:</strong> {deptName} ({deptCode})</li>
-            <li><strong>Semester:</strong> Semester {subject.semesterId}</li>
-            <li><strong>Available Resources:</strong> {serverMaterials.length} Verified Documents</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>Study Materials</h2>
-          {notes.length > 0 ? (
-            <ul>
-              {notes.map((m: any) => (
-                <li key={m.id}>
-                  <h3>{m.title || m.name || `${subject.name} Notes`}</h3>
-                  <p>{m.description || `Lecture notes and study resources for ${subject.name}.`}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Verified study notes and lecture materials for {subject.name} ({subject.code || subject.id}) are curated and updated regularly on Paperino.</p>
-          )}
-        </section>
-
-        <section>
-          <h2>Previous Year Question Papers (PYQs)</h2>
-          {pyqs.length > 0 ? (
-            <ul>
-              {pyqs.map((m: any) => (
-                <li key={m.id}>
-                  <h3>{m.title || m.name || `${subject.name} PYQ Paper`}</h3>
-                  <p>{m.description || `Previous year examination paper for ${subject.name} at SRM University.`}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Access previous year semester question papers and test series for {subject.name} {subject.code ? `(${subject.code})` : ""}.</p>
-          )}
-        </section>
-
-        <section>
-          <h2>Important Questions & Question Banks</h2>
-          {questions.length > 0 ? (
-            <ul>
-              {questions.map((m: any) => (
-                <li key={m.id}>
-                  <h3>{m.title || m.name || `${subject.name} Question Bank`}</h3>
-                  <p>{m.description || `Important 2-mark and 16-mark semester exam questions for ${subject.name}.`}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Practice most expected semester exam questions, 2-mark answers, and 16-mark question banks for {subject.name}.</p>
-          )}
-        </section>
-
-        <section>
-          <h2>Lab Materials & Senior Insights</h2>
-          <p>Lab manuals, practical code exercises, and senior advice for passing {subject.name} ({deptCode} Semester {subject.semesterId}).</p>
-        </section>
-      </article>
-
-      {/* Main Interactive Paperino Interface */}
-      <SubjectClientComponent params={clientParams} />
+      {/* Main Interactive Paperino Interface — all content rendered visibly */}
+      <SubjectClientComponent params={clientParams} serverOverview={serverOverview} />
     </>
   );
 }
