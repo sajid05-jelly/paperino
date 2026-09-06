@@ -22,7 +22,20 @@ const contributorCache: Record<string, string> = {};
 const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], timestamp: number }> = {};
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10-minute cache TTL
 
-export default function SubjectClientComponent({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }) {
+interface ServerOverview {
+  subjectName: string;
+  subjectCode: string;
+  deptName: string;
+  deptCode: string;
+  semId: string;
+  universityName: string;
+  materialsCount: number;
+  notesCount: number;
+  pyqsCount: number;
+  questionsCount: number;
+}
+
+export default function SubjectClientComponent({ params, serverOverview }: { params: Promise<{ deptId: string, semId: string, subjectId: string }>, serverOverview?: ServerOverview }) {
   const resolvedParams = use(params);
   const { deptId, semId, subjectId } = resolvedParams;
   const { user, isAdmin, isContributor, loading: authLoading } = useAuth();
@@ -85,16 +98,35 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
   }
 
   const fetchMaterials = async (forceRefetch = false) => {
-    const cacheKey = `${deptId}_${semId}_${realSubjectId}`;
+    const cacheKey = `paperino_subject_cache_${deptId}_${semId}_${realSubjectId}`;
+    
     if (forceRefetch) {
       delete subjectDataCache[cacheKey];
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(cacheKey);
+      }
     }
 
     const now = Date.now();
-    if (!forceRefetch && subjectDataCache[cacheKey] && (now - subjectDataCache[cacheKey].timestamp < CACHE_TTL_MS)) {
-      logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from 10m session cache");
-      setMaterials(subjectDataCache[cacheKey].materials);
-      setSurvivalNotes(subjectDataCache[cacheKey].survivalNotes);
+    let cachedData = subjectDataCache[cacheKey];
+
+    // Try to recover from sessionStorage if in-memory cache is empty (e.g. after navigation/remount)
+    if (!cachedData && typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem(cacheKey);
+        if (stored) {
+          cachedData = JSON.parse(stored);
+          subjectDataCache[cacheKey] = cachedData; // Restore to memory
+        }
+      } catch (e) {
+        console.warn("Failed to parse subject cache from sessionStorage", e);
+      }
+    }
+
+    if (!forceRefetch && cachedData && (now - cachedData.timestamp < CACHE_TTL_MS)) {
+      logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
+      setMaterials(cachedData.materials);
+      setSurvivalNotes(cachedData.survivalNotes);
       setFetchError(null);
       setLoading(false);
       return;
@@ -185,12 +217,23 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
         return scoreB - scoreA;
       });
 
-      // Save to cache with timestamp
-      subjectDataCache[cacheKey] = {
+      const finalCacheData = {
         materials: matList,
         survivalNotes: list,
         timestamp: Date.now()
       };
+
+      // Save to memory cache
+      subjectDataCache[cacheKey] = finalCacheData;
+      
+      // Save to sessionStorage cache to survive navigations
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(finalCacheData));
+        } catch (e) {
+          console.warn("Failed to persist subject cache to sessionStorage (possibly too large)", e);
+        }
+      }
 
       setMaterials(matList);
       setSurvivalNotes(list);
@@ -340,19 +383,37 @@ export default function SubjectClientComponent({ params }: { params: Promise<{ d
             Access {subjectName} notes, syllabus, previous year question papers (PYQs), important questions and study materials for SRM Institute of Science and Technology students on Paperino.
           </p>
 
-          {/* Hidden Crawlable SEO Text for Search Engines */}
-          <div className="sr-only">
-            <span>SRM Institute of Science and Technology</span>
-            <span>SRM students</span>
-            <span>B.Tech</span>
-            <span>Semester {semId}</span>
-            <span>{subjectName} Notes</span>
-            <span>{subjectName} Study Materials</span>
-            <span>{subjectName} Previous Year Question Papers</span>
-            <span>{subjectName} PYQs</span>
-            <span>{subjectName} Syllabus</span>
-            <span>{subjectName} Important Questions</span>
-          </div>
+          {/* Visible Subject Overview Card */}
+          {serverOverview && (
+            <div className="mt-8 vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-[rgba(var(--primary-rgb),0.06)] to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {serverOverview.subjectCode && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full">
+                      {serverOverview.subjectCode}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                    {serverOverview.deptName} ({serverOverview.deptCode})
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                    Semester {serverOverview.semId}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                    {serverOverview.universityName}
+                  </span>
+                </div>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  {serverOverview.subjectName} is offered under {serverOverview.deptName} ({serverOverview.deptCode}) in Semester {serverOverview.semId} at {serverOverview.universityName}.
+                  {serverOverview.materialsCount > 0
+                    ? ` This subject currently has ${serverOverview.materialsCount} verified study ${serverOverview.materialsCount === 1 ? 'resource' : 'resources'} available on Paperino, including ${serverOverview.notesCount > 0 ? `${serverOverview.notesCount} set${serverOverview.notesCount === 1 ? '' : 's'} of notes` : ''}${serverOverview.notesCount > 0 && serverOverview.pyqsCount > 0 ? ', ' : ''}${serverOverview.pyqsCount > 0 ? `${serverOverview.pyqsCount} previous year question paper${serverOverview.pyqsCount === 1 ? '' : 's'}` : ''}${(serverOverview.notesCount > 0 || serverOverview.pyqsCount > 0) && serverOverview.questionsCount > 0 ? ', and ' : ''}${serverOverview.questionsCount > 0 ? `${serverOverview.questionsCount} question bank${serverOverview.questionsCount === 1 ? '' : 's'}` : ''}.`
+                    : ' Study materials, notes, and question papers for this subject are being collected and will be available soon.'
+                  }
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* JSON-LD Structured Data */}
           <script

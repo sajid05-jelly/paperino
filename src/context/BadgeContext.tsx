@@ -356,142 +356,52 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
 
   const pathname = usePathname();
 
-  // Real-time, ultra-lightweight listeners for Admin pending items (ONLY attached when on /admin/* routes)
+  // 3. Admin Pending Items Badge Logic (Optimized from Real-time Listeners to One-time Fetch)
+  const fetchAdminBadges = useCallback(async () => {
+    const isOnAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+    if (!user || !isAdmin || !isOnAdminRoute) return;
+
+    try {
+      const pendingItemsList: { type: string; id: string; createdAt: number }[] = [];
+      const queries = [
+        { type: "subject_requests", q: query(collection(db, "subject_requests"), limit(50)) },
+        { type: "courses", q: query(collection(db, "departments"), where("status", "==", "pending"), limit(30)) },
+        { type: "courses", q: query(collection(db, "dynamic_subjects"), where("status", "==", "pending"), limit(30)) },
+        { type: "reviews", q: query(collection(db, "materials"), where("status", "==", "pending"), limit(30)) },
+        { type: "reviews", q: query(collection(db, "survival_notes"), where("status", "==", "pending"), limit(30)) }
+      ];
+
+      const results = await Promise.all(
+        queries.map(async (item) => {
+          try {
+            const snap = await getDocs(item.q);
+            const items: any[] = [];
+            snap.forEach(d => {
+              const data = d.data();
+              if (item.type === "subject_requests" && data.status && data.status !== "pending") return;
+              const createdAt = data.createdAt?.toMillis ? data.createdAt.toMillis() : Number(data.createdAt) || Date.now();
+              items.push({ type: item.type, id: d.id, createdAt });
+            });
+            return items;
+          } catch (e) { 
+            console.warn(`[BadgeContext] Error fetching ${item.type}:`, e);
+            return []; 
+          }
+        })
+      );
+
+      const allItems = results.flat();
+      setAdminSubjectRequestsRaw(allItems.filter(i => i.type === "subject_requests"));
+      setAdminPendingCoursesRaw(allItems.filter(i => i.type === "courses"));
+      setAdminPendingReviewsRaw(allItems.filter(i => i.type === "reviews"));
+    } catch (e) {
+      console.warn("[BadgeContext] Error fetching admin pending badges:", e);
+    }
+  }, [user, isAdmin]);
+
   useEffect(() => {
-    const isOnAdminRoute = pathname?.startsWith("/admin");
-    if (!user || !isAdmin || !isOnAdminRoute) {
-      return;
-    }
-
-    const unsubs: (() => void)[] = [];
-
-    // 1. Subject Requests (status == "pending" or status is undefined/missing)
-    try {
-      const qSub = query(collection(db, "subject_requests"), limit(50));
-      const unsubSub = onSnapshot(
-        qSub,
-        (snap) => {
-          const pendingItems: { id: string; createdAt: number }[] = [];
-          snap.forEach((d) => {
-            const data = d.data();
-            if (!data.status || data.status === "pending") {
-              const createdAt = data.createdAt?.toMillis
-                ? data.createdAt.toMillis()
-                : Number(data.createdAt) || Date.now();
-              pendingItems.push({ id: d.id, createdAt });
-            }
-          });
-          setAdminSubjectRequestsRaw(pendingItems);
-        },
-        (err) => {
-          console.warn("[BadgeContext] Subject requests listener notice:", err.message);
-        }
-      );
-      unsubs.push(unsubSub);
-    } catch (e) {
-      console.warn("[BadgeContext] Error attaching subject requests listener:", e);
-    }
-
-    // 2. Pending Courses (departments with status == "pending" and dynamic_subjects with status == "pending")
-    try {
-      let deptsList: { id: string; createdAt: number }[] = [];
-      let subsList: { id: string; createdAt: number }[] = [];
-
-      const qDepts = query(collection(db, "departments"), where("status", "==", "pending"), limit(30));
-      const unsubDepts = onSnapshot(
-        qDepts,
-        (snap) => {
-          deptsList = snap.docs.map((d) => {
-            const data = d.data();
-            const createdAt = data.createdAt?.toMillis
-              ? data.createdAt.toMillis()
-              : Number(data.createdAt) || Date.now();
-            return { id: d.id, createdAt };
-          });
-          setAdminPendingCoursesRaw([...deptsList, ...subsList]);
-        },
-        (err) => {
-          console.warn("[BadgeContext] Depts pending listener notice:", err.message);
-        }
-      );
-      unsubs.push(unsubDepts);
-
-      const qDynamicSubs = query(collection(db, "dynamic_subjects"), where("status", "==", "pending"), limit(30));
-      const unsubDynamicSubs = onSnapshot(
-        qDynamicSubs,
-        (snap) => {
-          subsList = snap.docs.map((d) => {
-            const data = d.data();
-            const createdAt = data.createdAt?.toMillis
-              ? data.createdAt.toMillis()
-              : Number(data.createdAt) || Date.now();
-            return { id: d.id, createdAt };
-          });
-          setAdminPendingCoursesRaw([...deptsList, ...subsList]);
-        },
-        (err) => {
-          console.warn("[BadgeContext] Dynamic subjects pending listener notice:", err.message);
-        }
-      );
-      unsubs.push(unsubDynamicSubs);
-    } catch (e) {
-      console.warn("[BadgeContext] Error attaching course pending listener:", e);
-    }
-
-    // 3. Pending Reviews (materials with status == "pending" and survival_notes with status == "pending")
-    try {
-      let matsList: { id: string; createdAt: number }[] = [];
-      let notesList: { id: string; createdAt: number }[] = [];
-
-      const qMats = query(collection(db, "materials"), where("status", "==", "pending"), limit(30));
-      const unsubMats = onSnapshot(
-        qMats,
-        (snap) => {
-          matsList = snap.docs.map((d) => {
-            const data = d.data();
-            const createdAt = data.createdAt?.toMillis
-              ? data.createdAt.toMillis()
-              : Number(data.createdAt) || Date.now();
-            return { id: d.id, createdAt };
-          });
-          setAdminPendingReviewsRaw([...matsList, ...notesList]);
-        },
-        (err) => {
-          console.warn("[BadgeContext] Materials pending listener notice:", err.message);
-        }
-      );
-      unsubs.push(unsubMats);
-
-      const qNotes = query(collection(db, "survival_notes"), where("status", "==", "pending"), limit(30));
-      const unsubNotes = onSnapshot(
-        qNotes,
-        (snap) => {
-          notesList = snap.docs.map((d) => {
-            const data = d.data();
-            const createdAt = data.createdAt?.toMillis
-              ? data.createdAt.toMillis()
-              : Number(data.createdAt) || Date.now();
-            return { id: d.id, createdAt };
-          });
-          setAdminPendingReviewsRaw([...matsList, ...notesList]);
-        },
-        (err) => {
-          console.warn("[BadgeContext] Notes pending listener notice:", err.message);
-        }
-      );
-      unsubs.push(unsubNotes);
-    } catch (e) {
-      console.warn("[BadgeContext] Error attaching reviews pending listener:", e);
-    }
-
-    return () => {
-      unsubs.forEach((u) => {
-        try {
-          u();
-        } catch (e) {}
-      });
-    };
-  }, [user, isAdmin, pathname]);
+    fetchAdminBadges();
+  }, [fetchAdminBadges, pathname]);
 
   const markAdminSectionSeen = useCallback((section: "subject_requests" | "reviews" | "courses") => {
     const now = Date.now();
@@ -548,8 +458,8 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   }, [adminSubjectRequestsCount, adminPendingReviewsCount, adminPendingCoursesCount]);
 
   const refreshAdminBadges = useCallback(async () => {
-    // No-op or trigger sync if needed since listeners maintain real-time state
-  }, []);
+    await fetchAdminBadges();
+  }, [fetchAdminBadges]);
 
   return (
     <BadgeContext.Provider

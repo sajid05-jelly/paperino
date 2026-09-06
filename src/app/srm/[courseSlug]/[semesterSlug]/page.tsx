@@ -7,6 +7,7 @@ import { SITE_CONFIG, getAbsoluteUrl } from "@/lib/siteConfig";
 import { Book, ChevronRight } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
 import SemesterActionButtons from "@/components/SemesterActionButtons";
+import SemesterSubjectGrid from "@/components/SemesterSubjectGrid";
 
 export async function generateStaticParams() {
   const { departments } = await getAllUnifiedData();
@@ -84,38 +85,7 @@ export default async function SrmSemesterPage({
         <SemesterActionButtons deptId={dept.id} deptName={dept.name} semId={semId} />
       </div>
 
-      {semesterSubjects.length === 0 ? (
-        <div className="glass-panel p-12 text-center rounded-2xl border border-white/5 flex flex-col items-center">
-          <Book className="text-gray-600 mb-4" size={48} />
-          <h2 className="text-xl font-medium text-white mb-2">No Subjects Listed</h2>
-          <p className="text-gray-400">Subjects for Semester {semId} will appear here as they are added.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {semesterSubjects.map((sub) => {
-            const seoPath = getSubjectSeoPath(sub);
-            return (
-              <Link 
-                key={sub.id} 
-                href={seoPath}
-                className="vision-glass p-6 h-full block group cursor-pointer relative overflow-hidden vision-hover border border-white/5 hover:border-purple-500/30 transition-all text-left no-underline"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-colors">
-                    <Book size={24} />
-                  </div>
-                  <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
-                </div>
-                <h2 className="text-xl font-semibold text-white mb-2">{sub.name}</h2>
-                {sub.code && (
-                  <p className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">{sub.code}</p>
-                )}
-                <p className="text-sm text-gray-400">View PYQs, Notes, and Important Questions.</p>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <SemesterSubjectGrid initialData={semesterSubjects} deptId={dept.id} semId={semId} />
     </div>
   );
 }

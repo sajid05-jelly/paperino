@@ -101,31 +101,34 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 1. Real-time Listener for Pulse Updates
-  useEffect(() => {
+  // 1. One-time Fetch for Pulse Updates (Replaces Real-time Listener)
+  const fetchPulseUpdates = useCallback(async () => {
     if (!user) {
       setUpdates([]);
       return;
     }
-
-    const q = query(
-      collection(db, "pulse_updates"), 
-      orderBy("createdAt", "desc"), 
-      limit(10)
-    );
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    try {
+      const q = query(
+        collection(db, "pulse_updates"), 
+        orderBy("createdAt", "desc"), 
+        limit(10)
+      );
+      
+      const snapshot = await getDocs(q);
       const newUpdates: PulseUpdate[] = [];
       snapshot.forEach((d) => {
         newUpdates.push({ id: d.id, ...d.data() } as PulseUpdate);
       });
       setUpdates(newUpdates);
-    }, (err: any) => {
-      console.warn("[NotificationContext] pulse_updates onSnapshot notice:", err?.message || err);
-    });
-
-    return () => unsubscribe();
+    } catch (err: any) {
+      console.warn("[NotificationContext] pulse_updates getDocs notice:", err?.message || err);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchPulseUpdates();
+  }, [fetchPulseUpdates]);
 
   // Compute unreadUpdates in-memory
   const unreadUpdates = useMemo(() => {
