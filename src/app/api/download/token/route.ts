@@ -17,9 +17,28 @@ export async function POST(req: NextRequest) {
 
   const token = authHeader.substring(7);
   let uid = "";
+  let email = "student@paperino.app";
+  let name = "Paperino User";
+  let isAdmin = false;
+
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
     uid = decodedToken.uid;
+    if (decodedToken.email) email = decodedToken.email;
+    name = decodedToken.name || email.split("@")[0] || "Paperino User";
+    
+    const allowedAdmins = [
+      "mohamedsajid.sa@gmail.com",
+      "sudharajsekar2005@gmail.com",
+      "admin.paperinoirfan27@gmail.com",
+      "admin.paperinosam14@gmail.com",
+      "gameplayitlifeitis@gmail.com",
+      "dejasvini28@gmail.com",
+      "kaushika13official@gmail.com"
+    ];
+    if (allowedAdmins.includes(email.toLowerCase())) {
+      isAdmin = true;
+    }
   } catch (err: any) {
     return NextResponse.json(
       { error: "Access Denied", message: err.message || "Invalid token" },
@@ -39,6 +58,9 @@ export async function POST(req: NextRequest) {
     await Promise.race([
       adminDb.collection("download_tokens").doc(downloadToken).set({
         uid,
+        email,
+        name,
+        isAdmin,
         token: downloadToken,
         used: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp()

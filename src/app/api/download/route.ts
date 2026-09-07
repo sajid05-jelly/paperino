@@ -135,6 +135,11 @@ export async function GET(req: NextRequest) {
       if (tokenSnap && tokenSnap.exists) {
         const tData = tokenSnap.data() || {};
         uid = tData.uid || "GUEST";
+        userName = tData.name || "Paperino User";
+        userEmail = tData.email || "student@paperino.app";
+        if (tData.isAdmin) {
+          isAdmin = true;
+        }
       }
     } catch (err: any) {
       console.warn("[Download API Token Query Notice]:", err.message);
