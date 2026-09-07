@@ -80,7 +80,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
 
     const now = Date.now();
     // Cache for 3 minutes per session - NO global background setInterval
-    if (!forceRefresh && (now - lastFreeClassCheckRef.current) < 3 * 60 * 1000 && activeReportsTimeList.length > 0) {
+    if (!forceRefresh && (now - lastFreeClassCheckRef.current) < 3 * 60 * 1000) {
       return;
     }
 
@@ -164,7 +164,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
 
     const now = Date.now();
     // Cache for 3 minutes per session to prevent repeated sweeps across 4 collections on rapid navigation
-    if (!forceRefresh && (now - lastUserStatusFetchTimeRef.current) < 3 * 60 * 1000 && userStatusUpdates.length > 0) {
+    if (!forceRefresh && (now - lastUserStatusFetchTimeRef.current) < 3 * 60 * 1000) {
       return;
     }
 
@@ -356,10 +356,17 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
 
   const pathname = usePathname();
 
+  const lastAdminBadgesFetchTimeRef = useRef<number>(0);
+
   // 3. Admin Pending Items Badge Logic (Optimized from Real-time Listeners to One-time Fetch)
-  const fetchAdminBadges = useCallback(async () => {
+  const fetchAdminBadges = useCallback(async (forceRefresh: boolean = false) => {
     const isOnAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
     if (!user || !isAdmin || !isOnAdminRoute) return;
+
+    const now = Date.now();
+    if (!forceRefresh && (now - lastAdminBadgesFetchTimeRef.current) < 3 * 60 * 1000) {
+      return;
+    }
 
     try {
       const pendingItemsList: { type: string; id: string; createdAt: number }[] = [];
@@ -394,6 +401,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
       setAdminSubjectRequestsRaw(allItems.filter(i => i.type === "subject_requests"));
       setAdminPendingCoursesRaw(allItems.filter(i => i.type === "courses"));
       setAdminPendingReviewsRaw(allItems.filter(i => i.type === "reviews"));
+      lastAdminBadgesFetchTimeRef.current = now;
     } catch (e) {
       console.warn("[BadgeContext] Error fetching admin pending badges:", e);
     }
@@ -458,7 +466,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   }, [adminSubjectRequestsCount, adminPendingReviewsCount, adminPendingCoursesCount]);
 
   const refreshAdminBadges = useCallback(async () => {
-    await fetchAdminBadges();
+    await fetchAdminBadges(true);
   }, [fetchAdminBadges]);
 
   return (
