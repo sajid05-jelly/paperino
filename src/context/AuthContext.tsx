@@ -200,8 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         }
 
-        // Subscribe to real-time updates for user profile
-        unsubUserDoc = onSnapshot(userRef, async (snap) => {
+        // Fetch user profile data once instead of real-time listener to reduce Firestore reads
+        try {
+          const snap = await getDoc(userRef);
           if (snap.exists()) {
             const data = snap.data();
             setPaperinoAvatarState(data.paperinoAvatar || null);
@@ -248,11 +249,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           clearTimeout(safetyTimeout);
           setLoading(false);
-        }, (err) => {
-          console.error("User doc snapshot error:", err);
+        } catch (err) {
+          console.error("User doc fetch error:", err);
           clearTimeout(safetyTimeout);
           setLoading(false);
-        });
+        }
+
 
         // Subscribe to real-time user credits
         const creditsRef = doc(db, "user_credits", currentUser.uid);
