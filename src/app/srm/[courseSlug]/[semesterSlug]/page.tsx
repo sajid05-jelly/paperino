@@ -62,7 +62,7 @@ export default async function SrmSemesterPage({
   const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
 
-  const { departments, subjects } = await getAllUnifiedData();
+  const { departments, subjects } = await getAllUnifiedData(false, courseSlug, semId);
   const dept = departments.find(d => d.id.toLowerCase() === courseSlug.toLowerCase());
 
   if (!dept) notFound();

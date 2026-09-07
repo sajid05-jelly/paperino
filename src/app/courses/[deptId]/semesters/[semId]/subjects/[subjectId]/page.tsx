@@ -18,7 +18,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }): Promise<Metadata> {
   const { deptId, semId, subjectId } = await params;
-  const { subjects, departments } = await getAllUnifiedData();
+  const { subjects, departments } = await getAllUnifiedData(false, deptId, semId);
   
   const foundSubject = subjects.find(s => s.departmentId === deptId && String(s.semesterId) === String(semId) && s.id === subjectId);
   const { subjectName, subjectCode, deptName, deptCode } = await getSubjectDetails(deptId, semId, subjectId);
@@ -82,7 +82,7 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
 
 export default async function SubjectPage({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }) {
   const { deptId, semId, subjectId } = await params;
-  const { subjects, departments } = await getAllUnifiedData();
+  const { subjects, departments } = await getAllUnifiedData(false, deptId, semId);
   
   const foundSubject = subjects.find(s => s.departmentId === deptId && String(s.semesterId) === String(semId) && s.id === subjectId);
   const { subjectName, subjectCode, deptName, deptCode } = await getSubjectDetails(deptId, semId, subjectId);

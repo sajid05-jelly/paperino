@@ -40,17 +40,28 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute TTL — reduces Firestore reads 
  * Combines both static default subjects and dynamic Firestore departments/subjects.
  * Serves as the Single Source of Truth for Sitemap, Routing, Metadata & Structured Data.
  */
-export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
+export const getAllUnifiedData = cache(async (
+  forceRefetch = false,
+  filterDeptId?: string,
+  filterSemId?: string
+): Promise<{
   departments: UnifiedDepartment[];
   subjects: UnifiedSubject[];
 }> => {
   const now = Date.now();
-  if (!forceRefetch && inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
+  // Only use global cache if we are NOT filtering
+  const isGlobalFetch = !filterDeptId && !filterSemId;
+
+  if (isGlobalFetch && !forceRefetch && inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
     logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 1m server cache`);
     return inMemoryUnifiedData;
   }
 
-  logFirestoreRead("departments & dynamic_subjects", "getAllUnifiedData cache miss - executing server fetch");
+  if (isGlobalFetch) {
+    logFirestoreRead("departments & dynamic_subjects", "getAllUnifiedData cache miss - executing global server fetch");
+  } else {
+    logFirestoreRead("departments & dynamic_subjects", `getAllUnifiedData filtered fetch for dept: ${filterDeptId}, sem: ${filterSemId}`);
+  }
   const departmentsMap = new Map<string, UnifiedDepartment>();
   const subjectsList: UnifiedSubject[] = [];
   const subjectKeysSet = new Set<string>();
@@ -66,6 +77,10 @@ export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
 
   // 2. Add Static Default Subjects (B.Tech Semesters 1-8)
   Object.entries(STATIC_SUBJECTS).forEach(([semId, subs]) => {
+    // If filtering, only add static subjects that match the filter
+    if (filterDeptId && filterDeptId !== "btech") return;
+    if (filterSemId && filterSemId !== semId) return;
+
     subs.forEach((s) => {
       const uniqueKey = `btech_${semId}_${s.id}`;
       subjectKeysSet.add(uniqueKey);
@@ -88,13 +103,18 @@ export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
 
     if (typeof window === "undefined" && adminDb) {
       // Server-side Node / Build execution via Firebase Admin
-      // 3s timeout to prevent hanging when Firestore quota is exhausted
       const timeoutMs = 3000;
       const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore fetch timeout")), ms));
 
+      let subjectsQuery: FirebaseFirestore.Query = adminDb.collection("dynamic_subjects");
+      if (filterDeptId) {
+        subjectsQuery = subjectsQuery.where("departmentId", "==", filterDeptId);
+      }
+      // Not filtering by semId to avoid complex index requirements, filtering in memory is fine for a single dept
+
       const [deptResult, subResult] = await Promise.allSettled([
         Promise.race([adminDb.collection("departments").get(), timeout(timeoutMs)]),
-        Promise.race([adminDb.collection("dynamic_subjects").get(), timeout(timeoutMs)]),
+        Promise.race([subjectsQuery.get(), timeout(timeoutMs)]),
       ]);
 
       if (deptResult.status === "fulfilled" && deptResult.value) {
@@ -105,14 +125,21 @@ export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
       }
     } else if (db) {
       // Client-side or fallback Firebase Client SDK execution
+      // We can use query and where directly if we import them at the top, or dynamically await
+      const { query, where } = await import("firebase/firestore");
       const deptSnap = await getDocs(collection(db, "departments"));
       deptDocs = deptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const subSnap = await getDocs(collection(db, "dynamic_subjects"));
-      subjectDocs = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let subQ = collection(db, "dynamic_subjects") as any;
+      if (filterDeptId) {
+        subQ = query(subQ, where("departmentId", "==", filterDeptId));
+      }
+      const subSnap = await getDocs(subQ);
+      subjectDocs = subSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() || {}) }));
     }
 
     // Process Dynamic Departments
+
     deptDocs.forEach((d) => {
       const codeUpper = (d.code || "").toUpperCase().trim();
       const nameLower = (d.name || "").toLowerCase().trim();
@@ -167,8 +194,10 @@ export const getAllUnifiedData = cache(async (forceRefetch = false): Promise<{
     subjects: subjectsList,
   };
 
-  inMemoryUnifiedData = result;
-  lastUnifiedFetchTime = Date.now();
+  if (isGlobalFetch) {
+    inMemoryUnifiedData = result;
+    lastUnifiedFetchTime = Date.now();
+  }
 
   return result;
 });
@@ -184,7 +213,7 @@ export async function getSubjectDetails(deptId: string, semId: string, subjectId
   updatedAt?: any;
   createdAt?: any;
 }> {
-  const { departments, subjects } = await getAllUnifiedData();
+  const { departments, subjects } = await getAllUnifiedData(false, deptId, semId);
   
   const target = subjectIdOrSlug.toLowerCase().trim();
   const normalize = (str: string) => (str || "").toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");

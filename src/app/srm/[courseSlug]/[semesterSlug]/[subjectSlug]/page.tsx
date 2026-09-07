@@ -32,7 +32,7 @@ export async function generateMetadata({
   const { courseSlug, semesterSlug, subjectSlug } = resolvedParams;
   const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
-  const { subjects, departments } = await getAllUnifiedData();
+  const { subjects, departments } = await getAllUnifiedData(false, courseSlug, semId);
   const subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
   let validSubject = subject;
@@ -133,7 +133,7 @@ export default async function SubjectSeoPage({
   const { courseSlug, semesterSlug, subjectSlug } = resolvedParams;
   const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
-  const { subjects, departments } = await getAllUnifiedData();
+  const { subjects, departments } = await getAllUnifiedData(false, courseSlug, semId);
   let subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
   // Fallback: If the subject isn't in the 5-minute server cache, we do NOT throw 404 immediately.
