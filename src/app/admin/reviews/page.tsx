@@ -30,6 +30,7 @@ interface Material {
   rejectedAt?: number;
   uploaderId?: string;
   uploaderName?: string;
+  uploaderEmail?: string;
   status?: string;
 }
 
@@ -153,8 +154,23 @@ export default function AdminReviewsPage() {
         await Promise.all(deletePromises);
       }
 
+      // Fetch emails for each uploader
+      const enrichedMats = await Promise.all(mats.map(async (m) => {
+        if (m.uploaderId) {
+          try {
+            const userSnap = await getDoc(doc(db, "users", m.uploaderId));
+            if (userSnap.exists()) {
+              m.uploaderEmail = userSnap.data()?.email || undefined;
+            }
+          } catch (e) {
+            console.warn("Failed to fetch uploader email for", m.uploaderId, e);
+          }
+        }
+        return m;
+      }));
+
       // Sort chronologically descending client-side
-      mats.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      enrichedMats.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
       if (snap.docs.length < 15) {
         setHasMoreMats(false);
@@ -163,7 +179,7 @@ export default function AdminReviewsPage() {
       }
 
       setMaterials(prev => {
-        const combined = reset ? mats : [...prev, ...mats];
+        const combined = reset ? enrichedMats : [...prev, ...enrichedMats];
         // Sort final list chronologically
         combined.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         return combined;
@@ -727,11 +743,20 @@ export default function AdminReviewsPage() {
                             </>
                           )}
                           <div className="w-px h-4 bg-white/10 hidden sm:block" />
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[8px] font-bold text-indigo-400">
                               {mat.uploaderName?.charAt(0).toUpperCase() || "?"}
                             </span>
                             By: <span className="text-white font-medium">{mat.uploaderName || "Unknown Contributor"}</span>
+                            {mat.uploaderEmail && (
+                              <a 
+                                href={`mailto:${mat.uploaderEmail}`} 
+                                className="text-indigo-400 hover:text-indigo-300 transition-colors ml-1 underline decoration-indigo-500/30 underline-offset-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                ({mat.uploaderEmail})
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
