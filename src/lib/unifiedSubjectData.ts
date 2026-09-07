@@ -49,12 +49,24 @@ export const getAllUnifiedData = cache(async (
   subjects: UnifiedSubject[];
 }> => {
   const now = Date.now();
-  // Only use global cache if we are NOT filtering
   const isGlobalFetch = !filterDeptId && !filterSemId;
-
-  if (isGlobalFetch && !forceRefetch && inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
-    logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 1m server cache`);
-    return inMemoryUnifiedData;
+  if (!forceRefetch && inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
+    if (isGlobalFetch) {
+      logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 1m server cache`);
+      return inMemoryUnifiedData;
+    } else {
+      logFirestoreCacheHit("getAllUnifiedData", `Serving filtered subjects from global 1m server cache`);
+      return {
+        departments: filterDeptId 
+          ? inMemoryUnifiedData.departments.filter(d => d.id === filterDeptId)
+          : inMemoryUnifiedData.departments,
+        subjects: inMemoryUnifiedData.subjects.filter(s => {
+          if (filterDeptId && s.departmentId !== filterDeptId) return false;
+          if (filterSemId && s.semesterId !== filterSemId) return false;
+          return true;
+        })
+      };
+    }
   }
 
   if (isGlobalFetch) {
