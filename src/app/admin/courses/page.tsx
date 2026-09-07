@@ -104,15 +104,7 @@ export default function AdminCoursesPage() {
       playSuccess();
       await refreshSubjects();
 
-      if (dept?.createdBy) {
-        await notifyUser(
-          db,
-          dept.createdBy,
-          "Department Approved! ✅",
-          `Your department request "${dept.name}" has been approved and is now live.`,
-          "department_approved"
-        );
-      }
+      // Admin -> User notifications for approval have been disabled per requirements
     } catch (error) {
       console.error("Error approving department:", error);
       alert("Failed to approve department.");
@@ -130,15 +122,7 @@ export default function AdminCoursesPage() {
       playSuccess();
       await refreshSubjects();
 
-      if (dept?.createdBy) {
-        await notifyUser(
-          db,
-          dept.createdBy,
-          "Department Request Rejected ❌",
-          `Your department request "${dept.name}" has been rejected.`,
-          "department_rejected"
-        );
-      }
+      // Admin -> User notifications for rejection have been disabled per requirements
     } catch (error) {
       console.error("Error rejecting department:", error);
       alert("Failed to reject department.");
@@ -195,15 +179,7 @@ export default function AdminCoursesPage() {
       playSuccess();
       await refreshSubjects();
 
-      if (sub?.contributorId) {
-        await notifyUser(
-          db,
-          sub.contributorId,
-          "Subject Approved! ✅",
-          `Your subject request "${sub.name}" has been approved and is now live.`,
-          "subject_approved"
-        );
-      }
+      // Admin -> User notifications for approval have been disabled per requirements
     } catch (error) {
       console.error("Error approving subject:", error);
       alert("Failed to approve subject.");
@@ -221,15 +197,7 @@ export default function AdminCoursesPage() {
       playSuccess();
       await refreshSubjects();
 
-      if (sub?.contributorId) {
-        await notifyUser(
-          db,
-          sub.contributorId,
-          "Subject Request Rejected ❌",
-          `Your subject request "${sub.name}" has been rejected.`,
-          "subject_rejected"
-        );
-      }
+      // Admin -> User notifications for rejection have been disabled per requirements
     } catch (error) {
       console.error("Error rejecting subject:", error);
       alert("Failed to reject subject.");
