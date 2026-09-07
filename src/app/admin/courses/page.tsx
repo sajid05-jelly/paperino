@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Ban, RotateCcw } from "lucide-react";
+import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Ban, RotateCcw, Search } from "lucide-react";
 import { useSound } from "@/hooks/useSound";
 import { useSubjects } from "@/context/SubjectsContext";
 import { notifyUser } from "@/lib/notifications";
@@ -57,6 +57,9 @@ export default function AdminCoursesPage() {
 
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: "dept" | "sub"; name: string } | null>(null);
+
+  // Search state for Approved Subjects
+  const [subjectSearchQuery, setSubjectSearchQuery] = useState("");
   
   const { playSuccess } = useSound();
   const { refreshSubjects } = useSubjects();
@@ -334,7 +337,17 @@ export default function AdminCoursesPage() {
 
   // Filtering data for view
   const currentDepts = departmentsList.filter(d => d.status === activeTab);
-  const currentSubs = subjectsList.filter(s => s.status === activeTab);
+  let currentSubs = subjectsList.filter(s => s.status === activeTab);
+
+  if (activeReviewType === "subjects" && activeTab === "approved" && subjectSearchQuery.trim() !== "") {
+    const q = subjectSearchQuery.toLowerCase().trim();
+    currentSubs = currentSubs.filter(s => 
+      (s.name || "").toLowerCase().includes(q) ||
+      (s.code || "").toLowerCase().includes(q) ||
+      (s.departmentId || "").toLowerCase().includes(q) ||
+      String(s.semesterId || "").toLowerCase().includes(q)
+    );
+  }
 
   return (
     <div className="w-full">
@@ -386,6 +399,29 @@ export default function AdminCoursesPage() {
           Rejected ({activeReviewType === "departments" ? departmentsList.filter(d => d.status === "rejected").length : subjectsList.filter(s => s.status === "rejected").length})
         </button>
       </div>
+
+      {activeReviewType === "subjects" && activeTab === "approved" && (
+        <div className="mb-6 relative max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-500" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search approved subjects..."
+            value={subjectSearchQuery}
+            onChange={(e) => setSubjectSearchQuery(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-colors placeholder-gray-500"
+          />
+          {subjectSearchQuery && (
+            <button
+              onClick={() => setSubjectSearchQuery("")}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center items-center py-20">
@@ -522,8 +558,14 @@ export default function AdminCoursesPage() {
         currentSubs.length === 0 ? (
           <div className="glass-panel p-12 text-center rounded-[2rem] border border-white/5 flex flex-col items-center">
             <BookOpen size={40} className="text-gray-500 mb-4" />
-            <h3 className="text-xl font-medium text-white mb-1">No {activeTab} subjects</h3>
-            <p className="text-gray-400">There are no subjects in this review state.</p>
+            <h3 className="text-xl font-medium text-white mb-1">
+              {subjectSearchQuery.trim() !== "" ? "No matching subjects found" : `No ${activeTab} subjects`}
+            </h3>
+            <p className="text-gray-400">
+              {subjectSearchQuery.trim() !== "" 
+                ? `No approved subjects match "${subjectSearchQuery}"` 
+                : "There are no subjects in this review state."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
