@@ -249,10 +249,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Manage Pulse Updates
             </Link>
 
-            <Link href="/admin/feedback" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-              <MessageSquare size={20} className="text-fuchsia-400" />
-              Feedback Center
-            </Link>
           </nav>
         </div>
       </div>

@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const targetCollection = searchParams.get("collection");
 
-    if (targetCollection !== "subject_requests" && targetCollection !== "user_feedback") {
+    if (targetCollection !== "subject_requests") {
       return new Response(JSON.stringify({ error: "Bad Request", message: "Invalid collection requested." }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { action, collection: targetCollection, id, updateData } = body;
 
-    if (targetCollection !== "subject_requests" && targetCollection !== "user_feedback") {
+    if (targetCollection !== "subject_requests") {
       return new Response(JSON.stringify({ error: "Bad Request", message: "Invalid collection." }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
