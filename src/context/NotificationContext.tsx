@@ -101,30 +101,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 1. One-time Fetch for Pulse Updates (Replaces Real-time Listener)
+  // 1. Fetching for Pulse Updates disabled (No longer fetching notifications to reduce Firestore reads)
   const fetchPulseUpdates = useCallback(async () => {
-    if (!user) {
-      setUpdates([]);
-      return;
-    }
-    
-    try {
-      const q = query(
-        collection(db, "pulse_updates"), 
-        orderBy("createdAt", "desc"), 
-        limit(10)
-      );
-      
-      const snapshot = await getDocs(q);
-      const newUpdates: PulseUpdate[] = [];
-      snapshot.forEach((d) => {
-        newUpdates.push({ id: d.id, ...d.data() } as PulseUpdate);
-      });
-      setUpdates(newUpdates);
-    } catch (err: any) {
-      console.warn("[NotificationContext] pulse_updates getDocs notice:", err?.message || err);
-    }
-  }, [user]);
+    setUpdates([]);
+  }, []);
 
   useEffect(() => {
     fetchPulseUpdates();

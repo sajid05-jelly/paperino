@@ -25,7 +25,7 @@ const THEMES = [
 
 export default function Navbar() {
   const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion } = useAuth();
-  const { pulseUnreadCount, categoryPulseUnreadCounts } = usePulseNotifications();
+  const { categoryPulseUnreadCounts } = usePulseNotifications();
   const fcfPulseCount = categoryPulseUnreadCounts["Free Class Finder"] || 0;
   
   const { 
@@ -224,11 +224,6 @@ export default function Navbar() {
             
             <div className="relative inline-flex items-center">
               <Link href="/pulse" className={getLinkClass("/pulse", true)}>Paperino Pulse</Link>
-              {pulseUnreadCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 z-20 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_12px_rgba(239,68,68,0.7)] ring-2 ring-[#07050e] animate-in zoom-in duration-300">
-                  {pulseUnreadCount > 9 ? "9+" : pulseUnreadCount}
-                </span>
-              )}
             </div>
             {user && !isAdmin && (
               <div className="relative inline-flex items-center">
@@ -596,14 +591,8 @@ export default function Navbar() {
                         <Zap size={17} className="text-cyan-400 shrink-0" />
                         <span>Paperino Pulse</span>
                       </span>
-                      {pulseUnreadCount > 0 ? (
-                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(239,68,68,0.7)]">
-                          {pulseUnreadCount > 9 ? "9+" : pulseUnreadCount}
-                        </span>
-                      ) : (
-                        (pathname === '/pulse' || pathname?.startsWith('/pulse/')) && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                        )
+                      {(pathname === '/pulse' || pathname?.startsWith('/pulse/')) && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
                       )}
                     </Link>
                   </div>
