@@ -51,7 +51,7 @@ export default async function SrmCoursePage({
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <SafeBackButton fallbackUrl="/srm" label="Back to SRM Courses" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors gap-2" size={16} />
+      <SafeBackButton fallbackUrl="/courses" label="Back to Materials" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors gap-2" size={16} />
 
       <div className="space-y-3 mb-12">
         <span className="text-xs font-bold text-purple-400 uppercase tracking-widest">{SITE_CONFIG.universityShortName} · {dept.code}</span>

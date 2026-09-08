@@ -159,14 +159,20 @@ export const getAllUnifiedData = cache(async (
         return;
       }
       if (d.status === "approved" || !d.status) {
+        const serializeTimestamp = (ts: any) => {
+          if (!ts) return null;
+          if (ts.toDate) return ts.toDate().toISOString();
+          if (ts._seconds) return new Date(ts._seconds * 1000).toISOString();
+          return String(ts);
+        };
         departmentsMap.set(d.id, {
           id: d.id,
           name: d.name || d.id.toUpperCase(),
           code: d.code || d.name || d.id.toUpperCase(),
           totalSemesters: d.totalSemesters || 8,
           status: d.status || "approved",
-          updatedAt: d.updatedAt || d.createdAt || null,
-          createdAt: d.createdAt || null,
+          updatedAt: serializeTimestamp(d.updatedAt || d.createdAt),
+          createdAt: serializeTimestamp(d.createdAt),
         });
       }
     });
@@ -183,6 +189,13 @@ export const getAllUnifiedData = cache(async (
           subjectKeysSet.add(uniqueKey);
           const deptObj = departmentsMap.get(deptId);
 
+          const serializeTimestamp = (ts: any) => {
+            if (!ts) return null;
+            if (ts.toDate) return ts.toDate().toISOString();
+            if (ts._seconds) return new Date(ts._seconds * 1000).toISOString();
+            return String(ts);
+          };
+
           subjectsList.push({
             id: subId,
             name: s.name || subId,
@@ -191,8 +204,8 @@ export const getAllUnifiedData = cache(async (
             departmentName: deptObj ? deptObj.name : deptId.toUpperCase(),
             semesterId: semId,
             status: s.status || "approved",
-            updatedAt: s.updatedAt || s.createdAt || null,
-            createdAt: s.createdAt || null,
+            updatedAt: serializeTimestamp(s.updatedAt || s.createdAt),
+            createdAt: serializeTimestamp(s.createdAt),
           });
         }
       }

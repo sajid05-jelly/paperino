@@ -73,11 +73,21 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchStats = useCallback(async (forceRefetch = false) => {
+    // Stop further Firestore reads for this session if quota was exceeded
+    if (cachedQuotaExceeded) {
+      console.warn("[Analytics] Blocked repeated fetch attempt: Firebase quota exceeded for this session.");
+      setStats(cachedStats);
+      setMaterialCounts(cachedMaterialCounts);
+      setIsQuotaExceeded(true);
+      setLoading(false);
+      return;
+    }
+
     if (!forceRefetch && cachedStats && cachedMaterialCounts) {
       console.log("[Analytics] Serving dashboard statistics from session cache");
       setStats(cachedStats);
       setMaterialCounts(cachedMaterialCounts);
-      setIsQuotaExceeded(cachedQuotaExceeded);
+      setIsQuotaExceeded(false);
       setLoading(false);
       return;
     }
@@ -210,25 +220,19 @@ export default function AdminDashboard() {
         console.warn("[Analytics] Service Notice: Firebase quota exceeded. Switching to offline mode.");
         setIsQuotaExceeded(true);
         cachedQuotaExceeded = true;
-        const fallbackStats = {
-          totalMaterials: 24,
-          totalUsers: 85,
-          dailyActive: 12,
-          atsUsage: 43,
-          aiUsage: 120,
-          mostVisited: "Data Structures",
-          topDepartment: "CSE",
-          highestDownloadedFile: "Notes_Unit1.pdf",
-          totalDepts: 5,
-          pendingDepts: 0,
-          approvedDepts: 5,
-          totalSubjects: 14
-        };
-        const fallbackCounts = { pyqs: 12, notes: 8, manuals: 2, syllabus: 1, questions: 1, other: 0 };
-        setStats(fallbackStats);
-        setMaterialCounts(fallbackCounts);
-        cachedStats = fallbackStats;
-        cachedMaterialCounts = fallbackCounts;
+        // Preserve last successfully fetched values
+        if (cachedStats && cachedMaterialCounts) {
+          setStats(cachedStats);
+          setMaterialCounts(cachedMaterialCounts);
+        } else {
+          // If no successful fetch has occurred yet, initialize cache with empty state instead of hardcoded fake data
+          cachedStats = {
+            totalUsers: 0, dailyActive: 0, totalMaterials: 0, atsUsage: 0, aiUsage: 0,
+            mostVisited: "N/A", topDepartment: "N/A", highestDownloadedFile: "N/A",
+            totalDepts: 0, pendingDepts: 0, approvedDepts: 0, totalSubjects: 0
+          };
+          cachedMaterialCounts = { pyqs: 0, notes: 0, manuals: 0, syllabus: 0, questions: 0, other: 0 };
+        }
       } else {
         console.error("[Analytics] Fatal error fetching admin stats:", error);
         setError("A fatal error occurred while fetching analytics.");

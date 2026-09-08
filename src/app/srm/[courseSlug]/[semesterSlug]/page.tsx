@@ -11,13 +11,13 @@ import SemesterSubjectGrid from "@/components/SemesterSubjectGrid";
 
 export async function generateStaticParams() {
   const { departments } = await getAllUnifiedData();
-  const params: { courseSlug: string; semId: string }[] = [];
+  const params: { courseSlug: string; semesterSlug: string }[] = [];
 
   departments.forEach((d) => {
     for (let sem = 1; sem <= (d.totalSemesters || 8); sem++) {
       params.push({
         courseSlug: d.id.toLowerCase(),
-        semId: String(sem),
+        semesterSlug: `semester-${sem}`,
       });
     }
   });
@@ -62,7 +62,7 @@ export default async function SrmSemesterPage({
   const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
 
-  const { departments, subjects } = await getAllUnifiedData(false, courseSlug, semId);
+  const { departments, subjects } = await getAllUnifiedData();
   const dept = departments.find(d => d.id.toLowerCase() === courseSlug.toLowerCase());
 
   if (!dept) notFound();

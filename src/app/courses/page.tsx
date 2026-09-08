@@ -41,7 +41,7 @@ export default function CoursesPage() {
 
   const sortedDepts = sortDepartments(filteredDepts, deptMaterialCounts);
 
-  const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
+  const [selectedCollege, setSelectedCollege] = useState<string | null>("srm");
 
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-6 py-12 relative min-h-[80vh]">
@@ -127,9 +127,9 @@ export default function CoursesPage() {
               {user && (
                 <button 
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold transition-all shadow-[0_0_20px_rgba(232,121,249,0.35)] hover:shadow-[0_0_30px_rgba(232,121,249,0.55)] cursor-pointer"
+                  className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white text-sm font-bold transition-all shadow-[0_0_20px_rgba(232,121,249,0.35)] hover:shadow-[0_0_30px_rgba(232,121,249,0.55)] cursor-pointer whitespace-nowrap"
                 >
-                  <Plus size={18} /> Suggest Department
+                  <Plus size={16} /> Suggest Department
                 </button>
               )}
             </div>

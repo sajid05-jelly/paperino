@@ -14,7 +14,14 @@ interface SemesterSubjectGridProps {
 }
 
 export default function SemesterSubjectGrid({ initialData, deptId, semId }: SemesterSubjectGridProps) {
-  const { subjects: clientSubjectsState } = useSubjects();
+  const { subjects: clientSubjectsState, lazyLoadSubjects } = useSubjects();
+
+  // Trigger client-side synchronization on mount so newly added dynamic subjects appear immediately
+  React.useEffect(() => {
+    if (deptId && semId && lazyLoadSubjects) {
+      lazyLoadSubjects(deptId, semId);
+    }
+  }, [deptId, semId, lazyLoadSubjects]);
 
   // Merge server initialData with any dynamically created subjects on the client
   const displaySubjects = useMemo(() => {
