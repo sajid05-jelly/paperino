@@ -46,10 +46,13 @@ export async function GET(request: Request) {
       if (chunk.length === 0) continue;
       const snap = await adminDb.collection('challenge_results')
         .where('challengeId', 'in', chunk)
-        .where('isOfficial', '==', true)
         .get();
       
-      snap.docs.forEach((d: any) => resultsDocs.push(d));
+      snap.docs.forEach((d: any) => {
+        if (d.data().isOfficial) {
+          resultsDocs.push(d);
+        }
+      });
     }
 
     if (resultsDocs.length === 0) {

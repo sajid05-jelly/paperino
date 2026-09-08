@@ -67,12 +67,13 @@ async function buildLeaderboard(challengeId: string, currentUid: string): Promis
   try {
     const allResultsSnap = await adminDb.collection('challenge_results')
       .where('challengeId', '==', challengeId)
-      .where('isOfficial', '==', true)
       .get();
 
     const userBestMap = new Map<string, any>();
     allResultsSnap.forEach((docSnap: any) => {
       const d = docSnap.data();
+      if (!d.isOfficial) return; 
+
       const entry = {
         userId: d.userId,
         displayName: d.displayName || 'Anonymous',

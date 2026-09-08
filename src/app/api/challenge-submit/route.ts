@@ -63,16 +63,17 @@ async function buildLeaderboard(challengeId: string, currentUid: string): Promis
   if (!adminDb) return { leaderboard, userRank };
 
   try {
-    // Query ALL official results for this exact challengeId
+    // Query ALL official results for this exact challengeId (removed isOfficial where clause to avoid missing composite index error)
     const allResultsSnap = await adminDb.collection('challenge_results')
       .where('challengeId', '==', challengeId)
-      .where('isOfficial', '==', true)
       .get();
 
     // Deduplicate per user (keep best: highest score, then lowest duration)
     const userBestMap = new Map<string, any>();
     allResultsSnap.forEach((docSnap: any) => {
       const d = docSnap.data();
+      if (!d.isOfficial) return; // Filter in-memory instead
+      
       const entry = {
         userId: d.userId,
         displayName: d.displayName || 'Anonymous',
