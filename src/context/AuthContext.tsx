@@ -148,12 +148,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (currentUser) {
         const userRef = doc(db, "users", currentUser.uid);
-        
+        let finalUserData: any = null;
+
         try {
           const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
             // Always create as "student" first (Firestore rules require role="student" on create)
-            await setDoc(userRef, {
+            const newUserData = {
               displayName: toProperCase(currentUser.displayName || ""),
               email: (currentUser.email || "").toLowerCase(),
               role: "student",
@@ -165,23 +166,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               lastPulseReadAt: new Date(0),
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp()
-            }).catch(err => {
+            };
+
+            await setDoc(userRef, newUserData).catch(err => {
               console.warn("[AuthContext] Failed to create user profile in DB:", err);
             });
-            // If this email is an admin, promote via update (update rule allows admin role changes)
+
             if (currentIsAdmin) {
               await setDoc(userRef, { role: "admin" }, { merge: true }).catch(err => {
                 console.warn("[AuthContext] Failed to promote to admin in DB:", err);
               });
+              newUserData.role = "admin";
             }
+            
+            finalUserData = { ...newUserData, createdAt: new Date(), lastLogin: new Date() };
           } else {
             // Daily Active Users Tracking (update lastLogin max once per day)
             const data = userSnap.data();
+            finalUserData = { ...data };
+
             if (currentIsAdmin && data.role !== "admin") {
               await setDoc(userRef, { role: "admin" }, { merge: true }).catch(err => {
                 console.warn("[AuthContext] Failed to promote to admin in DB:", err);
               });
+              finalUserData.role = "admin";
             }
+            
             const now = new Date();
             const lastLoginDate = data.lastLogin?.toDate ? data.lastLogin.toDate() : new Date(0);
             if (
@@ -192,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true }).catch(err => {
                 console.warn("[AuthContext] Failed to update lastLogin in DB:", err);
               });
+              finalUserData.lastLogin = now;
             }
           }
         } catch (error) {
@@ -200,11 +211,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         }
 
-        // Fetch user profile data once instead of real-time listener to reduce Firestore reads
+        // Apply the fetched data to state without doing a second Firestore read
         try {
-          const snap = await getDoc(userRef);
-          if (snap.exists()) {
-            const data = snap.data();
+          if (finalUserData) {
+            const data = finalUserData;
             setPaperinoAvatarState(data.paperinoAvatar || null);
             setAvatarFrame(data.avatarFrame || null);
             setAvatarCompanion(data.avatarCompanion || null);
