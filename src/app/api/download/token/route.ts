@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 import { randomUUID } from "crypto";
+import { checkMonthlyUsage } from "@/lib/monthly-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,23 @@ export async function POST(req: NextRequest) {
 
   if (!adminDb) {
     return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
+  }
+
+  // Check Monthly Download Limit for non-admins
+  if (!isAdmin && uid) {
+    const usageCheck = await checkMonthlyUsage(uid, "downloads");
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: "Download Limit Reached",
+          message: usageCheck.error || `Monthly download limit reached (${usageCheck.limit} downloads/month). Upgrade to Plus or Pro for higher limits.`,
+          plan: usageCheck.plan,
+          limit: usageCheck.limit,
+          used: usageCheck.used
+        },
+        { status: 403 }
+      );
+    }
   }
 
   try {

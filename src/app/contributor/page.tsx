@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
 import { 
   Trophy, FileText, Edit2, Download, Copy, CheckCircle2, 
   Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles, 
@@ -34,7 +35,9 @@ export default function ContributorDashboardPage() {
     uploads: approvedCountDb, 
     contributionPoints, 
     isPremiumActive, 
-    premiumEndDate 
+    premiumEndDate,
+    plan,
+    isContributorPlus
   } = useAuth();
   const { showToast, dismissToast } = useToast();
   const { userStatusUpdates, dashboardUnreadCount, markDashboardSeen } = useBadges();
@@ -178,21 +181,30 @@ export default function ContributorDashboardPage() {
           </div>
         </div>
 
-        {/* Premium Status Info Box */}
-        <div className="w-full md:w-auto bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isPremiumActive ? "bg-amber-500/20 text-amber-400" : "bg-white/5 text-gray-500"}`}>
-            <Sparkles size={20} className={isPremiumActive ? "animate-pulse" : ""} />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 font-medium">Premium Status</p>
-            {isPremiumActive ? (
-              <p className="text-sm font-bold text-amber-400 flex items-center gap-1.5">
-                Active <span className="text-[10px] text-gray-400 font-normal">(Expires: {formattedExpiry})</span>
+        {/* Plan & Subscription Status Info Box */}
+        <div className="w-full md:w-auto bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${plan !== "free" ? "bg-amber-500/20 text-amber-400" : "bg-white/5 text-gray-500"}`}>
+              <Sparkles size={20} className={plan !== "free" ? "animate-pulse" : ""} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Subscription Plan</p>
+              <p className="text-sm font-bold text-white flex items-center gap-1.5 capitalize">
+                {plan === "free" ? "Free Plan" : `Paperino ${plan}`}
+                {isContributorPlus && (
+                  <span className="text-[10px] text-emerald-400 font-normal bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    Free Plus (10+ Approved)
+                  </span>
+                )}
               </p>
-            ) : (
-              <p className="text-sm font-bold text-gray-400">Inactive</p>
-            )}
+            </div>
           </div>
+          <Link
+            href="/pricing"
+            className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-purple-300 hover:text-white border border-purple-500/20 transition-all"
+          >
+            {plan === "free" ? "Upgrade" : "View Plans"}
+          </Link>
         </div>
       </div>
 

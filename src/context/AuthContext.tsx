@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
+import { PlanType, FeatureKey, getEffectivePlan, isFeatureAllowed } from "@/lib/subscription";
 
 
 interface UserCredits {
@@ -22,6 +23,10 @@ interface AuthContextType {
   contributionPoints: number;
   uploads: number;
   isPremiumActive: boolean;
+  plan: PlanType;
+  isContributorPlus: boolean;
+  razorpaySubscriptionId: string;
+  razorpaySubscriptionStatus: string;
   premiumEndDate: any;
   premiumStartDate: any;
   loading: boolean;
@@ -30,6 +35,7 @@ interface AuthContextType {
   avatarCompanion: string | null;
   lastPulseReadAt: any; // Firestore Timestamp
   userCredits: UserCredits | null;
+  canAccess: (feature: FeatureKey) => boolean;
   setPaperinoAvatar: (avatarId: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -45,6 +51,10 @@ const AuthContext = createContext<AuthContextType>({
   contributionPoints: 0,
   uploads: 0,
   isPremiumActive: false,
+  plan: "free",
+  isContributorPlus: false,
+  razorpaySubscriptionId: "",
+  razorpaySubscriptionStatus: "",
   premiumEndDate: null,
   premiumStartDate: null,
   loading: true,
@@ -53,6 +63,7 @@ const AuthContext = createContext<AuthContextType>({
   avatarCompanion: null,
   lastPulseReadAt: null,
   userCredits: null,
+  canAccess: () => false,
   setPaperinoAvatar: async () => {},
   loginWithGoogle: async () => {},
   logout: async () => {},
@@ -82,6 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [contributionPoints, setContributionPoints] = useState(0);
   const [uploads, setUploads] = useState(0);
   const [isPremiumActive, setIsPremiumActive] = useState(false);
+  const [plan, setPlan] = useState<PlanType>("free");
+  const [isContributorPlus, setIsContributorPlus] = useState(false);
+  const [razorpaySubscriptionId, setRazorpaySubscriptionId] = useState("");
+  const [razorpaySubscriptionStatus, setRazorpaySubscriptionStatus] = useState("");
   const [premiumEndDate, setPremiumEndDate] = useState<any>(null);
   const [premiumStartDate, setPremiumStartDate] = useState<any>(null);
   const [paperinoAvatar, setPaperinoAvatarState] = useState<string | null>(null);
@@ -236,6 +251,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUploads(Math.max(0, data.uploads || 0));
             setPremiumStartDate(data.premiumStartDate || null);
             setPremiumEndDate(data.premiumEndDate || null);
+            setRazorpaySubscriptionId(data.razorpaySubscriptionId || "");
+            setRazorpaySubscriptionStatus(data.razorpaySubscriptionStatus || "");
+
+            // Calculate effective plan & contributor plus eligibility centrally
+            const { plan: effectivePlan, isContributorPlus: contribPlus } = getEffectivePlan({
+              ...data,
+              role: isAdminUser ? "admin" : (data.role || "student")
+            });
+            setPlan(effectivePlan);
+            setIsContributorPlus(contribPlus);
 
             let activePremium = false;
             if (data.premiumEndDate) {
@@ -245,10 +270,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 activePremium = true;
               }
             }
+            if (effectivePlan === "plus" || effectivePlan === "pro" || effectivePlan === "premium") {
+              activePremium = true;
+            }
             setIsPremiumActive(activePremium);
 
             setIsAdmin(isAdminUser);
-            setIsContributor(hasUploads || !!level);
+            setIsContributor(hasUploads);
             setIsBlocked(isBlockedUser);
             setRole(data.role || "student");
 
@@ -298,6 +326,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setContributionPoints(0);
         setUploads(0);
         setIsPremiumActive(false);
+        setPlan("free");
+        setIsContributorPlus(false);
+        setRazorpaySubscriptionId("");
+        setRazorpaySubscriptionStatus("");
         setPremiumStartDate(null);
         setPremiumEndDate(null);
         setLoading(false);
@@ -434,6 +466,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       contributionPoints,
       uploads,
       isPremiumActive,
+      plan,
+      isContributorPlus,
+      canAccess: (feature: FeatureKey) => isFeatureAllowed(plan, feature),
+      razorpaySubscriptionId,
+      razorpaySubscriptionStatus,
       premiumEndDate,
       premiumStartDate,
       loading, 

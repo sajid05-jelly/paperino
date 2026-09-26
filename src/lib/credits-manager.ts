@@ -1,4 +1,6 @@
 import { adminDb, adminAuth } from './firebase-admin';
+import { checkMonthlyUsage, incrementMonthlyUsage } from './monthly-usage';
+import { getCurrentMonthKey, getEffectivePlan, getMonthlyLimit } from './subscription';
 
 export type ToolType = 'pyq' | 'ats';
 
@@ -10,20 +12,6 @@ export interface CreditCheckResult {
   limit?: number;
   error?: string;
 }
-
-// Ensure timezone is IST
-const getISTDateString = () => {
-  const date = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const istDate = new Date(date.getTime() + istOffset);
-  return istDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
-};
-
-const getLimits = (role: string) => {
-  if (role === 'admin') return { pyq: Infinity, ats: Infinity };
-  if (role === 'contributor') return { pyq: 9, ats: 9 };
-  return { pyq: 3, ats: 3 }; // Default for 'student' or undefined
-};
 
 export async function checkAndGetCredits(authHeader: string | null, tool: ToolType): Promise<CreditCheckResult> {
   if (!adminAuth || !adminDb) {
@@ -39,56 +27,49 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
   try {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
-    const role = decodedToken.role || 'student'; // Assuming role is set in custom claims, else fallback
-
-    let actualRole = role;
-    let hasPremium = false;
-    
     const userDoc = await adminDb.collection('users').doc(uid).get();
-    if (userDoc.exists) {
-      const userData = userDoc.data() || {};
-      actualRole = userData.role || 'student';
-      
-      if (userData.premiumEndDate) {
-        const now = new Date();
-        const end = userData.premiumEndDate.toDate ? userData.premiumEndDate.toDate() : new Date(userData.premiumEndDate);
-        if (now <= end) {
-          hasPremium = true;
-        }
-      }
+    const userData = userDoc.exists ? userDoc.data() : null;
+    const { plan } = getEffectivePlan(userData);
+
+    // Admin bypass
+    if (userData?.role === 'admin') {
+      return { allowed: true, uid, role: 'admin', used: 0, limit: Infinity };
     }
 
-    const limits = getLimits(actualRole);
-    let toolLimit = tool === 'pyq' ? limits.pyq : limits.ats;
-    if (hasPremium) {
-      toolLimit = 1000;
+    const featureKey = tool === 'pyq' ? 'pyqAnalyzer' : 'ats';
+    const limit = getMonthlyLimit(plan, featureKey);
+
+    if (limit <= 0) {
+      const toolName = tool === 'pyq' ? 'PYQ Analyzer' : 'ATS';
+      return {
+        allowed: false,
+        uid,
+        role: userData?.role || 'student',
+        used: 0,
+        limit: 0,
+        error: `${toolName} is not available on the Free plan. Upgrade to Paperino Plus or Pro to unlock.`
+      };
     }
 
-    if (actualRole === 'admin') {
-      return { allowed: true, uid, role: actualRole, used: 0, limit: 1000 }; // Safe limit for admin too
+    const usageCheck = await checkMonthlyUsage(uid, featureKey);
+    if (!usageCheck.allowed) {
+      return {
+        allowed: false,
+        uid,
+        role: userData?.role || 'student',
+        used: usageCheck.used,
+        limit: usageCheck.limit,
+        error: usageCheck.error || `Monthly ${tool.toUpperCase()} limit reached (${usageCheck.limit}/month). Upgrade for higher limits.`
+      };
     }
 
-    const todayIST = getISTDateString();
-    const creditsRef = adminDb.collection('user_credits').doc(uid);
-    const creditsDoc = await creditsRef.get();
-
-    let used = 0;
-
-    if (creditsDoc.exists) {
-      const data = creditsDoc.data()!;
-      if (data.lastResetDate === todayIST) {
-        used = tool === 'pyq' ? (data.pyqUsed || 0) : (data.atsUsed || 0);
-      } else {
-        // Different day, resets to 0 (we don't write to DB yet, we write it when they actually use a credit)
-        used = 0;
-      }
-    }
-
-    if (used >= toolLimit) {
-      return { allowed: false, error: 'Daily credit limit reached.', uid, role: actualRole, used, limit: toolLimit };
-    }
-
-    return { allowed: true, uid, role: actualRole, used, limit: toolLimit };
+    return {
+      allowed: true,
+      uid,
+      role: userData?.role || 'student',
+      used: usageCheck.used,
+      limit: usageCheck.limit
+    };
   } catch (error) {
     console.error('Credit verification error:', error);
     return { allowed: false, error: 'Invalid authentication token.' };
@@ -99,34 +80,18 @@ export async function incrementCreditUsage(uid: string, tool: ToolType) {
   if (!adminDb) return;
 
   try {
-    const todayIST = getISTDateString();
+    const featureKey = tool === 'pyq' ? 'pyqAnalyzer' : 'ats';
+    const newCount = await incrementMonthlyUsage(uid, featureKey);
+
+    // Also update user_credits document for real-time listener compatibility
+    const monthKey = getCurrentMonthKey();
     const creditsRef = adminDb.collection('user_credits').doc(uid);
-    
-    await adminDb.runTransaction(async (transaction) => {
-      const doc = await transaction.get(creditsRef);
-      
-      let pyqUsed = 0;
-      let atsUsed = 0;
-
-      if (doc.exists) {
-        const data = doc.data()!;
-        if (data.lastResetDate === todayIST) {
-          pyqUsed = data.pyqUsed || 0;
-          atsUsed = data.atsUsed || 0;
-        }
-      }
-
-      if (tool === 'pyq') pyqUsed++;
-      if (tool === 'ats') atsUsed++;
-
-      transaction.set(creditsRef, {
-        uid,
-        pyqUsed,
-        atsUsed,
-        lastResetDate: todayIST,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    });
+    await creditsRef.set({
+      uid,
+      [tool === 'pyq' ? 'pyqUsed' : 'atsUsed']: newCount,
+      lastResetDate: monthKey,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
   } catch (error) {
     console.error('Failed to increment credit usage:', error);
   }

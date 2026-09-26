@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import {
   GraduationCap, Briefcase, Award, Code, CheckCircle, AlertTriangle, HelpCircle,
   TrendingUp, RefreshCw, Layers, Sparkles, Send, Upload, Trash2, ArrowRight,
-  Shield, Bell, BrainCircuit, Globe, Edit2, CheckSquare, Square, User, X, ExternalLink
+  Shield, Bell, BrainCircuit, Globe, Edit2, CheckSquare, Square, User, X, ExternalLink, Lock
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { CareerDnaProfile, CareerOpportunity } from "@/types/careerDna";
@@ -18,8 +18,9 @@ import GitHubIntelligence from "@/components/GitHubIntelligence";
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function CareerDnaPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin, plan, canAccess } = useAuth();
   const { showToast } = useToast();
+  const isAllowed = isAdmin || canAccess("careerDna");
 
   const [profile, setProfile] = useState<CareerDnaProfile | null>(null);
   const [analysis, setAnalysis] = useState<any | null>(null);
@@ -687,7 +688,25 @@ export default function CareerDnaPage() {
       </header>
 
       <div className="w-full relative z-10">
-        {(!profile || isEditing) ? (
+        {!isAllowed ? (
+          <div className="backdrop-blur-3xl bg-white/[0.04] border border-purple-500/25 rounded-3xl p-12 text-center max-w-xl mx-auto space-y-5 shadow-[0_0_50px_rgba(168,85,247,0.15)] my-12">
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400">
+              <Lock size={32} />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Career DNA is Locked</h3>
+            <p className="text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
+              Paperino Career DNA is available on Paperino Pro and Premium plans. Upgrade to build your verified tech profile, match with live internship opportunities, and analyze engineering readiness.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg transition-all"
+              >
+                <Sparkles size={16} /> Unlock with Pro (₹59/mo)
+              </Link>
+            </div>
+          </div>
+        ) : (!profile || isEditing) ? (
           // ONBOARDING & EDIT PROFILE FORM SCREEN
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
             

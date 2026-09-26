@@ -18,11 +18,14 @@ import {
   HelpCircle,
   Activity,
   ShieldAlert,
-  Infinity as InfinityIcon
+  Infinity as InfinityIcon,
+  Lock
 } from "lucide-react";
+import Link from "next/link";
+import { getCurrentMonthKey } from "@/lib/subscription";
 
 export default function ExamEmergencyPage() {
-  const { user, isAdmin, isContributor } = useAuth();
+  const { user, isAdmin, plan, canAccess } = useAuth();
   const { departments, subjects, loading: subjectsLoading } = useSubjects();
 
   // Selected targets
@@ -37,8 +40,9 @@ export default function ExamEmergencyPage() {
   const [activeDashboard, setActiveDashboard] = useState(false);
   const [error, setError] = useState("");
 
-  // Limits based on roles
-  const dailyLimit = isAdmin ? 1000000 : isContributor ? 5 : 2;
+  // Plan limits: Pro (11/mo), Premium/Admin (Unlimited), Free/Plus (0)
+  const isEmergencyAllowed = isAdmin || canAccess("examEmergency");
+  const monthlyLimit = isAdmin || plan === "premium" ? Infinity : plan === "pro" ? 11 : 0;
 
   // Track IST Date
   const getTodayIST = () => {
@@ -58,28 +62,28 @@ export default function ExamEmergencyPage() {
     getDoc(userRef).then(async (snap) => {
       if (!isMounted || !snap.exists()) return;
       const data = snap.data();
-      const count = data.emergencyUsageCount || 0;
-      const lastReset = data.emergencyLastResetDate || "";
-      const todayIST = getTodayIST();
+      const count = data.emergencyMonthlyUsageCount || 0;
+      const lastResetMonth = data.emergencyLastResetMonth || "";
+      const currentMonth = getCurrentMonthKey();
 
-      if (lastReset !== todayIST) {
-        // Perform automatic 12:00 AM IST daily reset
+      if (lastResetMonth !== currentMonth) {
+        // Automatic monthly reset
         try {
           await updateDoc(userRef, {
-            emergencyUsageCount: 0,
-            emergencyLastResetDate: todayIST
+            emergencyMonthlyUsageCount: 0,
+            emergencyLastResetMonth: currentMonth
           });
           if (isMounted) {
             setEmergencyUsageCount(0);
-            setEmergencyLastResetDate(todayIST);
+            setEmergencyLastResetDate(currentMonth);
           }
         } catch (err) {
-          console.error("Error resetting emergency usage:", err);
+          console.error("Error resetting emergency monthly usage:", err);
         }
       } else {
         if (isMounted) {
           setEmergencyUsageCount(count);
-          setEmergencyLastResetDate(lastReset);
+          setEmergencyLastResetDate(lastResetMonth);
         }
       }
     }).catch((err) => {
@@ -92,17 +96,18 @@ export default function ExamEmergencyPage() {
   // Handle Activation
   const handleActivateMode = async () => {
     setError("");
+    if (!isEmergencyAllowed) {
+      setError("Exam Emergency Mode is available on Paperino Pro (11 uses/mo) and Premium (Unlimited). Please upgrade your plan.");
+      return;
+    }
+
     if (!selectedDept || !selectedSem || !selectedSubject) {
       setError("Please select all options to activate Emergency Mode.");
       return;
     }
 
-    if (!isAdmin && emergencyUsageCount >= dailyLimit) {
-      if (isContributor) {
-        setError("You've reached today's Emergency Mode limit. Try again tomorrow.");
-      } else {
-        setError("You've used all Emergency Mode activations for today. Come back tomorrow or become a contributor to unlock higher limits.");
-      }
+    if (!isAdmin && plan !== "premium" && emergencyUsageCount >= monthlyLimit) {
+      setError(`You have reached your monthly limit of ${monthlyLimit} Emergency Mode uses. Upgrade to Premium for unlimited uses.`);
       return;
     }
 
@@ -112,8 +117,8 @@ export default function ExamEmergencyPage() {
       if (user) {
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, {
-          emergencyUsageCount: emergencyUsageCount + 1,
-          emergencyLastResetDate: getTodayIST()
+          emergencyMonthlyUsageCount: emergencyUsageCount + 1,
+          emergencyLastResetMonth: getCurrentMonthKey()
         });
       }
       setActiveDashboard(true);
@@ -127,7 +132,7 @@ export default function ExamEmergencyPage() {
 
   const getRemainingUses = () => {
     if (isAdmin) return "Unlimited";
-    return Math.max(0, dailyLimit - emergencyUsageCount);
+    return Math.max(0, monthlyLimit - emergencyUsageCount);
   };
 
   // Mock Generation for Emergency Subject Dashboard
@@ -262,12 +267,22 @@ export default function ExamEmergencyPage() {
             <div className="backdrop-blur-3xl bg-white/[0.04] border border-violet-500/20 hover:border-violet-500/40 transition-all duration-500 rounded-3xl p-8 shadow-[0_0_55px_rgba(var(--primary-rgb),0.15)] max-w-xl mx-auto relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-[rgba(var(--primary-rgb),0.06)] blur-[80px] rounded-full pointer-events-none" />
               
-              {/* Daily usage indicator */}
+              {/* Monthly usage indicator */}
               <div className="mb-8">
-                {isAdmin ? (
+                {isAdmin || plan === "premium" ? (
                   <div className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 font-bold text-xs shadow-md">
                     <InfinityIcon size={14} className="text-violet-400" />
-                    Admin: Unlimited Access
+                    {isAdmin ? "Admin" : "Premium"}: Unlimited Access
+                  </div>
+                ) : !isEmergencyAllowed ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-300 font-bold text-xs shadow-md">
+                      <Lock size={14} className="text-purple-400" />
+                      Locked on {plan.toUpperCase()} — Requires Paperino Pro or Premium
+                    </div>
+                    <Link href="/pricing" className="text-xs text-purple-400 hover:text-purple-300 underline font-medium">
+                      Upgrade to unlock 11 uses/month →
+                    </Link>
                   </div>
                 ) : (
                   <div className={`inline-flex items-center gap-1.5 px-4.5 py-2 rounded-full border text-xs font-bold transition-all ${
@@ -276,7 +291,7 @@ export default function ExamEmergencyPage() {
                       : "bg-red-500/5 border-red-500/20 text-red-300/90 shadow-[0_0_15px_rgba(239,68,68,0.05)]"
                   }`}>
                     <Zap size={14} className={getRemainingUses() === 0 ? "text-red-400 animate-pulse" : "text-red-400"} />
-                    🚨 Emergency Uses Remaining: {getRemainingUses()}/{dailyLimit}
+                    🚨 Emergency Uses Remaining: {getRemainingUses()}/{monthlyLimit} (Pro Plan)
                   </div>
                 )}
               </div>
@@ -375,7 +390,7 @@ export default function ExamEmergencyPage() {
                 ) : (
                   <div className="px-4 py-2 rounded-full bg-red-500/5 border border-red-500/20 text-red-300 font-bold text-xs shadow-sm flex items-center gap-1.5">
                     <Zap size={14} className="text-red-400" />
-                    🚨 Limits Remaining: {getRemainingUses()}/{dailyLimit}
+                    🚨 Limits Remaining: {getRemainingUses()}/{monthlyLimit}
                   </div>
                 )}
               </div>

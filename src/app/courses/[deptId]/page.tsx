@@ -4,6 +4,7 @@ import { useState, use } from "react";
 import Link from "next/link";
 import { BookOpen, Calendar, Search, ChevronRight, Loader2 } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
+import { getSubjectSeoPath } from "@/lib/seoUtils";
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 
@@ -104,7 +105,7 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
               {searchResults.map((sub, i) => (
-                <Link key={`${sub.semId}-${sub.id}`} href={`/courses/${deptId}/semesters/${sub.semId}/subjects/${sub.id}`}>
+                <Link key={`${sub.semId}-${sub.id}`} href={getSubjectSeoPath({ id: sub.id, name: sub.name, code: sub.code || "", departmentId: deptId, semesterId: sub.semId })}>
                   <div className="vision-glass p-6 h-full group cursor-pointer relative overflow-hidden vision-hover animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all shadow-inner">

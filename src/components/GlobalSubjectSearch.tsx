@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Search, Book, Building2, Calendar } from "lucide-react";
+import { getSubjectSeoPath } from "@/lib/seoUtils";
 
 export default function GlobalSubjectSearch({ 
   subjects, 
@@ -46,9 +47,7 @@ export default function GlobalSubjectSearch({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {matchedSubjects.map((sub, i) => {
                 const deptName = departments.find(d => d.id === sub.departmentId)?.name || sub.departmentId;
-                const linkHref = sub.departmentId.toLowerCase() === 'btech' 
-                  ? `/srm/btech/semesters/${sub.semesterId}/subjects/${sub.id}` 
-                  : `${baseRoute}/${sub.departmentId}/semesters/${sub.semesterId}/subjects/${sub.id}`;
+                const linkHref = getSubjectSeoPath(sub);
                   
                 return (
                   <Link key={`${sub.departmentId}-${sub.semesterId}-${sub.id}-${i}`} href={linkHref}>

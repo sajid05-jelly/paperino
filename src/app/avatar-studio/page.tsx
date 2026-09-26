@@ -18,7 +18,7 @@ import Link from "next/link";
 import SafeBackButton from "@/components/SafeBackButton";
 
 export default function AvatarStudioPage() {
-  const { user, paperinoAvatar, setPaperinoAvatar } = useAuth();
+  const { user, isAdmin, plan, canAccess, paperinoAvatar, setPaperinoAvatar } = useAuth();
   
   // Customization State
   const [equippedAvatar, setEquippedAvatar] = useState(paperinoAvatar || "pen-paper");
@@ -95,6 +95,22 @@ export default function AvatarStudioPage() {
 
   const handleEquip = async () => {
     if (!user) return;
+
+    if (!isAdmin) {
+      if (previewAvatar !== "pen-paper" && !canAccess("avatarChange")) {
+        alert("Avatar changes require Paperino Plus, Pro, or Premium. Upgrade to equip this avatar!");
+        return;
+      }
+      if (previewFrame !== "none" && !canAccess("profileFrame")) {
+        alert("Profile frames require Paperino Pro or Premium. Upgrade to equip frames!");
+        return;
+      }
+      if (previewCompanion !== "none" && !canAccess("profileCompanions")) {
+        alert("Profile companions require Paperino Premium. Upgrade to equip companions!");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       await setDoc(doc(db, "users", user.uid), {

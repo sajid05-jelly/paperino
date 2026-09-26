@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ExternalLink,
 } from "lucide-react";
+import { auth } from "@/lib/firebase";
 import { GitHubAnalysisResult } from "@/app/api/github-intelligence/route";
 
 interface GitHubIntelligenceProps {
@@ -45,7 +46,12 @@ export default function GitHubIntelligence({
 
     try {
       const cleanUser = username.trim().replace(/^@/, "");
-      const res = await fetch(`/api/github-intelligence?username=${encodeURIComponent(cleanUser)}${forceRefresh ? "&refresh=true" : ""}`);
+      const headers: Record<string, string> = {};
+      if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken().catch(() => null);
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch(`/api/github-intelligence?username=${encodeURIComponent(cleanUser)}${forceRefresh ? "&refresh=true" : ""}`, { headers });
       const data = await res.json();
 
       if (!res.ok) {

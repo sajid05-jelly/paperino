@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
-import { recalculateLeaderboards, updateLeaderboardForUser } from "@/lib/leaderboard";
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { notifyUser } from "@/lib/notifications";
 import UserAvatar from "@/components/UserAvatar";
@@ -324,19 +323,8 @@ export default function AdminReviewsPage() {
           const updates: Record<string, any> = {
             uploads: currentUploads,
             points: increment(10), // legacy backwards compatibility
-            seasonUploads: increment(1),
-            seasonPoints: increment(10),
             contributionPoints: currentPoints
           };
-
-          // Determine badge tier
-          let badgeLevel: "contributor" | "active" | "elite" | "" = "contributor";
-          if (currentUploads >= 20) {
-            badgeLevel = "elite";
-          } else if (currentUploads >= 5) {
-            badgeLevel = "active";
-          }
-          updates.contributorLevel = badgeLevel;
 
           // Premium Rewarding Stacking Rules
           let premiumDurationDays = 0;
@@ -376,8 +364,6 @@ export default function AdminReviewsPage() {
 
           await updateDoc(userRef, updates);
         }
-
-        await recalculateLeaderboards(db);
 
         // Notify the uploader
         await notifyUser(

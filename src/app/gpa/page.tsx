@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Plus, Trash2, RotateCcw, Activity, Award, ChevronRight, Percent, ArrowRight } from "lucide-react";
+import { Calculator, Plus, Trash2, RotateCcw, Activity, Award, ChevronRight, Percent, ArrowRight, Lock, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 // SRM Grade Points Mapping
 const GRADE_POINTS: Record<string, number> = {
@@ -38,6 +40,8 @@ type Semester = {
 };
 
 export default function GPACalculatorPage() {
+  const { isAdmin, canAccess, plan } = useAuth();
+  const isSemesterAllowed = isAdmin || canAccess("semesterCalculator");
   const [activeTab, setActiveTab] = useState<"gpa" | "cgpa" | "semester">("gpa");
   
   // GPA State
@@ -414,7 +418,29 @@ export default function GPACalculatorPage() {
         </div>
       )}
       {activeTab === "semester" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-5 duration-500">
+        !isSemesterAllowed ? (
+          <div className="glass-panel p-10 md:p-12 rounded-3xl border border-purple-500/25 text-center max-w-xl mx-auto space-y-4 shadow-[0_0_40px_rgba(168,85,247,0.15)] animate-in fade-in duration-300">
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400">
+              <Lock size={30} />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Semester Calculator Locked</h3>
+            <p className="text-sm text-gray-400 leading-relaxed max-w-md mx-auto">
+              The Semester Marks & Target Grade Predictor is available on Paperino Plus, Pro, and Premium plans. Upgrade to calculate exact target marks required in externals to pass or score an O grade.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg transition-all"
+              >
+                <Sparkles size={15} /> Unlock with Plus (₹29/mo)
+              </Link>
+            </div>
+            <p className="text-[11px] text-gray-500 pt-1">
+              🎁 Free for contributors with 10+ approved materials!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-5 duration-500">
           {/* Input Section */}
           <div className="glass-panel p-8 rounded-2xl border-t border-white/10">
             <h2 className="text-2xl font-semibold text-white mb-6">Enter Marks</h2>
@@ -545,7 +571,7 @@ export default function GPACalculatorPage() {
             </div>
           </div>
         </div>
-      )}
+        ))}
     </div>
   );
 }

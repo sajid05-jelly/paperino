@@ -1,21 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, doc, getDocs, setDoc, getCountFromServer, limit, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, getCountFromServer, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { recalculateLeaderboards } from "@/lib/leaderboard";
 import { 
-  Users, UserCheck, ShieldCheck, Trophy, Sparkles, 
+  Users, UserCheck, ShieldCheck, Sparkles, 
   FileText, Clock, ArrowUpRight, Loader2, RefreshCw 
 } from "lucide-react";
-
-interface ContributorInfo {
-  id: string;
-  displayName: string;
-  email: string;
-  contributionPoints: number;
-  uploads: number;
-}
 
 interface RecentMat {
   id: string;
@@ -29,7 +20,6 @@ interface RecentMat {
 
 // Session level cache for team analytics page to avoid repeating getCountFromServer calls
 let cachedTeamStats: any = null;
-let cachedTopContribs: ContributorInfo[] | null = null;
 let cachedRecentContribs: RecentMat[] | null = null;
 
 export default function AdminTeamPage() {
@@ -39,15 +29,12 @@ export default function AdminTeamPage() {
     totalPending: 0,
     totalPremium: 0
   });
-  const [topContributors, setTopContributors] = useState<ContributorInfo[]>([]);
   const [recentContributions, setRecentContributions] = useState<RecentMat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchAnalytics = async (forceRefetch = false) => {
-    if (!forceRefetch && cachedTeamStats && cachedTopContribs && cachedRecentContribs) {
+    if (!forceRefetch && cachedTeamStats && cachedRecentContribs) {
       setStats(cachedTeamStats);
-      setTopContributors(cachedTopContribs);
       setRecentContributions(cachedRecentContribs);
       setLoading(false);
       return;
@@ -55,31 +42,6 @@ export default function AdminTeamPage() {
 
     setLoading(true);
     try {
-      // 1. Query Top 5 Contributors (ordered by points)
-      try {
-        const topContribQ = query(
-          collection(db, "users"),
-          orderBy("contributionPoints", "desc"),
-          limit(5)
-        );
-        const topContribSnap = await getDocs(topContribQ);
-        const usersList: ContributorInfo[] = [];
-        topContribSnap.forEach(d => {
-          const u = d.data();
-          usersList.push({
-            id: d.id,
-            displayName: u.displayName || u.email || "Explorer",
-            email: u.email,
-            contributionPoints: Math.max(0, u.contributionPoints || 0),
-            uploads: Math.max(0, u.uploads || 0)
-          });
-        });
-        setTopContributors(usersList);
-        cachedTopContribs = usersList;
-      } catch (topErr) {
-        console.warn("[Admin Team] Top contributors fetch notice:", topErr);
-      }
-
       // 2. Query Recent 5 Contributions (ordered by createdAt desc)
       try {
         const recentMatsQ = query(
@@ -199,78 +161,7 @@ export default function AdminTeamPage() {
             <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-gradient-to-br from-purple-500/5 to-transparent">
               <Sparkles className="text-purple-400 mb-3" size={24} />
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Premium Accounts</p>
-              <p className="text-3xl font-black text-white">{stats.totalPremium}</p>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Top Contributors Leaderboard */}
-            <div className="lg:col-span-2 glass-panel p-6 rounded-3xl border border-white/5 space-y-6">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Trophy className="text-yellow-400" size={20} /> Top Contributors
-              </h2>
-              
-              {topContributors.length === 0 ? (
-                <div className="text-center py-12 bg-white/[0.01] rounded-2xl border border-white/5 border-dashed">
-                  <p className="text-gray-500">No contributors yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {topContributors.map((c, i) => (
-                    <div key={c.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-sm font-bold text-gray-500 font-mono w-4">#{i + 1}</span>
-                        <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-bold text-gray-300 flex-shrink-0">
-                          {c.displayName.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-bold text-white truncate">{c.displayName}</h4>
-                          <p className="text-xs text-gray-500 truncate">{c.email}</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold text-emerald-400">{c.contributionPoints} pts</p>
-                        <p className="text-[10px] text-gray-500">{c.uploads} files</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Side Column: Season Reset Controls */}
-            <div className="space-y-6">
-              <div className="glass-panel p-6 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent h-fit space-y-4">
-                <h2 className="text-xl font-bold text-amber-400 flex items-center gap-2">
-                  <Trophy size={20} /> Leaderboard Seasons
-                </h2>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Reset the active season leaderboard. All-time total scores will remain saved and visible in the Hall of Fame.
-                </p>
-                
-                <button 
-                  disabled={actionLoading}
-                  onClick={async () => {
-                    if(!confirm("Are you sure you want to start a new Leaderboard Season? This will reset everyone's active season points to 0!")) return;
-                    setActionLoading(true);
-                    try {
-                      await setDoc(doc(db, "settings", "leaderboard"), { seasonStartDate: new Date() }, { merge: true });
-                      await recalculateLeaderboards(db);
-                      alert("New Season Started Successfully!");
-                      fetchAnalytics();
-                    } catch (err) {
-                      console.error("Season reset error", err);
-                    }
-                    setActionLoading(false);
-                  }}
-                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold transition-all shadow-[0_0_15px_rgba(251,191,36,0.2)] flex justify-center items-center gap-2 text-sm"
-                >
-                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : "Start New Season"}
-                </button>
-              </div>
-            </div>
-
           </div>
 
           {/* Recent Activity */}

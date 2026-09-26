@@ -13,6 +13,8 @@ import * as admin from "firebase-admin";
 import { google } from "googleapis";
 import { PDFDocument, rgb, degrees, StandardFonts } from "pdf-lib";
 import { randomUUID } from "crypto";
+import { incrementMonthlyUsage, checkMonthlyUsage } from "@/lib/monthly-usage";
+import { getEffectivePlan, isFeatureAllowed, PlanType } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +153,30 @@ export async function GET(req: NextRequest) {
       status: 500,
       headers: { "Content-Type": "application/json" }
     });
+  }
+
+  // 1.5 Enforce PDF Preview restrictions for free users on inline requests
+  if (isInline && !isAdmin) {
+    let effectivePlan: PlanType = "free";
+    if (uid && uid !== "GUEST") {
+      try {
+        const uSnap = await adminDb.collection("users").doc(uid).get();
+        if (uSnap.exists) {
+          effectivePlan = getEffectivePlan(uSnap.data()).plan;
+        }
+      } catch (e) {
+        console.warn("[Download Route] Error checking user plan for preview:", e);
+      }
+    }
+    if (!isFeatureAllowed(effectivePlan, "pdfPreview")) {
+      return new Response(JSON.stringify({
+        error: "PDF Preview Restricted",
+        message: "In-browser PDF preview is available on Paperino Plus, Pro, and Premium plans. Please upgrade or download the material to view."
+      }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
   }
 
   // 2. Resolve fileId and metadata from Firestore
@@ -390,6 +416,10 @@ export async function GET(req: NextRequest) {
         adminDb.collection("materials").doc(matId).update({
           downloads: admin.firestore.FieldValue.increment(1)
         }).catch(e => console.warn("[Material Download Count Notice]:", e));
+      }
+
+      if (!isInline && uid && uid !== "GUEST" && !isAdmin) {
+        incrementMonthlyUsage(uid, "downloads").catch(e => console.warn("[Monthly Usage Increment Error]:", e));
       }
     } catch (logErr) {
       console.error("[Download API Audit Log Warning]:", logErr);

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { githubApiClient } from "@/lib/githubApiClient";
+import { adminAuth } from "@/lib/firebase-admin";
+import { checkMonthlyUsage, incrementMonthlyUsage } from "@/lib/monthly-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -281,6 +283,41 @@ export async function GET(req: NextRequest) {
 
     if (!username) {
       return NextResponse.json({ error: "GitHub username is required" }, { status: 400 });
+    }
+
+    // Monthly usage check for authenticated users
+    const authHeader = req.headers.get("authorization");
+    let callerUid: string | null = null;
+    let callerIsAdmin = false;
+    if (authHeader && authHeader.startsWith("Bearer ") && adminAuth) {
+      try {
+        const decoded = await adminAuth.verifyIdToken(authHeader.split("Bearer ")[1]);
+        callerUid = decoded.uid;
+        const allowedAdmins = [
+          "mohamedsajid.sa@gmail.com",
+          "sudharajsekar2005@gmail.com",
+          "admin.paperinoirfan27@gmail.com",
+          "admin.paperinosam14@gmail.com",
+          "gameplayitlifeitis@gmail.com"
+        ];
+        if (decoded.email && allowedAdmins.includes(decoded.email.toLowerCase())) {
+          callerIsAdmin = true;
+        }
+      } catch (e) {
+        console.warn("[GitHub Intelligence Auth Notice]:", e);
+      }
+    }
+
+    if (callerUid && !callerIsAdmin) {
+      const usageCheck = await checkMonthlyUsage(callerUid, "githubIntelligence");
+      if (!usageCheck.allowed) {
+        return NextResponse.json({
+          error: usageCheck.error || `Monthly GitHub Intelligence limit reached (${usageCheck.limit} uses/month). Upgrade to Plus, Pro, or Premium for more uses.`,
+          plan: usageCheck.plan,
+          limit: usageCheck.limit,
+          used: usageCheck.used
+        }, { status: 429 });
+      }
     }
 
     if (username.includes("github.com/")) {
@@ -2050,6 +2087,12 @@ export async function GET(req: NextRequest) {
     console.log(`\nFINAL TOP 3:\n${top3Final.join("\n")}`);
     console.log(`ANALYSIS STATUS: ${isPartialAnalysis ? "PARTIAL" : "COMPLETE"}`);
     console.log(`==================================================\n`);
+
+    if (callerUid && !callerIsAdmin) {
+      incrementMonthlyUsage(callerUid, "githubIntelligence").catch((e) => {
+        console.warn("[GitHub Intelligence Usage Increment Notice]:", e);
+      });
+    }
 
     cache.set(cacheKey, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION, authenticated: isAuthenticatedToken });
     return NextResponse.json(result);

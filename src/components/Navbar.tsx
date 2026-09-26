@@ -9,7 +9,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard } from "lucide-react";
+import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Sparkles } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -429,6 +429,14 @@ export default function Navbar() {
               </button>
             </div>
 
+            <Link
+              href="/pricing"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500/15 to-pink-500/15 hover:from-purple-500/25 hover:to-pink-500/25 border border-purple-500/30 text-purple-200 hover:text-white text-xs font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+            >
+              <Sparkles size={12} className="text-purple-400" />
+              <span>Plans</span>
+            </Link>
+
             {user ? (
               <div className="flex items-center gap-2 lg:gap-3">
                 <Link 
@@ -740,6 +748,22 @@ export default function Navbar() {
                     {(pathname === '/developer' || pathname?.startsWith('/developer/')) && (
                       <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
                     )}
+                  </Link>
+
+                  {/* Pricing / Plans */}
+                  <Link 
+                    onClick={() => setIsMobileMenuOpen(false)} 
+                    href="/pricing" 
+                    className={`flex items-center justify-between w-full min-h-[46px] px-3.5 py-2.5 rounded-xl transition-all duration-200 border text-sm cursor-pointer active:scale-[0.99] ${
+                      pathname === '/pricing'
+                        ? 'bg-purple-500/15 text-purple-200 border-purple-500/40 font-semibold shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                        : 'bg-purple-500/[0.04] border-purple-500/20 text-purple-200/90 hover:bg-purple-500/10 hover:border-purple-500/35 hover:text-purple-100 font-medium'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Sparkles size={17} className="text-purple-400 shrink-0" />
+                      <span>Plans & Pricing</span>
+                    </span>
                   </Link>
                 </div>
               </div>

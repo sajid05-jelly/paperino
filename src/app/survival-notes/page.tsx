@@ -31,10 +31,13 @@ import {
   XCircle, 
   Activity, 
   Loader2, 
-  ChevronRight,
-  Bot,
-  UserCheck
+  ChevronRight, 
+  Bot, 
+  UserCheck,
+  Lock,
+  Sparkles
 } from "lucide-react";
+import Link from "next/link";
 
 interface SurvivalNote {
   id: string;
@@ -58,8 +61,10 @@ interface SurvivalNote {
 const survivalContributorCache: Record<string, string> = {};
 
 export default function SeniorInsightsPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, plan, canAccess } = useAuth();
   const { departments, subjects } = useSubjects();
+
+  const isAllowed = isAdmin || canAccess("seniorInsight");
 
   // Navigation / Selection
   const [selectedDept, setSelectedDept] = useState("");
@@ -454,7 +459,28 @@ export default function SeniorInsightsPage() {
             </form>
           )}
 
-          {loading ? (
+          {!isAllowed ? (
+            <div className="backdrop-blur-3xl bg-white/[0.04] border border-purple-500/25 rounded-3xl p-10 text-center max-w-xl mx-auto space-y-4 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400">
+                <Lock size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white">Senior Insights Locked</h3>
+              <p className="text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
+                Senior Insights are available on Paperino Plus, Pro, and Premium plans. Upgrade to read insider advice, exam tips, and subject survival guides from experienced seniors.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg transition-all"
+                >
+                  <Sparkles size={15} /> Unlock with Plus (₹29/mo)
+                </Link>
+              </div>
+              <p className="text-[11px] text-gray-500 pt-2">
+                🎁 Or contribute 10+ approved materials to get Paperino Plus FREE!
+              </p>
+            </div>
+          ) : loading ? (
             <div className="py-20 text-center">
               <Loader2 className="animate-spin text-violet-500 inline-block mb-3" size={32} />
               <p className="text-gray-400 text-sm">Loading senior insights...</p>

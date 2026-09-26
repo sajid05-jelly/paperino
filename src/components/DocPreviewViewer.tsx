@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw } from "lucide-react";
+import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw, Lock, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
