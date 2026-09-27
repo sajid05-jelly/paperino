@@ -41,10 +41,8 @@ const PLAN_CONFIG: Record<RequiredPlan, {
 
 export default function PlanUpgradeModal() {
   const { gate, closePlanGate } = usePlanGate();
-  const { isOpen, featureName, requiredPlan, description } = gate;
-  const config = PLAN_CONFIG[requiredPlan];
+  const { isOpen, type, featureName, requiredPlan, currentPlan, limit, description } = gate;
 
-  // Escape key handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") closePlanGate();
   }, [closePlanGate]);
@@ -62,6 +60,14 @@ export default function PlanUpgradeModal() {
 
   if (!isOpen) return null;
 
+  // Determine styling based on type and plan
+  const config = type === "feature_lock" ? PLAN_CONFIG[requiredPlan] : PLAN_CONFIG["plus"]; // fallback style
+  const limitBorder = "border-red-500/30";
+  const limitGlow = "shadow-[0_0_60px_rgba(239,68,68,0.25)]";
+  const limitIconBg = "bg-red-500/20";
+  const limitGradient = "from-red-500 to-orange-400";
+  const displayPlanName = currentPlan ? currentPlan.toUpperCase() : "FREE";
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -72,7 +78,7 @@ export default function PlanUpgradeModal() {
 
       {/* Modal */}
       <div
-        className={`relative w-full max-w-[380px] rounded-2xl border ${config.border} bg-[#0d0820]/95 backdrop-blur-xl ${config.glow} animate-[modalIn_0.25s_ease-out]`}
+        className={`relative w-full max-w-[380px] rounded-2xl border ${type === 'limit_reached' ? limitBorder : config.border} bg-[#0d0820]/95 backdrop-blur-xl ${type === 'limit_reached' ? limitGlow : config.glow} animate-[modalIn_0.25s_ease-out]`}
       >
         {/* Close Button */}
         <button
@@ -86,30 +92,44 @@ export default function PlanUpgradeModal() {
         {/* Content */}
         <div className="px-6 pt-7 pb-6 text-center">
           {/* Lock Icon */}
-          <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full ${config.iconBg} mb-4`}>
-            <Lock size={24} className={`bg-gradient-to-r ${config.gradient} bg-clip-text`} style={{ color: requiredPlan === "plus" ? "#a855f7" : requiredPlan === "pro" ? "#3b82f6" : "#f59e0b" }} />
+          <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full ${type === 'limit_reached' ? limitIconBg : config.iconBg} mb-4`}>
+            <Lock size={24} className={`bg-gradient-to-r ${type === 'limit_reached' ? limitGradient : config.gradient} bg-clip-text text-transparent`} style={{ color: type === 'limit_reached' ? "#ef4444" : requiredPlan === "plus" ? "#a855f7" : requiredPlan === "pro" ? "#3b82f6" : "#f59e0b" }} />
           </div>
 
-          {/* Plan Badge */}
-          <div className="mb-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r ${config.gradient} text-white text-xs font-bold`}>
-              <Crown size={12} />
-              Paperino {config.label}
-            </span>
-          </div>
-
-          {/* Feature Name */}
-          <h3 className="text-lg font-bold text-white mt-3 mb-1">
-            {featureName}
-          </h3>
-
-          {/* Description */}
-          <p className="text-sm text-gray-400 leading-relaxed mb-1">
-            {description || `${featureName} is a ${config.label}-tier feature.`}
-          </p>
-          <p className="text-sm text-gray-500 mb-6">
-            {config.accessText}
-          </p>
+          {/* Header */}
+          {type === "limit_reached" ? (
+            <>
+              <div className="mb-2">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r ${limitGradient} text-white text-xs font-bold uppercase tracking-wider shadow-sm`}>
+                  🔒 {displayPlanName} PLAN LIMIT REACHED
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white mt-3 mb-2">
+                Monthly Limit Exhausted
+              </h3>
+              <p className="text-sm text-gray-400 leading-relaxed mb-6">
+                You've used all {limit} {featureName} uses available on the {displayPlanName} plan this month. Upgrade your plan to continue using this feature.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="mb-2">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r ${config.gradient} text-white text-xs font-bold shadow-sm`}>
+                  <Crown size={12} />
+                  Paperino {config.label}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white mt-3 mb-1">
+                {featureName}
+              </h3>
+              <p className="text-sm text-gray-400 leading-relaxed mb-1">
+                {description || `${featureName} is a ${config.label}-tier feature.`}
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                {config.accessText}
+              </p>
+            </>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-3">
@@ -122,7 +142,7 @@ export default function PlanUpgradeModal() {
             <Link
               href="/pricing"
               onClick={closePlanGate}
-              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r ${config.gradient} text-white text-sm font-bold hover:opacity-90 transition-all`}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r ${type === 'limit_reached' ? limitGradient : config.gradient} text-white text-sm font-bold hover:opacity-90 transition-all shadow-md`}
             >
               View Plans
               <ArrowRight size={14} />

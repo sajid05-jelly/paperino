@@ -8,6 +8,7 @@ export interface CreditCheckResult {
   allowed: boolean;
   uid?: string;
   role?: string;
+  plan?: string;
   used?: number;
   limit?: number;
   error?: string;
@@ -33,7 +34,7 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
 
     // Admin bypass
     if (userData?.role === 'admin') {
-      return { allowed: true, uid, role: 'admin', used: 0, limit: Infinity };
+      return { allowed: true, uid, role: 'admin', plan, used: 0, limit: Infinity };
     }
 
     const featureKey = tool === 'pyq' ? 'pyqAnalyzer' : 'ats';
@@ -45,6 +46,7 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
         allowed: false,
         uid,
         role: userData?.role || 'student',
+        plan,
         used: 0,
         limit: 0,
         error: `${toolName} is not available on the Free plan. Upgrade to Paperino Plus or Pro to unlock.`
@@ -57,6 +59,7 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
         allowed: false,
         uid,
         role: userData?.role || 'student',
+        plan,
         used: usageCheck.used,
         limit: usageCheck.limit,
         error: usageCheck.error || `Monthly ${tool.toUpperCase()} limit reached (${usageCheck.limit}/month). Upgrade for higher limits.`
@@ -67,6 +70,7 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
       allowed: true,
       uid,
       role: userData?.role || 'student',
+      plan,
       used: usageCheck.used,
       limit: usageCheck.limit
     };

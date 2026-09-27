@@ -6,8 +6,10 @@ import { auth, db } from "@/lib/firebase";
 import { getIdToken } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import AICreditsDisplay from "@/components/AICreditsDisplay";
+import { usePlanGate } from "@/context/PlanGateContext";
 
 export default function ATSAnalyzerPage() {
+  const { showLimitGate } = usePlanGate();
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [role, setRole] = useState<string>("Frontend Developer");
@@ -166,6 +168,12 @@ export default function ATSAnalyzerPage() {
           throw new Error(`Server Error (${extractRes.status}): Vercel function timed out or crashed. Please try a simpler PDF. Original error: ${rawExtractText.substring(0, 60)}...`);
         }
 
+        if (extractRes.status === 429 && extractData.limit !== undefined && extractData.plan) {
+          showLimitGate("ATS Resume Checker", extractData.plan, extractData.limit);
+          setLoading(false);
+          return;
+        }
+
         if (!extractRes.ok) {
           throw new Error(extractData.error || "Failed to extract text from resume.");
         }
@@ -192,6 +200,12 @@ export default function ATSAnalyzerPage() {
         parsed = JSON.parse(rawText);
       } catch(e) {
         throw new Error(`Server returned invalid JSON: ${rawText.substring(0, 50)}`);
+      }
+
+      if (res.status === 429 && parsed.limit !== undefined && parsed.plan) {
+        showLimitGate("ATS Resume Checker", parsed.plan, parsed.limit);
+        setLoading(false);
+        return;
       }
 
       if (!res.ok) {

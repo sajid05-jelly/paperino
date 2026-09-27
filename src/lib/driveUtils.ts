@@ -111,6 +111,18 @@ export async function triggerSecureDownload(
 
     if (!tokenRes.ok) {
       const tokenErr = await tokenRes.json().catch(() => ({}));
+      
+      if (tokenRes.status === 403 && tokenErr.limit !== undefined && tokenErr.plan) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("LIMIT_REACHED", {
+              detail: { featureName: "Downloads", plan: tokenErr.plan, limit: tokenErr.limit }
+            })
+          );
+        }
+        throw new Error("LIMIT_REACHED");
+      }
+
       throw new Error(tokenErr.message || "Failed to establish a secure download session.");
     }
 
@@ -145,6 +157,9 @@ export async function triggerSecureDownload(
       (window as any).__activeDownloads = false;
     }
     onLoadingChange?.(false);
+
+    if (err.message === "LIMIT_REACHED") return false;
+
     console.error("Secure download failed:", err);
     showToast?.(err.message || "Failed to download material.", "error");
     return false;

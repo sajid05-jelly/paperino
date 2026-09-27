@@ -32,10 +32,12 @@ import {
   X,
 } from "lucide-react";
 import { GitHubAnalysisResult } from "@/app/api/github-intelligence/route";
+import { usePlanGate } from "@/context/PlanGateContext";
 
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function GitHubIntelligencePage() {
+  const { showLimitGate } = usePlanGate();
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -79,6 +81,12 @@ export default function GitHubIntelligencePage() {
 
       const res = await fetch(`/api/github-intelligence?username=${encodeURIComponent(cleanUser)}${forceRefresh ? "&refresh=true" : ""}`);
       const data = await res.json();
+
+      if (res.status === 429 && data.limit !== undefined && data.plan) {
+        showLimitGate("GitHub Intelligence", data.plan, data.limit);
+        setLoading(false);
+        return;
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to analyze GitHub profile");

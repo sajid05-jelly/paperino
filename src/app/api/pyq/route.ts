@@ -16,7 +16,12 @@ export async function POST(req: NextRequest) {
   
   if (!creditCheck.allowed) {
     return NextResponse.json(
-      { error: creditCheck.error || "Credit limit reached or unauthorized." },
+      { 
+        error: creditCheck.error || "Credit limit reached or unauthorized.",
+        plan: creditCheck.plan || "free",
+        limit: creditCheck.limit || 0,
+        used: creditCheck.used || 0
+      },
       { status: 429 }
     );
   }

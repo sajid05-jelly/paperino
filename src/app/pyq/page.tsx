@@ -6,8 +6,10 @@ import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 import { getIdToken } from "firebase/auth";
 import AICreditsDisplay from "@/components/AICreditsDisplay";
+import { usePlanGate } from "@/context/PlanGateContext";
 
 export default function PYQPredictorPage() {
+  const { showLimitGate } = usePlanGate();
   const [files, setFiles] = useState<File[]>([]);
   const [subject, setSubject] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
@@ -146,7 +148,12 @@ export default function PYQPredictorPage() {
         throw new Error("Please log in to use the PYQ Predictor.");
       }
       if (response.status === 429) {
-        throw new Error(data.error || "Daily AI limit reached. Come back tomorrow!");
+        if (data.limit !== undefined && data.plan) {
+          showLimitGate("PYQ Analyzer", data.plan, data.limit);
+          setLoading(false);
+          return;
+        }
+        throw new Error(data.error || "Monthly limit reached.");
       }
       if (!response.ok) {
         if (data.errorType === "NEEDS_OCR" && !ocrTextFallback) {

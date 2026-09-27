@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw, Lock, Sparkles } from "lucide-react";
+import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw, Lock, Sparkles, ChevronLeft, ChevronRight, Maximize, Minimize } from "lucide-react";
 import Link from "next/link";
 import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
@@ -12,13 +12,9 @@ import * as mammoth from "mammoth";
 
 import DOMPurify from "dompurify";
 
-// Configure PDF.js Worker — serve from public/ to avoid CSP/bundler issues
 if (typeof window !== "undefined") {
   pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 }
-
-// In-memory cache for fetched document buffers during session to prevent re-fetching on modal toggle
-const pdfBufferCache = new Map<string, ArrayBuffer>();
 
 interface DocPreviewViewerProps {
   mat: {
@@ -36,14 +32,9 @@ interface DocPreviewViewerProps {
 
 type ViewerType = "pdfjs" | "image" | "docx" | "txt" | "unsupported";
 
-interface PageSlot {
-  pageNum: number;
-  width: number;
-  height: number;
-}
-
 export default function DocPreviewViewer({ mat, onDownload, className = "" }: DocPreviewViewerProps) {
   const { showToast, dismissToast } = useToast();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,93 +50,94 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
 
   // PDF.js rendering states
   const [numPages, setNumPages] = useState<number>(0);
-  const [renderedCount, setRenderedCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.2);
   const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
-  const [pageSlots, setPageSlots] = useState<PageSlot[]>([]);
-
-  // Page canvas elements registry & render status tracking
-  const renderedPagesRef = useRef<Set<number>>(new Set());
-  const renderingPagesRef = useRef<Set<number>>(new Set());
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<any>(null);
 
   const title = mat.fileName || mat.title || "Study Material";
   const extension = title.split(".").pop()?.toLowerCase() || "pdf";
 
-  // 1. Fetch document binary and initialize PDF.js Document Proxy
-  useEffect(() => {
+  const fetchDocument = useCallback(async () => {
     let isMounted = true;
+    setLoading(true);
+    setError(null);
+    setDocxHtml("");
+    setTxtContent("");
+    setImageBlobUrl(null);
+    setPdfDoc(null);
+    setNumPages(0);
+    setCurrentPage(1);
 
-    const runPreviewPipeline = async () => {
-      setLoading(true);
-      setError(null);
-      setDocxHtml("");
-      setTxtContent("");
-      setImageBlobUrl(null);
-      setPdfDoc(null);
-      setNumPages(0);
-      setRenderedCount(0);
-      setPageSlots([]);
-      renderedPagesRef.current.clear();
-      renderingPagesRef.current.clear();
-
-      // Resolve endpoint URL
+    // Re-use fileId directly if we have it and the material is approved to avoid redundant Firestore reads
+    let identifierQuery = "";
+    if (mat.fileId && (mat as any).status === "approved") {
+      identifierQuery = `fileId=${encodeURIComponent(mat.fileId)}`;
+    } else {
       const matParam = mat.id ? `matId=${encodeURIComponent(mat.id)}` : "";
       const fileParam = mat.fileId ? `fileId=${encodeURIComponent(mat.fileId)}` : "";
-      const identifierQuery = [matParam, fileParam].filter(Boolean).join("&");
+      identifierQuery = [matParam, fileParam].filter(Boolean).join("&");
+    }
 
-      let targetUrl = `/api/download?${identifierQuery}&inline=true`;
-      if (mat.fileUrl && mat.fileUrl.includes("firebasestorage.googleapis.com")) {
-        targetUrl = mat.fileUrl;
-      } else if (!matParam && !fileParam && mat.fileUrl && (mat.fileUrl.startsWith("http://") || mat.fileUrl.startsWith("https://"))) {
-        targetUrl = mat.fileUrl;
-      }
+    let targetUrl = `/api/download?${identifierQuery}&inline=true`;
+    if (mat.fileUrl && mat.fileUrl.includes("firebasestorage.googleapis.com")) {
+      targetUrl = mat.fileUrl;
+    } else if (!identifierQuery && mat.fileUrl && (mat.fileUrl.startsWith("http://") || mat.fileUrl.startsWith("https://"))) {
+      targetUrl = mat.fileUrl;
+    }
 
-      const cacheKey = `${mat.id}_${mat.fileId}`;
+    // ALWAYS send authorization so the backend can accurately verify the user's plan for PDF preview access
+    let headers: Record<string, string> = {};
+    const userToken = user ? await user.getIdToken() : null;
+    if (userToken) {
+      headers = { Authorization: `Bearer ${userToken}` };
+    }
 
-      // Fetch Firebase ID token if user is signed in to authorize pending material preview
-      let headers: Record<string, string> = {};
-      // ONLY send authorization if the material is not explicitly approved, to maximize Vercel Edge caching for public files
-      if ((mat as any).status !== "approved") {
-        const userToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-        if (userToken) {
-          headers = { Authorization: `Bearer ${userToken}` };
-        }
-      }
-
-      // 1. IMAGE PREVIEW
-      if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(extension)) {
-        if (isMounted) {
-          setViewType("image");
-          setImageBlobUrl(targetUrl);
+    // 1. IMAGE PREVIEW
+    if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(extension)) {
+      if (isMounted) {
+        setViewType("image");
+        try {
+          const res = await fetch(targetUrl, { headers });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          const objUrl = URL.createObjectURL(blob);
+          setImageBlobUrl(objUrl);
+          setLoading(false);
+        } catch {
+          setError("Unable to load image.");
           setLoading(false);
         }
-        return;
       }
+      return;
+    }
 
-      // 2. TEXT PREVIEW
-      if (["txt", "md", "json", "csv", "log"].includes(extension)) {
+    // 2. TXT PREVIEW
+    if (extension === "txt") {
+      if (isMounted) {
+        setViewType("txt");
         try {
           const res = await fetch(targetUrl, { headers });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const text = await res.text();
-          if (isMounted) {
-            setViewType("txt");
-            setTxtContent(text);
-            setLoading(false);
-          }
+          setTxtContent(text);
+          setLoading(false);
         } catch {
-          if (isMounted) {
-            setError("Unable to load plain text file content.");
-            setLoading(false);
-          }
+          setError("Unable to read text file.");
+          setLoading(false);
         }
-        return;
       }
+      return;
+    }
 
-      // 3. WORD DOC PREVIEW VIA MAMMOTH
-      if (["docx", "doc"].includes(extension)) {
+    // 3. WORD DOC PREVIEW
+    if (["docx", "doc"].includes(extension)) {
+      if (isMounted) {
+        setViewType("docx");
         try {
           const res = await fetch(targetUrl, { headers });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -153,192 +145,120 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
           const result = await mammoth.convertToHtml({ arrayBuffer });
           const rawHtml = result.value || "<p class='text-gray-400'>No readable text found in Word document.</p>";
           const cleanHtml = typeof window !== "undefined" ? DOMPurify.sanitize(rawHtml) : rawHtml;
-          if (isMounted) {
-            setViewType("docx");
-            setDocxHtml(cleanHtml);
-            setLoading(false);
-          }
+          setDocxHtml(cleanHtml);
+          setLoading(false);
         } catch {
-          if (isMounted) {
-            setError("Unable to convert Word document formatting.");
-            setLoading(false);
-          }
+          setError("Unable to convert Word document formatting.");
+          setLoading(false);
         }
-        return;
       }
+      return;
+    }
 
-      // 4. PROGRESSIVE PDF PREVIEW VIA PDF.JS & INTERSECTION OBSERVER
+    // 4. PDF PREVIEW VIA PDF.JS
+    if (isMounted) {
       setViewType("pdfjs");
       try {
+        const res = await fetch(targetUrl, { headers });
+        if (!res.ok) {
+          if (res.status === 403) {
+            throw new Error("PDF Preview Restricted. Please upgrade your plan.");
+          }
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const arrayBuffer = await res.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+
         const loadingTask = pdfjs.getDocument({
-          url: targetUrl,
-          httpHeaders: headers,
+          data,
           cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/cmaps/`,
           cMapPacked: true,
         });
 
-        const loadedPdf: any = await loadingTask.promise;
-
+        const loadedPdf = await loadingTask.promise;
         if (!isMounted) return;
 
         setPdfDoc(loadedPdf);
         setNumPages(loadedPdf.numPages);
-
-        // Instant slot creation using Page 1 dimensions (non-blocking)
-        const firstPage = await loadedPdf.getPage(1);
-        const firstVp = firstPage.getViewport({ scale: 1.0 });
-        const defaultW = Math.floor(firstVp.width);
-        const defaultH = Math.floor(firstVp.height);
-
-        const initialSlots: PageSlot[] = Array.from({ length: loadedPdf.numPages }, (_, index) => ({
-          pageNum: index + 1,
-          width: defaultW,
-          height: defaultH,
-        }));
-
-        setPageSlots(initialSlots);
         setLoading(false);
-
-        // Async update of specific page dimensions in background without blocking initial display
-        (async () => {
-          for (let i = 2; i <= loadedPdf.numPages; i++) {
-            if (!isMounted) break;
-            try {
-              const pObj = await loadedPdf.getPage(i);
-              const vp = pObj.getViewport({ scale: 1.0 });
-              const w = Math.floor(vp.width);
-              const h = Math.floor(vp.height);
-              if (w !== defaultW || h !== defaultH) {
-                setPageSlots(prev => prev.map(s => s.pageNum === i ? { ...s, width: w, height: h } : s));
-              }
-            } catch { /* keep default */ }
-          }
-        })();
-      } catch (pdfErr: any) {
-        console.error("[PDF Engine Error]:", pdfErr);
+      } catch (err: any) {
         if (isMounted) {
-          setError(pdfErr.message || "Unable to render PDF preview.");
+          console.error("PDF Preview Error:", err);
+          setError(err.message || "The preview could not be loaded. Please try again or download the file.");
           setLoading(false);
         }
       }
-    };
-
-    runPreviewPipeline();
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [mat.id, mat.fileId, mat.fileUrl, extension, title, retryCount]);
+  }, [mat, extension, retryCount, user]);
 
-  const renderTasksRef = useRef<Map<number, any>>(new Map());
+  useEffect(() => {
+    fetchDocument();
+  }, [fetchDocument]);
 
-  // 2. Individual Page Render Function called progressively on Viewport Intersection
-  const renderSinglePage = useCallback(async (pageNum: number) => {
-    if (!pdfDoc || renderedPagesRef.current.has(pageNum) || renderingPagesRef.current.has(pageNum)) {
-      return;
+  const renderPage = useCallback(async () => {
+    if (!pdfDoc || !canvasRef.current || viewType !== "pdfjs") return;
+
+    if (renderTaskRef.current) {
+      try {
+        renderTaskRef.current.cancel();
+      } catch { /* ignore */ }
     }
-
-    renderingPagesRef.current.add(pageNum);
 
     try {
-      const page = await pdfDoc.getPage(pageNum);
-      const displayViewport = page.getViewport({ scale });
-      const outputScale = window.devicePixelRatio || 1;
-      const renderScale = Math.max(outputScale, 2.0);
-      const viewport = page.getViewport({ scale: scale * renderScale });
-
-      const canvas = document.getElementById(`pdf-canvas-page-${mat.id || mat.fileId || 'item'}-${pageNum}`) as HTMLCanvasElement;
-      if (!canvas) {
-        renderingPagesRef.current.delete(pageNum);
-        return;
-      }
-
+      const page = await pdfDoc.getPage(currentPage);
+      const viewport = page.getViewport({ scale });
+      
+      const canvas = canvasRef.current;
       const context = canvas.getContext("2d");
-      if (!context) {
-        renderingPagesRef.current.delete(pageNum);
-        return;
-      }
+      if (!context) return;
 
-      canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
-      canvas.style.width = `${Math.floor(displayViewport.width)}px`;
-      canvas.style.height = "auto";
-      canvas.style.maxWidth = "100%";
+      canvas.width = Math.floor(viewport.width);
+      canvas.style.width = "100%";
+      canvas.style.maxWidth = `${Math.floor(viewport.width)}px`;
 
-      // Cancel previous active render task for this page slot if present
-      if (renderTasksRef.current.has(pageNum)) {
-        try {
-          renderTasksRef.current.get(pageNum).cancel();
-        } catch { /* ignore */ }
-      }
-
-      const renderTask = page.render({
+      const renderContext = {
         canvasContext: context,
         viewport: viewport,
-        canvas: canvas
-      });
+        canvas: canvas,
+      };
 
-      renderTasksRef.current.set(pageNum, renderTask);
-
+      const renderTask = page.render(renderContext as any);
+      renderTaskRef.current = renderTask;
       await renderTask.promise;
-
-      renderTasksRef.current.delete(pageNum);
-      renderedPagesRef.current.add(pageNum);
-      renderingPagesRef.current.delete(pageNum);
-      setRenderedCount(renderedPagesRef.current.size);
     } catch (err: any) {
       if (err?.name !== "RenderingCancelledException") {
-        console.warn(`Page ${pageNum} render notice:`, err.message);
+        console.error("Error rendering page:", err);
       }
-      renderingPagesRef.current.delete(pageNum);
     }
-  }, [pdfDoc, scale, mat.id, mat.fileId]);
+  }, [pdfDoc, currentPage, scale, viewType]);
 
-  // 3. Render all pages sequentially from 1 to N in background queue
   useEffect(() => {
-    if (viewType !== "pdfjs" || !pdfDoc || pageSlots.length === 0) return;
+    renderPage();
+  }, [renderPage]);
 
-    let isCancelled = false;
-
-    const renderAllPagesQueue = async () => {
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        if (isCancelled) break;
-        if (!renderedPagesRef.current.has(pageNum)) {
-          await renderSinglePage(pageNum);
-        }
-      }
-    };
-
-    renderAllPagesQueue();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [viewType, pdfDoc, pageSlots.length, renderSinglePage]);
-
-  // Re-render visible pages if Zoom scale changes
+  // Fullscreen support
   useEffect(() => {
-    if (viewType !== "pdfjs" || !pdfDoc) return;
-    
-    // Cancel any active rendering tasks before re-scaling
-    renderTasksRef.current.forEach(task => {
-      try { task.cancel(); } catch { /* ignore */ }
-    });
-    renderTasksRef.current.clear();
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
-    renderedPagesRef.current.clear();
-    renderingPagesRef.current.clear();
-    setRenderedCount(0);
-    // Render Page 1 with new scale
-    renderSinglePage(1);
-
-    return () => {
-      renderTasksRef.current.forEach(task => {
-        try { task.cancel(); } catch { /* ignore */ }
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.error("Error attempting to enable full-screen mode:", err.message);
       });
-      renderTasksRef.current.clear();
-    };
-  }, [scale, viewType, pdfDoc, renderSinglePage]);
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   const handleDownload = async () => {
     if (onDownload) {
@@ -356,21 +276,35 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
   };
 
   return (
-    <div className={`relative flex flex-col w-full h-full bg-[#050308] overflow-hidden ${className}`}>
+    <div ref={containerRef} className={`relative flex flex-col w-full h-full bg-[#050308] overflow-hidden ${className}`}>
       {/* Toolbar for PDF Controls */}
       {!loading && !error && viewType === "pdfjs" && pdfDoc && (
-        <div className="flex items-center justify-between px-6 py-3 bg-[#0d0918] border-b border-white/10 flex-shrink-0 z-10">
-          <div className="text-xs text-gray-300 font-semibold flex items-center gap-2">
-            <FileText size={14} className="text-purple-400" />
-            <span>
-              {renderedCount > 0 
-                ? `${renderedCount} of ${numPages} Pages Rendered`
-                : `Loading page 1 of ${numPages}...`
-              }
-            </span>
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0d0918] border-b border-white/10 flex-shrink-0 z-10 select-none">
+          {/* Pagination Controls */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Previous Page"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div className="text-xs text-purple-300 font-mono font-semibold flex items-center min-w-[70px] justify-center">
+              {currentPage} / {numPages}
+            </div>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
+              disabled={currentPage >= numPages}
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Next Page"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Zoom and Fullscreen Controls */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setScale(s => Math.max(0.6, s - 0.2))}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
@@ -378,9 +312,8 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
             >
               <ZoomOut size={16} />
             </button>
-            <span className="text-xs text-purple-300 font-mono font-bold">{Math.round(scale * 100)}%</span>
             <button
-              onClick={() => setScale(s => Math.min(2.5, s + 0.2))}
+              onClick={() => setScale(s => Math.min(3.0, s + 0.2))}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
               title="Zoom In"
             >
@@ -388,10 +321,18 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
             </button>
             <button
               onClick={() => setScale(1.2)}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer ml-1"
-              title="Reset Zoom"
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer ml-1 mr-2"
+              title="Fit to Screen"
             >
               <RotateCw size={14} />
+            </button>
+            <div className="w-px h-5 bg-white/10 mx-1"></div>
+            <button
+              onClick={toggleFullscreen}
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer ml-1"
+              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
             </button>
           </div>
         </div>
@@ -419,7 +360,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
           <div className="space-y-2">
             <h3 className="text-lg font-bold text-white">Unable to preview this PDF</h3>
             <p className="text-xs text-gray-400 max-w-sm mx-auto">
-              The preview could not be loaded. Please try again or download the file.
+              {error || "The preview could not be loaded. Please try again or download the file."}
             </p>
           </div>
           <div className="flex items-center gap-3 mt-2">
@@ -457,7 +398,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
         <div className="flex-1 w-full overflow-y-auto p-8 custom-scrollbar bg-[#090615]">
           <div className="max-w-3xl mx-auto bg-[#110c22] border border-white/10 p-8 rounded-3xl shadow-2xl text-gray-200 text-sm leading-relaxed space-y-4">
             <div className="text-xs font-bold text-purple-400 border-b border-white/10 pb-3 mb-4 flex items-center justify-between">
-              <span>📄 Word Document Reader</span>
+              <span>Word Document Reader</span>
               <span className="font-mono text-gray-400">DOCX Preview</span>
             </div>
             <div 
@@ -491,58 +432,19 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
         </div>
       )}
 
-      {/* PDF.js Lazy/Progressive Viewport Canvas Container */}
+      {/* PDF.js Single Page Viewport Canvas Container */}
       {!loading && !error && viewType === "pdfjs" && (
-        <div 
-          ref={containerRef}
-          className="flex-1 w-full overflow-y-auto p-6 flex flex-col items-center custom-scrollbar bg-[#050308]"
-        >
-          {pageSlots.map((slot) => {
-            const displayW = Math.floor(slot.width * scale);
-            const displayH = Math.floor(slot.height * scale);
-            const isPageRendered = renderedPagesRef.current.has(slot.pageNum);
-
-            return (
-              <div
-                key={slot.pageNum}
-                id={`pdf-page-slot-${mat.id || mat.fileId || 'item'}-${slot.pageNum}`}
-                data-page-num={slot.pageNum}
-                className="flex flex-col items-center mb-8 shadow-2xl rounded-2xl bg-[#120d24] border border-white/10 p-3 relative max-w-full"
-                style={{ width: "fit-content" }}
-              >
-                <div className="w-full text-xs text-purple-300 font-mono text-center mb-2.5 font-semibold select-none">
-                  Page {slot.pageNum} of {numPages}
-                </div>
-
-                <div 
-                  className="relative rounded-lg overflow-hidden bg-white shadow-xl border border-gray-200/20 flex items-center justify-center max-w-full"
-                  style={{
-                    width: `${displayW}px`,
-                    maxWidth: "100%",
-                  }}
-                >
-                  <canvas
-                    id={`pdf-canvas-page-${mat.id || mat.fileId || 'item'}-${slot.pageNum}`}
-                    className="block rounded-lg"
-                    style={{
-                      width: "100%",
-                      height: "auto",
-                      maxWidth: "100%",
-                    }}
-                  />
-                  {!isPageRendered && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#120d24]/90 text-purple-300 space-y-2 select-none">
-                      <Loader2 size={24} className="animate-spin text-purple-400" />
-                      <span className="text-xs font-mono">Loading Page {slot.pageNum}...</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex-1 w-full overflow-y-auto p-6 flex flex-col items-center custom-scrollbar bg-[#050308]">
+          <div className="flex flex-col items-center shadow-2xl rounded-2xl bg-[#120d24] border border-white/10 p-3 relative max-w-full transition-all duration-300">
+            <div className="relative rounded-lg overflow-hidden bg-white shadow-xl border border-gray-200/20 flex items-center justify-center max-w-full min-h-[400px] min-w-[300px]">
+              <canvas
+                ref={canvasRef}
+                className="block rounded-lg shadow-sm"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
-

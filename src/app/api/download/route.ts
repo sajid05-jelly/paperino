@@ -99,6 +99,7 @@ export async function GET(req: NextRequest) {
   let userName = "Paperino User";
   let userEmail = "student@paperino.app";
   let isAdmin = false;
+  let tokenPlan: string | null = null;
 
   let rawToken = "";
   if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -109,6 +110,7 @@ export async function GET(req: NextRequest) {
     try {
       const decodedToken = await admin.auth().verifyIdToken(rawToken);
       uid = decodedToken.uid;
+      tokenPlan = (decodedToken.plan as string) || null;
       userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Paperino User";
       userEmail = decodedToken.email || "student@paperino.app";
       
@@ -157,12 +159,13 @@ export async function GET(req: NextRequest) {
 
   // 1.5 Enforce PDF Preview restrictions for free users on inline requests
   if (isInline && !isAdmin) {
-    let effectivePlan: PlanType = "free";
+    let effectivePlan: PlanType = (tokenPlan as PlanType) || "free";
     if (uid && uid !== "GUEST") {
       try {
         const uSnap = await adminDb.collection("users").doc(uid).get();
         if (uSnap.exists) {
-          effectivePlan = getEffectivePlan(uSnap.data()).plan;
+          const dbPlan = getEffectivePlan(uSnap.data()).plan;
+          if (dbPlan !== "free") effectivePlan = dbPlan;
         }
       } catch (e) {
         console.warn("[Download Route] Error checking user plan for preview:", e);

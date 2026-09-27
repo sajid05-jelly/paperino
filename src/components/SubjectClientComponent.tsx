@@ -13,6 +13,7 @@ import SuggestSubjectModal from "@/components/SuggestSubjectModal";
 import DocPreviewViewer from "@/components/DocPreviewViewer";
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
+import { usePlanGate } from "@/context/PlanGateContext";
 import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
 
 import { getSubjectSlug } from "@/lib/seoUtils";
@@ -38,7 +39,8 @@ interface ServerOverview {
 export default function SubjectClientComponent({ params, serverOverview }: { params: Promise<{ deptId: string, semId: string, subjectId: string }>, serverOverview?: ServerOverview }) {
   const resolvedParams = use(params);
   const { deptId, semId, subjectId } = resolvedParams;
-  const { user, isAdmin, isContributor, loading: authLoading } = useAuth();
+  const { user, isAdmin, isContributor, loading: authLoading, canAccess } = useAuth();
+  const { showPlanGate } = usePlanGate();
   const { showToast, dismissToast } = useToast();
   const { subjects: dynamicSubjects, lazyLoadSubjects } = useSubjects();
 
@@ -57,6 +59,14 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
   const [previewMat, setPreviewMat] = useState<any | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadedId, setDownloadedId] = useState<string | null>(null);
+
+  const handlePreviewClick = (mat: any) => {
+    if (!canAccess("pdfPreview")) {
+      showPlanGate("In-browser PDF Preview", "plus", "PDF preview is a premium feature. Upgrade to Plus, Pro, or Premium to view materials instantly in your browser.");
+      return;
+    }
+    setPreviewMat(mat);
+  };
 
   const handleDownloadMaterial = async (mat: any) => {
     if (downloadingId === mat.id) return;
@@ -524,7 +534,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
                           <button 
-                            onClick={() => setPreviewMat(mat)} 
+                            onClick={() => handlePreviewClick(mat)} 
                             className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
                             title={`Preview ${subjectName} ${mat.title}`} 
                             aria-label={`Preview ${subjectName} ${mat.title}`}
@@ -601,7 +611,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
                           <button 
-                            onClick={() => setPreviewMat(mat)} 
+                            onClick={() => handlePreviewClick(mat)} 
                             className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
                             title={`Preview ${subjectName} ${mat.title}`} 
                             aria-label={`Preview ${subjectName} ${mat.title}`}
@@ -678,7 +688,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
                         </div>
                         <div className="flex items-center justify-center gap-1.5 shrink-0">
                           <button 
-                            onClick={() => setPreviewMat(mat)} 
+                            onClick={() => handlePreviewClick(mat)} 
                             className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
                             title={`Preview ${subjectName} ${mat.title}`} 
                             aria-label={`Preview ${subjectName} ${mat.title}`}
