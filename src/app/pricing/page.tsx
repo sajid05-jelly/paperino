@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase";
 import { 
   Check, 
   X, 
@@ -31,6 +30,8 @@ interface PlanItem {
   features: { name: string; enabled: boolean; highlight?: boolean }[];
   cta: string;
 }
+
+let razorpayPromise: Promise<boolean> | null = null;
 
 export default function PricingPage() {
   const { user, plan, isContributorPlus, uploads } = useAuth();
@@ -142,28 +143,48 @@ export default function PricingPage() {
   ];
 
   const [isLoadingPlan, setIsLoadingPlan] = useState<string | null>(null);
-
   const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      if (typeof window !== "undefined" && (window as any).Razorpay) {
-        resolve(true);
-        return;
-      }
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      return Promise.resolve(true);
+    }
+    
+    if (razorpayPromise) {
+      return razorpayPromise;
+    }
+
+    razorpayPromise = new Promise((resolve) => {
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+      script.onerror = () => {
+        razorpayPromise = null; // allow retrying if it fails
+        resolve(false);
+      };
       document.body.appendChild(script);
     });
+
+    return razorpayPromise;
   };
 
   const handlePlanClick = async (selectedPlan: PlanItem) => {
-    if (selectedPlan.id === plan) return;
-    if (selectedPlan.id === "plus" && isContributorPlus) return;
+    if (isLoadingPlan !== null) {
+      console.log("Already loading a plan");
+      return;
+    }
+    if (selectedPlan.id === plan) {
+      alert("You are already on this plan!");
+      return;
+    }
+    if (selectedPlan.id === "plus" && isContributorPlus) {
+      alert("You already have Plus features for free as a Contributor!");
+      return;
+    }
     if (selectedPlan.id === "free") return; // cannot subscribe to free
 
-    if (!user || !auth.currentUser) {
+    if (!user) {
       setBillingNotice("Please login to subscribe to a plan.");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      alert("Please login to subscribe to a plan.");
       return;
     }
 
@@ -178,7 +199,7 @@ export default function PricingPage() {
         return;
       }
 
-      const idToken = await auth.currentUser.getIdToken();
+      const idToken = await user.getIdToken();
       const res = await fetch("/api/razorpay/subscription", {
         method: "POST",
         headers: {
@@ -198,9 +219,36 @@ export default function PricingPage() {
         subscription_id: data.subscriptionId,
         name: "Paperino",
         description: selectedPlan.name,
-        handler: function (response: any) {
-          setBillingNotice(`Subscription successful! Your ${selectedPlan.name} access will be activated shortly.`);
-          setTimeout(() => window.location.reload(), 2500);
+        image: "https://paperino-eta.vercel.app/logo-final.png",
+        handler: async function (response: any) {
+          setBillingNotice(`Payment successful! Activating your ${selectedPlan.name} plan... Please wait.`);
+          try {
+            const idToken = await user.getIdToken();
+            const verifyRes = await fetch("/api/razorpay/verify", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${idToken}`
+              },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_subscription_id: response.razorpay_subscription_id || data.subscriptionId,
+                razorpay_signature: response.razorpay_signature,
+                plan: selectedPlan.id
+              })
+            });
+            // Force refresh token to get latest claims if Firestore failed
+            await user.getIdToken(true);
+            
+            if (verifyRes.ok) {
+              setBillingNotice(`Activation complete! Welcome to Paperino ${selectedPlan.name}.`);
+            } else {
+               setBillingNotice(`Activation verified. Reloading...`);
+            }
+          } catch(e) {
+             console.error("Verification error", e);
+          }
+          setTimeout(() => window.location.reload(), 2000);
         },
         prefill: {
           email: user.email,
@@ -213,11 +261,16 @@ export default function PricingPage() {
       const rzp = new (window as any).Razorpay(options);
       rzp.on("payment.failed", function (response: any) {
         setBillingNotice("Payment failed or was cancelled. Please try again.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
       rzp.open();
     } catch (err: any) {
       console.error("Subscription Error:", err);
-      setBillingNotice(err.message || "Something went wrong.");
+      const msg = err.message || "Something went wrong.";
+      setBillingNotice(msg);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Fallback alert just in case the notice is missed
+      alert("Subscription Error: " + msg);
     } finally {
       setIsLoadingPlan(null);
     }
@@ -351,9 +404,9 @@ export default function PricingPage() {
                 <div>
                   <button
                     onClick={() => handlePlanClick(p)}
-                    disabled={isCurrent || isContribPlusCard || isLoadingPlan === p.id}
+                    disabled={isCurrent || isContribPlusCard || isLoadingPlan !== null}
                     className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      isCurrent || isContribPlusCard || isLoadingPlan === p.id
+                      isCurrent || isContribPlusCard || isLoadingPlan !== null
                         ? "bg-white/10 text-gray-400 cursor-default border border-white/10"
                         : p.popular
                         ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_25px_rgba(168,85,247,0.35)] hover:scale-[1.02]"

@@ -222,8 +222,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.error("Error checking/creating user profile:", error);
+          // Fallback to custom claims if DB is down/quota exceeded
+          try {
+            const tokenResult = await currentUser.getIdTokenResult();
+            if (tokenResult.claims && tokenResult.claims.plan) {
+              console.log("Using fallback claims for plan:", tokenResult.claims.plan);
+              finalUserData = {
+                role: "student",
+                plan: tokenResult.claims.plan,
+                razorpaySubscriptionId: tokenResult.claims.razorpaySubscriptionId,
+                razorpaySubscriptionStatus: tokenResult.claims.razorpaySubscriptionStatus
+              };
+            }
+          } catch (claimErr) {}
           clearTimeout(safetyTimeout);
-          setLoading(false);
         }
 
         // Apply the fetched data to state without doing a second Firestore read
@@ -284,6 +296,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               await signOut(auth);
               setUser(null);
             }
+
+            // --- OVERRIDE WITH CUSTOM CLAIMS ---
+            // If the user paid recently but Firestore didn't update or read from stale cache,
+            // the signed custom claims from the server are the ultimate source of truth.
+            try {
+              const tokenResult = await currentUser.getIdTokenResult();
+              if (tokenResult.claims && tokenResult.claims.plan && tokenResult.claims.plan !== "free") {
+                const claimPlan = tokenResult.claims.plan as PlanType;
+                console.log("Server Claims override plan to:", claimPlan);
+                setPlan(claimPlan);
+                setIsPremiumActive(true);
+                setRazorpaySubscriptionId(tokenResult.claims.razorpaySubscriptionId as string || "");
+                setRazorpaySubscriptionStatus(tokenResult.claims.razorpaySubscriptionStatus as string || "");
+              }
+            } catch (e) {}
+
           }
           clearTimeout(safetyTimeout);
           setLoading(false);

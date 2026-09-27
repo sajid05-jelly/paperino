@@ -40,13 +40,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "DB configuration missing" }, { status: 500 });
     }
 
-    const userRef = adminDb.collection("users").doc(auth.uid);
-    await userRef.update({
-      plan: plan,
-      razorpaySubscriptionId: razorpay_subscription_id,
-      razorpaySubscriptionStatus: "active",
-      updatedAt: Date.now()
-    });
+    try {
+      const userRef = adminDb.collection("users").doc(auth.uid);
+      await userRef.update({
+        plan: plan,
+        razorpaySubscriptionId: razorpay_subscription_id,
+        razorpaySubscriptionStatus: "active",
+        updatedAt: Date.now()
+      });
+    } catch (dbError: any) {
+      console.warn("Firestore update failed, possibly due to quota. Falling back to Custom Claims.", dbError);
+      // Fallback: Store plan in Firebase Auth Custom Claims
+      const { adminAuth } = await import("@/lib/firebase-admin");
+      if (adminAuth) {
+        const userRecord = await adminAuth.getUser(auth.uid);
+        const currentClaims = userRecord.customClaims || {};
+        await adminAuth.setCustomUserClaims(auth.uid, {
+          ...currentClaims,
+          plan: plan,
+          razorpaySubscriptionId: razorpay_subscription_id,
+          razorpaySubscriptionStatus: "active"
+        });
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

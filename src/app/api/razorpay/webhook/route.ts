@@ -33,12 +33,16 @@ export async function POST(req: Request) {
 
     const eventId = req.headers.get("x-razorpay-event-id");
     if (eventId) {
-      const eventRef = adminDb.collection("webhook_events").doc(eventId);
-      const eventSnap = await eventRef.get();
-      if (eventSnap.exists) {
-        return NextResponse.json({ success: true, message: "Already processed" });
+      try {
+        const eventRef = adminDb.collection("webhook_events").doc(eventId);
+        const eventSnap = await eventRef.get();
+        if (eventSnap.exists) {
+          return NextResponse.json({ success: true, message: "Already processed" });
+        }
+        await eventRef.set({ processedAt: Date.now(), event: event.event });
+      } catch (err) {
+        console.warn("Webhook idempotency check failed (quota?). Proceeding anyway.");
       }
-      await eventRef.set({ processedAt: Date.now(), event: event.event });
     }
 
     if (
@@ -57,13 +61,16 @@ export async function POST(req: Request) {
       }
 
       const userRef = adminDb.collection("users").doc(userId);
-      const userSnap = await userRef.get();
-
-      if (!userSnap.exists) {
-        return NextResponse.json({ success: true });
+      let userSnap;
+      try {
+        userSnap = await userRef.get();
+        if (!userSnap.exists) {
+          return NextResponse.json({ success: true });
+        }
+      } catch (err) {
+        console.warn("Webhook failed to read user doc, proceeding to update blindly", err);
       }
-      
-      const userData = userSnap.data();
+      const userData = userSnap ? userSnap.data() : null;
       
       if (userData?.razorpaySubscriptionId && userData.razorpaySubscriptionId !== subscription.id) {
           if (event.event !== "subscription.activated") {
@@ -86,7 +93,22 @@ export async function POST(req: Request) {
         updates.plan = "free"; 
       }
 
-      await userRef.update(updates);
+      try {
+        await userRef.update(updates);
+      } catch (dbError) {
+        console.warn("Webhook Firestore update failed. Falling back to Custom Claims.", dbError);
+        const { adminAuth } = await import("@/lib/firebase-admin");
+        if (adminAuth) {
+          const userRecord = await adminAuth.getUser(userId);
+          const currentClaims = userRecord.customClaims || {};
+          await adminAuth.setCustomUserClaims(userId, {
+            ...currentClaims,
+            plan: updates.plan || currentClaims.plan,
+            razorpaySubscriptionId: updates.razorpaySubscriptionId || currentClaims.razorpaySubscriptionId,
+            razorpaySubscriptionStatus: updates.razorpaySubscriptionStatus || currentClaims.razorpaySubscriptionStatus
+          });
+        }
+      }
     }
 
     return NextResponse.json({ success: true });
