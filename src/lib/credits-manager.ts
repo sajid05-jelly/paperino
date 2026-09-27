@@ -1,5 +1,5 @@
 import { adminDb, adminAuth } from './firebase-admin';
-import { checkMonthlyUsage, incrementMonthlyUsage } from './monthly-usage';
+import { checkMonthlyUsage, incrementMonthlyUsage, checkAndConsumeMonthlyUsage } from './monthly-usage';
 import { getCurrentMonthKey, getEffectivePlan, getMonthlyLimit } from './subscription';
 
 export type ToolType = 'pyq' | 'ats';
@@ -51,7 +51,7 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
       };
     }
 
-    const usageCheck = await checkMonthlyUsage(uid, featureKey);
+    const usageCheck = await checkAndConsumeMonthlyUsage(uid, featureKey);
     if (!usageCheck.allowed) {
       return {
         allowed: false,

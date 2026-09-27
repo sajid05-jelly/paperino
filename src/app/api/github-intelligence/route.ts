@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { githubApiClient } from "@/lib/githubApiClient";
 import { adminAuth } from "@/lib/firebase-admin";
-import { checkMonthlyUsage, incrementMonthlyUsage } from "@/lib/monthly-usage";
+import { checkAndConsumeMonthlyUsage, checkMonthlyUsage } from "@/lib/monthly-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -308,17 +308,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (callerUid && !callerIsAdmin) {
-      const usageCheck = await checkMonthlyUsage(callerUid, "githubIntelligence");
-      if (!usageCheck.allowed) {
-        return NextResponse.json({
-          error: usageCheck.error || `Monthly GitHub Intelligence limit reached (${usageCheck.limit} uses/month). Upgrade to Plus, Pro, or Premium for more uses.`,
-          plan: usageCheck.plan,
-          limit: usageCheck.limit,
-          used: usageCheck.used
-        }, { status: 429 });
-      }
-    }
+    // Moved usage check after cache validation
 
     if (username.includes("github.com/")) {
       const parts = username.split("github.com/")[1].split("/").filter(Boolean);
@@ -2088,11 +2078,7 @@ export async function GET(req: NextRequest) {
     console.log(`ANALYSIS STATUS: ${isPartialAnalysis ? "PARTIAL" : "COMPLETE"}`);
     console.log(`==================================================\n`);
 
-    if (callerUid && !callerIsAdmin) {
-      incrementMonthlyUsage(callerUid, "githubIntelligence").catch((e) => {
-        console.warn("[GitHub Intelligence Usage Increment Notice]:", e);
-      });
-    }
+    // Usage was already atomically consumed at the start to prevent race condition bypasses.
 
     cache.set(cacheKey, { data: result, timestamp: now, version: ANALYSIS_ENGINE_VERSION, authenticated: isAuthenticatedToken });
     return NextResponse.json(result);

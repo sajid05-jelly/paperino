@@ -139,3 +139,86 @@ export async function incrementMonthlyUsage(uid: string, feature: MonthlyFeature
     return 0;
   }
 }
+
+/**
+ * Atomically check and consume monthly usage to prevent race conditions.
+ * MUST be called BEFORE executing expensive operations.
+ */
+export async function checkAndConsumeMonthlyUsage(uid: string, feature: MonthlyFeature): Promise<MonthlyUsageCheck> {
+  const month = getCurrentMonthKey();
+
+  if (!adminDb) {
+    return { 
+      allowed: false, plan: "free", used: 0, limit: 0, remaining: 0, month,
+      error: "System configuration error. Please try again later."
+    };
+  }
+
+  try {
+    // 1. Determine plan and limit
+    const userDoc = await adminDb.collection("users").doc(uid).get();
+    const userData = userDoc.exists ? userDoc.data() : null;
+    const { plan } = getEffectivePlan(userData);
+    const limit = getMonthlyLimit(plan, feature);
+
+    if (limit === Infinity) {
+      return { allowed: true, plan, used: 0, limit: Infinity, remaining: Infinity, month };
+    }
+    if (limit <= 0) {
+      return {
+        allowed: false, plan, used: 0, limit: 0, remaining: 0, month,
+        error: `This feature is not available on the ${plan.toUpperCase()} plan. Please upgrade to unlock.`
+      };
+    }
+
+    // 2. Atomic read + increment
+    const usageDocId = `${uid}_${month}`;
+    const usageRef = adminDb.collection("user_monthly_usage").doc(usageDocId);
+
+    const result = await adminDb.runTransaction(async (t) => {
+      const snap = await t.get(usageRef);
+      let used = 0;
+      
+      if (snap.exists) {
+        used = snap.data()?.[feature] || 0;
+      }
+
+      if (used >= limit) {
+        return {
+          allowed: false, plan, used, limit, remaining: 0, month,
+          error: `You have reached your monthly limit of ${limit} for this feature on the ${plan.toUpperCase()} plan.`
+        };
+      }
+
+      // Safe to consume
+      const newCount = used + 1;
+      if (snap.exists) {
+        t.update(usageRef, { [feature]: newCount, updatedAt: Date.now() });
+      } else {
+        t.set(usageRef, {
+          uid, month,
+          downloads: feature === "downloads" ? 1 : 0,
+          pyqAnalyzer: feature === "pyqAnalyzer" ? 1 : 0,
+          ats: feature === "ats" ? 1 : 0,
+          examEmergency: feature === "examEmergency" ? 1 : 0,
+          githubIntelligence: feature === "githubIntelligence" ? 1 : 0,
+          createdAt: Date.now(), updatedAt: Date.now()
+        });
+      }
+
+      return {
+        allowed: true, plan, used: newCount, limit, remaining: limit - newCount, month
+      };
+    });
+
+    return result;
+
+  } catch (err: any) {
+    console.error(`[checkAndConsumeMonthlyUsage] Error for ${uid}:`, err);
+    // FAIL-CLOSED
+    return { 
+      allowed: false, plan: "free", used: 0, limit: 0, remaining: 0, month,
+      error: "Temporary system error while verifying usage limits. Please try again later."
+    };
+  }
+}

@@ -121,10 +121,8 @@ export async function POST(req: NextRequest) {
     // Process via Groq AI Service
     const parsedData = await analyzeLargePYQ(combinedText, sanitizedSubject);
 
-    // Successfully generated response, increment credit usage
-    if (creditCheck.uid && creditCheck.limit !== Infinity) {
-      await incrementCreditUsage(creditCheck.uid, 'pyq');
-    }
+    // Successfully generated response
+    // Usage was already atomically consumed by checkAndGetCredits to prevent race conditions.
 
     return NextResponse.json(parsedData);
   } catch (error: any) {

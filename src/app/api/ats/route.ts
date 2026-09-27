@@ -237,7 +237,7 @@ ${optimizedText}
 
   // Increment credit usage
   if (creditCheck.uid && creditCheck.limit !== Infinity) {
-    await incrementCreditUsage(creditCheck.uid, 'ats');
+    // Usage was already atomically consumed by checkAndGetCredits to prevent race conditions.
     if (adminDb) {
       try {
         await adminDb.collection("platform_stats").doc("global").set({
@@ -321,9 +321,7 @@ ${optimizedText}
     const parsed = await generateJSONResponse(prompt);
 
     // Increment credit usage
-    if (creditCheck.uid && creditCheck.limit !== Infinity) {
-      await incrementCreditUsage(creditCheck.uid, 'ats');
-    }
+    // Usage was already atomically consumed by checkAndGetCredits to prevent race conditions.
 
     return NextResponse.json(parsed);
   } catch (err: any) {
