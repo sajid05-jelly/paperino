@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { usePlanGate } from "@/context/PlanGateContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import UserAvatar, { AVATARS } from "@/components/UserAvatar";
@@ -19,6 +20,7 @@ import SafeBackButton from "@/components/SafeBackButton";
 
 export default function AvatarStudioPage() {
   const { user, isAdmin, plan, canAccess, paperinoAvatar, setPaperinoAvatar } = useAuth();
+  const { showPlanGate } = usePlanGate();
   
   // Customization State
   const [equippedAvatar, setEquippedAvatar] = useState(paperinoAvatar || "pen-paper");
@@ -39,6 +41,7 @@ export default function AvatarStudioPage() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<"avatar" | "frames" | "companions" | "achievements">("avatar");
 
   useEffect(() => {
@@ -98,15 +101,15 @@ export default function AvatarStudioPage() {
 
     if (!isAdmin) {
       if (previewAvatar !== "pen-paper" && !canAccess("avatarChange")) {
-        alert("Avatar changes require Paperino Plus, Pro, or Premium. Upgrade to equip this avatar!");
+        showPlanGate("Avatar Customization", "plus", "Change your avatar icon to express your unique style.");
         return;
       }
       if (previewFrame !== "none" && !canAccess("profileFrame")) {
-        alert("Profile frames require Paperino Pro or Premium. Upgrade to equip frames!");
+        showPlanGate("Profile Frames", "pro", "Add stunning glowing borders around your avatar.");
         return;
       }
       if (previewCompanion !== "none" && !canAccess("profileCompanions")) {
-        alert("Profile companions require Paperino Premium. Upgrade to equip companions!");
+        showPlanGate("Profile Companions", "premium", "Equip animated companions that float around your avatar.");
         return;
       }
     }
@@ -125,7 +128,8 @@ export default function AvatarStudioPage() {
       setEquippedAvatar(previewAvatar);
       setEquippedFrame(previewFrame);
       setEquippedCompanion(previewCompanion);
-      alert("Customizations equipped successfully!");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error("Failed to save customization:", err);
     } finally {
@@ -214,8 +218,13 @@ export default function AvatarStudioPage() {
             disabled={saving || (previewAvatar === equippedAvatar && previewFrame === equippedFrame && previewCompanion === equippedCompanion)}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold transition-all shadow-[0_0_30px_rgba(139,92,246,0.3)] disabled:opacity-50 disabled:shadow-none"
           >
-            {saving ? "Equipping..." : "Equip Customizations"}
+            {saving ? "Equipping..." : saveSuccess ? "✓ Equipped!" : "Equip Customizations"}
           </button>
+          {saveSuccess && (
+            <div className="mt-3 text-center text-sm text-emerald-400 font-semibold animate-pulse">
+              Customizations equipped successfully!
+            </div>
+          )}
         </div>
 
         {/* Right Side: Selections & Customizations Tabs */}

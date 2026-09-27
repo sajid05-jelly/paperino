@@ -9,7 +9,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Sparkles } from "lucide-react";
+import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -24,7 +24,7 @@ const THEMES = [
 ] as const;
 
 export default function Navbar() {
-  const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion } = useAuth();
+  const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion, plan } = useAuth();
   const { categoryPulseUnreadCounts } = usePulseNotifications();
   const fcfPulseCount = categoryPulseUnreadCounts["Free Class Finder"] || 0;
   
@@ -433,7 +433,7 @@ export default function Navbar() {
               href="/pricing"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500/15 to-pink-500/15 hover:from-purple-500/25 hover:to-pink-500/25 border border-purple-500/30 text-purple-200 hover:text-white text-xs font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.15)]"
             >
-              <Sparkles size={12} className="text-purple-400" />
+              <Crown size={12} className="text-purple-400" />
               <span>Plans</span>
             </Link>
 
@@ -446,7 +446,7 @@ export default function Navbar() {
                   aria-label="Avatar Studio"
                 >
                   <div className="flex items-center justify-center flex-shrink-0 relative overflow-hidden rounded-full border border-white/10 w-8 h-8">
-                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={7} />
+                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={7} plan={plan} />
                   </div>
                   <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors hidden sm:block max-w-[80px] xl:max-w-[100px] truncate">
                     {user.displayName?.split(' ')[0] || 'Student'}
@@ -761,7 +761,7 @@ export default function Navbar() {
                     }`}
                   >
                     <span className="flex items-center gap-3">
-                      <Sparkles size={17} className="text-purple-400 shrink-0" />
+                      <Crown size={17} className="text-purple-400 shrink-0" />
                       <span>Plans & Pricing</span>
                     </span>
                   </Link>

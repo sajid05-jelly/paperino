@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { BadgeProvider } from "@/context/BadgeContext";
 import { SubjectsProvider } from "@/context/SubjectsContext";
+import { PlanGateProvider } from "@/context/PlanGateContext";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import RouteTracker from "@/components/RouteTracker";
 import { ToastProvider } from "@/components/Toast";
@@ -21,6 +22,7 @@ const FloatingFeedback = dynamic(() => import("@/components/FloatingFeedback"));
 const ThemeSelector = dynamic(() => import("@/components/ThemeSelector"));
 const AvatarProvider = dynamic(() => import("@/components/AvatarProvider"));
 const BackToTop = dynamic(() => import("@/components/BackToTop"));
+const PlanUpgradeModal = dynamic(() => import("@/components/PlanUpgradeModal"));
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -123,6 +125,7 @@ export default function RootLayout({
         <ToastProvider>
           <ThemeProvider>
             <AuthProvider>
+              <PlanGateProvider>
               <NotificationProvider>
                 <BadgeProvider>
                   <SubjectsProvider>
@@ -149,9 +152,13 @@ export default function RootLayout({
                       <BackToTop />
                     </MaintenanceGuard>
 
+                    {/* Global Plan Upgrade Modal */}
+                    <PlanUpgradeModal />
+
                   </SubjectsProvider>
                 </BadgeProvider>
               </NotificationProvider>
+              </PlanGateProvider>
             </AuthProvider>
           </ThemeProvider>
         </ToastProvider>

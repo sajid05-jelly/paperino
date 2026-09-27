@@ -37,6 +37,7 @@ interface UserAvatarProps {
   hideCrown?: boolean;
   className?: string;
   size?: number;
+  plan?: "free" | "plus" | "pro" | "premium" | string | null;
 }
 
 export const AVATARS = [
@@ -52,7 +53,7 @@ export const AVATARS = [
   { id: 'futuristic-owl', name: 'Futuristic Owl', icon: Bird, color: 'text-rose-400', bg: 'bg-rose-500/10' },
 ];
 
-export default function UserAvatar({ avatarId, frameId = "none", companionId = "none", hideCrown = false, className = "", size = 20 }: UserAvatarProps) {
+export default function UserAvatar({ avatarId, frameId = "none", companionId = "none", hideCrown = false, className = "", size = 20, plan = "free" }: UserAvatarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -138,11 +139,28 @@ export default function UserAvatar({ avatarId, frameId = "none", companionId = "
 
       {/* ── Avatar Frame Wrapper ── */}
       <div 
-        className={`avatar-frame-container ${avatarWidthClass} flex items-center justify-center`}
+        className={`avatar-frame-container ${avatarWidthClass} flex items-center justify-center relative`}
       >
         <AvatarFrameVisual frameId={frameId || "none"} size={size}>
           {renderIcon()}
         </AvatarFrameVisual>
+
+        {/* Plan Badge Overlay */}
+        {plan === "plus" && (
+          <div className="absolute -bottom-1 -right-1 z-[60] bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/20 shadow-lg whitespace-nowrap scale-75 md:scale-90">
+            PLUS
+          </div>
+        )}
+        {plan === "pro" && (
+          <div className="absolute -bottom-1 -right-1 z-[60] bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/20 shadow-lg whitespace-nowrap scale-75 md:scale-90">
+            PRO
+          </div>
+        )}
+        {plan === "premium" && (
+          <div className="absolute -bottom-1 -right-1 z-[60] bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/40 shadow-[0_0_10px_#f59e0b] whitespace-nowrap scale-75 md:scale-90">
+            PREM
+          </div>
+        )}
       </div>
     </div>
   );

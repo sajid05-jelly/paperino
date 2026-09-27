@@ -172,11 +172,13 @@ export default function PricingPage() {
       return;
     }
     if (selectedPlan.id === plan) {
-      alert("You are already on this plan!");
+      setBillingNotice("You are already on this plan!");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     if (selectedPlan.id === "plus" && isContributorPlus) {
-      alert("You already have Plus features for free as a Contributor!");
+      setBillingNotice("You already have Plus features for free as a Contributor!");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     if (selectedPlan.id === "free") return; // cannot subscribe to free
@@ -184,7 +186,6 @@ export default function PricingPage() {
     if (!user) {
       setBillingNotice("Please login to subscribe to a plan.");
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      alert("Please login to subscribe to a plan.");
       return;
     }
 
@@ -269,8 +270,6 @@ export default function PricingPage() {
       const msg = err.message || "Something went wrong.";
       setBillingNotice(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      // Fallback alert just in case the notice is missed
-      alert("Subscription Error: " + msg);
     } finally {
       setIsLoadingPlan(null);
     }

@@ -1,81 +1,153 @@
 "use client";
 
-import React from "react";
+import { useEffect, useCallback } from "react";
+import { usePlanGate, RequiredPlan } from "@/context/PlanGateContext";
+import { Crown, X, Lock, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { Sparkles, Lock, ArrowRight, X, ShieldAlert } from "lucide-react";
-import { PlanType } from "@/lib/subscription";
 
-interface PlanUpgradeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  featureName: string;
-  requiredPlan?: PlanType;
-  description?: string;
-}
+const PLAN_CONFIG: Record<RequiredPlan, {
+  label: string;
+  gradient: string;
+  glow: string;
+  border: string;
+  iconBg: string;
+  accessText: string;
+}> = {
+  plus: {
+    label: "Plus",
+    gradient: "from-purple-600 to-pink-500",
+    glow: "shadow-[0_0_60px_rgba(168,85,247,0.3)]",
+    border: "border-purple-500/30",
+    iconBg: "bg-purple-500/20",
+    accessText: "Available with Plus, Pro, or Premium.",
+  },
+  pro: {
+    label: "Pro",
+    gradient: "from-blue-600 to-cyan-500",
+    glow: "shadow-[0_0_60px_rgba(59,130,246,0.3)]",
+    border: "border-blue-500/30",
+    iconBg: "bg-blue-500/20",
+    accessText: "Available with Pro or Premium.",
+  },
+  premium: {
+    label: "Premium",
+    gradient: "from-amber-500 to-yellow-400",
+    glow: "shadow-[0_0_60px_rgba(245,158,11,0.3)]",
+    border: "border-amber-500/30",
+    iconBg: "bg-amber-500/20",
+    accessText: "Available with Premium.",
+  },
+};
 
-export default function PlanUpgradeModal({
-  isOpen,
-  onClose,
-  featureName,
-  requiredPlan = "plus",
-  description,
-}: PlanUpgradeModalProps) {
+export default function PlanUpgradeModal() {
+  const { gate, closePlanGate } = usePlanGate();
+  const { isOpen, featureName, requiredPlan, description } = gate;
+  const config = PLAN_CONFIG[requiredPlan];
+
+  // Escape key handler
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") closePlanGate();
+  }, [closePlanGate]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, handleKeyDown]);
+
   if (!isOpen) return null;
 
-  const planLabel =
-    requiredPlan === "premium"
-      ? "Paperino Premium"
-      : requiredPlan === "pro"
-      ? "Paperino Pro"
-      : "Paperino Plus";
-
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-[#0d0a1a] border border-purple-500/25 rounded-3xl p-6 sm:p-8 text-center shadow-[0_0_50px_rgba(168,85,247,0.2)]">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+        onClick={closePlanGate}
+      />
+
+      {/* Modal */}
+      <div
+        className={`relative w-full max-w-[380px] rounded-2xl border ${config.border} bg-[#0d0820]/95 backdrop-blur-xl ${config.glow} animate-[modalIn_0.25s_ease-out]`}
+      >
+        {/* Close Button */}
         <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+          onClick={closePlanGate}
+          className="absolute top-3 right-3 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all z-10"
+          aria-label="Close"
         >
-          <X size={18} />
+          <X size={16} />
         </button>
 
-        <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center mx-auto mb-5 text-purple-400">
-          <Lock size={26} className="text-purple-400" />
-        </div>
+        {/* Content */}
+        <div className="px-6 pt-7 pb-6 text-center">
+          {/* Lock Icon */}
+          <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full ${config.iconBg} mb-4`}>
+            <Lock size={24} className={`bg-gradient-to-r ${config.gradient} bg-clip-text`} style={{ color: requiredPlan === "plus" ? "#a855f7" : requiredPlan === "pro" ? "#3b82f6" : "#f59e0b" }} />
+          </div>
 
-        <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/25 mb-3 inline-block">
-          Requires {planLabel}
-        </span>
+          {/* Plan Badge */}
+          <div className="mb-2">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r ${config.gradient} text-white text-xs font-bold`}>
+              <Crown size={12} />
+              Paperino {config.label}
+            </span>
+          </div>
 
-        <h3 className="text-2xl font-black text-white mb-2 tracking-tight">
-          Unlock {featureName}
-        </h3>
+          {/* Feature Name */}
+          <h3 className="text-lg font-bold text-white mt-3 mb-1">
+            {featureName}
+          </h3>
 
-        <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-          {description ||
-            `This feature is available on ${planLabel} and above. Upgrade your plan to get access and unlock higher limits.`}
-        </p>
+          {/* Description */}
+          <p className="text-sm text-gray-400 leading-relaxed mb-1">
+            {description || `${featureName} is a ${config.label}-tier feature.`}
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            {config.accessText}
+          </p>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            href="/pricing"
-            onClick={onClose}
-            className="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm shadow-[0_0_25px_rgba(168,85,247,0.4)] flex items-center justify-center gap-2 transition-all"
-          >
-            <Sparkles size={16} /> View Plans & Upgrade
-          </Link>
-          <button
-            onClick={onClose}
-            className="py-3 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-sm font-medium transition-all"
-          >
-            Maybe Later
-          </button>
-        </div>
-
-        <div className="mt-5 pt-4 border-t border-white/5 text-[11px] text-gray-500">
-          🎁 Contributors who share 10+ approved materials get Plus for FREE!
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={closePlanGate}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 hover:text-white font-medium transition-all"
+            >
+              Maybe Later
+            </button>
+            <Link
+              href="/pricing"
+              onClick={closePlanGate}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r ${config.gradient} text-white text-sm font-bold hover:opacity-90 transition-all`}
+            >
+              View Plans
+              <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
       </div>
+
+      {/* Animations */}
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes modalIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }
