@@ -79,6 +79,8 @@ export default function ExamEmergencyPage() {
           }
         } catch (err) {
           console.error("Error resetting emergency monthly usage:", err);
+          // FAIL-CLOSED: Block access if we can't reset usage due to database error
+          if (isMounted) setEmergencyUsageCount(9999);
         }
       } else {
         if (isMounted) {
@@ -88,6 +90,8 @@ export default function ExamEmergencyPage() {
       }
     }).catch((err) => {
       console.warn("[ExamEmergency] User doc fetch notice:", err);
+      // FAIL-CLOSED: If we can't read usage limits due to quota/network error, assume exhausted
+      if (isMounted) setEmergencyUsageCount(9999);
     });
 
     return () => { isMounted = false; };

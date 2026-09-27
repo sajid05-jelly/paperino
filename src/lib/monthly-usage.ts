@@ -20,7 +20,15 @@ export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature): P
   const month = getCurrentMonthKey();
 
   if (!adminDb) {
-    return { allowed: true, plan: "free", used: 0, limit: 5, remaining: 5, month };
+    return { 
+      allowed: false, 
+      plan: "free", 
+      used: 0, 
+      limit: 0, 
+      remaining: 0, 
+      month,
+      error: "System configuration error. Please try again later."
+    };
   }
 
   try {
@@ -77,8 +85,16 @@ export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature): P
     };
   } catch (err: any) {
     console.error(`[checkMonthlyUsage] Error checking ${feature} for ${uid}:`, err);
-    // On unexpected error, do not completely crash
-    return { allowed: true, plan: "free", used: 0, limit: 1, remaining: 1, month };
+    // FAIL-CLOSED: On unexpected error (e.g. Quota Exceeded), block access rather than granting unlimited usage.
+    return { 
+      allowed: false, 
+      plan: "free", 
+      used: 0, 
+      limit: 0, 
+      remaining: 0, 
+      month,
+      error: "Temporary system error while verifying usage limits. Please try again later."
+    };
   }
 }
 

@@ -72,7 +72,7 @@ export async function checkAndGetCredits(authHeader: string | null, tool: ToolTy
     };
   } catch (error) {
     console.error('Credit verification error:', error);
-    return { allowed: false, error: 'Invalid authentication token.' };
+    return { allowed: false, error: 'Failed to verify account or usage limits due to a system error. Please try again later.' };
   }
 }
 
