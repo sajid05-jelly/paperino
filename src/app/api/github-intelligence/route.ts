@@ -334,6 +334,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    let didConsumeUsage = false;
+    if (callerUid && !callerIsAdmin) {
+      const usageCheck = await checkAndConsumeMonthlyUsage(callerUid, "githubIntelligence");
+      if (!usageCheck.allowed) {
+        return NextResponse.json({
+          error: usageCheck.error || `Monthly GitHub Intelligence limit reached (${usageCheck.limit} uses/month). Upgrade to Plus, Pro, or Premium for more uses.`,
+          plan: usageCheck.plan,
+          limit: usageCheck.limit,
+          used: usageCheck.used
+        }, { status: 429 });
+      }
+      didConsumeUsage = true;
+    }
+
     // ── STEP 1: FETCH REAL REPOSITORY EVIDENCE VIA CENTRALIZED CLIENT ──
     apiRequestsUsed++;
     const userFetch = await githubApiClient<any>(`/users/${encodeURIComponent(username)}`);
