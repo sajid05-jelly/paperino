@@ -6,14 +6,6 @@ import { collection, query, limit, onSnapshot, getDocs, where, doc, getDoc } fro
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 
-export interface UserStatusUpdate {
-  id: string;
-  type: "material" | "subject" | "course" | "insight";
-  title: string;
-  subtitle?: string;
-  status: "approved" | "rejected";
-  updatedAt: number;
-}
 
 interface BadgeContextType {
   // Paperino Labs & Free Class Finder Badges
@@ -21,11 +13,7 @@ interface BadgeContextType {
   labsTotalUnreadCount: number;
   markFreeClassSeen: () => void;
 
-  // Contributor / User Dashboard Status Notifications & Badge
-  userStatusUpdates: UserStatusUpdate[];
-  dashboardUnreadCount: number;
-  markDashboardSeen: () => void;
-  refreshUserStatusUpdates: () => Promise<void>;
+  
 
   // Admin Badges & Section Reads
   adminSubjectRequestsCount: number;
@@ -40,10 +28,10 @@ const BadgeContext = createContext<BadgeContextType>({
   freeClassUnreadCount: 0,
   labsTotalUnreadCount: 0,
   markFreeClassSeen: () => {},
-  userStatusUpdates: [],
-  dashboardUnreadCount: 0,
-  markDashboardSeen: () => {},
-  refreshUserStatusUpdates: async () => {},
+  
+  
+  
+  
   adminSubjectRequestsCount: 0,
   adminPendingReviewsCount: 0,
   adminPendingCoursesCount: 0,
@@ -135,160 +123,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   const labsTotalUnreadCount = freeClassUnreadCount;
 
   // ─────────────────────────────────────────────────────────────
-  // 2. USER DASHBOARD STATUS NOTIFICATIONS (Material, Subject, Course, Senior Insights)
-  // ─────────────────────────────────────────────────────────────
-  const [userStatusUpdates, setUserStatusUpdates] = useState<UserStatusUpdate[]>([]);
-  const [lastSeenDashboardStatusTime, setLastSeenDashboardStatusTime] = useState<number>(() => {
-    if (typeof window !== "undefined" && user) {
-      const saved = localStorage.getItem(`paperino_last_seen_dashboard_status_${user.uid}`);
-      return saved ? parseInt(saved, 10) : 0;
-    }
-    return 0;
-  });
-
-  // Re-load lastSeen from localStorage whenever user changes
-  useEffect(() => {
-    if (user && typeof window !== "undefined") {
-      const saved = localStorage.getItem(`paperino_last_seen_dashboard_status_${user.uid}`);
-      setLastSeenDashboardStatusTime(saved ? parseInt(saved, 10) : 0);
-    }
-  }, [user]);
-
-  const lastUserStatusFetchTimeRef = useRef<number>(0);
-
-  const fetchUserStatusUpdates = useCallback(async (forceRefresh: boolean = false) => {
-    if (!user) {
-      setUserStatusUpdates([]);
-      return;
-    }
-
-    const now = Date.now();
-    // Cache for 3 minutes per session to prevent repeated sweeps across 4 collections on rapid navigation
-    if (!forceRefresh && (now - lastUserStatusFetchTimeRef.current) < 3 * 60 * 1000) {
-      return;
-    }
-
-    try {
-      const updates: UserStatusUpdate[] = [];
-
-      // 1. Materials submitted by this user (where status is approved or rejected)
-      const matsQuery = query(
-        collection(db, "materials"),
-        where("uploaderId", "==", user.uid),
-        limit(30)
-      );
-      const matsSnap = await getDocs(matsQuery).catch(() => ({ docs: [] } as any));
-      matsSnap.docs.forEach((d: any) => {
-        const data = d.data();
-        if (data.status === "approved" || data.status === "rejected") {
-          const updatedAt = data.rejectedAt || data.approvedAt || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || Date.now());
-          updates.push({
-            id: `mat_${d.id}`,
-            type: "material",
-            title: data.title || data.fileName || "Study Material",
-            subtitle: `Semester ${data.semesterId || "?"} • ${data.category?.toUpperCase() || "MATERIAL"}`,
-            status: data.status,
-            updatedAt
-          });
-        }
-      });
-
-      // 2. Subject Requests submitted by this user (where status is approved or rejected)
-      const subsQuery = query(
-        collection(db, "dynamic_subjects"),
-        where("contributorId", "==", user.uid),
-        limit(20)
-      );
-      const subsSnap = await getDocs(subsQuery).catch(() => ({ docs: [] } as any));
-      subsSnap.docs.forEach((d: any) => {
-        const data = d.data();
-        if (data.status === "approved" || data.status === "rejected") {
-          const updatedAt = data.updatedAt || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || Date.now());
-          updates.push({
-            id: `sub_${d.id}`,
-            type: "subject",
-            title: data.name || "Subject Request",
-            subtitle: `Department: ${data.departmentId || "General"}`,
-            status: data.status,
-            updatedAt
-          });
-        }
-      });
-
-      // 3. Department / Course Requests submitted by this user (where status is approved or rejected)
-      const deptsQuery = query(
-        collection(db, "departments"),
-        where("createdBy", "==", user.uid),
-        limit(20)
-      );
-      const deptsSnap = await getDocs(deptsQuery).catch(() => ({ docs: [] } as any));
-      deptsSnap.docs.forEach((d: any) => {
-        const data = d.data();
-        if (data.status === "approved" || data.status === "rejected") {
-          const updatedAt = data.updatedAt || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || Date.now());
-          updates.push({
-            id: `dept_${d.id}`,
-            type: "course",
-            title: data.name || "Course Request",
-            subtitle: `Code: ${data.code || "N/A"}`,
-            status: data.status,
-            updatedAt
-          });
-        }
-      });
-
-      // 4. Senior Insights / Survival Notes submitted by this user (where status is approved)
-      const notesQuery = query(
-        collection(db, "survival_notes"),
-        where("contributorId", "==", user.uid),
-        limit(20)
-      );
-      const notesSnap = await getDocs(notesQuery).catch(() => ({ docs: [] } as any));
-      notesSnap.docs.forEach((d: any) => {
-        const data = d.data();
-        if (data.status === "approved" || data.status === "rejected") {
-          const updatedAt = data.updatedAt || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || Date.now());
-          updates.push({
-            id: `insight_${d.id}`,
-            type: "insight",
-            title: data.title || "Senior Insight",
-            subtitle: "Community Advice",
-            status: data.status,
-            updatedAt
-          });
-        }
-      });
-
-      // Sort newest first
-      updates.sort((a, b) => b.updatedAt - a.updatedAt);
-      setUserStatusUpdates(updates);
-      lastUserStatusFetchTimeRef.current = now;
-    } catch (e) {
-      console.warn("[BadgeContext] Error fetching user status updates:", e);
-    }
-  }, [user, userStatusUpdates.length]);
-
-  useEffect(() => {
-    if (user) {
-      fetchUserStatusUpdates();
-    }
-  }, [user, fetchUserStatusUpdates]);
-
-  const dashboardUnreadCount = useMemo(() => {
-    if (!userStatusUpdates.length) return 0;
-    // Count items updated after the user last viewed the status/notifications tab
-    return userStatusUpdates.filter((u) => u.updatedAt > lastSeenDashboardStatusTime).length;
-  }, [userStatusUpdates, lastSeenDashboardStatusTime]);
-
-  const markDashboardSeen = useCallback(() => {
-    const now = Date.now();
-    setLastSeenDashboardStatusTime(now);
-    if (user && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(`paperino_last_seen_dashboard_status_${user.uid}`, now.toString());
-      } catch (e) {}
-    }
-  }, [user]);
+  
 
   // ─────────────────────────────────────────────────────────────
   // 3. ADMIN BADGES (Subject Requests, Pending Reviews, Pending Courses)
@@ -475,10 +310,10 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
         freeClassUnreadCount,
         labsTotalUnreadCount,
         markFreeClassSeen,
-        userStatusUpdates,
-        dashboardUnreadCount,
-        markDashboardSeen,
-        refreshUserStatusUpdates: fetchUserStatusUpdates,
+        
+        
+        
+        
         adminSubjectRequestsCount,
         adminPendingReviewsCount,
         adminPendingCoursesCount,

@@ -32,9 +32,8 @@ export default function Navbar() {
 
 
     markFreeClassSeen, 
-    adminTotalUnreadCount,
-    dashboardUnreadCount
-  } = useBadges();
+    adminTotalUnreadCount} = useBadges();
+  const dashboardUnreadCount = 0;
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);

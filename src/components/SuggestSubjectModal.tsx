@@ -6,7 +6,6 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/components/Toast";
-import { useSound } from "@/hooks/useSound";
 import { sendEmailVerification } from "firebase/auth";
 import { notifyAdmins } from "@/lib/notifications";
 import { useSubjects } from "@/context/SubjectsContext";
@@ -28,8 +27,7 @@ export default function SuggestSubjectModal({
 }: SuggestSubjectModalProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { playSuccess } = useSound();
-  const { subjects, lazyLoadSubjects } = useSubjects();
+    const { subjects, lazyLoadSubjects } = useSubjects();
 
   const [subjectName, setSubjectName] = useState("");
   const [subjectCode, setSubjectCode] = useState("");
@@ -122,8 +120,7 @@ export default function SuggestSubjectModal({
       );
 
       setSuccess(true);
-      if (playSuccess) playSuccess();
-      showToast("✅ Thank you! Your subject request has been received. Our team will review and upload the materials soon.", "success");
+             showToast("✅ Thank you! Your subject request has been received. Our team will review and upload the materials soon.", "success");
       
       setTimeout(() => {
         onClose();

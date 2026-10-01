@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Upload, X, CheckCircle2, FileText } from "lucide-react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useSound } from "@/hooks/useSound";
+
 import { useAuth } from "@/context/AuthContext";
 import { uploadToDriveDirect } from "@/lib/driveUpload";
 import { notifyAdmins } from "@/lib/notifications";
@@ -45,7 +45,7 @@ export default function QuickUploadModal({
   const [isDragging, setIsDragging] = useState(false);
   const [autoFillGlow, setAutoFillGlow] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { playSuccess } = useSound();
+  
 
   const processAutoTitle = (selectedFile: File) => {
     if (category !== "notes" && category !== "questions") return;
@@ -182,7 +182,7 @@ if (!isOpen) return null;
       }
 
       setSuccess(true);
-      playSuccess();
+      
       
       // Pass the new material back to the parent to update UI instantly
       setTimeout(() => {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, X, CheckCircle2, BookOpen } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
-import { useSound } from "@/hooks/useSound";
+
 import { useAuth } from "@/context/AuthContext";
 import { notifyAdmins } from "@/lib/notifications";
 import { db } from "@/lib/firebase";
@@ -28,7 +28,7 @@ export default function CreateCourseModal({
   mode = "course"
 }: CreateCourseModalProps) {
   const { departments, subjects, lazyLoadSubjects, createDepartment, createSubject } = useSubjects();
-  const { playSuccess } = useSound();
+  
   const { user, isContributor, isAdmin } = useAuth();
 
   const [deptMode, setDeptMode] = useState<"select" | "new">("select");
@@ -176,7 +176,7 @@ export default function CreateCourseModal({
         }
 
         setSuccess(true);
-        playSuccess();
+        
         setTimeout(() => onClose(), 2000);
         return; // STOP EXECUTION HERE, do not create subject
       }
@@ -211,7 +211,7 @@ export default function CreateCourseModal({
       }
 
       setSuccess(true);
-      playSuccess();
+      
       setTimeout(() => onClose(), 2000);
     } catch (err: any) {
       setError(err.message || "Failed to create department / subject.");

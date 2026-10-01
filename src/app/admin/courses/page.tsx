@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Ban, RotateCcw, Search } from "lucide-react";
-import { useSound } from "@/hooks/useSound";
+
 import { useSubjects } from "@/context/SubjectsContext";
 import { notifyUser } from "@/lib/notifications";
 import { useBadges } from "@/context/BadgeContext";
@@ -61,7 +61,7 @@ export default function AdminCoursesPage() {
   // Search state for Approved Subjects
   const [subjectSearchQuery, setSubjectSearchQuery] = useState("");
   
-  const { playSuccess } = useSound();
+  
   const { refreshSubjects } = useSubjects();
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function AdminCoursesPage() {
         });
       }
 
-      playSuccess();
+      
       await refreshSubjects();
 
       // Admin -> User notifications for approval have been disabled per requirements
@@ -119,7 +119,7 @@ export default function AdminCoursesPage() {
       const dept = departmentsList.find(d => d.id === id);
       await updateDoc(doc(db, "departments", id), { status: "rejected" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "rejected" } : d));
-      playSuccess();
+      
       await refreshSubjects();
 
       // Admin -> User notifications for rejection have been disabled per requirements
@@ -136,7 +136,7 @@ export default function AdminCoursesPage() {
     try {
       await updateDoc(doc(db, "departments", id), { status: "pending" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "pending" } : d));
-      playSuccess();
+      
       await refreshSubjects();
     } catch (error) {
       console.error("Error restoring department:", error);
@@ -151,7 +151,7 @@ export default function AdminCoursesPage() {
     try {
       await deleteDoc(doc(db, "departments", id));
       setDepartmentsList(prev => prev.filter(d => d.id !== id));
-      playSuccess();
+      
       await refreshSubjects();
     } catch (error) {
       console.error("Error deleting department:", error);
@@ -176,7 +176,7 @@ export default function AdminCoursesPage() {
         });
       }
 
-      playSuccess();
+      
       await refreshSubjects();
 
       // Admin -> User notifications for approval have been disabled per requirements
@@ -194,7 +194,7 @@ export default function AdminCoursesPage() {
       const sub = subjectsList.find(s => s.id === id);
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "rejected" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "rejected" } : s));
-      playSuccess();
+      
       await refreshSubjects();
 
       // Admin -> User notifications for rejection have been disabled per requirements
@@ -211,7 +211,7 @@ export default function AdminCoursesPage() {
     try {
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "pending" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "pending" } : s));
-      playSuccess();
+      
       await refreshSubjects();
     } catch (error) {
       console.error("Error restoring subject:", error);
@@ -228,7 +228,7 @@ export default function AdminCoursesPage() {
     try {
       await deleteDoc(doc(db, "dynamic_subjects", id));
       setSubjectsList(prev => prev.filter(s => s.id !== id));
-      playSuccess();
+      
       await refreshSubjects();
     } catch (error) {
       console.error("Error deleting subject:", error);
@@ -266,7 +266,7 @@ export default function AdminCoursesPage() {
       });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, name: editName, code: editCode, totalSemesters: editSemesters } : d));
       setEditingId(null);
-      playSuccess();
+      
       await refreshSubjects();
     } catch (error) {
       console.error("Error saving department:", error);
@@ -293,7 +293,7 @@ export default function AdminCoursesPage() {
       });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, name: editName, code: editCode, semesterId: editSemesterId } : s));
       setEditingId(null);
-      playSuccess();
+      
       await refreshSubjects();
     } catch (error) {
       console.error("Error saving subject:", error);
