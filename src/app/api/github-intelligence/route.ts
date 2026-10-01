@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { githubApiClient } from "@/lib/githubApiClient";
 import { adminAuth } from "@/lib/firebase-admin";
-import { checkAndConsumeMonthlyUsage, checkMonthlyUsage } from "@/lib/monthly-usage";
+import { verifyFeatureAccess, consumeFeatureUsage, refundFeatureUsage } from "@/lib/server-entitlement";
 
 export const dynamic = "force-dynamic";
 
@@ -285,68 +285,49 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "GitHub username is required" }, { status: 400 });
     }
 
-    // Monthly usage check for authenticated users
-    const authHeader = req.headers.get("authorization");
-    let callerUid: string | null = null;
-    let callerIsAdmin = false;
-    if (authHeader && authHeader.startsWith("Bearer ") && adminAuth) {
-      try {
-        const decoded = await adminAuth.verifyIdToken(authHeader.split("Bearer ")[1]);
-        callerUid = decoded.uid;
-        const allowedAdmins = [
-          "mohamedsajid.sa@gmail.com",
-          "sudharajsekar2005@gmail.com",
-          "admin.paperinoirfan27@gmail.com",
-          "admin.paperinosam14@gmail.com",
-          "gameplayitlifeitis@gmail.com"
-        ];
-        if (decoded.email && allowedAdmins.includes(decoded.email.toLowerCase())) {
-          callerIsAdmin = true;
+          const authHeader = req.headers.get("authorization");
+      const entitlement = await verifyFeatureAccess(authHeader, 'githubIntelligence');
+      if (entitlement.status !== "ALLOWED") {
+         const statusCode = entitlement.status === "LIMIT_REACHED" ? 429 : 403;
+         return NextResponse.json({
+            error: entitlement.error || "Access denied.",
+            status: entitlement.status,
+            plan: entitlement.plan,
+            limit: entitlement.limit,
+            used: entitlement.used
+         }, { status: statusCode });
+      }
+
+      if (username.includes("github.com/")) {
+        const parts = username.split("github.com/")[1].split("/").filter(Boolean);
+        username = parts[0] || username;
+      }
+      username = username.toLowerCase();
+      const cacheKey = `github-intelligence:v6:${username}`;
+
+      const now = Date.now();
+      if (!forceFresh && cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey)!;
+        if (
+          cached.version === "v6" &&
+          cached.data.analysisComplete === true &&
+          cached.data.analysisConfidence !== "LOW" &&
+          (now - cached.timestamp < CACHE_TTL_MS)
+        ) {
+          console.log(`[GitHub Intelligence Server Log] User: @${username} | Cache hit`);
+          return NextResponse.json({ ...cached.data, fromCache: true });
         }
-      } catch (e) {
-        console.warn("[GitHub Intelligence Auth Notice]:", e);
       }
-    }
 
-    // Moved usage check after cache validation
-
-    if (username.includes("github.com/")) {
-      const parts = username.split("github.com/")[1].split("/").filter(Boolean);
-      username = parts[0] || username;
-    }
-
-    username = username.toLowerCase();
-    const cacheKey = `github-intelligence:v6:${username}`;
-
-    const now = Date.now();
-    // ── STEP 5: CACHE CONTAMINATION PREVENTION (v8.1 Versioning + Strict Check) ──
-    if (!forceFresh && cache.has(cacheKey)) {
-      const cached = cache.get(cacheKey)!;
-      if (
-        cached.version === ANALYSIS_ENGINE_VERSION &&
-        cached.authenticated === isAuthenticatedToken &&
-        cached.data.analysisComplete === true &&
-        cached.data.analysisConfidence !== "LOW" &&
-        (now - cached.timestamp < CACHE_TTL_MS)
-      ) {
-        console.log(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${isAuthenticatedToken} | Rate limit: N/A | Remaining: N/A | API Requests Used: 0 | Cache hit: true`);
-        return NextResponse.json({ ...cached.data, fromCache: true });
+      // CONSUME USAGE SAFELY BEFORE API/AI
+      let didConsumeUsage = false;
+      if (entitlement.uid && entitlement.limit !== Infinity) {
+          const consumed = await consumeFeatureUsage(entitlement.uid, 'githubIntelligence');
+          if (!consumed) {
+              return NextResponse.json({ error: "Failed to allocate usage." }, { status: 429 });
+          }
+          didConsumeUsage = true;
       }
-    }
-
-    let didConsumeUsage = false;
-    if (callerUid && !callerIsAdmin) {
-      const usageCheck = await checkAndConsumeMonthlyUsage(callerUid, "githubIntelligence");
-      if (!usageCheck.allowed) {
-        return NextResponse.json({
-          error: usageCheck.error || `Monthly GitHub Intelligence limit reached (${usageCheck.limit} uses/month). Upgrade to Plus, Pro, or Premium for more uses.`,
-          plan: usageCheck.plan,
-          limit: usageCheck.limit,
-          used: usageCheck.used
-        }, { status: 429 });
-      }
-      didConsumeUsage = true;
-    }
 
     // ── STEP 1: FETCH REAL REPOSITORY EVIDENCE VIA CENTRALIZED CLIENT ──
     apiRequestsUsed++;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runApiGuard } from "@/lib/api-guard";
-import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager";
+import { verifyFeatureAccess, consumeFeatureUsage, refundFeatureUsage } from "@/lib/server-entitlement";
 import { analyzeLargePYQ } from "@/services/groqService";
 
 export const maxDuration = 60; // 60 seconds as multi-PDF parsing might take time
@@ -12,15 +12,15 @@ export async function POST(req: NextRequest) {
 
   /* ── Check Daily AI Credits ── */
   const authHeader = req.headers.get("authorization");
-  const creditCheck = await checkAndGetCredits(authHeader, 'pyq');
+  const entitlement = await verifyFeatureAccess(authHeader, 'pyqAnalyzer');
   
-  if (!creditCheck.allowed) {
+  if (entitlement.status !== "ALLOWED") {
     return NextResponse.json(
       { 
-        error: creditCheck.error || "Credit limit reached or unauthorized.",
-        plan: creditCheck.plan || "free",
-        limit: creditCheck.limit || 0,
-        used: creditCheck.used || 0
+        error: entitlement.error || "Credit limit reached or unauthorized.",
+        plan: entitlement.plan || "free",
+        limit: entitlement.limit || 0,
+        used: entitlement.used || 0
       },
       { status: 429 }
     );

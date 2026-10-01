@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mammoth from "mammoth";
 import { runApiGuard } from "@/lib/api-guard";
 import { generateJSONResponse } from "@/services/groqService";
-import { checkAndGetCredits, incrementCreditUsage } from "@/lib/credits-manager";
+import { verifyFeatureAccess, consumeFeatureUsage, refundFeatureUsage } from "@/lib/server-entitlement";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from 'firebase-admin';
 
@@ -33,15 +33,15 @@ export async function POST(req: NextRequest) {
 
   /* ── Check Daily AI Credits ── */
   const authHeader = req.headers.get("authorization");
-  const creditCheck = await checkAndGetCredits(authHeader, 'ats');
+  const entitlement = await verifyFeatureAccess(authHeader, 'ats');
   
-  if (!creditCheck.allowed) {
+  if (entitlement.status !== "ALLOWED") {
     return NextResponse.json(
       { 
-        error: creditCheck.error || "Credit limit reached or unauthorized.",
-        plan: creditCheck.plan || "free",
-        limit: creditCheck.limit || 0,
-        used: creditCheck.used || 0
+        error: entitlement.error || "Credit limit reached or unauthorized.",
+        plan: entitlement.plan || "free",
+        limit: entitlement.limit || 0,
+        used: entitlement.used || 0
       },
       { status: 429 }
     );
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (contentType.includes("multipart/form-data")) {
       return await handleExtraction(req);
     } else if (contentType.includes("application/json")) {
-      return await handleAnalysis(req, creditCheck);
+      return await handleAnalysis(req, entitlement);
     } else {
       return NextResponse.json({ error: "Unsupported Content-Type." }, { status: 400 });
     }
@@ -177,7 +177,7 @@ async function handleExtraction(req: NextRequest) {
 // ============================================================================
 // 2. ANALYSIS HANDLER
 // ============================================================================
-async function handleAnalysis(req: NextRequest, creditCheck: any) {
+async function handleAnalysis(req: NextRequest, entitlement: any) {
   const body = await req.json();
   const rawText = body.text;
   const role = body.role;
@@ -187,7 +187,7 @@ async function handleAnalysis(req: NextRequest, creditCheck: any) {
   }
 
   if (body.mode === "dna") {
-    return await handleDnaAnalysis(req, body, creditCheck);
+    return await handleDnaAnalysis(req, body, entitlement);
   }
 
   if (!role) {
@@ -228,35 +228,42 @@ Resume Text:
 ${optimizedText}
 `;
 
+    // CONSUME USAGE SAFELY BEFORE AI
+  if (entitlement.uid && entitlement.limit !== Infinity) {
+    const consumed = await consumeFeatureUsage(entitlement.uid, 'ats');
+    if (!consumed) {
+       return NextResponse.json({ error: "Failed to allocate monthly usage limit." }, { status: 429 });
+    }
+  }
+
   let aiData;
   try {
     console.log(`[ATS] AI processing for semantic extraction via Groq...`);
     aiData = await generateJSONResponse(prompt);
   } catch (err: any) {
     console.error(`[ATS_ERROR_LOG] AI parsing failed: ${err.message}`);
+    if (entitlement.uid && entitlement.limit !== Infinity) {
+        await refundFeatureUsage(entitlement.uid, 'ats');
+    }
     return NextResponse.json({ error: "AI parsing failed. Please try again." }, { status: 504 });
   }
 
   // Phase 3: Deterministic Scoring Engine
   const finalResult = calculateFinalScores(extractionData, aiData);
 
-  // Increment credit usage
-  if (creditCheck.uid && creditCheck.limit !== Infinity) {
-    // Usage was already atomically consumed by checkAndGetCredits to prevent race conditions.
-    if (adminDb) {
-      try {
-        await adminDb.collection("platform_stats").doc("global").set({
-          atsUsage: admin.firestore.FieldValue.increment(1)
-        }, { merge: true });
-      } catch (e) {}
-    }
+  if (adminDb) {
+    try {
+      await adminDb.collection("platform_stats").doc("global").set({
+        atsUsage: admin.firestore.FieldValue.increment(1)
+      }, { merge: true });
+    } catch (e) {}
   }
 
   console.timeEnd(`ATS_Analysis`);
   return NextResponse.json(finalResult);
 }
 
-async function handleDnaAnalysis(req: NextRequest, body: any, creditCheck: any) {
+async function handleDnaAnalysis(req: NextRequest, body: any, entitlement: any) {
   const rawText = body.text;
   const dreamRole = body.role || "Software Engineer";
   
@@ -321,16 +328,23 @@ Resume Text:
 ${optimizedText}
 `;
 
+    // CONSUME USAGE SAFELY BEFORE AI
+  if (entitlement.uid && entitlement.limit !== Infinity) {
+    const consumed = await consumeFeatureUsage(entitlement.uid, 'ats');
+    if (!consumed) {
+       return NextResponse.json({ error: "Failed to allocate monthly usage limit." }, { status: 429 });
+    }
+  }
+
   try {
     console.log("[ATS] Generating AI Career DNA parsing via Groq...");
     const parsed = await generateJSONResponse(prompt);
-
-    // Increment credit usage
-    // Usage was already atomically consumed by checkAndGetCredits to prevent race conditions.
-
     return NextResponse.json(parsed);
   } catch (err: any) {
     console.error("[ATS DNA Error]:", err.message);
+    if (entitlement.uid && entitlement.limit !== Infinity) {
+        await refundFeatureUsage(entitlement.uid, 'ats');
+    }
     return NextResponse.json({ error: "Resume analysis failed: " + err.message }, { status: 500 });
   }
 }
