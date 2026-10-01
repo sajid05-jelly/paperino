@@ -123,11 +123,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process via Groq AI Service
-    const parsedData = await analyzeLargePYQ(combinedText, sanitizedSubject);
+    // CONSUME USAGE SAFELY BEFORE AI
+    if (entitlement.uid && entitlement.limit !== Infinity) {
+      const consumed = await consumeFeatureUsage(entitlement.uid, 'pyqAnalyzer');
+      if (!consumed) {
+        return NextResponse.json({ error: "Failed to allocate monthly usage limit." }, { status: 429 });
+      }
+    }
 
-    // Successfully generated response
-    // Usage was already atomically consumed by checkAndGetCredits to prevent race conditions.
+    // Process via Groq AI Service
+    let parsedData;
+    try {
+      parsedData = await analyzeLargePYQ(combinedText, sanitizedSubject);
+    } catch (aiErr: any) {
+      console.error("PYQ AI Error:", aiErr);
+      // Refund usage on AI failure
+      if (entitlement.uid && entitlement.limit !== Infinity) {
+        await refundFeatureUsage(entitlement.uid, 'pyqAnalyzer');
+      }
+      return NextResponse.json(
+        { error: aiErr.message || "Failed to analyze PYQs via Groq AI." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(parsedData);
   } catch (error: any) {

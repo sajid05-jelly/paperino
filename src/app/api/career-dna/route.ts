@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runApiGuard } from "@/lib/api-guard";
 import { adminDb } from "@/lib/firebase-admin";
+import { verifyFeatureAccess } from "@/lib/server-entitlement";
 import * as admin from 'firebase-admin';
 import { INITIAL_INTERNSHIPS, rankOpportunitiesForUser } from "@/services/internshipService";
 import { InternshipManager } from "@/services/internshipProviders/manager";
@@ -142,6 +143,23 @@ export async function POST(req: NextRequest) {
   // ── Security: Require Auth & Rate Limiting Guard ──
   const guard = await runApiGuard(req);
   if (guard.blocked) return guard.response;
+
+  // ── Entitlement Check: Career DNA requires Pro or Premium ──
+  const authHeader = req.headers.get("authorization");
+  const entitlement = await verifyFeatureAccess(authHeader, 'careerDna');
+  if (entitlement.status !== "ALLOWED") {
+    const statusCode = entitlement.status === "LIMIT_REACHED" ? 429 : 403;
+    return NextResponse.json(
+      {
+        error: entitlement.error || "Career DNA is available with Paperino Pro or Premium.",
+        status: entitlement.status,
+        plan: entitlement.plan || "free",
+        limit: entitlement.limit || 0,
+        used: entitlement.used || 0
+      },
+      { status: statusCode }
+    );
+  }
 
   try {
     const body = await req.json();

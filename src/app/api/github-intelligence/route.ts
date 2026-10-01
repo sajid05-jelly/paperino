@@ -275,6 +275,8 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6-Hour Cache TTL
 export async function GET(req: NextRequest) {
   let apiRequestsUsed = 0;
   const isAuthenticatedToken = Boolean(process.env.GITHUB_TOKEN);
+  let didConsumeUsage = false;
+  let entitlement: any = null;
 
   try {
     const { searchParams } = new URL(req.url);
@@ -286,7 +288,7 @@ export async function GET(req: NextRequest) {
     }
 
           const authHeader = req.headers.get("authorization");
-      const entitlement = await verifyFeatureAccess(authHeader, 'githubIntelligence');
+      entitlement = await verifyFeatureAccess(authHeader, 'githubIntelligence');
       if (entitlement.status !== "ALLOWED") {
          const statusCode = entitlement.status === "LIMIT_REACHED" ? 429 : 403;
          return NextResponse.json({
@@ -320,7 +322,7 @@ export async function GET(req: NextRequest) {
       }
 
       // CONSUME USAGE SAFELY BEFORE API/AI
-      let didConsumeUsage = false;
+      didConsumeUsage = false;
       if (entitlement.uid && entitlement.limit !== Infinity) {
           const consumed = await consumeFeatureUsage(entitlement.uid, 'githubIntelligence');
           if (!consumed) {
@@ -335,6 +337,9 @@ export async function GET(req: NextRequest) {
 
     if (userFetch.isRateLimited || userFetch.status === 403) {
       console.warn(`[GitHub Intelligence Server Log] User: @${username} | Authenticated: ${isAuthenticatedToken} | API Requests Used: ${apiRequestsUsed} | RATE LIMITED`);
+      if (didConsumeUsage && entitlement.uid) {
+        await refundFeatureUsage(entitlement.uid, 'githubIntelligence');
+      }
       return NextResponse.json({
         error: "Unable to complete evidence-based analysis due to API rate limits. Please try again later.",
         analysisConfidence: "LOW",
@@ -343,6 +348,9 @@ export async function GET(req: NextRequest) {
     }
 
     if (userFetch.status === 404 || !userFetch.data) {
+      if (didConsumeUsage && entitlement.uid) {
+        await refundFeatureUsage(entitlement.uid, 'githubIntelligence');
+      }
       return NextResponse.json({ error: `GitHub user "@${username}" not found. Please check the username.` }, { status: 404 });
     }
 
@@ -2079,6 +2087,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result);
   } catch (err: any) {
     console.error("[GitHub Intelligence V8.2 Rebuild Error]:", err);
+    // Refund usage on unexpected failure
+    if (didConsumeUsage && entitlement?.uid) {
+      await refundFeatureUsage(entitlement.uid, 'githubIntelligence');
+    }
     return NextResponse.json({
       error: "Unable to complete evidence-based analysis. Please retry.",
       analysisConfidence: "LOW",
