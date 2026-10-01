@@ -5,14 +5,14 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const MODEL = "llama-3.1-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 const MAX_RETRIES = 1;
 
 /**
  * Helper to safely retry Groq API calls on failure.
  */
 async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promise<T> {
-  console.log("Using Groq Llama 3.1 70B");
+  console.log("Using Groq GPT-OSS 120B");
   try {
     return await fn();
   } catch (error: any) {
