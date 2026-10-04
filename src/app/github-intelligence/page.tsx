@@ -33,12 +33,14 @@ import {
 } from "lucide-react";
 import { GitHubAnalysisResult } from "@/app/api/github-intelligence/route";
 import { usePlanGate } from "@/context/PlanGateContext";
+import { useAuth } from "@/context/AuthContext";
 import AICreditsDisplay from "@/components/AICreditsDisplay";
 
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function GitHubIntelligencePage() {
   const { showLimitGate } = usePlanGate();
+  const { user, loading: authLoading } = useAuth();
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -68,6 +70,13 @@ export default function GitHubIntelligencePage() {
       setError("Please enter a valid GitHub username.");
       return;
     }
+    
+    if (authLoading) return;
+    
+    if (!user) {
+      setError("Your session has expired. Please sign in again.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -80,7 +89,12 @@ export default function GitHubIntelligencePage() {
         cleanUser = parts[0] || cleanUser;
       }
 
-      const res = await fetch(`/api/github-intelligence?username=${encodeURIComponent(cleanUser)}${forceRefresh ? "&refresh=true" : ""}`);
+      const idToken = await user.getIdToken();
+      const res = await fetch(`/api/github-intelligence?username=${encodeURIComponent(cleanUser)}${forceRefresh ? "&refresh=true" : ""}`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`
+        }
+      });
       const data = await res.json();
 
       if (res.status === 429 && data.limit !== undefined && data.plan) {
@@ -292,7 +306,7 @@ export default function GitHubIntelligencePage() {
               <div className="flex items-center gap-2 px-2 pb-2 sm:pb-0">
                 <button
                   onClick={() => fetchAnalysis(false)}
-                  disabled={loading}
+                  disabled={loading || authLoading}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-xs text-white transition-all cursor-pointer disabled:opacity-50"
                   style={{
                     background: "linear-gradient(135deg, rgba(109,40,217,0.95) 0%, rgba(79,70,229,0.95) 100%)",
@@ -313,7 +327,7 @@ export default function GitHubIntelligencePage() {
                 {analysis && (
                   <button
                     onClick={() => fetchAnalysis(true)}
-                    disabled={loading}
+                    disabled={loading || authLoading}
                     title="Refresh Analysis"
                     className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all cursor-pointer disabled:opacity-50"
                   >
