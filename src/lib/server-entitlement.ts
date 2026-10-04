@@ -6,7 +6,8 @@ export type EntitlementStatus =
   | "ALLOWED"
   | "LIMIT_REACHED"
   | "FEATURE_NOT_AVAILABLE_FOR_PLAN"
-  | "USAGE_VERIFICATION_UNAVAILABLE";
+  | "USAGE_VERIFICATION_UNAVAILABLE"
+  | "AUTH_REQUIRED";
 
 export interface EntitlementResult {
   status: EntitlementStatus;
@@ -27,7 +28,7 @@ export async function verifyFeatureAccess(
   }
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { status: "USAGE_VERIFICATION_UNAVAILABLE", error: "Missing or invalid Authorization header." };
+    return { status: "AUTH_REQUIRED", error: "Missing or invalid Authorization header." };
   }
 
   const idToken = authHeader.split('Bearer ')[1];
@@ -90,22 +91,32 @@ export async function verifyFeatureAccess(
       uid, role: userData?.role || 'student', plan,
       used: usageCheck.used, limit: usageCheck.limit
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('[verifyFeatureAccess] Error:', error);
-    return { status: "USAGE_VERIFICATION_UNAVAILABLE", error: "Failed to verify account or usage limits." };
+    if (error.code && String(error.code).startsWith('auth/')) {
+      return { status: "AUTH_REQUIRED", error: "Your session has expired. Please sign in again." };
+    }
+    return { status: "USAGE_VERIFICATION_UNAVAILABLE", error: "Unable to verify your usage right now. Please try again." };
   }
 }
 
 /**
  * Atomically consumes usage. Call this right before AI execution.
  */
-export async function consumeFeatureUsage(uid: string, feature: FeatureKey): Promise<boolean> {
+export async function consumeFeatureUsage(uid: string, feature: FeatureKey) {
   try {
-    const check = await checkAndConsumeMonthlyUsage(uid, feature as any);
-    return check.allowed;
-  } catch (e) {
+    return await checkAndConsumeMonthlyUsage(uid, feature as any);
+  } catch (e: any) {
     console.error("[consumeFeatureUsage] Error:", e);
-    return false;
+    return {
+      allowed: false,
+      plan: "free" as PlanType,
+      used: 0,
+      limit: 0,
+      remaining: 0,
+      month: "",
+      error: "Temporary system error while verifying usage limits. Please try again later."
+    };
   }
 }
 

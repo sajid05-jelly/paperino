@@ -290,7 +290,11 @@ export async function GET(req: NextRequest) {
           const authHeader = req.headers.get("authorization");
       entitlement = await verifyFeatureAccess(authHeader, 'githubIntelligence');
       if (entitlement.status !== "ALLOWED") {
-         const statusCode = entitlement.status === "LIMIT_REACHED" ? 429 : 403;
+         let statusCode = 403;
+         if (entitlement.status === "LIMIT_REACHED") statusCode = 429;
+         else if (entitlement.status === "AUTH_REQUIRED") statusCode = 401;
+         else if (entitlement.status === "USAGE_VERIFICATION_UNAVAILABLE") statusCode = 503;
+         
          return NextResponse.json({
             error: entitlement.error || "Access denied.",
             status: entitlement.status,
@@ -325,9 +329,16 @@ export async function GET(req: NextRequest) {
       didConsumeUsage = false;
       if (entitlement.uid && entitlement.limit !== Infinity) {
           const consumed = await consumeFeatureUsage(entitlement.uid, 'githubIntelligence');
-          if (!consumed) {
-              return NextResponse.json({ error: "Failed to allocate usage.", limit: entitlement.limit, plan: entitlement.plan }, { status: 429 });
-          }
+            if (typeof consumed === 'boolean' ? !consumed : !consumed.allowed) {
+                const errorMsg = (typeof consumed === 'object' ? consumed.error : null) || "Failed to allocate usage.";
+                const isSystem = errorMsg.toLowerCase().includes("system error");
+                return NextResponse.json({ 
+                  error: errorMsg,
+                  status: isSystem ? "USAGE_VERIFICATION_UNAVAILABLE" : "LIMIT_REACHED",
+                  limit: entitlement.limit, 
+                  plan: entitlement.plan 
+                }, { status: isSystem ? 503 : 429 });
+            }
           didConsumeUsage = true;
       }
 

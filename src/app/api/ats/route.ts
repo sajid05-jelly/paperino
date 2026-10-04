@@ -231,9 +231,16 @@ ${optimizedText}
     // CONSUME USAGE SAFELY BEFORE AI
   if (entitlement.uid && entitlement.limit !== Infinity) {
     const consumed = await consumeFeatureUsage(entitlement.uid, 'ats');
-    if (!consumed) {
-       return NextResponse.json({ error: "Failed to allocate monthly usage limit.", limit: entitlement.limit, plan: entitlement.plan }, { status: 429 });
-    }
+            if (typeof consumed === 'boolean' ? !consumed : !consumed.allowed) {
+                const errorMsg = (typeof consumed === 'object' ? consumed.error : null) || "Failed to allocate usage.";
+                const isSystem = errorMsg.toLowerCase().includes("system error");
+                return NextResponse.json({ 
+                  error: errorMsg,
+                  status: isSystem ? "USAGE_VERIFICATION_UNAVAILABLE" : "LIMIT_REACHED",
+                  limit: entitlement.limit, 
+                  plan: entitlement.plan 
+                }, { status: isSystem ? 503 : 429 });
+            }
   }
 
   let aiData;
@@ -331,9 +338,16 @@ ${optimizedText}
     // CONSUME USAGE SAFELY BEFORE AI
   if (entitlement.uid && entitlement.limit !== Infinity) {
     const consumed = await consumeFeatureUsage(entitlement.uid, 'ats');
-    if (!consumed) {
-       return NextResponse.json({ error: "Failed to allocate monthly usage limit.", limit: entitlement.limit, plan: entitlement.plan }, { status: 429 });
-    }
+            if (typeof consumed === 'boolean' ? !consumed : !consumed.allowed) {
+                const errorMsg = (typeof consumed === 'object' ? consumed.error : null) || "Failed to allocate usage.";
+                const isSystem = errorMsg.toLowerCase().includes("system error");
+                return NextResponse.json({ 
+                  error: errorMsg,
+                  status: isSystem ? "USAGE_VERIFICATION_UNAVAILABLE" : "LIMIT_REACHED",
+                  limit: entitlement.limit, 
+                  plan: entitlement.plan 
+                }, { status: isSystem ? 503 : 429 });
+            }
   }
 
   try {
