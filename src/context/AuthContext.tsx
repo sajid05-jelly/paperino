@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
-import { PlanType, FeatureKey, getEffectivePlan, isFeatureAllowed } from "@/lib/subscription";
+import { PlanType, FeatureKey, getEffectivePlan, isFeatureAllowed, getCurrentMonthKey } from "@/lib/subscription";
 
 
 interface UserCredits {
@@ -323,20 +323,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
         // Subscribe to real-time user credits
-        const creditsRef = doc(db, "user_credits", currentUser.uid);
-        unsubCreditsDoc = onSnapshot(creditsRef, (snap) => {
+        const monthKey = getCurrentMonthKey();
+        const usageRef = doc(db, "user_monthly_usage", `${currentUser.uid}_${monthKey}`);
+        unsubCreditsDoc = onSnapshot(usageRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
             setUserCredits({
-              pyqUsed: data.pyqUsed || 0,
-              atsUsed: data.atsUsed || 0,
-              lastResetDate: data.lastResetDate || "",
+              pyqUsed: data.pyqAnalyzer || 0,
+              atsUsed: data.ats || 0,
+              lastResetDate: monthKey,
             });
           } else {
-            setUserCredits({ pyqUsed: 0, atsUsed: 0, lastResetDate: "" });
+            setUserCredits({ pyqUsed: 0, atsUsed: 0, lastResetDate: monthKey });
           }
         }, (err) => {
-          console.warn("[AuthContext] Credits listener error:", err);
+          console.warn("[AuthContext] Usage listener error:", err);
         });
 
       } else {

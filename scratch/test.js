@@ -1,0 +1,1 @@
+const { adminDb } = require("../src/lib/firebase-admin"); const { checkAndConsumeMonthlyUsage, checkMonthlyUsage } = require("../src/lib/monthly-usage"); console.log(typeof checkAndConsumeMonthlyUsage);
