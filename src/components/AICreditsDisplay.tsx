@@ -6,7 +6,7 @@ import Link from "next/link";
 import { getMonthlyLimit, getCurrentMonthKey } from "@/lib/subscription";
 
 interface AICreditsDisplayProps {
-  tool: "pyq" | "ats";
+  tool: "pyq" | "ats" | "github";
 }
 
 export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
@@ -23,7 +23,7 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
     );
   }
 
-  const featureKey = tool === "pyq" ? "pyqAnalyzer" : "ats";
+  const featureKey = tool === "pyq" ? "pyqAnalyzer" : tool === "github" ? "githubIntelligence" : "ats";
   const limit = getMonthlyLimit(plan, featureKey);
 
   // Unlimited plans (Pro/Premium)
@@ -57,7 +57,7 @@ export default function AICreditsDisplay({ tool }: AICreditsDisplayProps) {
   if (userCredits) {
     const currentMonth = getCurrentMonthKey();
     if (userCredits.lastResetDate === currentMonth) {
-      used = tool === "pyq" ? (userCredits.pyqUsed || 0) : (userCredits.atsUsed || 0);
+      used = tool === "pyq" ? (userCredits.pyqUsed || 0) : tool === "github" ? (userCredits.githubUsed || 0) : (userCredits.atsUsed || 0);
     }
   }
 

@@ -326,7 +326,7 @@ export async function GET(req: NextRequest) {
       if (entitlement.uid && entitlement.limit !== Infinity) {
           const consumed = await consumeFeatureUsage(entitlement.uid, 'githubIntelligence');
           if (!consumed) {
-              return NextResponse.json({ error: "Failed to allocate usage." }, { status: 429 });
+              return NextResponse.json({ error: "Failed to allocate usage.", limit: entitlement.limit, plan: entitlement.plan }, { status: 429 });
           }
           didConsumeUsage = true;
       }

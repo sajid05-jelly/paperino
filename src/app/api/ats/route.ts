@@ -232,7 +232,7 @@ ${optimizedText}
   if (entitlement.uid && entitlement.limit !== Infinity) {
     const consumed = await consumeFeatureUsage(entitlement.uid, 'ats');
     if (!consumed) {
-       return NextResponse.json({ error: "Failed to allocate monthly usage limit." }, { status: 429 });
+       return NextResponse.json({ error: "Failed to allocate monthly usage limit.", limit: entitlement.limit, plan: entitlement.plan }, { status: 429 });
     }
   }
 
@@ -332,7 +332,7 @@ ${optimizedText}
   if (entitlement.uid && entitlement.limit !== Infinity) {
     const consumed = await consumeFeatureUsage(entitlement.uid, 'ats');
     if (!consumed) {
-       return NextResponse.json({ error: "Failed to allocate monthly usage limit." }, { status: 429 });
+       return NextResponse.json({ error: "Failed to allocate monthly usage limit.", limit: entitlement.limit, plan: entitlement.plan }, { status: 429 });
     }
   }
 

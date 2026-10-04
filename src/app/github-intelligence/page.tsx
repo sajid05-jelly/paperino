@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { GitHubAnalysisResult } from "@/app/api/github-intelligence/route";
 import { usePlanGate } from "@/context/PlanGateContext";
+import AICreditsDisplay from "@/components/AICreditsDisplay";
 
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
@@ -268,6 +269,9 @@ export default function GitHubIntelligencePage() {
           <p className="text-gray-300 text-base md:text-lg leading-relaxed font-light">
             Analyze your GitHub profile and discover your real developer strengths.
           </p>
+          <div className="mt-4">
+            <AICreditsDisplay tool="github" />
+          </div>
 
           {/* Search Box Input */}
           <div className="max-w-xl mx-auto pt-4 space-y-3">

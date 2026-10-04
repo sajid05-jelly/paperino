@@ -10,6 +10,7 @@ import { PlanType, FeatureKey, getEffectivePlan, isFeatureAllowed, getCurrentMon
 interface UserCredits {
   pyqUsed: number;
   atsUsed: number;
+  githubUsed: number;
   lastResetDate: string;
 }
 
@@ -331,10 +332,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUserCredits({
               pyqUsed: data.pyqAnalyzer || 0,
               atsUsed: data.ats || 0,
+              githubUsed: data.githubIntelligence || 0,
               lastResetDate: monthKey,
             });
           } else {
-            setUserCredits({ pyqUsed: 0, atsUsed: 0, lastResetDate: monthKey });
+            setUserCredits({ pyqUsed: 0, atsUsed: 0, githubUsed: 0, lastResetDate: monthKey });
           }
         }, (err) => {
           console.warn("[AuthContext] Usage listener error:", err);
