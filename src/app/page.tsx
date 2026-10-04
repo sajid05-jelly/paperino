@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { usePlanGate } from "@/context/PlanGateContext";
 import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Download, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot, Building2, ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
@@ -11,6 +14,9 @@ const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: f
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
 export default function Home() {
+  const router = useRouter();
+  const { plan } = useAuth();
+  const { showPlanGate } = usePlanGate();
   const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
   const { departments, deptMaterialCounts, listenToDeptsWithMaterials, loading } = useSubjects();
   
@@ -273,7 +279,16 @@ export default function Home() {
           </Link>
 
           {/* Exam Emergency Card */}
-          <Link href="/exam-emergency" className="w-full flex">
+          <div 
+            onClick={() => {
+              if (plan === "free" || plan === "plus") {
+                showPlanGate("Exam Emergency Mode", "pro", "Upgrade to Pro to unlock Exam Emergency Mode.");
+              } else {
+                router.push("/exam-emergency");
+              }
+            }} 
+            className="w-full flex"
+          >
             <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
@@ -286,10 +301,19 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </Link>
+          </div>
 
           {/* Senior Insights Card */}
-          <Link href="/survival-notes" className="w-full flex">
+          <div 
+            onClick={() => {
+              if (plan === "free") {
+                showPlanGate("Senior Insights", "plus", "Upgrade to Plus to unlock Senior Insights.");
+              } else {
+                router.push("/survival-notes");
+              }
+            }} 
+            className="w-full flex"
+          >
             <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
               <div className="flex flex-col h-full relative z-10">
                 <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
@@ -302,7 +326,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </Link>
+          </div>
         </div>
       </section>
 

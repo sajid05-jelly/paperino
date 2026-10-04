@@ -7,6 +7,8 @@ import { onSnapshot, doc, getDoc } from "firebase/firestore";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
+import { usePlanGate } from "@/context/PlanGateContext";
+import { useRouter } from "next/navigation";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
 import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown } from "lucide-react";
@@ -24,6 +26,8 @@ const THEMES = [
 ] as const;
 
 export default function Navbar() {
+  const { showPlanGate } = usePlanGate();
+  const router = useRouter();
   const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion, plan } = useAuth();
   const { categoryPulseUnreadCounts } = usePulseNotifications();
   const fcfPulseCount = categoryPulseUnreadCounts["Free Class Finder"] || 0;
@@ -291,13 +295,19 @@ export default function Navbar() {
                   >
                     <BrainCircuit size={15} className="text-violet-400 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> ATS Analyzer
                   </Link>
-                  <Link
-                    href="/exam-emergency"
-                    onClick={() => setIsLabsOpen(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                  <button
+                    onClick={() => {
+                      setIsLabsOpen(false);
+                      if (plan === "free" || plan === "plus") {
+                        showPlanGate("Exam Emergency Mode", "pro", "Upgrade to Pro to unlock Exam Emergency Mode.");
+                      } else {
+                        router.push("/exam-emergency");
+                      }
+                    }}
+                    className="w-full flex items-center justify-start gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item text-left"
                   >
                     <ShieldAlert size={15} className="text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Exam Emergency
-                  </Link>
+                  </button>
                   <Link
                     href="/attendance-mafia"
                     onClick={() => setIsLabsOpen(false)}
@@ -305,13 +315,19 @@ export default function Navbar() {
                   >
                     <ShieldCheck size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Attendance Shield
                   </Link>
-                  <Link
-                    href="/survival-notes"
-                    onClick={() => setIsLabsOpen(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                  <button
+                    onClick={() => {
+                      setIsLabsOpen(false);
+                      if (plan === "free") {
+                        showPlanGate("Senior Insights", "plus", "Upgrade to Plus to unlock Senior Insights.");
+                      } else {
+                        router.push("/survival-notes");
+                      }
+                    }}
+                    className="w-full flex items-center justify-start gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item text-left"
                   >
                     <GraduationCap size={15} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Senior Insights
-                  </Link>
+                  </button>
                   <Link
                     href="/career-dna"
                     onClick={() => setIsLabsOpen(false)}

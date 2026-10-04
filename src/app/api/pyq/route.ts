@@ -15,15 +15,18 @@ export async function POST(req: NextRequest) {
   const entitlement = await verifyFeatureAccess(authHeader, 'pyqAnalyzer');
   
   if (entitlement.status !== "ALLOWED") {
-    return NextResponse.json(
-      { 
-        error: entitlement.error || "Credit limit reached or unauthorized.",
-        plan: entitlement.plan || "free",
-        limit: entitlement.limit || 0,
-        used: entitlement.used || 0
-      },
-      { status: 429 }
-    );
+    let statusCode = 403;
+    if (entitlement.status === "LIMIT_REACHED" || entitlement.status === "FEATURE_NOT_AVAILABLE_FOR_PLAN") statusCode = 429;
+    else if (entitlement.status === "AUTH_REQUIRED") statusCode = 401;
+    else if (entitlement.status === "USAGE_VERIFICATION_UNAVAILABLE") statusCode = 503;
+    
+    return NextResponse.json({
+      error: entitlement.error || "Access denied.",
+      status: entitlement.status,
+      plan: entitlement.plan,
+      limit: entitlement.limit,
+      used: entitlement.used
+    }, { status: statusCode });
   }
 
   try {
@@ -126,8 +129,15 @@ export async function POST(req: NextRequest) {
     // CONSUME USAGE SAFELY BEFORE AI
     if (entitlement.uid && entitlement.limit !== Infinity) {
       const consumed = await consumeFeatureUsage(entitlement.uid, 'pyqAnalyzer');
-      if (!consumed) {
-        return NextResponse.json({ error: "Failed to allocate monthly usage limit." }, { status: 429 });
+      if (typeof consumed === 'boolean' ? !consumed : !consumed.allowed) {
+          const errorMsg = (typeof consumed === 'object' ? consumed.error : null) || "Failed to allocate usage.";
+          const isSystem = errorMsg.toLowerCase().includes("system error");
+          return NextResponse.json({ 
+            error: errorMsg,
+            status: isSystem ? "USAGE_VERIFICATION_UNAVAILABLE" : "LIMIT_REACHED",
+            limit: entitlement.limit, 
+            plan: entitlement.plan 
+          }, { status: isSystem ? 503 : 429 });
       }
     }
 
