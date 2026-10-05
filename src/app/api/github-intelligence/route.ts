@@ -328,7 +328,7 @@ export async function GET(req: NextRequest) {
       // CONSUME USAGE SAFELY BEFORE API/AI
       didConsumeUsage = false;
       if (entitlement.uid && entitlement.limit !== Infinity) {
-          const consumed = await consumeFeatureUsage(entitlement.uid, 'githubIntelligence');
+          const consumed = await consumeFeatureUsage(entitlement.uid, 'githubIntelligence', entitlement.plan);
             if (typeof consumed === 'boolean' ? !consumed : !consumed.allowed) {
                 const errorMsg = (typeof consumed === 'object' ? consumed.error : null) || "Failed to allocate usage.";
                 const isSystem = errorMsg.toLowerCase().includes("system error");

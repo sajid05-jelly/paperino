@@ -16,7 +16,7 @@ export interface MonthlyUsageCheck {
 /**
  * Check if user is within monthly limit for a specific feature
  */
-export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature): Promise<MonthlyUsageCheck> {
+export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature, resolvedPlan?: PlanType): Promise<MonthlyUsageCheck> {
   const month = getCurrentMonthKey();
 
   if (!adminDb) {
@@ -144,7 +144,7 @@ export async function incrementMonthlyUsage(uid: string, feature: MonthlyFeature
  * Atomically check and consume monthly usage to prevent race conditions.
  * MUST be called BEFORE executing expensive operations.
  */
-export async function checkAndConsumeMonthlyUsage(uid: string, feature: MonthlyFeature): Promise<MonthlyUsageCheck> {
+export async function checkAndConsumeMonthlyUsage(uid: string, feature: MonthlyFeature, resolvedPlan?: PlanType): Promise<MonthlyUsageCheck> {
   const month = getCurrentMonthKey();
 
   if (!adminDb) {

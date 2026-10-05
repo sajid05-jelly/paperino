@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     // CONSUME USAGE SAFELY BEFORE AI
     if (entitlement.uid && entitlement.limit !== Infinity) {
-      const consumed = await consumeFeatureUsage(entitlement.uid, 'pyqAnalyzer');
+      const consumed = await consumeFeatureUsage(entitlement.uid, 'pyqAnalyzer', entitlement.plan);
       if (typeof consumed === 'boolean' ? !consumed : !consumed.allowed) {
           const errorMsg = (typeof consumed === 'object' ? consumed.error : null) || "Failed to allocate usage.";
           const isSystem = errorMsg.toLowerCase().includes("system error");

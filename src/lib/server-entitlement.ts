@@ -70,7 +70,7 @@ export async function verifyFeatureAccess(
     }
 
     // Check usage WITHOUT consuming
-    const usageCheck = await checkMonthlyUsage(uid, feature as any);
+    const usageCheck = await checkMonthlyUsage(uid, feature as any, plan);
     if (!usageCheck.allowed) {
       if (usageCheck.error && usageCheck.error.includes("System error")) {
         return {
@@ -103,9 +103,9 @@ export async function verifyFeatureAccess(
 /**
  * Atomically consumes usage. Call this right before AI execution.
  */
-export async function consumeFeatureUsage(uid: string, feature: FeatureKey) {
+export async function consumeFeatureUsage(uid: string, feature: FeatureKey, resolvedPlan?: PlanType) {
   try {
-    return await checkAndConsumeMonthlyUsage(uid, feature as any);
+    return await checkAndConsumeMonthlyUsage(uid, feature as any, resolvedPlan);
   } catch (e: any) {
     console.error("[consumeFeatureUsage] Error:", e);
     return {
