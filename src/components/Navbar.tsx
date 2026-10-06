@@ -11,7 +11,7 @@ import { usePlanGate } from "@/context/PlanGateContext";
 import { useRouter } from "next/navigation";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown } from "lucide-react";
+import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown, MonitorPlay } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -341,6 +341,13 @@ export default function Navbar() {
                     className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
                   >
                     <FolderGit2 size={15} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.9)] group-hover/item:text-cyan-400 group-hover/item:drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] transition-all shrink-0" /> GitHub Intelligence
+                  </Link>
+                  <Link
+                    href="/youtube-study"
+                    onClick={() => setIsLabsOpen(false)}
+                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                  >
+                    <MonitorPlay size={15} className="text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> YouTube Study
                   </Link>
                 </div>
               )}
@@ -741,6 +748,14 @@ export default function Navbar() {
                         >
                           <FolderGit2 size={15} className="text-purple-400 shrink-0" />
                           <span>GitHub Intelligence</span>
+                        </Link>
+                        <Link 
+                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                          href="/youtube-study" 
+                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/youtube-study' ? 'bg-red-500/15 text-red-300 border border-red-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                        >
+                          <MonitorPlay size={15} className="text-red-400 shrink-0" />
+                          <span>YouTube Study</span>
                         </Link>
                       </div>
                     )}
