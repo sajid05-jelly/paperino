@@ -148,8 +148,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
 
       // Check local cache first (24 hour TTL)
       if (!forceRefresh && typeof window !== "undefined") {
-        const cachedDepts = localStorage.getItem("paperino_cached_departments");
-        const cacheTimestamp = localStorage.getItem("paperino_cached_departments_ts");
+        const cachedDepts = sessionStorage.getItem("paperino_cached_depts_v2");
+        const cacheTimestamp = sessionStorage.getItem("paperino_cached_depts_ts_v2");
         
         if (cachedDepts && cacheTimestamp) {
           const isFresh = (Date.now() - parseInt(cacheTimestamp)) < 24 * 60 * 60 * 1000;
@@ -169,8 +169,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         });
 
         if (deptList.length > 0 && typeof window !== "undefined") {
-          localStorage.setItem("paperino_cached_departments", JSON.stringify(deptList));
-          localStorage.setItem("paperino_cached_departments_ts", Date.now().toString());
+          sessionStorage.setItem("paperino_cached_depts_v2", JSON.stringify(deptList));
+          sessionStorage.setItem("paperino_cached_depts_ts_v2", Date.now().toString());
         }
       }
 
