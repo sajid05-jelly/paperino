@@ -19,16 +19,38 @@ function cleanCache() {
  * POST /api/youtube-study/search
  * Body: { subject: string, topic: string, language: "tamil" | "english" | "both" }
  */
+// Simple in-memory cache for siteConfig to save Firestore read quota
+let siteConfigCache: { youtubeStudyEnabled: boolean; timestamp: number } | null = null;
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export async function POST(req: NextRequest) {
   try {
     if (adminDb) {
-      try {
-        const snap = await adminDb.collection("settings").doc("siteConfig").get();
-        if (snap.exists && snap.data()?.youtubeStudy === false) {
-          return NextResponse.json({ error: "YouTube Study is currently disabled by the administrators." }, { status: 403 });
+      let youtubeStudyEnabled = true;
+
+      // Check cache first
+      if (siteConfigCache && Date.now() - siteConfigCache.timestamp < CONFIG_CACHE_TTL_MS) {
+        youtubeStudyEnabled = siteConfigCache.youtubeStudyEnabled;
+      } else {
+        try {
+          const snap = await adminDb.collection("settings").doc("siteConfig").get();
+          if (snap.exists) {
+            youtubeStudyEnabled = snap.data()?.youtubeStudy !== false;
+            // Update cache
+            siteConfigCache = { youtubeStudyEnabled, timestamp: Date.now() };
+          }
+        } catch (e: any) {
+          console.warn("[YouTube Study] Failed to read siteConfig:", e.message);
+          // Fail closed if we cannot verify the setting
+          return NextResponse.json(
+            { error: "Unable to verify system settings right now. Please try again later." },
+            { status: 503 }
+          );
         }
-      } catch (e: any) {
-        console.warn("[YouTube Study] Failed to read siteConfig (quota?):", e.message);
+      }
+
+      if (!youtubeStudyEnabled) {
+        return NextResponse.json({ error: "YouTube Study is currently disabled by the administrators." }, { status: 403 });
       }
     }
 
