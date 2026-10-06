@@ -181,9 +181,10 @@ Respond ONLY with this JSON format:
     // Step 3: Get video durations via videos API
     const videoIds = allVideos.map((v: any) => v.id.videoId).join(",");
     let durationMap: Record<string, string> = {};
+    let embeddableMap: Record<string, boolean> = {};
     try {
       const detailsUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-      detailsUrl.searchParams.set("part", "contentDetails,statistics");
+      detailsUrl.searchParams.set("part", "contentDetails,statistics,status");
       detailsUrl.searchParams.set("id", videoIds);
       detailsUrl.searchParams.set("key", YOUTUBE_API_KEY);
 
@@ -192,6 +193,7 @@ Respond ONLY with this JSON format:
         const detailsData = await detailsRes.json();
         for (const item of (detailsData.items || [])) {
           durationMap[item.id] = item.contentDetails?.duration || "";
+          embeddableMap[item.id] = item.status?.embeddable ?? true;
         }
       }
     } catch (dErr) {
@@ -279,6 +281,7 @@ Respond ONLY with this JSON format:
         durationFormatted: formatDuration(rawDuration),
         durationMinutes,
         detectedLanguage: isTamil ? "Tamil" : "English",
+        embeddable: embeddableMap[videoId] ?? true,
         score,
         reasons,
       };

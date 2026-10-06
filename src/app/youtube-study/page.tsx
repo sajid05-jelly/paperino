@@ -38,6 +38,7 @@ interface VideoResult {
   durationFormatted: string;
   durationMinutes: number;
   detectedLanguage: string;
+  embeddable?: boolean;
   score: number;
   reasons: string[];
   rankLabel: string;
@@ -92,6 +93,14 @@ export default function YouTubeStudyPage() {
 
   // Player state
   const [activeVideo, setActiveVideo] = useState<VideoResult | null>(null);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+
+  // Reset iframe state when active video changes
+  useEffect(() => {
+    if (activeVideo) {
+      setIframeLoaded(false);
+    }
+  }, [activeVideo]);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -194,16 +203,43 @@ export default function YouTubeStudyPage() {
           </div>
 
           {/* YouTube Player */}
-          <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(139,92,246,0.15)] bg-black">
-            <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-              <iframe
-                className="absolute inset-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${activeVideo.videoId}?autoplay=1&rel=0`}
-                title={activeVideo.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
+          <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(139,92,246,0.15)] bg-black/50">
+            {activeVideo.embeddable === false ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center border border-white/5 rounded-2xl bg-black" style={{ minHeight: "400px" }}>
+                <MonitorPlay size={48} className="text-gray-500 mb-4" />
+                <h3 className="text-lg font-bold text-gray-300 mb-2">This video can&apos;t be played inside Paperino.</h3>
+                <p className="text-sm text-gray-500 max-w-md mb-6">
+                  The creator has disabled embedding for this video. You can still watch it directly on YouTube.
+                </p>
+                <a
+                  href={`https://www.youtube.com/watch?v=${activeVideo.videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-all shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_30px_rgba(220,38,38,0.6)]"
+                >
+                  <MonitorPlay size={16} />
+                  Open on YouTube
+                  <ExternalLink size={14} />
+                </a>
+              </div>
+            ) : (
+              <div className="relative w-full bg-black" style={{ paddingTop: "56.25%" }}>
+                {!iframeLoaded && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+                    <Loader2 size={32} className="text-red-500 animate-spin mb-3" />
+                    <p className="text-gray-400 text-sm animate-pulse font-medium">Loading player...</p>
+                  </div>
+                )}
+                <iframe
+                  className={`absolute inset-0 w-full h-full transition-opacity duration-500 ${iframeLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  src={`https://www.youtube.com/embed/${activeVideo.videoId}?rel=0`}
+                  title={activeVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  onLoad={() => setIframeLoaded(true)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Actions */}
