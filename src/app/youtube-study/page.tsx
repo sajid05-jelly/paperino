@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Play, Search, MonitorPlay, Globe, Loader2, ChevronDown,
   BookOpen, Sparkles, X, ExternalLink, Clock, Award,
@@ -56,6 +56,32 @@ export default function YouTubeStudyPage() {
   const [language, setLanguage] = useState<LanguageOption>("both");
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [subjectSearch, setSubjectSearch] = useState("");
+
+  // Feature flag state
+  const [featureEnabled, setFeatureEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkConfig = () => {
+      if (typeof window !== "undefined") {
+        const cached = sessionStorage.getItem("paperino_site_config_maint");
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.youtubeStudy !== undefined) {
+              setFeatureEnabled(parsed.youtubeStudy);
+            } else {
+              setFeatureEnabled(true);
+            }
+          } catch (e) {
+            setFeatureEnabled(true);
+          }
+        }
+      }
+    };
+    checkConfig();
+    const interval = setInterval(checkConfig, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Results state
   const [loading, setLoading] = useState(false);
@@ -228,7 +254,19 @@ export default function YouTubeStudyPage() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.007)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.007)_1px,transparent_1px)] bg-[size:45px_45px]" />
 
       <div className="relative z-10 w-full max-w-4xl mx-auto px-4">
-        {/* Header */}
+        {featureEnabled === false && (
+          <div className="mb-8 p-6 backdrop-blur-md bg-rose-500/10 border border-rose-500/30 rounded-2xl flex flex-col items-center justify-center text-center">
+            <MonitorPlay size={40} className="text-rose-400 mb-3" />
+            <h2 className="text-xl font-bold text-rose-200 mb-2">Feature Disabled</h2>
+            <p className="text-rose-200/70 text-sm max-w-md">
+              YouTube Study is currently disabled by the administrators. Please check back later or explore other Paperino Labs features.
+            </p>
+          </div>
+        )}
+
+        {featureEnabled !== false && (
+          <>
+            {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4">
             <MonitorPlay size={14} className="text-red-400" />
@@ -544,6 +582,8 @@ export default function YouTubeStudyPage() {
               ))}
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

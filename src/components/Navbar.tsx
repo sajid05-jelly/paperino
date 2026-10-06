@@ -46,6 +46,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isLabsOpen, setIsLabsOpen] = useState(false);
   const [isLabsMobileOpen, setIsLabsMobileOpen] = useState(false);
+  const [youtubeStudyEnabled, setYoutubeStudyEnabled] = useState(true);
   const [tagline, setTagline] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("paperino_header_tagline") || "The Universe of Study Materials";
@@ -83,6 +84,27 @@ export default function Navbar() {
 
     fetchTagline();
     return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    // Check session storage for youtubeStudy settings (cached by MaintenanceGuard)
+    const checkConfig = () => {
+      if (typeof window !== "undefined") {
+        const cached = sessionStorage.getItem("paperino_site_config_maint");
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.youtubeStudy !== undefined) {
+              setYoutubeStudyEnabled(parsed.youtubeStudy);
+            }
+          } catch (e) {}
+        }
+      }
+    };
+    // Check initially and poll a bit to let MaintenanceGuard fetch it
+    checkConfig();
+    const interval = setInterval(checkConfig, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const labsRef = useRef<HTMLDivElement>(null);
@@ -342,13 +364,15 @@ export default function Navbar() {
                   >
                     <FolderGit2 size={15} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.9)] group-hover/item:text-cyan-400 group-hover/item:drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] transition-all shrink-0" /> GitHub Intelligence
                   </Link>
-                  <Link
-                    href="/youtube-study"
-                    onClick={() => setIsLabsOpen(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
-                  >
-                    <MonitorPlay size={15} className="text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> YouTube Study
-                  </Link>
+                  {youtubeStudyEnabled && (
+                    <Link
+                      href="/youtube-study"
+                      onClick={() => setIsLabsOpen(false)}
+                      className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
+                    >
+                      <MonitorPlay size={15} className="text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> YouTube Study
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
@@ -749,14 +773,16 @@ export default function Navbar() {
                           <FolderGit2 size={15} className="text-purple-400 shrink-0" />
                           <span>GitHub Intelligence</span>
                         </Link>
-                        <Link 
-                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                          href="/youtube-study" 
-                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/youtube-study' ? 'bg-red-500/15 text-red-300 border border-red-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
-                        >
-                          <MonitorPlay size={15} className="text-red-400 shrink-0" />
-                          <span>YouTube Study</span>
-                        </Link>
+                        {youtubeStudyEnabled && (
+                          <Link 
+                            onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
+                            href="/youtube-study" 
+                            className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/youtube-study' ? 'bg-red-500/15 text-red-300 border border-red-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
+                          >
+                            <MonitorPlay size={15} className="text-red-400 shrink-0" />
+                            <span>YouTube Study</span>
+                          </Link>
+                        )}
                       </div>
                     )}
                   </div>

@@ -12,6 +12,7 @@ export default function SystemControlPage() {
   const [estimatedReturn, setEstimatedReturn] = useState("A few hours");
   const [showProgress, setShowProgress] = useState(true);
   const [game, setGame] = useState("paperCatch");
+  const [youtubeStudy, setYoutubeStudy] = useState(true);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,6 +36,7 @@ export default function SystemControlPage() {
           setEstimatedReturn(data.estimatedReturn || "A few hours");
           setShowProgress(data.showProgress ?? true);
           setGame(data.game || "paperCatch");
+          setYoutubeStudy(data.youtubeStudy !== false); // true if undefined
         }
       } catch (err) {
         console.error("Failed to load siteConfig:", err);
@@ -62,6 +64,7 @@ export default function SystemControlPage() {
         estimatedReturn,
         showProgress,
         game,
+        youtubeStudy,
         updatedAt: serverTimestamp()
       }, { merge: true });
 
@@ -212,6 +215,20 @@ export default function SystemControlPage() {
                   <option value="colorTap">Color Tap Challenge 🎯</option>
                   <option value="none">None (Hide game console)</option>
                 </select>
+              </div>
+
+              {/* YouTube Study Feature Toggle */}
+              <div className="flex items-center justify-between p-4 mt-6 rounded-xl bg-white/[0.02] border border-white/5">
+                <div>
+                  <h4 className="text-sm font-semibold text-white">YouTube Study Feature</h4>
+                  <p className="text-xs text-gray-500">Enable or disable the YouTube Study feature for all students.</p>
+                </div>
+                <button
+                  onClick={() => setYoutubeStudy(!youtubeStudy)}
+                  className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${youtubeStudy ? 'bg-violet-600' : 'bg-white/10'}`}
+                >
+                  <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${youtubeStudy ? 'translate-x-6.5' : 'translate-x-1'}`} />
+                </button>
               </div>
             </div>
 

@@ -39,9 +39,10 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
           if (snap.exists()) {
             const data = snap.data();
             const maint = data.maintenance || false;
+            const youtubeStudy = data.youtubeStudy !== false;
             setMaintenanceMode(maint);
             if (typeof window !== "undefined") {
-              sessionStorage.setItem("paperino_site_config_maint", JSON.stringify({ maintenance: maint, ts: Date.now() }));
+              sessionStorage.setItem("paperino_site_config_maint", JSON.stringify({ maintenance: maint, youtubeStudy, ts: Date.now() }));
             }
           } else {
             setMaintenanceMode(false);
