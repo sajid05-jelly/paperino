@@ -22,9 +22,13 @@ function cleanCache() {
 export async function POST(req: NextRequest) {
   try {
     if (adminDb) {
-      const snap = await adminDb.collection("settings").doc("siteConfig").get();
-      if (snap.exists && snap.data()?.youtubeStudy === false) {
-        return NextResponse.json({ error: "YouTube Study is currently disabled by the administrators." }, { status: 403 });
+      try {
+        const snap = await adminDb.collection("settings").doc("siteConfig").get();
+        if (snap.exists && snap.data()?.youtubeStudy === false) {
+          return NextResponse.json({ error: "YouTube Study is currently disabled by the administrators." }, { status: 403 });
+        }
+      } catch (e: any) {
+        console.warn("[YouTube Study] Failed to read siteConfig (quota?):", e.message);
       }
     }
 
