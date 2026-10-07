@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
     const subscription = await instance.subscriptions.create({
       plan_id: planId,
-      customer_notify: 1,
+      customer_notify: 0,
       total_count: 120,
       notes: {
         userId: auth.uid,

@@ -252,7 +252,9 @@ export default function PricingPage() {
           setTimeout(() => window.location.reload(), 2000);
         },
         prefill: {
-          email: user.email,
+          name: user.displayName || "",
+          email: user.email || "",
+          contact: user.phoneNumber || "",
         },
         theme: {
           color: "#8b5cf6"
