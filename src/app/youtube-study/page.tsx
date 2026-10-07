@@ -46,6 +46,43 @@ interface VideoResult {
 
 type LanguageOption = "both" | "tamil" | "english";
 
+const VideoThumbnail = ({ video }: { video: VideoResult }) => {
+  const [imgSrc, setImgSrc] = useState(
+    video.thumbnail || `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`
+  );
+  const [errorCount, setErrorCount] = useState(0);
+
+  const handleError = () => {
+    if (errorCount === 0) {
+      setImgSrc(`https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`);
+      setErrorCount(1);
+    } else if (errorCount === 1) {
+      setImgSrc(`https://i.ytimg.com/vi/${video.videoId}/mqdefault.jpg`);
+      setErrorCount(2);
+    } else {
+      setImgSrc(""); // trigger fallback UI
+    }
+  };
+
+  return (
+    <div className="w-full aspect-video bg-black flex items-center justify-center relative overflow-hidden">
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={video.title}
+          className="w-full h-full object-cover"
+          onError={handleError}
+        />
+      ) : (
+        <div className="flex flex-col items-center justify-center text-gray-600">
+          <MonitorPlay size={32} className="mb-2 opacity-50" />
+          <span className="text-[10px] font-bold">NO THUMBNAIL</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function YouTubeStudyPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -516,12 +553,8 @@ export default function YouTubeStudyPage() {
                 >
                   {/* Thumbnail */}
                   <div className="relative cursor-pointer" onClick={() => setActiveVideo(video)}>
-                    <img
-                      src={video.thumbnail}
-                      alt={video.title}
-                      className="w-full aspect-video object-cover"
-                      loading="lazy"
-                    />
+                    <VideoThumbnail video={video} />
+                    
                     {/* Play overlay */}
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <div className="w-14 h-14 rounded-full bg-red-600/90 flex items-center justify-center shadow-lg">
