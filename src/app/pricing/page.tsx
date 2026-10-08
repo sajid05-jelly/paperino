@@ -60,6 +60,7 @@ export default function PricingPage() {
         { name: "Exam Emergency Mode", enabled: false },
         { name: "Senior Insights", enabled: false },
         { name: "Career DNA", enabled: false },
+        { name: "YouTube Study AI", enabled: false },
       ],
       cta: plan === "free" ? "Current Plan" : "Included",
     },
@@ -86,6 +87,7 @@ export default function PricingPage() {
         { name: "Upload Materials: UNLIMITED", enabled: true },
         { name: "Exam Emergency Mode", enabled: false },
         { name: "Career DNA", enabled: false },
+        { name: "YouTube Study AI", enabled: false },
       ],
       cta: isContributorPlus
         ? "Active via Contributor Benefit"
@@ -104,6 +106,7 @@ export default function PricingPage() {
       features: [
         { name: "Downloads: UNLIMITED", enabled: true, highlight: true },
         { name: "Career DNA: ENABLED", enabled: true, highlight: true },
+        { name: "YouTube Study AI: ENABLED", enabled: true, highlight: true },
         { name: "Exam Emergency: 11 uses/month", enabled: true, highlight: true },
         { name: "PYQ Analyzer: 11 uses/month", enabled: true, highlight: true },
         { name: "ATS Resume Checker: 11 uses/month", enabled: true },
@@ -133,6 +136,7 @@ export default function PricingPage() {
         { name: "Exam Emergency: UNLIMITED", enabled: true },
         { name: "GitHub Intelligence: UNLIMITED", enabled: true },
         { name: "Career DNA: UNLIMITED", enabled: true },
+        { name: "YouTube Study AI: UNLIMITED", enabled: true },
         { name: "Profile Companions: ENABLED", enabled: true, highlight: true },
         { name: "Premium Avatar Badges: ENABLED", enabled: true, highlight: true },
         { name: "Profile Frames & Themes: UNLOCKED", enabled: true },
