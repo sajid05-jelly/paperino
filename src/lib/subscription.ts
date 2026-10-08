@@ -28,7 +28,8 @@ export type FeatureKey =
   | "profileFrame"
   | "proAvatarBadge"
   | "profileCompanions"
-  | "premiumAvatarBadges";
+  | "premiumAvatarBadges"
+  | "youtubeStudy";
 
 export interface PlanLimits {
   downloads: number; // per month
@@ -54,6 +55,7 @@ export interface PlanLimits {
   attendanceShield: boolean;
   uploadMaterials: boolean;
   freeClassFinder: boolean;
+  youtubeStudy: boolean;
 }
 
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
@@ -81,6 +83,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     attendanceShield: true,
     uploadMaterials: true,
     freeClassFinder: true,
+    youtubeStudy: false,
   },
   plus: {
     downloads: 10,
@@ -106,6 +109,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     attendanceShield: true,
     uploadMaterials: true,
     freeClassFinder: true,
+    youtubeStudy: false,
   },
   pro: {
     downloads: Infinity,
@@ -131,6 +135,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     attendanceShield: true,
     uploadMaterials: true,
     freeClassFinder: true,
+    youtubeStudy: true,
   },
   premium: {
     downloads: Infinity,
@@ -156,6 +161,7 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     attendanceShield: true,
     uploadMaterials: true,
     freeClassFinder: true,
+    youtubeStudy: true,
   },
 };
 

@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import { SUBJECTS } from "@/lib/subjects";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
+import { usePlanGate } from "@/context/PlanGateContext";
 
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
 
@@ -85,7 +86,8 @@ const VideoThumbnail = ({ video }: { video: VideoResult }) => {
 
 export default function YouTubeStudyPage() {
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, canAccess } = useAuth();
+  const { showPlanGate } = usePlanGate();
 
   // Form state
   const [subject, setSubject] = useState("");
@@ -152,6 +154,11 @@ export default function YouTubeStudyPage() {
   };
 
   const handleSearch = useCallback(async () => {
+    if (!canAccess("youtubeStudy")) {
+      showPlanGate("YouTube Study AI", "pro", "Access the AI-powered YouTube Study search.");
+      return;
+    }
+
     const subjectName = getSelectedSubjectName();
     if (!subjectName) {
       showToast("Please select a subject.", "error");
@@ -197,7 +204,7 @@ export default function YouTubeStudyPage() {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subject, customSubject, topic, language]);
+  }, [subject, customSubject, topic, language, canAccess, showPlanGate]);
 
   const getRankColor = (label: string) => {
     if (label === "Best Match") return "from-amber-500 to-yellow-400";
