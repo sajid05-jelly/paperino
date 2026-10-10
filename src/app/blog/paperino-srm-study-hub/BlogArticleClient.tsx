@@ -28,6 +28,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+import AmbientOrbs from "@/components/AmbientOrbs";
+
 /* ────────────────────────────────────────────────
    TABLE OF CONTENTS
    ──────────────────────────────────────────────── */
@@ -140,9 +142,7 @@ export default function BlogArticleClient() {
 
   return (
     <div className="min-h-screen bg-[#05030a] relative overflow-hidden selection:bg-violet-500/30">
-      {/* Ambient background */}
-      <div className="absolute top-[-10%] left-[20%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.12)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] animate-[pulse_8s_ease-in-out_infinite] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.08)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[140px] animate-[pulse_10s_ease-in-out_infinite_reverse] pointer-events-none" />
+      <AmbientOrbs />
 
       <article className="relative z-10 max-w-4xl mx-auto px-5 sm:px-8 pt-16 pb-24">
         {/* Breadcrumb */}
