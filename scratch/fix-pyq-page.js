@@ -1,16 +1,15 @@
 const fs = require('fs');
 
-// --- 1. Fix src/app/pyq/page.tsx ---
 let pageContent = fs.readFileSync('src/app/pyq/page.tsx', 'utf8');
 
-// Ensure Lock is imported
+// 1. Add Lock to lucide-react imports if not there
 if (!pageContent.includes('Lock,')) {
   pageContent = pageContent.replace(/import \{([^}]+)\} from "lucide-react";/, (match, p1) => {
     return `import { ${p1.trim()}, Lock } from "lucide-react";`;
   });
 }
 
-// Ensure usePlanGate is properly destructured and we get plan from useAuth
+// 2. Destructure plan and showPlanGate
 pageContent = pageContent.replace(
   /export default function PYQPredictorPage\(\) \{\s*const \{ showLimitGate \} = usePlanGate\(\);/,
   `export default function PYQPredictorPage() {
@@ -18,7 +17,7 @@ pageContent = pageContent.replace(
   const { showLimitGate, showPlanGate } = usePlanGate();`
 );
 
-// Add early return for free plan
+// 3. Add early return for free plan
 const earlyReturn = `
   useEffect(() => {
     if (plan === "free") {
@@ -58,45 +57,3 @@ pageContent = pageContent.replace(
 
 fs.writeFileSync('src/app/pyq/page.tsx', pageContent);
 console.log('Updated src/app/pyq/page.tsx');
-
-
-// --- 2. Fix src/app/api/pyq/route.ts ---
-let routeContent = fs.readFileSync('src/app/api/pyq/route.ts', 'utf8');
-
-// Fix the initial entitlement check
-routeContent = routeContent.replace(
-  /if \(entitlement\.status !== "ALLOWED"\) \{[\s\S]*?\{ status: 429 \}\s*\);\s*\}/,
-  `if (entitlement.status !== "ALLOWED") {
-    let statusCode = 403;
-    if (entitlement.status === "LIMIT_REACHED" || entitlement.status === "FEATURE_NOT_AVAILABLE_FOR_PLAN") statusCode = 429;
-    else if (entitlement.status === "AUTH_REQUIRED") statusCode = 401;
-    else if (entitlement.status === "USAGE_VERIFICATION_UNAVAILABLE") statusCode = 503;
-    
-    return NextResponse.json({
-      error: entitlement.error || "Access denied.",
-      status: entitlement.status,
-      plan: entitlement.plan,
-      limit: entitlement.limit,
-      used: entitlement.used
-    }, { status: statusCode });
-  }`
-);
-
-// Fix the consumeFeatureUsage check
-routeContent = routeContent.replace(
-  /const consumed = await consumeFeatureUsage\(entitlement\.uid, 'pyqAnalyzer'\);\s*if \(\!consumed\) \{\s*return NextResponse\.json\(\{ error: "Failed to allocate monthly usage limit\." \}, \{ status: 429 \}\);\s*\}/,
-  `const consumed = await consumeFeatureUsage(entitlement.uid, 'pyqAnalyzer');
-      if (typeof consumed === 'boolean' ? !consumed : !consumed.allowed) {
-          const errorMsg = (typeof consumed === 'object' ? consumed.error : null) || "Failed to allocate usage.";
-          const isSystem = errorMsg.toLowerCase().includes("system error");
-          return NextResponse.json({ 
-            error: errorMsg,
-            status: isSystem ? "USAGE_VERIFICATION_UNAVAILABLE" : "LIMIT_REACHED",
-            limit: entitlement.limit, 
-            plan: entitlement.plan 
-          }, { status: isSystem ? 503 : 429 });
-      }`
-);
-
-fs.writeFileSync('src/app/api/pyq/route.ts', routeContent);
-console.log('Updated src/app/api/pyq/route.ts');

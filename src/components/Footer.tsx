@@ -32,6 +32,7 @@ export default function Footer() {
         <div className="flex flex-wrap justify-center gap-6 md:gap-8 text-sm text-gray-400 font-medium">
           {[
             { label: "About", href: "/about", external: false },
+            { label: "Blog", href: "/blog/paperino-srm-study-hub", external: false },
             { label: "Contact", href: "/contact", external: false },
             { label: "Privacy Policy", href: "/privacy", external: false },
             { label: "Terms", href: "/terms", external: false },
