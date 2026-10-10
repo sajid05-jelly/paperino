@@ -143,6 +143,11 @@ export default function BlogArticleClient() {
   return (
     <div className="min-h-screen bg-[#05030a] relative overflow-hidden selection:bg-violet-500/30">
       <AmbientOrbs />
+      
+      {/* Massive bright spotlights specifically for the blog article */}
+      <div className="absolute top-[-5%] left-[10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.25)_0%,transparent_60%)] rounded-full mix-blend-screen blur-[120px] pointer-events-none" />
+      <div className="absolute top-[30%] right-[-10%] w-[1000px] h-[1000px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.18)_0%,transparent_60%)] rounded-full mix-blend-screen blur-[150px] pointer-events-none" />
+      <div className="absolute bottom-[10%] left-[-20%] w-[1200px] h-[1200px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.2)_0%,transparent_60%)] rounded-full mix-blend-screen blur-[150px] pointer-events-none" />
 
       <article className="relative z-10 max-w-4xl mx-auto px-5 sm:px-8 pt-16 pb-24">
         {/* Breadcrumb */}
