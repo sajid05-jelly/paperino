@@ -77,7 +77,6 @@ export async function scrapeKnowafestEvents(): Promise<{
   const events: KnowafestEvent[] = [];
   const targetUrls = [
     "https://www.knowafest.com/explore/upcomingfests",
-    "https://www.knowafest.com/explore/featured-events",
     "https://www.knowafest.com/",
   ];
 
