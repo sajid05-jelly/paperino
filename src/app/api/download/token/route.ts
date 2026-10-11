@@ -21,9 +21,10 @@ export async function POST(req: NextRequest) {
   let email = "student@paperino.app";
   let name = "Paperino User";
   let isAdmin = false;
+  let decodedToken: admin.auth.DecodedIdToken | null = null;
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    decodedToken = await admin.auth().verifyIdToken(token);
     uid = decodedToken.uid;
     if (decodedToken.email) email = decodedToken.email;
     name = decodedToken.name || email.split("@")[0] || "Paperino User";
@@ -51,9 +52,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
   }
 
-  // Check Monthly Download Limit for non-admins
-  if (!isAdmin && uid) {
-    const usageCheck = await checkMonthlyUsage(uid, "downloads");
+  // Check Monthly Download Limit for non-admins and non-premium users
+  const userPlan = (decodedToken?.plan as any) || undefined;
+  const isUnlimitedPlan = userPlan === "premium" || userPlan === "pro";
+
+  if (!isAdmin && !isUnlimitedPlan && uid) {
+    const usageCheck = await checkMonthlyUsage(uid, "downloads", userPlan);
     if (!usageCheck.allowed) {
       return NextResponse.json(
         {

@@ -32,14 +32,33 @@ export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature, re
   }
 
   try {
-    // 1. Fetch user doc to determine plan
-    const userDoc = await adminDb.collection("users").doc(uid).get();
-    const userData = userDoc.exists ? userDoc.data() : null;
-    const { plan } = getEffectivePlan(userData);
+    let plan: PlanType = resolvedPlan || "free";
+
+    if (!resolvedPlan) {
+      try {
+        const userDoc = await adminDb.collection("users").doc(uid).get();
+        const userData = userDoc.exists ? userDoc.data() : null;
+        plan = getEffectivePlan(userData).plan;
+      } catch (fErr) {
+        // Fallback to Firebase Auth Custom Claims when Firestore read quota is exhausted
+        try {
+          const { adminAuth } = await import("./firebase-admin");
+          if (adminAuth) {
+            const uRec = await adminAuth.getUser(uid);
+            const claimPlan = uRec.customClaims?.plan as PlanType;
+            if (claimPlan && ["plus", "pro", "premium"].includes(claimPlan)) {
+              plan = claimPlan;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
 
     const limit = getMonthlyLimit(plan, feature);
 
-    // If unlimited (Pro/Premium)
+    // If unlimited (Pro/Premium) - grant immediate access without needing to read usage
     if (limit === Infinity) {
       return { allowed: true, plan, used: 0, limit: Infinity, remaining: Infinity, month };
     }
@@ -57,11 +76,18 @@ export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature, re
       };
     }
 
-    // 2. Fetch monthly usage doc
-    const usageDocId = `${uid}_${month}`;
-    const usageDoc = await adminDb.collection("user_monthly_usage").doc(usageDocId).get();
-    const usageData = usageDoc.exists ? usageDoc.data() : {};
-    const used = usageData?.[feature] || 0;
+    // 2. Fetch monthly usage doc (with graceful fallback if quota exhausted)
+    let used = 0;
+    try {
+      const usageDocId = `${uid}_${month}`;
+      const usageDoc = await adminDb.collection("user_monthly_usage").doc(usageDocId).get();
+      const usageData = usageDoc.exists ? usageDoc.data() : {};
+      used = usageData?.[feature] || 0;
+    } catch (uErr) {
+      console.warn(`[checkMonthlyUsage] Could not read user_monthly_usage (quota?):`, uErr);
+      // If we cannot read usage counter due to quota, allow user to proceed rather than blocking
+      used = 0;
+    }
 
     if (used >= limit) {
       return {
@@ -85,12 +111,15 @@ export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature, re
     };
   } catch (err: any) {
     console.error(`[checkMonthlyUsage] Error checking ${feature} for ${uid}:`, err);
-    // FAIL-CLOSED: On unexpected error (e.g. Quota Exceeded), block access rather than granting unlimited usage.
+    // If user is Pro or Premium, always allow
+    if (resolvedPlan === "premium" || resolvedPlan === "pro") {
+      return { allowed: true, plan: resolvedPlan, used: 0, limit: Infinity, remaining: Infinity, month };
+    }
     return { 
       allowed: false, 
-      plan: "free", 
+      plan: resolvedPlan || "free", 
       used: 0, 
-      limit: 0, 
+      limit: getMonthlyLimit(resolvedPlan || "free", feature) || 5, 
       remaining: 0, 
       month,
       error: "Temporary system error while verifying usage limits. Please try again later."
