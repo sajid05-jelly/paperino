@@ -491,8 +491,8 @@ export default function Navbar() {
                   title="Avatar Studio"
                   aria-label="Avatar Studio"
                 >
-                  <div className="flex items-center justify-center flex-shrink-0 relative rounded-full border border-white/10 w-8 h-8">
-                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={7} plan={plan} />
+                  <div className="flex items-center justify-center flex-shrink-0 relative overflow-hidden rounded-full border border-white/10 w-8 h-8">
+                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={7} plan={null} />
                   </div>
                   <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors hidden sm:block max-w-[80px] xl:max-w-[100px] truncate">
                     {user.displayName?.split(' ')[0] || 'Student'}
@@ -886,7 +886,7 @@ export default function Navbar() {
                     href="/avatar-studio"
                     className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/10"
                   >
-                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={10} plan={plan} />
+                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={10} plan={null} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-white truncate">{user.displayName || "Student"}</p>
                       <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
