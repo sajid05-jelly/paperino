@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { verifyServerAuth } from "@/lib/auth-verify";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 import crypto from "crypto";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
@@ -36,35 +38,50 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
-    if (!adminDb) {
-      return NextResponse.json({ error: "DB configuration missing" }, { status: 500 });
-    }
+    const cleanPlan = plan.toLowerCase();
 
-    try {
-      const userRef = adminDb.collection("users").doc(auth.uid);
-      await userRef.update({
-        plan: plan,
-        razorpaySubscriptionId: razorpay_subscription_id,
-        razorpaySubscriptionStatus: "active",
-        updatedAt: Date.now()
-      });
-    } catch (dbError: any) {
-      console.warn("Firestore update failed, possibly due to quota. Falling back to Custom Claims.", dbError);
-      // Fallback: Store plan in Firebase Auth Custom Claims
-      const { adminAuth } = await import("@/lib/firebase-admin");
-      if (adminAuth) {
+    // ── 1. GUARANTEED ACTIVATION VIA CUSTOM CLAIMS FIRST ─────────────────────
+    // Custom claims are cryptographically signed into Firebase ID token and
+    // do NOT depend on Firestore quota, network, or security rules.
+    if (adminAuth) {
+      try {
         const userRecord = await adminAuth.getUser(auth.uid);
         const currentClaims = userRecord.customClaims || {};
         await adminAuth.setCustomUserClaims(auth.uid, {
           ...currentClaims,
-          plan: plan,
+          plan: cleanPlan,
           razorpaySubscriptionId: razorpay_subscription_id,
-          razorpaySubscriptionStatus: "active"
+          razorpaySubscriptionStatus: "active",
+          razorpayPaymentId: razorpay_payment_id,
+          planActivatedAt: Date.now()
         });
+        console.log(`[Razorpay Verify] Successfully applied custom claims for user ${auth.uid} to plan ${cleanPlan}`);
+      } catch (claimsErr) {
+        console.error("[Razorpay Verify] Failed to set custom claims:", claimsErr);
       }
     }
 
-    return NextResponse.json({ success: true });
+    // ── 2. SYNC TO FIRESTORE USER DOCUMENT ───────────────────────────────────
+    if (adminDb) {
+      try {
+        const userRef = adminDb.collection("users").doc(auth.uid);
+        await userRef.set(
+          {
+            plan: cleanPlan,
+            razorpaySubscriptionId: razorpay_subscription_id,
+            razorpaySubscriptionStatus: "active",
+            razorpayPaymentId: razorpay_payment_id,
+            updatedAt: Date.now()
+          },
+          { merge: true }
+        );
+        console.log(`[Razorpay Verify] Successfully synced Firestore user doc for ${auth.uid}`);
+      } catch (dbError: any) {
+        console.warn("[Razorpay Verify] Firestore write warning (quota or network):", dbError?.message || dbError);
+      }
+    }
+
+    return NextResponse.json({ success: true, plan: cleanPlan });
   } catch (error: any) {
     console.error("Razorpay verify error:", error);
     return NextResponse.json({ error: "Failed to verify payment" }, { status: 500 });

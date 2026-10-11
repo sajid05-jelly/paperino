@@ -313,6 +313,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setRazorpaySubscriptionId(tokenResult.claims.razorpaySubscriptionId as string || "");
                 setRazorpaySubscriptionStatus(tokenResult.claims.razorpaySubscriptionStatus as string || "");
               }
+              // Self-healing: if plan is still free, verify server for captured payments
+              if (!tokenResult.claims?.plan || tokenResult.claims.plan === "free") {
+                currentUser.getIdToken().then(token => {
+                  fetch("/api/user/sync-plan", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": `Bearer ${token}`
+                    }
+                  })
+                    .then(r => r.json())
+                    .then(syncData => {
+                      if (syncData.status === "auto_healed" && syncData.plan && syncData.plan !== "free") {
+                        setPlan(syncData.plan as PlanType);
+                        setIsPremiumActive(true);
+                        currentUser.getIdToken(true);
+                      }
+                    })
+                    .catch(() => {});
+                }).catch(() => {});
+              }
             } catch (e) {}
 
           }
