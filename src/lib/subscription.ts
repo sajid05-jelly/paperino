@@ -202,15 +202,6 @@ export function getEffectivePlan(userData?: any): {
     return { plan: "premium", isContributorPlus: false, isPaidPlan: false };
   }
 
-  // Special Grant: varshuvv03@gmail.com 30 Days Premium (expires Nov 10, 2026)
-  const userEmail = (userData.email || "").toLowerCase().trim();
-  if (userEmail === "varshuvv03@gmail.com") {
-    const promoExpiry = new Date("2026-11-10T23:59:59+05:30");
-    if (new Date() <= promoExpiry) {
-      return { plan: "premium", isContributorPlus: false, isPaidPlan: true };
-    }
-  }
-
   // Direct active subscription check (ready for future payment webhook updates)
   const subStatus = userData.razorpaySubscriptionStatus || userData.subscriptionStatus;
   const rawPlan = (userData.plan || "").toLowerCase();
