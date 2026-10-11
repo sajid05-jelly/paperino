@@ -5,6 +5,7 @@ import {
   collection, 
   getDocs, 
   doc, 
+  getDoc,
   deleteDoc, 
   setDoc, 
   updateDoc, 
@@ -33,7 +34,8 @@ import {
   Filter, 
   RotateCcw,
   ShieldCheck,
-  Calendar
+  Calendar,
+  UserCheck
 } from "lucide-react";
 import Link from "next/link";
 import { useSubjects } from "@/context/SubjectsContext";
@@ -51,6 +53,9 @@ interface ConfiguredSection {
   sectionType: "pyq" | "notes" | "questions";
   createdAt?: any;
   createdBy?: string;
+  creatorName?: string;
+  creatorEmail?: string;
+  materialCount: number;
 }
 
 const SECTION_TYPE_META: Record<string, { label: string; icon: any; color: string; badge: string; desc: string }> = {
@@ -119,10 +124,26 @@ export default function AdminSectionsPage() {
   const fetchSections = async () => {
     setLoading(true);
     try {
-      // 1. Fetch from subject_sections collection
-      const secSnapshot = await getDocs(collection(db, "subject_sections"));
+      // 1. Fetch sections, dynamic subjects, and materials concurrently
+      const [secSnapshot, subSnapshot, matSnapshot] = await Promise.all([
+        getDocs(collection(db, "subject_sections")),
+        getDocs(collection(db, "dynamic_subjects")),
+        getDocs(collection(db, "materials"))
+      ]);
+
+      // Calculate material counts per (semesterId, subjectId, category)
+      const countMap: Record<string, number> = {};
+      matSnapshot.forEach(docSnap => {
+        const m = docSnap.data();
+        if (m.semesterId && m.subjectId && m.category) {
+          const key = `${m.semesterId}_${m.subjectId}_${m.category}`;
+          countMap[key] = (countMap[key] || 0) + 1;
+        }
+      });
+
       const sectionList: ConfiguredSection[] = [];
       const seenKeys = new Set<string>();
+      const uidsToFetch = new Set<string>();
 
       secSnapshot.forEach(docSnap => {
         const data = docSnap.data();
@@ -130,6 +151,12 @@ export default function AdminSectionsPage() {
         if (!seenKeys.has(key)) {
           seenKeys.add(key);
           const dept = departments.find(d => d.id === data.departmentId);
+          const matCountKey = `${data.semesterId}_${data.subjectId}_${data.sectionType}`;
+
+          if (data.createdBy && !data.createdBy.includes("@")) {
+            uidsToFetch.add(data.createdBy);
+          }
+
           sectionList.push({
             id: docSnap.id,
             subjectId: data.subjectId,
@@ -140,13 +167,15 @@ export default function AdminSectionsPage() {
             semesterId: String(data.semesterId || "1"),
             sectionType: data.sectionType,
             createdAt: data.createdAt,
-            createdBy: data.createdBy
+            createdBy: data.createdBy,
+            creatorName: data.creatorName,
+            creatorEmail: data.creatorEmail,
+            materialCount: countMap[matCountKey] || 0
           });
         }
       });
 
       // 2. Also check dynamic_subjects for any subjects with sections array that aren't yet in subject_sections
-      const subSnapshot = await getDocs(collection(db, "dynamic_subjects"));
       subSnapshot.forEach(docSnap => {
         const subData = docSnap.data();
         if (Array.isArray(subData.sections)) {
@@ -155,6 +184,12 @@ export default function AdminSectionsPage() {
             const key = `${subData.departmentId}_${subData.semesterId}_${subData.subjectId}_${secType}`;
             if (!seenKeys.has(key)) {
               seenKeys.add(key);
+              const matCountKey = `${subData.semesterId}_${subData.subjectId}_${secType}`;
+
+              if (subData.createdBy && !subData.createdBy.includes("@")) {
+                uidsToFetch.add(subData.createdBy);
+              }
+
               sectionList.push({
                 id: `${subData.departmentId}_sem${subData.semesterId}_${subData.subjectId}_${secType}`,
                 subjectId: subData.subjectId,
@@ -165,12 +200,44 @@ export default function AdminSectionsPage() {
                 semesterId: String(subData.semesterId || "1"),
                 sectionType: secType as any,
                 createdAt: subData.createdAt,
-                createdBy: subData.createdBy
+                createdBy: subData.createdBy,
+                creatorName: subData.creatorName,
+                creatorEmail: subData.creatorEmail,
+                materialCount: countMap[matCountKey] || 0
               });
             }
           });
         }
       });
+
+      // Fetch user profile info for creator UIDs without email or display name
+      if (uidsToFetch.size > 0) {
+        const userProfiles: Record<string, { displayName?: string; email?: string }> = {};
+        const fetchPromises = Array.from(uidsToFetch).map(async (uid) => {
+          try {
+            const uSnap = await getDoc(doc(db, "users", uid));
+            if (uSnap.exists()) {
+              const uData = uSnap.data();
+              userProfiles[uid] = {
+                displayName: uData.displayName || uData.name,
+                email: uData.email
+              };
+            }
+          } catch (e) {
+            // Ignore individual fetch failure
+          }
+        });
+        await Promise.all(fetchPromises);
+
+        // Fill in missing profile details
+        sectionList.forEach(sec => {
+          if (sec.createdBy && userProfiles[sec.createdBy]) {
+            const prof = userProfiles[sec.createdBy];
+            if (!sec.creatorName && prof.displayName) sec.creatorName = prof.displayName;
+            if (!sec.creatorEmail && prof.email) sec.creatorEmail = prof.email;
+          }
+        });
+      }
 
       // Sort newest first or alphabetically by subject name
       sectionList.sort((a, b) => a.subjectName.localeCompare(b.subjectName));
@@ -206,43 +273,54 @@ export default function AdminSectionsPage() {
     }
   };
 
-  // Delete Section Configuration
+  // Complete Permanent Admin Deletion
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !user) return;
     setDeleteLoading(true);
 
     try {
-      const { id, departmentId, semesterId, subjectId, sectionType } = deleteTarget;
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/admin/sections/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          sectionId: deleteTarget.id,
+          departmentId: deleteTarget.departmentId,
+          semesterId: deleteTarget.semesterId,
+          subjectId: deleteTarget.subjectId,
+          sectionType: deleteTarget.sectionType
+        })
+      });
 
-      // 1. Delete document from subject_sections
-      await deleteDoc(doc(db, "subject_sections", id));
+      const resData = await res.json();
 
-      // 2. Also remove from dynamic_subjects doc's sections array
-      const subDocId = `${departmentId}_sem${semesterId}_${subjectId}`;
-      try {
-        await updateDoc(doc(db, "dynamic_subjects", subDocId), {
-          sections: arrayRemove(sectionType)
-        });
-      } catch (subErr) {
-        // Document might not exist if created outside dynamic_subjects
-        console.warn("Could not update dynamic_subjects document:", subErr);
+      if (!res.ok && res.status !== 207) {
+        throw new Error(resData.error || "Failed to permanently delete section.");
       }
 
-      // 3. Clear cache in sessionStorage if present
+      // Clear cache in sessionStorage if present
       if (typeof window !== "undefined") {
-        const cacheKey = `paperino_subject_cache_${departmentId}_${semesterId}_${subjectId}`;
+        const cacheKey = `paperino_subject_cache_${deleteTarget.departmentId}_${deleteTarget.semesterId}_${deleteTarget.subjectId}`;
         sessionStorage.removeItem(cacheKey);
       }
 
-      // 4. Update local state
-      setSections(prev => prev.filter(s => s.id !== id));
+      // Update local state
+      setSections(prev => prev.filter(s => s.id !== deleteTarget.id));
       await refreshSubjects();
 
-      showToast("Section configuration removed. Existing uploaded materials are preserved.", "success");
+      if (res.status === 207) {
+        showToast(resData.warning || "Section removed, but some files could not be purged from storage.", "warning");
+      } else {
+        showToast(`Section permanently purged! Deleted ${resData.deletedMaterialsCount || 0} materials and ${resData.deletedFilesCount || 0} Drive files.`, "success");
+      }
+
       setDeleteTarget(null);
     } catch (err: any) {
-      console.error("Error deleting section:", err);
-      showToast("Failed to remove section configuration.", "error");
+      console.error("Error permanently deleting section:", err);
+      showToast(err.message || "Failed to permanently delete section.", "error");
     } finally {
       setDeleteLoading(false);
     }
@@ -566,8 +644,10 @@ export default function AdminSectionsPage() {
                 <tr>
                   <th className="py-3.5 px-4 font-bold">Subject</th>
                   <th className="py-3.5 px-4 font-bold">Course & Semester</th>
-                  <th className="py-3.5 px-4 font-bold">Section Type</th>
-                  <th className="py-3.5 px-4 font-bold">Configured Date</th>
+                  <th className="py-3.5 px-4 font-bold">Section Category</th>
+                  <th className="py-3.5 px-4 font-bold">Creator Audit</th>
+                  <th className="py-3.5 px-4 font-bold">Created At</th>
+                  <th className="py-3.5 px-4 font-bold">Materials</th>
                   <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
@@ -617,11 +697,45 @@ export default function AdminSectionsPage() {
                         </span>
                       </td>
 
+                      {/* Creator Audit */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-white flex items-center gap-1.5">
+                            <UserCheck size={12} className="text-purple-400 shrink-0" />
+                            <span className="truncate max-w-[140px]">
+                              {sec.creatorName || (sec.creatorEmail ? sec.creatorEmail.split("@")[0] : "Authenticated Student")}
+                            </span>
+                          </span>
+                          {sec.creatorEmail && (
+                            <span className="text-[10px] text-gray-400 truncate max-w-[150px]">
+                              {sec.creatorEmail}
+                            </span>
+                          )}
+                          {sec.createdBy && (
+                            <span className="text-[9px] font-mono text-gray-500 truncate max-w-[130px]" title={sec.createdBy}>
+                              UID: {sec.createdBy}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
                       {/* Configured Date */}
                       <td className="py-3.5 px-4 text-gray-400 text-[11px]">
-                        <span className="flex items-center gap-1">
-                          <Calendar size={12} className="text-gray-500" />
+                        <span className="flex items-center gap-1 whitespace-nowrap">
+                          <Calendar size={12} className="text-gray-500 shrink-0" />
                           {formatDate(sec.createdAt)}
+                        </span>
+                      </td>
+
+                      {/* Materials Count */}
+                      <td className="py-3.5 px-4">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                          sec.materialCount > 0
+                            ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                            : "bg-white/5 text-gray-400 border-white/10"
+                        }`}>
+                          <FileText size={11} className={sec.materialCount > 0 ? "text-emerald-400" : "text-gray-500"} />
+                          {sec.materialCount} {sec.materialCount === 1 ? "file" : "files"}
                         </span>
                       </td>
 
@@ -641,7 +755,7 @@ export default function AdminSectionsPage() {
                           <button
                             onClick={() => setDeleteTarget(sec)}
                             className="p-2 rounded-lg bg-white/5 hover:bg-rose-500/10 text-gray-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/20 transition-all cursor-pointer"
-                            title="Remove Section Configuration"
+                            title="Permanently Delete Section & Files"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -757,11 +871,11 @@ export default function AdminSectionsPage() {
               )}
             </div>
 
-            {/* Architecture Separation Notice */}
-            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300 flex items-start gap-2">
-              <ShieldCheck size={16} className="text-blue-400 shrink-0 mt-0.5" />
+            {/* Architecture Notice */}
+            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] text-purple-300 flex items-start gap-2">
+              <ShieldCheck size={16} className="text-purple-400 shrink-0 mt-0.5" />
               <span>
-                Section configuration controls visibility on the subject page. Uploaded materials and files exist independently in Firestore and Google Drive.
+                Configured sections allow students to upload and access category materials. When an admin permanently deletes a section, all associated material records and their Drive storage files are purged.
               </span>
             </div>
 
@@ -787,8 +901,8 @@ export default function AdminSectionsPage() {
                 <AlertCircle size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-black text-white">Remove Section Configuration?</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Please confirm this action</p>
+                <h3 className="text-lg font-black text-white">Permanently Delete Section?</h3>
+                <p className="text-xs text-rose-300 font-semibold mt-0.5">⚠️ Irreversible Permanent Cleanup</p>
               </div>
             </div>
 
@@ -801,17 +915,20 @@ export default function AdminSectionsPage() {
                 Course: <span className="text-gray-200">{deleteTarget.departmentName || deleteTarget.departmentId}</span> (Semester {deleteTarget.semesterId})
               </p>
               <p className="text-gray-400">
-                Section Type: <span className="text-rose-400 font-bold">{SECTION_TYPE_META[deleteTarget.sectionType]?.label}</span>
+                Category: <span className="text-rose-400 font-bold">{SECTION_TYPE_META[deleteTarget.sectionType]?.label}</span>
+              </p>
+              <p className="text-gray-400">
+                Associated Materials: <span className="text-amber-400 font-bold">{deleteTarget.materialCount} {deleteTarget.materialCount === 1 ? "file" : "files"}</span>
               </p>
             </div>
 
-            {/* Non-destructive guarantee notice */}
+            {/* Complete Deletion Notice */}
             <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 space-y-1.5">
               <p className="font-bold flex items-center gap-1.5 text-rose-200">
-                <span>🛡️ Non-Destructive Operation</span>
+                <span>⚠️ Permanent Deletion Notice</span>
               </p>
               <p className="text-[11px] leading-relaxed text-rose-300/90">
-                Removing this section configuration will hide the <strong>{SECTION_TYPE_META[deleteTarget.sectionType]?.label}</strong> section from the subject's page. Any files or study materials previously uploaded will <strong>NOT</strong> be deleted—they will remain safely preserved in the database.
+                This operation is <strong>permanent and cannot be undone</strong>. It will remove the <strong>{SECTION_TYPE_META[deleteTarget.sectionType]?.label}</strong> section, permanently delete all <strong>{deleteTarget.materialCount} associated material records</strong> from Firestore, and permanently purge their <strong>files from Google Drive storage</strong>.
               </p>
             </div>
 
@@ -835,12 +952,12 @@ export default function AdminSectionsPage() {
                 {deleteLoading ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    Removing...
+                    Permanently Purging...
                   </>
                 ) : (
                   <>
                     <Trash2 size={14} />
-                    Remove Section
+                    Permanently Delete
                   </>
                 )}
               </button>

@@ -2,9 +2,9 @@
 
 import { useState, useEffect, use } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
-import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2 } from "lucide-react";
+import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
@@ -173,29 +173,39 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
       ]);
 
       let detectedSections: string[] | null = null;
+      let hasExplicitConfig = false;
+      const sectionTypesSet = new Set<string>();
+
       if (subSnap.exists()) {
         const subData = subSnap.data();
         if (Array.isArray(subData.sections)) {
-          detectedSections = subData.sections;
+          hasExplicitConfig = true;
+          subData.sections.forEach((s: string) => sectionTypesSet.add(s));
         }
       }
 
-      // Check subject_sections collection fallback if not directly on dynamic_subjects
-      if (!detectedSections) {
-        try {
-          const qSec = query(
-            collection(db, "subject_sections"),
-            where("departmentId", "==", deptId),
-            where("semesterId", "==", semId),
-            where("subjectId", "==", realSubjectId)
-          );
-          const secSnap = await getDocs(qSec);
-          if (!secSnap.empty) {
-            detectedSections = secSnap.docs.map(d => d.data().sectionType);
-          }
-        } catch (secErr) {
-          console.warn("Could not query subject_sections:", secErr);
+      // Check subject_sections collection
+      try {
+        const qSec = query(
+          collection(db, "subject_sections"),
+          where("departmentId", "==", deptId),
+          where("semesterId", "==", semId),
+          where("subjectId", "==", realSubjectId)
+        );
+        const secSnap = await getDocs(qSec);
+        if (!secSnap.empty) {
+          hasExplicitConfig = true;
+          secSnap.docs.forEach(d => {
+            const st = d.data().sectionType;
+            if (st) sectionTypesSet.add(st);
+          });
         }
+      } catch (secErr) {
+        console.warn("Could not query subject_sections:", secErr);
+      }
+
+      if (hasExplicitConfig) {
+        detectedSections = Array.from(sectionTypesSet);
       }
 
       let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -394,6 +404,113 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
       ? "grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto"
       : "grid-cols-1 lg:grid-cols-3";
 
+  const ALL_SECTION_KEYS: Array<"pyq" | "notes" | "questions"> = ["pyq", "notes", "questions"];
+  const SECTION_CONFIG = {
+    pyq: {
+      label: "Question Papers",
+      shortLabel: "PYQs",
+      icon: History,
+      color: "text-purple-400",
+      bg: "bg-purple-500/10 border-purple-500/30 text-purple-300",
+      btnColor: "hover:bg-purple-500/20 text-purple-300 border-purple-500/30"
+    },
+    notes: {
+      label: "Notes",
+      shortLabel: "Notes",
+      icon: BookOpen,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10 border-blue-500/30 text-blue-300",
+      btnColor: "hover:bg-blue-500/20 text-blue-300 border-blue-500/30"
+    },
+    questions: {
+      label: "Important Questions",
+      shortLabel: "Questions",
+      icon: HelpCircle,
+      color: "text-amber-400",
+      bg: "bg-amber-500/10 border-amber-500/30 text-amber-300",
+      btnColor: "hover:bg-amber-500/20 text-amber-300 border-amber-500/30"
+    }
+  };
+
+  const [creatingSection, setCreatingSection] = useState<string | null>(null);
+
+  const handleCreateSection = async (category: "pyq" | "notes" | "questions") => {
+    if (!user) {
+      showToast("Please sign in to create this section.", "error");
+      return;
+    }
+
+    if (activeSections.includes(category)) {
+      showToast(`${SECTION_CONFIG[category].label} is already active!`, "info");
+      return;
+    }
+
+    setCreatingSection(category);
+    try {
+      const secDocId = `${deptId}_sem${semId}_${realSubjectId}_${category}`;
+      const creatorName = user.displayName || user.email?.split("@")[0] || "Student";
+      const creatorEmail = user.email || "";
+
+      // 1. Create document in subject_sections with authenticated creator details
+      await setDoc(doc(db, "subject_sections", secDocId), {
+        id: secDocId,
+        subjectId: realSubjectId,
+        subjectName: subjectName,
+        subjectCode: subject?.code || "",
+        departmentId: deptId,
+        departmentName: (subject as any)?.deptName || deptId.toUpperCase(),
+        semesterId: String(semId),
+        sectionType: category,
+        createdBy: user.uid,
+        creatorName: creatorName,
+        creatorEmail: creatorEmail,
+        createdAt: serverTimestamp()
+      }, { merge: true });
+
+      // 2. Also register in dynamic_subjects doc's sections array
+      const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
+      try {
+        await updateDoc(doc(db, "dynamic_subjects", subDocId), {
+          sections: arrayUnion(category)
+        });
+      } catch (subErr) {
+        await setDoc(doc(db, "dynamic_subjects", subDocId), {
+          subjectId: realSubjectId,
+          name: subjectName,
+          code: subject?.code || "",
+          departmentId: deptId,
+          semesterId: String(semId),
+          sections: [category],
+          status: "approved",
+          createdAt: serverTimestamp(),
+          createdBy: user.uid,
+          creatorName: creatorName,
+          creatorEmail: creatorEmail
+        }, { merge: true });
+      }
+
+      // 3. Invalidate caches
+      const cacheKey = `paperino_subject_cache_${deptId}_${semId}_${realSubjectId}`;
+      delete subjectDataCache[cacheKey];
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(cacheKey);
+      }
+
+      // 4. Update local state immediately so section card appears right away
+      setSubjectSections(prev => {
+        const base = prev !== null ? prev : (subject?.sections && Array.isArray(subject.sections) ? subject.sections : []);
+        return Array.from(new Set([...base, category]));
+      });
+
+      showToast(`${SECTION_CONFIG[category].label} section created! You can now upload materials.`, "success");
+    } catch (err: any) {
+      console.error("Failed to create section:", err);
+      showToast(err.message || "Failed to create section. Please try again.", "error");
+    } finally {
+      setCreatingSection(null);
+    }
+  };
+
   const openUploadModal = (category: "pyq" | "notes" | "questions") => {
     setUploadCategory(category);
     setIsUploadModalOpen(true);
@@ -535,6 +652,60 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
           />
         </div>
 
+        {/* ── Section Launcher & Status Bar ── */}
+        {!fetchError && (
+          <div className="mb-8 p-4 rounded-2xl vision-glass border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Subject Sections:</span>
+              <span className="text-xs text-purple-300 font-mono font-semibold">
+                {activeSections.length}/3 Enabled
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {ALL_SECTION_KEYS.map((key) => {
+                const conf = SECTION_CONFIG[key];
+                const Icon = conf.icon;
+                const isActive = activeSections.includes(key);
+                const count = key === "pyq" ? pyqs.length : key === "notes" ? notes.length : questions.length;
+                const isCreating = creatingSection === key;
+
+                if (isActive) {
+                  return (
+                    <div
+                      key={key}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border ${conf.bg}`}
+                    >
+                      <Icon size={14} className={conf.color} />
+                      <span>{conf.label}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40 font-mono text-gray-300">
+                        {count}
+                      </span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleCreateSection(key)}
+                    disabled={isCreating}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-white/20 bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 hover:text-white transition-all cursor-pointer ${conf.btnColor}`}
+                    title={`Click to create ${conf.label} section for this subject`}
+                  >
+                    {isCreating ? (
+                      <Loader2 size={13} className="animate-spin text-purple-400" />
+                    ) : (
+                      <Plus size={13} className={conf.color} />
+                    )}
+                    <span>Create {conf.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {fetchError ? (
           <div className="py-16 text-center max-w-md mx-auto vision-glass p-8 rounded-3xl border border-red-500/20 bg-red-500/5">
             <p className="text-white font-medium mb-2">{fetchError}</p>
@@ -547,17 +718,55 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
             </button>
           </div>
         ) : activeSections.length === 0 ? (
-          <div className="py-16 text-center max-w-md mx-auto vision-glass p-8 rounded-3xl border border-white/10 animate-in fade-in duration-500">
-            <FileText className="mx-auto mb-3 text-gray-500 opacity-40" size={40} />
-            <h3 className="text-lg font-bold text-white mb-2">No Material Sections Configured</h3>
-            <p className="text-xs text-gray-400 mb-4">No material sections have been configured for this subject yet.</p>
+          <div className="py-14 text-center max-w-2xl mx-auto vision-glass p-8 rounded-3xl border border-white/10 animate-in fade-in duration-500 space-y-6">
+            <div>
+              <FileText className="mx-auto mb-3 text-purple-400/60" size={42} />
+              <h3 className="text-xl font-bold text-white mb-2">No Material Sections Yet</h3>
+              <p className="text-xs text-gray-400 max-w-md mx-auto">
+                Click any section below to create it immediately and start uploading materials:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              {ALL_SECTION_KEYS.map((key) => {
+                const conf = SECTION_CONFIG[key];
+                const Icon = conf.icon;
+                const isCreating = creatingSection === key;
+
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleCreateSection(key)}
+                    disabled={isCreating}
+                    className="p-5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-purple-500/40 flex flex-col items-center justify-center gap-2.5 transition-all group cursor-pointer"
+                  >
+                    <div className="p-3 rounded-xl bg-white/5 group-hover:bg-purple-500/20 transition-colors">
+                      {isCreating ? (
+                        <Loader2 size={22} className="animate-spin text-purple-400" />
+                      ) : (
+                        <Icon size={22} className={conf.color} />
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-white group-hover:text-purple-300">
+                      {conf.label}
+                    </span>
+                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <Plus size={10} /> Create Section
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             {isAdmin && (
-              <Link
-                href="/admin/sections"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] cursor-pointer"
-              >
-                Configure Sections
-              </Link>
+              <div className="pt-4 border-t border-white/5">
+                <Link
+                  href="/admin/sections"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Manage All Sections in Admin
+                </Link>
+              </div>
             )}
           </div>
         ) : (

@@ -46,6 +46,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ── Subject Sections ───────────────────────────────────────────────────
+    match /subject_sections/{secId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
     // ── Study Materials ─────────────────────────────────────────────────────
     match /materials/{docId} {
       allow read: if true;
