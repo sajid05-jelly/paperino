@@ -503,49 +503,13 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
         } else {
           const errRes = await res.json().catch(() => ({}));
           console.warn("API section creation returned non-ok:", errRes);
+          throw new Error(errRes.error || "Failed to enable section.");
         }
-      } catch (apiErr) {
-        console.warn("API section creation request failed, falling back to direct Firestore:", apiErr);
-      }
-
-      if (!apiSuccess) {
-        // 2. Direct Firestore fallback
-        await setDoc(doc(db, "subject_sections", secDocId), {
-          id: secDocId,
-          subjectId: realSubjectId,
-          subjectName: subjectName,
-          subjectCode: subject?.code || "",
-          departmentId: deptId,
-          departmentName: (subject as any)?.deptName || deptId.toUpperCase(),
-          semesterId: String(semId),
-          sectionType: category,
-          createdBy: user.uid,
-          creatorName: creatorName,
-          creatorEmail: creatorEmail,
-          createdAt: serverTimestamp()
-        }, { merge: true });
-
-        // Also register in dynamic_subjects doc's sections array
-        const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
-        try {
-          await updateDoc(doc(db, "dynamic_subjects", subDocId), {
-            sections: arrayUnion(category)
-          });
-        } catch (subErr) {
-          await setDoc(doc(db, "dynamic_subjects", subDocId), {
-            subjectId: realSubjectId,
-            name: subjectName,
-            code: subject?.code || "",
-            departmentId: deptId,
-            semesterId: String(semId),
-            sections: [category],
-            status: "approved",
-            createdAt: serverTimestamp(),
-            createdBy: user.uid,
-            creatorName: creatorName,
-            creatorEmail: creatorEmail
-          }, { merge: true });
+      } catch (apiErr: any) {
+        if (apiErr.message && !apiErr.message.includes("network")) {
+          throw apiErr;
         }
+        console.warn("API section creation request failed:", apiErr);
       }
 
       // 3. Invalidate caches

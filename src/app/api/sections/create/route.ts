@@ -71,33 +71,21 @@ export async function POST(req: NextRequest) {
       { merge: true }
     );
 
-    // 2. Also register in dynamic_subjects doc's sections array
+    // 2. Also register in dynamic_subjects doc's sections array (zero-read write)
     const subDocId = `${departmentId}_sem${semesterId}_${subjectId}`;
     const subRef = db.collection("dynamic_subjects").doc(subDocId);
-    const subSnap = await subRef.get();
-
-    if (subSnap.exists) {
-      await subRef.update({
-        sections: FieldValue.arrayUnion(sectionType)
-      });
-    } else {
-      await subRef.set(
-        {
-          subjectId,
-          name: cleanSubjectName,
-          code: cleanCode,
-          departmentId,
-          semesterId: String(semesterId),
-          sections: [sectionType],
-          status: "approved",
-          createdBy: verifiedUser.uid,
-          creatorName: resolvedName,
-          creatorEmail: resolvedEmail,
-          createdAt: FieldValue.serverTimestamp()
-        },
-        { merge: true }
-      );
-    }
+    await subRef.set(
+      {
+        subjectId,
+        name: cleanSubjectName,
+        code: cleanCode,
+        departmentId,
+        semesterId: String(semesterId),
+        sections: FieldValue.arrayUnion(sectionType),
+        updatedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
 
     return NextResponse.json({
       success: true,
