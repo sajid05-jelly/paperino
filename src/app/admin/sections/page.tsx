@@ -268,43 +268,31 @@ export default function AdminSectionsPage() {
       const deptObj = departments.find(d => d.id === addDept);
       const deptName = deptObj ? deptObj.name : addDept.toUpperCase();
 
-      const promises = addSelectedTypes.map(secType => {
-        const secDocId = `${addDept}_sem${addSem}_${addSubId}_${secType}`;
-        return setDoc(doc(db, "subject_sections", secDocId), {
-          id: secDocId,
-          subjectId: addSubId,
-          subjectName: subName,
-          subjectCode: subCode,
-          departmentId: addDept,
-          departmentName: deptName,
-          semesterId: addSem,
-          sectionType: secType,
-          createdBy: user?.email || "admin",
-          createdAt: serverTimestamp()
-        }, { merge: true });
-      });
-
-      await Promise.all(promises);
-
-      // Update dynamic_subjects document with the configured sections
-      const subDocId = `${addDept}_sem${addSem}_${addSubId}`;
-      try {
-        await updateDoc(doc(db, "dynamic_subjects", subDocId), {
-          sections: arrayUnion(...addSelectedTypes)
+      const idToken = user ? await user.getIdToken() : "";
+      for (const secType of addSelectedTypes) {
+        const createRes = await fetch("/api/sections/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            departmentId: addDept,
+            departmentName: deptName,
+            semesterId: addSem,
+            subjectId: addSubId,
+            subjectName: subName,
+            subjectCode: subCode,
+            sectionType: secType,
+            creatorName: user?.displayName || user?.email?.split("@")[0] || "Admin",
+            creatorEmail: user?.email || "admin"
+          })
         });
-      } catch (subDocErr) {
-        // If doc doesn't exist, create it
-        await setDoc(doc(db, "dynamic_subjects", subDocId), {
-          subjectId: addSubId,
-          name: subName,
-          code: subCode,
-          departmentId: addDept,
-          semesterId: addSem,
-          sections: addSelectedTypes,
-          status: "approved",
-          createdAt: serverTimestamp(),
-          createdBy: user?.email || "admin"
-        }, { merge: true });
+
+        if (!createRes.ok) {
+          const errData = await createRes.json().catch(() => ({}));
+          console.warn("Section create warning:", errData);
+        }
       }
 
       // Invalidate session cache

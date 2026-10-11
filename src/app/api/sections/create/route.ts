@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyServerAuth } from "@/lib/auth-verify";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { saveStoredSection } from "@/lib/sections-store";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,22 @@ export async function POST(req: NextRequest) {
     const cleanDeptName = departmentName || departmentId.toUpperCase();
     const resolvedName = creatorName || verifiedUser.email.split("@")[0] || "User";
     const resolvedEmail = creatorEmail || verifiedUser.email;
+
+    // Persist in local storage immediately so it is available even under Firestore read exhaustion
+    saveStoredSection({
+      id: secDocId,
+      subjectId,
+      subjectName: cleanSubjectName,
+      subjectCode: cleanCode,
+      departmentId,
+      departmentName: cleanDeptName,
+      semesterId: String(semesterId),
+      sectionType,
+      createdBy: verifiedUser.uid,
+      creatorName: resolvedName,
+      creatorEmail: resolvedEmail,
+      createdAt: new Date().toISOString()
+    });
 
     // 1. Create document in subject_sections
     await db.collection("subject_sections").doc(secDocId).set(

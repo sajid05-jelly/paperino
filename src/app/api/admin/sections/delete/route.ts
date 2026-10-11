@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { verifyServerAuth } from "@/lib/auth-verify";
 import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
+import { removeStoredSection } from "@/lib/sections-store";
 
 export const dynamic = "force-dynamic";
 
@@ -98,36 +100,35 @@ export async function POST(req: NextRequest) {
       deletedMaterialIds.push(docSnap.id);
     }
 
-    // 2. Delete the section document from subject_sections
+    // Remove from local persistent store immediately
+    removeStoredSection(sectionId, departmentId, semesterId, subjectId, sectionType);
+
+    // 2. Delete the section document from subject_sections (zero-read delete)
     let resolvedSecDocId = sectionId;
     if (!resolvedSecDocId && departmentId && semesterId && subjectId) {
       resolvedSecDocId = `${departmentId}_sem${semesterId}_${subjectId}_${sectionType}`;
     }
 
     if (resolvedSecDocId) {
-      const secRef = adminDb.collection("subject_sections").doc(resolvedSecDocId);
-      const secDoc = await secRef.get();
-      if (secDoc.exists) {
-        const secSubcollections = await secRef.listCollections();
-        for (const subcol of secSubcollections) {
-          const subDocs = await subcol.get();
-          for (const subDoc of subDocs.docs) {
-            await subDoc.ref.delete();
-          }
-        }
-        await secRef.delete();
+      try {
+        await adminDb.collection("subject_sections").doc(resolvedSecDocId).delete();
+      } catch (delErr) {
+        console.warn("Could not delete from subject_sections in firestore:", delErr);
       }
     }
 
-    // 3. Remove section from dynamic_subjects doc's sections array
+    // 3. Remove section from dynamic_subjects doc's sections array (zero-read write)
     if (departmentId && semesterId && subjectId) {
       const subDocId = `${departmentId}_sem${semesterId}_${subjectId}`;
-      const subRef = adminDb.collection("dynamic_subjects").doc(subDocId);
-      const subSnap = await subRef.get();
-      if (subSnap.exists) {
-        const currentSections: string[] = subSnap.data()?.sections || [];
-        const updated = currentSections.filter(s => s !== sectionType);
-        await subRef.update({ sections: updated });
+      try {
+        await adminDb.collection("dynamic_subjects").doc(subDocId).set(
+          {
+            sections: FieldValue.arrayRemove(sectionType)
+          },
+          { merge: true }
+        );
+      } catch (arrErr) {
+        console.warn("Could not remove section from dynamic_subjects array:", arrErr);
       }
     }
 
