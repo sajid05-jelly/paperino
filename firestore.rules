@@ -283,6 +283,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ── Monthly Usage Tracking & Badges ─────────────────────────────────────
+    match /user_monthly_usage/{usageId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /user_badges/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
     // ── Deny all other paths by default ─────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
