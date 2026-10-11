@@ -184,7 +184,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
         }
       }
 
-      // Check subject_sections collection
+      // Check subject_sections collection (try client query, fallback to /api/sections)
       try {
         const qSec = query(
           collection(db, "subject_sections"),
@@ -201,7 +201,20 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
           });
         }
       } catch (secErr) {
-        console.warn("Could not query subject_sections:", secErr);
+        try {
+          const apiRes = await fetch(`/api/sections?departmentId=${encodeURIComponent(deptId)}&subjectId=${encodeURIComponent(realSubjectId)}`);
+          if (apiRes.ok) {
+            const apiData = await apiRes.json();
+            if (apiData.sections && apiData.sections.length > 0) {
+              hasExplicitConfig = true;
+              apiData.sections.forEach((sec: any) => {
+                if (sec.sectionType) sectionTypesSet.add(sec.sectionType);
+              });
+            }
+          }
+        } catch (apiErr) {
+          console.warn("Could not query subject_sections via API:", apiErr);
+        }
       }
 
       let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));

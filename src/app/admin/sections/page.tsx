@@ -124,111 +124,18 @@ export default function AdminSectionsPage() {
   const fetchSections = async () => {
     setLoading(true);
     try {
-      // 1. Fetch sections and dynamic subjects concurrently (zero reads on materials)
-      const [secSnapshot, subSnapshot] = await Promise.all([
-        getDocs(collection(db, "subject_sections")),
-        getDocs(collection(db, "dynamic_subjects"))
-      ]);
-
-      const sectionList: ConfiguredSection[] = [];
-      const seenKeys = new Set<string>();
-      const uidsToFetch = new Set<string>();
-
-      secSnapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const key = `${data.departmentId}_${data.semesterId}_${data.subjectId}_${data.sectionType}`;
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          const dept = departments.find(d => d.id === data.departmentId);
-
-          if (data.createdBy && !data.createdBy.includes("@")) {
-            uidsToFetch.add(data.createdBy);
-          }
-
-          sectionList.push({
-            id: docSnap.id,
-            subjectId: data.subjectId,
-            subjectName: data.subjectName || data.subjectId,
-            subjectCode: data.subjectCode || "",
-            departmentId: data.departmentId,
-            departmentName: data.departmentName || (dept ? dept.name : data.departmentId.toUpperCase()),
-            semesterId: String(data.semesterId || "1"),
-            sectionType: data.sectionType,
-            createdAt: data.createdAt,
-            createdBy: data.createdBy,
-            creatorName: data.creatorName,
-            creatorEmail: data.creatorEmail
-          });
-        }
-      });
-
-      // 2. Also check dynamic_subjects for any subjects with sections array that aren't yet in subject_sections
-      subSnapshot.forEach(docSnap => {
-        const subData = docSnap.data();
-        if (Array.isArray(subData.sections)) {
-          const dept = departments.find(d => d.id === subData.departmentId);
-          subData.sections.forEach((secType: string) => {
-            const key = `${subData.departmentId}_${subData.semesterId}_${subData.subjectId}_${secType}`;
-            if (!seenKeys.has(key)) {
-              seenKeys.add(key);
-
-              if (subData.createdBy && !subData.createdBy.includes("@")) {
-                uidsToFetch.add(subData.createdBy);
-              }
-
-              sectionList.push({
-                id: `${subData.departmentId}_sem${subData.semesterId}_${subData.subjectId}_${secType}`,
-                subjectId: subData.subjectId,
-                subjectName: subData.name || subData.subjectId,
-                subjectCode: subData.code || "",
-                departmentId: subData.departmentId,
-                departmentName: dept ? dept.name : subData.departmentId.toUpperCase(),
-                semesterId: String(subData.semesterId || "1"),
-                sectionType: secType as any,
-                createdAt: subData.createdAt,
-                createdBy: subData.createdBy,
-                creatorName: subData.creatorName,
-                creatorEmail: subData.creatorEmail
-              });
-            }
-          });
-        }
-      });
-
-      // Fetch user profile info for creator UIDs without email or display name
-      if (uidsToFetch.size > 0) {
-        const userProfiles: Record<string, { displayName?: string; email?: string }> = {};
-        const fetchPromises = Array.from(uidsToFetch).map(async (uid) => {
-          try {
-            const uSnap = await getDoc(doc(db, "users", uid));
-            if (uSnap.exists()) {
-              const uData = uSnap.data();
-              userProfiles[uid] = {
-                displayName: uData.displayName || uData.name,
-                email: uData.email
-              };
-            }
-          } catch (e) {
-            // Ignore individual fetch failure
-          }
-        });
-        await Promise.all(fetchPromises);
-
-        // Fill in missing profile details
-        sectionList.forEach(sec => {
-          if (sec.createdBy && userProfiles[sec.createdBy]) {
-            const prof = userProfiles[sec.createdBy];
-            if (!sec.creatorName && prof.displayName) sec.creatorName = prof.displayName;
-            if (!sec.creatorEmail && prof.email) sec.creatorEmail = prof.email;
-          }
-        });
+      const res = await fetch("/api/sections");
+      if (!res.ok) {
+        throw new Error(`Failed to fetch sections: ${res.statusText}`);
       }
-
-      // Sort newest first or alphabetically by subject name
-      sectionList.sort((a, b) => a.subjectName.localeCompare(b.subjectName));
-      setSections(sectionList);
-    } catch (err) {
-      console.error("Error fetching sections:", err);
+      const data = await res.json();
+      if (data.sections && Array.isArray(data.sections)) {
+        setSections(data.sections);
+      } else {
+        setSections([]);
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch sections from API:", err);
       showToast("Failed to load configured sections.", "error");
     } finally {
       setLoading(false);
