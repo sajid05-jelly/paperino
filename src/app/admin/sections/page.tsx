@@ -377,54 +377,6 @@ export default function AdminSectionsPage() {
         </div>
       </div>
 
-      {/* ── Stats Strip ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="glass-panel p-4 rounded-2xl border border-white/5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-            <Layers size={20} />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Total Sections</p>
-            <p className="text-xl font-bold text-white">{sections.length}</p>
-          </div>
-        </div>
-
-        <div className="glass-panel p-4 rounded-2xl border border-white/5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-            <History size={20} />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Question Papers</p>
-            <p className="text-xl font-bold text-white">
-              {sections.filter(s => s.sectionType === "pyq").length}
-            </p>
-          </div>
-        </div>
-
-        <div className="glass-panel p-4 rounded-2xl border border-white/5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-            <BookOpen size={20} />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Notes</p>
-            <p className="text-xl font-bold text-white">
-              {sections.filter(s => s.sectionType === "notes").length}
-            </p>
-          </div>
-        </div>
-
-        <div className="glass-panel p-4 rounded-2xl border border-white/5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <HelpCircle size={20} />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Important Qs</p>
-            <p className="text-xl font-bold text-white">
-              {sections.filter(s => s.sectionType === "questions").length}
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* ── Filter Bar ── */}
       <div className="glass-panel p-4 rounded-2xl border border-white/10 space-y-3">

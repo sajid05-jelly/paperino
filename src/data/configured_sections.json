@@ -1,0 +1,30 @@
+[
+  {
+    "id": "mba_sem1_fin_mba_pyq",
+    "subjectId": "fin_mba",
+    "subjectName": "Financial Management",
+    "subjectCode": "MBA101",
+    "departmentId": "mba",
+    "departmentName": "MBA",
+    "semesterId": "1",
+    "sectionType": "pyq",
+    "createdBy": "admin",
+    "creatorName": "Admin (mohamedsajid)",
+    "creatorEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-10-11T14:10:00.000Z"
+  },
+  {
+    "id": "mba_sem1_fin_mba_notes",
+    "subjectId": "fin_mba",
+    "subjectName": "Financial Management",
+    "subjectCode": "MBA101",
+    "departmentId": "mba",
+    "departmentName": "MBA",
+    "semesterId": "1",
+    "sectionType": "notes",
+    "createdBy": "admin",
+    "creatorName": "Admin (mohamedsajid)",
+    "creatorEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-10-11T14:10:00.000Z"
+  }
+]

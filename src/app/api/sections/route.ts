@@ -4,6 +4,8 @@ import { getStoredSections, saveStoredSection } from "@/lib/sections-store";
 
 export const dynamic = "force-dynamic";
 
+let quotaExhaustedUntil = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -13,8 +15,10 @@ export async function GET(req: NextRequest) {
     // 1. Get currently persisted sections
     let allSections = getStoredSections();
 
-    // 2. Attempt to sync with Firestore if adminDb is available and quota permits
-    if (adminDb) {
+    // 2. Attempt to sync with Firestore if adminDb is available and circuit breaker is open
+    const shouldTryFirestore = adminDb && Date.now() > quotaExhaustedUntil;
+
+    if (shouldTryFirestore && adminDb) {
       try {
         const secSnapshot = await adminDb.collection("subject_sections").get();
         secSnapshot.forEach(docSnap => {
@@ -37,8 +41,13 @@ export async function GET(req: NextRequest) {
         });
         allSections = getStoredSections();
       } catch (dbErr: any) {
-        // Quota exceeded or network issue: graceful fallback to stored sections
-        console.warn("Firestore sync warning (using persistent store):", dbErr?.message || dbErr);
+        if (dbErr?.message?.includes("RESOURCE_EXHAUSTED") || dbErr?.code === 8) {
+          // Pause Firestore sweeps for 5 minutes to keep responses ultra-fast
+          quotaExhaustedUntil = Date.now() + 5 * 60 * 1000;
+          console.warn("[Sections API] Firestore daily quota exhausted; active circuit breaker for 5 mins.");
+        } else {
+          console.warn("[Sections API] Firestore sync warning:", dbErr?.message || dbErr);
+        }
       }
     }
 
@@ -54,7 +63,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, sections: result });
   } catch (error: any) {
     console.error("Error in /api/sections GET:", error);
-    // Even if an unexpected error occurs, return stored sections rather than failing
     const fallback = getStoredSections();
     return NextResponse.json({ success: true, sections: fallback });
   }
