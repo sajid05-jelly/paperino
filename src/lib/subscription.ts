@@ -207,6 +207,22 @@ export function getEffectivePlan(userData?: any): {
   const rawPlan = (userData.plan || "").toLowerCase();
   const isCancelledOrInactive = ["cancelled", "canceled", "halted", "completed", "expired", "inactive"].includes(subStatus);
 
+  // Check if time-limited plan has expired
+  if (userData.premiumEndDate) {
+    const now = new Date();
+    const endDate = userData.premiumEndDate.toDate
+      ? userData.premiumEndDate.toDate()
+      : (userData.premiumEndDate._seconds
+        ? new Date(userData.premiumEndDate._seconds * 1000)
+        : new Date(userData.premiumEndDate));
+    if (now > endDate) {
+      // Time-limited access has expired
+      return isContributorPlusEligible(userData)
+        ? { plan: "plus", isContributorPlus: true, isPaidPlan: false }
+        : { plan: "free", isContributorPlus: false, isPaidPlan: false };
+    }
+  }
+
   // Active verified paid subscription takes precedence over contributor rewards
   if (!isCancelledOrInactive) {
     if (rawPlan === "premium" && (subStatus === "active" || !subStatus)) {
