@@ -6,6 +6,7 @@ import { BookOpen, Calendar, Search, ChevronRight, Loader2 } from "lucide-react"
 import SafeBackButton from "@/components/SafeBackButton";
 import { getSubjectSeoPath } from "@/lib/seoUtils";
 import { useSubjects } from "@/context/SubjectsContext";
+import { useAuth } from "@/context/AuthContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 
 export default function DepartmentSemestersPage({ params }: { params: Promise<{ deptId: string }> }) {
@@ -14,6 +15,7 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
   
   const [searchQuery, setSearchQuery] = useState("");
   const { departments, subjects: dynamicSubjects, loading } = useSubjects();
+  const { user, isAdmin } = useAuth();
 
   // Find active department
   const activeDept = departments.find(d => d.id === deptId);
@@ -41,6 +43,9 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
       </div>
     );
   }
+
+  const childBranches = departments.filter(d => d.parentCourse === deptId && (d.status === "approved" || isAdmin || (user && d.createdBy === user.uid)));
+  const isParentCourseWithBranches = childBranches.length > 0;
 
   const semesters = Array.from({ length: activeDept.totalSemesters }, (_, i) => i + 1);
 
@@ -91,7 +96,50 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {searchQuery.trim() !== "" ? (
+      {isParentCourseWithBranches ? (
+        <div className="w-full relative z-10">
+          <div className="text-center mb-8">
+            <span className="text-xs font-bold uppercase tracking-widest text-purple-400 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
+              Select Your Specialization / Branch
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 w-full">
+            {childBranches.map((branch, i) => (
+              <Link key={branch.id} href={`/courses/${branch.id}`} className="block h-full group">
+                <div 
+                  className="vision-glass p-6 md:p-7 rounded-[1.5rem] group cursor-pointer vision-hover h-full flex flex-col justify-between border border-white/10 hover:border-purple-500/40 relative overflow-hidden transition-all duration-300"
+                  style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/15 transition-all"></div>
+                  
+                  <div className="flex items-start justify-between mb-6 relative z-10">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-fuchsia-500/10 border border-purple-500/30 flex items-center justify-center text-purple-300 group-hover:scale-110 group-hover:border-purple-400 transition-all shadow-md">
+                      <BookOpen size={22} />
+                    </div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-lg">
+                      {branch.code}
+                    </span>
+                  </div>
+
+                  <div className="relative z-10">
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
+                      {branch.name}
+                    </h3>
+                    <p className="text-xs text-gray-400 mb-4 font-medium">
+                      8 Semesters • Study Materials & Question Papers
+                    </p>
+                    <div className="flex items-center text-xs font-semibold text-purple-400 group-hover:text-purple-300 transition-colors gap-1.5 pt-3 border-t border-white/5">
+                      <span>Explore Semesters</span>
+                      <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : searchQuery.trim() !== "" ? (
         <div className="w-full relative z-10">
           <h2 className="text-xl font-semibold text-white mb-6">
             Search Results for "{searchQuery}"

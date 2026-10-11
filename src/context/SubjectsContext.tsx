@@ -13,6 +13,7 @@ export interface Department {
   createdBy: string;
   contributorName?: string;
   status: "pending" | "approved" | "rejected";
+  parentCourse?: string;
   createdAt?: any;
 }
 

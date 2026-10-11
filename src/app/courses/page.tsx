@@ -21,8 +21,14 @@ export default function CoursesPage() {
     return () => unsub();
   }, [listenToDeptsWithMaterials]);
 
-  // Filter for approved or admin or created by current user
-  const visibleDepts = departments.filter(d => d.status === "approved" || isAdmin || (user && d.createdBy === user.uid));
+  // Filter for approved or admin or created by current user (and exclude sub-branches from root list)
+  const visibleDepts = departments.filter(d => {
+    const isOwnerOrApproved = d.status === "approved" || isAdmin || (user && d.createdBy === user.uid);
+    if (!isOwnerOrApproved) return false;
+    // Don't show child branches in the top-level courses grid
+    if (d.parentCourse) return false;
+    return true;
+  });
   
   const filteredDepts = visibleDepts.filter(d => {
     const searchLower = searchQuery.toLowerCase().trim();
