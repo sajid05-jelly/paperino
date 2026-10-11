@@ -55,7 +55,7 @@ interface ConfiguredSection {
   createdBy?: string;
   creatorName?: string;
   creatorEmail?: string;
-  materialCount: number;
+  materialCount?: number;
 }
 
 const SECTION_TYPE_META: Record<string, { label: string; icon: any; color: string; badge: string; desc: string }> = {
@@ -124,22 +124,11 @@ export default function AdminSectionsPage() {
   const fetchSections = async () => {
     setLoading(true);
     try {
-      // 1. Fetch sections, dynamic subjects, and materials concurrently
-      const [secSnapshot, subSnapshot, matSnapshot] = await Promise.all([
+      // 1. Fetch sections and dynamic subjects concurrently (zero reads on materials)
+      const [secSnapshot, subSnapshot] = await Promise.all([
         getDocs(collection(db, "subject_sections")),
-        getDocs(collection(db, "dynamic_subjects")),
-        getDocs(collection(db, "materials"))
+        getDocs(collection(db, "dynamic_subjects"))
       ]);
-
-      // Calculate material counts per (semesterId, subjectId, category)
-      const countMap: Record<string, number> = {};
-      matSnapshot.forEach(docSnap => {
-        const m = docSnap.data();
-        if (m.semesterId && m.subjectId && m.category) {
-          const key = `${m.semesterId}_${m.subjectId}_${m.category}`;
-          countMap[key] = (countMap[key] || 0) + 1;
-        }
-      });
 
       const sectionList: ConfiguredSection[] = [];
       const seenKeys = new Set<string>();
@@ -151,7 +140,6 @@ export default function AdminSectionsPage() {
         if (!seenKeys.has(key)) {
           seenKeys.add(key);
           const dept = departments.find(d => d.id === data.departmentId);
-          const matCountKey = `${data.semesterId}_${data.subjectId}_${data.sectionType}`;
 
           if (data.createdBy && !data.createdBy.includes("@")) {
             uidsToFetch.add(data.createdBy);
@@ -169,8 +157,7 @@ export default function AdminSectionsPage() {
             createdAt: data.createdAt,
             createdBy: data.createdBy,
             creatorName: data.creatorName,
-            creatorEmail: data.creatorEmail,
-            materialCount: countMap[matCountKey] || 0
+            creatorEmail: data.creatorEmail
           });
         }
       });
@@ -184,7 +171,6 @@ export default function AdminSectionsPage() {
             const key = `${subData.departmentId}_${subData.semesterId}_${subData.subjectId}_${secType}`;
             if (!seenKeys.has(key)) {
               seenKeys.add(key);
-              const matCountKey = `${subData.semesterId}_${subData.subjectId}_${secType}`;
 
               if (subData.createdBy && !subData.createdBy.includes("@")) {
                 uidsToFetch.add(subData.createdBy);
@@ -202,8 +188,7 @@ export default function AdminSectionsPage() {
                 createdAt: subData.createdAt,
                 createdBy: subData.createdBy,
                 creatorName: subData.creatorName,
-                creatorEmail: subData.creatorEmail,
-                materialCount: countMap[matCountKey] || 0
+                creatorEmail: subData.creatorEmail
               });
             }
           });
@@ -647,7 +632,7 @@ export default function AdminSectionsPage() {
                   <th className="py-3.5 px-4 font-bold">Section Category</th>
                   <th className="py-3.5 px-4 font-bold">Creator Audit</th>
                   <th className="py-3.5 px-4 font-bold">Created At</th>
-                  <th className="py-3.5 px-4 font-bold">Materials</th>
+                  <th className="py-3.5 px-4 font-bold">Status</th>
                   <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
@@ -727,15 +712,10 @@ export default function AdminSectionsPage() {
                         </span>
                       </td>
 
-                      {/* Materials Count */}
+                      {/* Status */}
                       <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                          sec.materialCount > 0
-                            ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
-                            : "bg-white/5 text-gray-400 border-white/10"
-                        }`}>
-                          <FileText size={11} className={sec.materialCount > 0 ? "text-emerald-400" : "text-gray-500"} />
-                          {sec.materialCount} {sec.materialCount === 1 ? "file" : "files"}
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                          Active
                         </span>
                       </td>
 
@@ -917,9 +897,6 @@ export default function AdminSectionsPage() {
               <p className="text-gray-400">
                 Category: <span className="text-rose-400 font-bold">{SECTION_TYPE_META[deleteTarget.sectionType]?.label}</span>
               </p>
-              <p className="text-gray-400">
-                Associated Materials: <span className="text-amber-400 font-bold">{deleteTarget.materialCount} {deleteTarget.materialCount === 1 ? "file" : "files"}</span>
-              </p>
             </div>
 
             {/* Complete Deletion Notice */}
@@ -928,7 +905,7 @@ export default function AdminSectionsPage() {
                 <span>⚠️ Permanent Deletion Notice</span>
               </p>
               <p className="text-[11px] leading-relaxed text-rose-300/90">
-                This operation is <strong>permanent and cannot be undone</strong>. It will remove the <strong>{SECTION_TYPE_META[deleteTarget.sectionType]?.label}</strong> section, permanently delete all <strong>{deleteTarget.materialCount} associated material records</strong> from Firestore, and permanently purge their <strong>files from Google Drive storage</strong>.
+                This operation is <strong>permanent and cannot be undone</strong>. It will remove the <strong>{SECTION_TYPE_META[deleteTarget.sectionType]?.label}</strong> section configuration and permanently purge any associated material records and storage files.
               </p>
             </div>
 

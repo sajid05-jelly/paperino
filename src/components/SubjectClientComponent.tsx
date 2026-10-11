@@ -690,7 +690,6 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
               const Icon = conf.icon;
               const isEnabled = activeSections.includes(key);
               const isCreating = creatingSection === key;
-              const count = key === "pyq" ? pyqs.length : key === "notes" ? notes.length : questions.length;
 
               return (
                 <button
@@ -703,7 +702,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
                       ? "bg-purple-600/15 border-purple-500/40 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:bg-purple-600/25"
                       : "bg-white/[0.03] hover:bg-white/[0.08] border-white/10 text-gray-400 hover:text-white"
                   }`}
-                  title={isEnabled ? `${conf.label} (Active - ${count} items)` : `Click to enable ${conf.label}`}
+                  title={isEnabled ? `${conf.label} (Active)` : `Click to enable ${conf.label}`}
                 >
                   {isCreating ? (
                     <Loader2 size={13} className="animate-spin text-purple-400" />
@@ -711,11 +710,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
                     <Icon size={14} className={isEnabled ? conf.color : "text-gray-400"} />
                   )}
                   <span>{conf.label}</span>
-                  {isEnabled ? (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold">
-                      {count}
-                    </span>
-                  ) : (
+                  {!isEnabled && (
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/5 text-gray-400 border border-white/10">
                       + Enable
                     </span>
