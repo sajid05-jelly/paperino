@@ -471,46 +471,81 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
 
     setCreatingSection(category);
     try {
-      const secDocId = `${deptId}_sem${semId}_${realSubjectId}_${category}`;
       const creatorName = user.displayName || user.email?.split("@")[0] || "Student";
       const creatorEmail = user.email || "";
+      const secDocId = `${deptId}_sem${semId}_${realSubjectId}_${category}`;
 
-      // 1. Create document in subject_sections with authenticated creator details
-      await setDoc(doc(db, "subject_sections", secDocId), {
-        id: secDocId,
-        subjectId: realSubjectId,
-        subjectName: subjectName,
-        subjectCode: subject?.code || "",
-        departmentId: deptId,
-        departmentName: (subject as any)?.deptName || deptId.toUpperCase(),
-        semesterId: String(semId),
-        sectionType: category,
-        createdBy: user.uid,
-        creatorName: creatorName,
-        creatorEmail: creatorEmail,
-        createdAt: serverTimestamp()
-      }, { merge: true });
-
-      // 2. Also register in dynamic_subjects doc's sections array
-      const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
+      // 1. Attempt creation via server API route (bypasses Firestore client permission restrictions)
+      let apiSuccess = false;
       try {
-        await updateDoc(doc(db, "dynamic_subjects", subDocId), {
-          sections: arrayUnion(category)
+        const token = await user.getIdToken();
+        const res = await fetch("/api/sections/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            departmentId: deptId,
+            departmentName: (subject as any)?.deptName || deptId.toUpperCase(),
+            semesterId: String(semId),
+            subjectId: realSubjectId,
+            subjectName: subjectName,
+            subjectCode: subject?.code || "",
+            sectionType: category,
+            creatorName: creatorName,
+            creatorEmail: creatorEmail
+          })
         });
-      } catch (subErr) {
-        await setDoc(doc(db, "dynamic_subjects", subDocId), {
+
+        if (res.ok) {
+          apiSuccess = true;
+        } else {
+          const errRes = await res.json().catch(() => ({}));
+          console.warn("API section creation returned non-ok:", errRes);
+        }
+      } catch (apiErr) {
+        console.warn("API section creation request failed, falling back to direct Firestore:", apiErr);
+      }
+
+      if (!apiSuccess) {
+        // 2. Direct Firestore fallback
+        await setDoc(doc(db, "subject_sections", secDocId), {
+          id: secDocId,
           subjectId: realSubjectId,
-          name: subjectName,
-          code: subject?.code || "",
+          subjectName: subjectName,
+          subjectCode: subject?.code || "",
           departmentId: deptId,
+          departmentName: (subject as any)?.deptName || deptId.toUpperCase(),
           semesterId: String(semId),
-          sections: [category],
-          status: "approved",
-          createdAt: serverTimestamp(),
+          sectionType: category,
           createdBy: user.uid,
           creatorName: creatorName,
-          creatorEmail: creatorEmail
+          creatorEmail: creatorEmail,
+          createdAt: serverTimestamp()
         }, { merge: true });
+
+        // Also register in dynamic_subjects doc's sections array
+        const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
+        try {
+          await updateDoc(doc(db, "dynamic_subjects", subDocId), {
+            sections: arrayUnion(category)
+          });
+        } catch (subErr) {
+          await setDoc(doc(db, "dynamic_subjects", subDocId), {
+            subjectId: realSubjectId,
+            name: subjectName,
+            code: subject?.code || "",
+            departmentId: deptId,
+            semesterId: String(semId),
+            sections: [category],
+            status: "approved",
+            createdAt: serverTimestamp(),
+            createdBy: user.uid,
+            creatorName: creatorName,
+            creatorEmail: creatorEmail
+          }, { merge: true });
+        }
       }
 
       // 3. Invalidate caches

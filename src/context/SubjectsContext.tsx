@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, onSnapshot, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
 export interface Department {
@@ -360,40 +360,79 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     }
 
     const docId = `${deptId}_sem${semId}_${generatedId}`;
-
-    await setDoc(doc(db, "dynamic_subjects", docId), {
-      subjectId: generatedId,
-      name: name.trim(),
-      code: code ? code.trim() : "",
-      departmentId: deptId,
-      semesterId: semId,
-      sections: sections,
-      createdBy: contributorId || "system",
-      contributorId: contributorId || null,
-      contributorName: contributorName || null,
-      status: isContributor ? "pending" : "approved",
-      createdAt: serverTimestamp()
-    });
-
-    // Create corresponding section configuration documents in subject_sections
     const deptObj = departments.find(d => d.id === deptId);
     const deptDisplayName = deptObj ? deptObj.name : deptId.toUpperCase();
-    const sectionPromises = sections.map(secType => {
-      const sectionDocId = `${deptId}_sem${semId}_${generatedId}_${secType}`;
-      return setDoc(doc(db, "subject_sections", sectionDocId), {
-        id: sectionDocId,
+
+    // 1. Attempt creation via server API route (uses Firebase Admin SDK, bypasses client permission blocks)
+    let apiSuccess = false;
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const token = await currentUser.getIdToken();
+        const res = await fetch("/api/courses/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            departmentId: deptId,
+            departmentName: deptDisplayName,
+            semesterId: semId,
+            name: name.trim(),
+            code: code ? code.trim() : "",
+            sections: sections,
+            isSuggestion: isContributor,
+            creatorName: contributorName || currentUser.displayName || currentUser.email?.split("@")[0],
+            creatorEmail: currentUser.email
+          })
+        });
+
+        if (res.ok) {
+          apiSuccess = true;
+        } else {
+          const errRes = await res.json().catch(() => ({}));
+          console.warn("API course creation returned non-ok status:", errRes);
+        }
+      } catch (apiErr) {
+        console.warn("API course creation request failed, falling back to direct Firestore:", apiErr);
+      }
+    }
+
+    if (!apiSuccess) {
+      // 2. Direct Firestore write fallback
+      await setDoc(doc(db, "dynamic_subjects", docId), {
         subjectId: generatedId,
-        subjectName: name.trim(),
-        subjectCode: code ? code.trim() : "",
+        name: name.trim(),
+        code: code ? code.trim() : "",
         departmentId: deptId,
-        departmentName: deptDisplayName,
         semesterId: semId,
-        sectionType: secType,
+        sections: sections,
         createdBy: contributorId || "system",
+        contributorId: contributorId || null,
+        contributorName: contributorName || null,
+        status: isContributor ? "pending" : "approved",
         createdAt: serverTimestamp()
-      }, { merge: true });
-    });
-    await Promise.all(sectionPromises);
+      });
+
+      // Create corresponding section configuration documents in subject_sections
+      const sectionPromises = sections.map(secType => {
+        const sectionDocId = `${deptId}_sem${semId}_${generatedId}_${secType}`;
+        return setDoc(doc(db, "subject_sections", sectionDocId), {
+          id: sectionDocId,
+          subjectId: generatedId,
+          subjectName: name.trim(),
+          subjectCode: code ? code.trim() : "",
+          departmentId: deptId,
+          departmentName: deptDisplayName,
+          semesterId: semId,
+          sectionType: secType,
+          createdBy: contributorId || "system",
+          createdAt: serverTimestamp()
+        }, { merge: true });
+      });
+      await Promise.all(sectionPromises);
+    }
 
     // Reset local cache so it gets refetched
     const cacheKey = `${deptId}_${semId}`;

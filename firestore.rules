@@ -18,7 +18,9 @@ service cloud.firestore {
           "admin.paperinosam14@gmail.com",
           "gameplayitlifeitis@gmail.com",
           "gameplayitlifeis@gmail.com",
-          "gameplayitlife@gmail.com"
+          "gameplayitlife@gmail.com",
+          "dejasvini28@gmail.com",
+          "kaushika13official@gmail.com"
         ]) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          'role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
@@ -42,8 +44,9 @@ service cloud.firestore {
     // ── Dynamic Subjects / Courses ──────────────────────────────────────────
     match /dynamic_subjects/{docId} {
       allow read: if true;
-      allow create: if isSignedIn() && (request.resource.data.status == "pending" || isAdmin());
-      allow update, delete: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // ── Subject Sections ───────────────────────────────────────────────────
