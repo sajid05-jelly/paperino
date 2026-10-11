@@ -23,6 +23,7 @@ export interface Subject {
   code?: string; // subjectCode
   departmentId: string;
   semesterId: string;
+  sections?: string[]; // configured material sections e.g. ["pyq", "notes", "questions"]
   status?: "pending" | "approved" | "rejected";
   contributorId?: string;
   contributorName?: string;
@@ -50,7 +51,8 @@ interface SubjectsContextType {
     code?: string,
     isContributor?: boolean,
     contributorId?: string,
-    contributorName?: string
+    contributorName?: string,
+    sections?: string[]
   ) => Promise<string>;
   refreshSubjects: () => Promise<void>;
   lazyLoadSubjects: (deptId: string, semId: string) => Promise<void>;
@@ -259,6 +261,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           code: data.code || "",
           departmentId: deptId,
           semesterId: semId,
+          sections: Array.isArray(data.sections) ? data.sections : undefined,
           status: data.status || "approved",
           contributorId: data.contributorId || null,
           contributorName: data.contributorName || null,
@@ -344,7 +347,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     code?: string,
     isContributor: boolean = false,
     contributorId?: string,
-    contributorName?: string
+    contributorName?: string,
+    sections: string[] = ["pyq", "notes", "questions"]
   ): Promise<string> => {
     const generatedId = code 
       ? code.toLowerCase().trim().replace(/[^a-z0-9]/g, "") 
@@ -363,12 +367,33 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       code: code ? code.trim() : "",
       departmentId: deptId,
       semesterId: semId,
+      sections: sections,
       createdBy: contributorId || "system",
       contributorId: contributorId || null,
       contributorName: contributorName || null,
       status: isContributor ? "pending" : "approved",
       createdAt: serverTimestamp()
     });
+
+    // Create corresponding section configuration documents in subject_sections
+    const deptObj = departments.find(d => d.id === deptId);
+    const deptDisplayName = deptObj ? deptObj.name : deptId.toUpperCase();
+    const sectionPromises = sections.map(secType => {
+      const sectionDocId = `${deptId}_sem${semId}_${generatedId}_${secType}`;
+      return setDoc(doc(db, "subject_sections", sectionDocId), {
+        id: sectionDocId,
+        subjectId: generatedId,
+        subjectName: name.trim(),
+        subjectCode: code ? code.trim() : "",
+        departmentId: deptId,
+        departmentName: deptDisplayName,
+        semesterId: semId,
+        sectionType: secType,
+        createdBy: contributorId || "system",
+        createdAt: serverTimestamp()
+      }, { merge: true });
+    });
+    await Promise.all(sectionPromises);
 
     // Reset local cache so it gets refetched
     const cacheKey = `${deptId}_${semId}`;

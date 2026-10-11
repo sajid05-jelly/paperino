@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-  Upload, Activity, Bot, FileText,
+  Upload, Activity, Bot, FileText, Layers,
   ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, 
   BrainCircuit, Wrench, Building2, ChevronDown, Sparkles, Gamepad2, FlaskConical
 } from "lucide-react";
@@ -107,6 +107,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/materials" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <FileText size={20} />
               Manage Materials
+            </Link>
+
+            <Link href="/admin/sections" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              pathname === "/admin/sections"
+                ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30"
+                : "text-gray-300 hover:text-white hover:bg-white/10"
+            }`}>
+              <Layers size={20} className="text-purple-400" />
+              <span>Section Management</span>
             </Link>
 
             <Link href="/admin/courses" className="flex items-center justify-between px-4 py-3 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors font-medium border border-blue-500/20">

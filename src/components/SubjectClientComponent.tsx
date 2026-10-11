@@ -20,7 +20,7 @@ import { getSubjectSlug } from "@/lib/seoUtils";
 import { SITE_CONFIG } from "@/lib/siteConfig";
 
 const contributorCache: Record<string, string> = {};
-const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], timestamp: number }> = {};
+const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], sections?: string[], timestamp: number }> = {};
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10-minute cache TTL
 
 interface ServerOverview {
@@ -52,6 +52,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
   
   const [materials, setMaterials] = useState<any[]>([]);
   const [survivalNotes, setSurvivalNotes] = useState<any[]>([]);
+  const [subjectSections, setSubjectSections] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -137,6 +138,9 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
       setSurvivalNotes(cachedData.survivalNotes);
+      if (Array.isArray(cachedData.sections)) {
+        setSubjectSections(cachedData.sections);
+      }
       setFetchError(null);
       setLoading(false);
       return;
@@ -145,8 +149,8 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
     setLoading(true);
     setFetchError(null);
     try {
-      logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials from Firestore concurrently");
-      // 1. Fetch Subject Materials & Survival Advice concurrently
+      logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials and sections from Firestore concurrently");
+      // 1. Fetch Subject Materials, Survival Advice & Subject Document concurrently
       const qMaterials = query(
         collection(db, "materials"),
         where("semesterId", "==", semId),
@@ -161,10 +165,38 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
         where("status", "==", "approved")
       );
 
-      const [matSnapshot, survSnapshot] = await Promise.all([
+      const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
+      const [matSnapshot, survSnapshot, subSnap] = await Promise.all([
         getDocs(qMaterials),
-        getDocs(qSurvival)
+        getDocs(qSurvival),
+        getDoc(doc(db, "dynamic_subjects", subDocId))
       ]);
+
+      let detectedSections: string[] | null = null;
+      if (subSnap.exists()) {
+        const subData = subSnap.data();
+        if (Array.isArray(subData.sections)) {
+          detectedSections = subData.sections;
+        }
+      }
+
+      // Check subject_sections collection fallback if not directly on dynamic_subjects
+      if (!detectedSections) {
+        try {
+          const qSec = query(
+            collection(db, "subject_sections"),
+            where("departmentId", "==", deptId),
+            where("semesterId", "==", semId),
+            where("subjectId", "==", realSubjectId)
+          );
+          const secSnap = await getDocs(qSec);
+          if (!secSnap.empty) {
+            detectedSections = secSnap.docs.map(d => d.data().sectionType);
+          }
+        } catch (secErr) {
+          console.warn("Could not query subject_sections:", secErr);
+        }
+      }
 
       let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       const list: any[] = [];
@@ -230,6 +262,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
       const finalCacheData = {
         materials: matList,
         survivalNotes: list,
+        sections: detectedSections || undefined,
         timestamp: Date.now()
       };
 
@@ -247,6 +280,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
 
       setMaterials(matList);
       setSurvivalNotes(list);
+      setSubjectSections(detectedSections);
     } catch (error: any) {
       console.error("Error fetching subject data:", error);
       setFetchError("Unable to load subject materials right now. Please try again.");
@@ -341,6 +375,24 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
   const pyqs = materials.filter(m => m.category === "pyq");
   const notes = materials.filter(m => m.category === "notes");
   const questions = materials.filter(m => m.category === "questions");
+
+  // Determine active sections:
+  // 1. If subjectSections state is resolved from Firestore doc or subject_sections, use it.
+  // 2. Else if subject?.sections from SubjectsContext is present, use it.
+  // 3. Fallback for legacy subjects without section configuration:
+  //    Default to all three ["pyq", "notes", "questions"], ensuring existing materials are never hidden or lost.
+  const activeSections: string[] = subjectSections !== null
+    ? subjectSections
+    : (subject?.sections && Array.isArray(subject.sections))
+    ? subject.sections
+    : ["pyq", "notes", "questions"];
+
+  const gridLayoutClass =
+    activeSections.length === 1
+      ? "grid-cols-1 max-w-xl mx-auto"
+      : activeSections.length === 2
+      ? "grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto"
+      : "grid-cols-1 lg:grid-cols-3";
 
   const openUploadModal = (category: "pyq" | "notes" | "questions") => {
     setUploadCategory(category);
@@ -494,239 +546,259 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
               Retry Loading
             </button>
           </div>
+        ) : activeSections.length === 0 ? (
+          <div className="py-16 text-center max-w-md mx-auto vision-glass p-8 rounded-3xl border border-white/10 animate-in fade-in duration-500">
+            <FileText className="mx-auto mb-3 text-gray-500 opacity-40" size={40} />
+            <h3 className="text-lg font-bold text-white mb-2">No Material Sections Configured</h3>
+            <p className="text-xs text-gray-400 mb-4">No material sections have been configured for this subject yet.</p>
+            {isAdmin && (
+              <Link
+                href="/admin/sections"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] cursor-pointer"
+              >
+                Configure Sections
+              </Link>
+            )}
+          </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-in fade-in duration-500">
+          <div className={`grid ${gridLayoutClass} gap-8 items-start animate-in fade-in duration-500`}>
             
             {/* PYQ Section */}
-            <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <History className="text-purple-400" /> Past Papers (PYQs)
-                  </h2>
-                  {user && (
-                    <button onClick={() => openUploadModal("pyq")} className="text-xs text-purple-400 hover:text-white flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 hover:bg-purple-500/20 transition-all cursor-pointer">
-                      <Upload size={12} /> Upload
-                    </button>
-                  )}
-                </div>
+            {activeSections.includes("pyq") && (
+              <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <History className="text-purple-400" /> Past Papers (PYQs)
+                    </h2>
+                    {user && (
+                      <button onClick={() => openUploadModal("pyq")} className="text-xs text-purple-400 hover:text-white flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 hover:bg-purple-500/20 transition-all cursor-pointer">
+                        <Upload size={12} /> Upload
+                      </button>
+                    )}
+                  </div>
 
-                {loading ? (
-                  <div className="py-12 text-center text-gray-400 space-y-2">
-                    <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
-                    <p className="text-xs font-mono">Loading PYQs...</p>
-                  </div>
-                ) : pyqs.length === 0 ? (
-                  <div className="py-12 text-center text-gray-500">
-                    <FileText className="mx-auto mb-2 opacity-30" size={36} />
-                    <p className="text-sm">Help Build the PYQ Library</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pyqs.map(mat => (
-                      <div key={mat.id} className="p-3 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between transition-all group">
-                        <div className="min-w-0 pr-2">
-                          <p className="text-sm text-white font-medium truncate" title={`${subjectName} ${mat.title}`} aria-label={`${subjectName} ${mat.title}`}>{mat.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-gray-500 font-semibold truncate">{mat.fileName}</span>
-                            {getStatusBadge(mat.status)}
+                  {loading ? (
+                    <div className="py-12 text-center text-gray-400 space-y-2">
+                      <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
+                      <p className="text-xs font-mono">Loading PYQs...</p>
+                    </div>
+                  ) : pyqs.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500">
+                      <FileText className="mx-auto mb-2 opacity-30" size={36} />
+                      <p className="text-sm">Help Build the PYQ Library</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pyqs.map(mat => (
+                        <div key={mat.id} className="p-3 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between transition-all group">
+                          <div className="min-w-0 pr-2">
+                            <p className="text-sm text-white font-medium truncate" title={`${subjectName} ${mat.title}`} aria-label={`${subjectName} ${mat.title}`}>{mat.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] text-gray-500 font-semibold truncate">{mat.fileName}</span>
+                              {getStatusBadge(mat.status)}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-center gap-1.5 shrink-0">
+                            <button 
+                              onClick={() => handlePreviewClick(mat)} 
+                              className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
+                              title={`Preview ${subjectName} ${mat.title}`} 
+                              aria-label={`Preview ${subjectName} ${mat.title}`}
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button 
+                              disabled={downloadingId === mat.id}
+                              onClick={() => handleDownloadMaterial(mat)} 
+                              className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                                downloadedId === mat.id
+                                  ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                  : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
+                              }`}
+                              title={
+                                downloadingId === mat.id
+                                  ? "Downloading..."
+                                  : downloadedId === mat.id
+                                  ? "Downloaded"
+                                  : `Download ${subjectName} ${mat.title}`
+                              }
+                              aria-label={`Download ${subjectName} ${mat.title}`}
+                            >
+                              {downloadingId === mat.id ? (
+                                <Loader2 size={14} className="text-purple-400 animate-spin" />
+                              ) : downloadedId === mat.id ? (
+                                <Check size={14} className="text-emerald-400" />
+                              ) : (
+                                <Download size={14} />
+                              )}
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center justify-center gap-1.5 shrink-0">
-                          <button 
-                            onClick={() => handlePreviewClick(mat)} 
-                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
-                            title={`Preview ${subjectName} ${mat.title}`} 
-                            aria-label={`Preview ${subjectName} ${mat.title}`}
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button 
-                            disabled={downloadingId === mat.id}
-                            onClick={() => handleDownloadMaterial(mat)} 
-                            className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
-                              downloadedId === mat.id
-                                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                                : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
-                            }`}
-                            title={
-                              downloadingId === mat.id
-                                ? "Downloading..."
-                                : downloadedId === mat.id
-                                ? "Downloaded"
-                                : `Download ${subjectName} ${mat.title}`
-                            }
-                            aria-label={`Download ${subjectName} ${mat.title}`}
-                          >
-                            {downloadingId === mat.id ? (
-                              <Loader2 size={14} className="text-purple-400 animate-spin" />
-                            ) : downloadedId === mat.id ? (
-                              <Check size={14} className="text-emerald-400" />
-                            ) : (
-                              <Download size={14} />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Notes Section */}
-            <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <BookOpen className="text-purple-400" /> Syllabus & Notes
-                  </h2>
-                  {user && (
-                    <button onClick={() => openUploadModal("notes")} className="text-xs text-purple-400 hover:text-white flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 hover:bg-purple-500/20 transition-all cursor-pointer">
-                      <Upload size={12} /> Upload
-                    </button>
-                  )}
-                </div>
+            {activeSections.includes("notes") && (
+              <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <BookOpen className="text-purple-400" /> Syllabus & Notes
+                    </h2>
+                    {user && (
+                      <button onClick={() => openUploadModal("notes")} className="text-xs text-purple-400 hover:text-white flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 hover:bg-purple-500/20 transition-all cursor-pointer">
+                        <Upload size={12} /> Upload
+                      </button>
+                    )}
+                  </div>
 
-                {loading ? (
-                  <div className="py-12 text-center text-gray-400 space-y-2">
-                    <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
-                    <p className="text-xs font-mono">Loading Notes...</p>
-                  </div>
-                ) : notes.length === 0 ? (
-                  <div className="py-12 text-center text-gray-500">
-                    <FileText className="mx-auto mb-2 opacity-30" size={36} />
-                    <p className="text-sm">Expand the Notes Library</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {notes.map(mat => (
-                      <div key={mat.id} className="p-3 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between transition-all group">
-                        <div className="min-w-0 pr-2">
-                          <p className="text-sm text-white font-medium truncate" title={`${subjectName} ${mat.title}`} aria-label={`${subjectName} ${mat.title}`}>{mat.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-gray-500 font-semibold truncate">{mat.fileName}</span>
-                            {getStatusBadge(mat.status)}
+                  {loading ? (
+                    <div className="py-12 text-center text-gray-400 space-y-2">
+                      <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
+                      <p className="text-xs font-mono">Loading Notes...</p>
+                    </div>
+                  ) : notes.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500">
+                      <FileText className="mx-auto mb-2 opacity-30" size={36} />
+                      <p className="text-sm">Expand the Notes Library</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notes.map(mat => (
+                        <div key={mat.id} className="p-3 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between transition-all group">
+                          <div className="min-w-0 pr-2">
+                            <p className="text-sm text-white font-medium truncate" title={`${subjectName} ${mat.title}`} aria-label={`${subjectName} ${mat.title}`}>{mat.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] text-gray-500 font-semibold truncate">{mat.fileName}</span>
+                              {getStatusBadge(mat.status)}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-center gap-1.5 shrink-0">
+                            <button 
+                              onClick={() => handlePreviewClick(mat)} 
+                              className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
+                              title={`Preview ${subjectName} ${mat.title}`} 
+                              aria-label={`Preview ${subjectName} ${mat.title}`}
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button 
+                              disabled={downloadingId === mat.id}
+                              onClick={() => handleDownloadMaterial(mat)} 
+                              className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                                downloadedId === mat.id
+                                  ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                  : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
+                              }`}
+                              title={
+                                downloadingId === mat.id
+                                  ? "Downloading..."
+                                  : downloadedId === mat.id
+                                  ? "Downloaded"
+                                  : `Download ${subjectName} ${mat.title}`
+                              }
+                              aria-label={`Download ${subjectName} ${mat.title}`}
+                            >
+                              {downloadingId === mat.id ? (
+                                <Loader2 size={14} className="text-purple-400 animate-spin" />
+                              ) : downloadedId === mat.id ? (
+                                <Check size={14} className="text-emerald-400" />
+                              ) : (
+                                <Download size={14} />
+                              )}
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center justify-center gap-1.5 shrink-0">
-                          <button 
-                            onClick={() => handlePreviewClick(mat)} 
-                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
-                            title={`Preview ${subjectName} ${mat.title}`} 
-                            aria-label={`Preview ${subjectName} ${mat.title}`}
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button 
-                            disabled={downloadingId === mat.id}
-                            onClick={() => handleDownloadMaterial(mat)} 
-                            className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
-                              downloadedId === mat.id
-                                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                                : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
-                            }`}
-                            title={
-                              downloadingId === mat.id
-                                ? "Downloading..."
-                                : downloadedId === mat.id
-                                ? "Downloaded"
-                                : `Download ${subjectName} ${mat.title}`
-                            }
-                            aria-label={`Download ${subjectName} ${mat.title}`}
-                          >
-                            {downloadingId === mat.id ? (
-                              <Loader2 size={14} className="text-purple-400 animate-spin" />
-                            ) : downloadedId === mat.id ? (
-                              <Check size={14} className="text-emerald-400" />
-                            ) : (
-                              <Download size={14} />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Important Questions Section */}
-            <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <HelpCircle className="text-purple-400" /> Key Questions & Guides
-                  </h2>
-                  {user && (
-                    <button onClick={() => openUploadModal("questions")} className="text-xs text-purple-400 hover:text-white flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 hover:bg-purple-500/20 transition-all cursor-pointer">
-                      <Upload size={12} /> Upload
-                    </button>
-                  )}
-                </div>
+            {activeSections.includes("questions") && (
+              <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <HelpCircle className="text-purple-400" /> Key Questions & Guides
+                    </h2>
+                    {user && (
+                      <button onClick={() => openUploadModal("questions")} className="text-xs text-purple-400 hover:text-white flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 hover:bg-purple-500/20 transition-all cursor-pointer">
+                        <Upload size={12} /> Upload
+                      </button>
+                    )}
+                  </div>
 
-                {loading ? (
-                  <div className="py-12 text-center text-gray-400 space-y-2">
-                    <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
-                    <p className="text-xs font-mono">Loading Key Questions...</p>
-                  </div>
-                ) : questions.length === 0 ? (
-                  <div className="py-12 text-center text-gray-500">
-                    <FileText className="mx-auto mb-2 opacity-30" size={36} />
-                    <p className="text-sm">Build the Exam Guide</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {questions.map(mat => (
-                      <div key={mat.id} className="p-3 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between transition-all group">
-                        <div className="min-w-0 pr-2">
-                          <p className="text-sm text-white font-medium truncate" title={`${subjectName} ${mat.title}`} aria-label={`${subjectName} ${mat.title}`}>{mat.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-gray-500 font-semibold truncate">{mat.fileName}</span>
-                            {getStatusBadge(mat.status)}
+                  {loading ? (
+                    <div className="py-12 text-center text-gray-400 space-y-2">
+                      <Loader2 className="animate-spin text-purple-400 mx-auto" size={24} />
+                      <p className="text-xs font-mono">Loading Key Questions...</p>
+                    </div>
+                  ) : questions.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500">
+                      <FileText className="mx-auto mb-2 opacity-30" size={36} />
+                      <p className="text-sm">Build the Exam Guide</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {questions.map(mat => (
+                        <div key={mat.id} className="p-3 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between transition-all group">
+                          <div className="min-w-0 pr-2">
+                            <p className="text-sm text-white font-medium truncate" title={`${subjectName} ${mat.title}`} aria-label={`${subjectName} ${mat.title}`}>{mat.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] text-gray-500 font-semibold truncate">{mat.fileName}</span>
+                              {getStatusBadge(mat.status)}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-center gap-1.5 shrink-0">
+                            <button 
+                              onClick={() => handlePreviewClick(mat)} 
+                              className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
+                              title={`Preview ${subjectName} ${mat.title}`} 
+                              aria-label={`Preview ${subjectName} ${mat.title}`}
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button 
+                              disabled={downloadingId === mat.id}
+                              onClick={() => handleDownloadMaterial(mat)} 
+                              className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
+                                downloadedId === mat.id
+                                  ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                                  : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
+                              }`}
+                              title={
+                                downloadingId === mat.id
+                                  ? "Downloading..."
+                                  : downloadedId === mat.id
+                                  ? "Downloaded"
+                                  : `Download ${subjectName} ${mat.title}`
+                              }
+                              aria-label={`Download ${subjectName} ${mat.title}`}
+                            >
+                              {downloadingId === mat.id ? (
+                                <Loader2 size={14} className="text-purple-400 animate-spin" />
+                              ) : downloadedId === mat.id ? (
+                                <Check size={14} className="text-emerald-400" />
+                              ) : (
+                                <Download size={14} />
+                              )}
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center justify-center gap-1.5 shrink-0">
-                          <button 
-                            onClick={() => handlePreviewClick(mat)} 
-                            className="p-2.5 text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10 rounded-xl transition-all border border-white/5 cursor-pointer" 
-                            title={`Preview ${subjectName} ${mat.title}`} 
-                            aria-label={`Preview ${subjectName} ${mat.title}`}
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button 
-                            disabled={downloadingId === mat.id}
-                            onClick={() => handleDownloadMaterial(mat)} 
-                            className={`p-2.5 rounded-xl transition-all border border-white/5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
-                              downloadedId === mat.id
-                                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                                : "text-gray-400 hover:text-purple-400 bg-white/5 hover:bg-purple-500/10"
-                            }`}
-                            title={
-                              downloadingId === mat.id
-                                ? "Downloading..."
-                                : downloadedId === mat.id
-                                ? "Downloaded"
-                                : `Download ${subjectName} ${mat.title}`
-                            }
-                            aria-label={`Download ${subjectName} ${mat.title}`}
-                          >
-                            {downloadingId === mat.id ? (
-                              <Loader2 size={14} className="text-purple-400 animate-spin" />
-                            ) : downloadedId === mat.id ? (
-                              <Check size={14} className="text-emerald-400" />
-                            ) : (
-                              <Download size={14} />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         )}

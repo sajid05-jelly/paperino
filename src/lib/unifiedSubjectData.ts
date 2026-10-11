@@ -10,6 +10,7 @@ export interface UnifiedSubject {
   departmentId: string; // e.g. 'btech', 'mca', 'cse'
   departmentName?: string; // e.g. 'Bachelor of Technology', 'Master of Computer Applications'
   semesterId: string; // e.g. '1', '2'
+  sections?: string[];
   status?: string;
   updatedAt?: any;
   createdAt?: any;
@@ -203,6 +204,7 @@ export const getAllUnifiedData = cache(async (
             departmentId: deptId,
             departmentName: deptObj ? deptObj.name : deptId.toUpperCase(),
             semesterId: semId,
+            sections: Array.isArray(s.sections) ? s.sections : undefined,
             status: s.status || "approved",
             updatedAt: serializeTimestamp(s.updatedAt || s.createdAt),
             createdAt: serializeTimestamp(s.createdAt),

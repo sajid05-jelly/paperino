@@ -127,6 +127,11 @@ export default function AdminUploadPage() {
   const selectedDeptObj = approvedDepts.find(d => d.id === formData.department);
   const semCount = selectedDeptObj?.totalSemesters || 8;
   const currentSubjects = (dynamicSubjects[formData.department]?.[formData.semester] || []).filter(s => s.status !== "pending");
+  const selectedSubject = currentSubjects.find(s => s.id === formData.subject);
+  const allowedCategories: string[] = (selectedSubject?.sections && selectedSubject.sections.length > 0)
+    ? selectedSubject.sections
+    : ["pyq", "notes", "questions"];
+
   const pendingCount = fileEntries.filter(f => f.status === "pending").length;
   const doneCount = fileEntries.filter(f => f.status === "done").length;
   const errorCount = fileEntries.filter(f => f.status === "error").length;
@@ -168,10 +173,21 @@ export default function AdminUploadPage() {
         {/* Category */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">Category (applies to all files)</label>
-          <select name="category" value={formData.category} onChange={handleChange} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-purple-500 cursor-pointer">
-            <option value="pyq" className="bg-[#0a0714] text-white">Previous Year Question Papers</option>
-            <option value="notes" className="bg-[#0a0714] text-white">Study Notes</option>
-            <option value="questions" className="bg-[#0a0714] text-white">Important Questions</option>
+          <select 
+            name="category" 
+            value={allowedCategories.includes(formData.category) ? formData.category : (allowedCategories[0] || "pyq")} 
+            onChange={handleChange} 
+            className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-purple-500 cursor-pointer"
+          >
+            {allowedCategories.includes("pyq") && (
+              <option value="pyq" className="bg-[#0a0714] text-white">Previous Year Question Papers (PYQs)</option>
+            )}
+            {allowedCategories.includes("notes") && (
+              <option value="notes" className="bg-[#0a0714] text-white">Study Notes</option>
+            )}
+            {allowedCategories.includes("questions") && (
+              <option value="questions" className="bg-[#0a0714] text-white">Important Questions</option>
+            )}
           </select>
         </div>
 
