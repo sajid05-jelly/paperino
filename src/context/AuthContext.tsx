@@ -276,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsContributorPlus(contribPlus);
 
             let activePremium = false;
-            if (data.premiumEndDate) {
+            if (false && data.premiumEndDate) {
               const now = new Date();
               const end = data.premiumEndDate.toDate ? data.premiumEndDate.toDate() : new Date(data.premiumEndDate);
               if (now <= end) {
@@ -303,7 +303,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // the signed custom claims from the server are the ultimate source of truth.
             try {
               const tokenResult = await currentUser.getIdTokenResult();
-              if (tokenResult.claims && tokenResult.claims.plan && tokenResult.claims.plan !== "free") {
+              const claimSubStatus = ((tokenResult.claims?.razorpaySubscriptionStatus as string) || "").toLowerCase();
+              const isClaimCancelled = ["cancelled", "canceled", "halted", "completed", "expired", "inactive"].includes(claimSubStatus);
+              if (!isClaimCancelled && tokenResult.claims && tokenResult.claims.plan && tokenResult.claims.plan !== "free") {
                 const claimPlan = tokenResult.claims.plan as PlanType;
                 console.log("Server Claims override plan to:", claimPlan);
                 setPlan(claimPlan);

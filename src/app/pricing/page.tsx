@@ -311,7 +311,7 @@ export default function PricingPage() {
               <span className="text-xs text-gray-400 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full inline-flex items-center gap-2">
                 <span>Signed in as <strong className="text-white">{user.email}</strong></span>
                 <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                <span className="capitalize text-purple-300 font-bold">Current: {plan}</span>
+                <span className="capitalize text-purple-300 font-bold">Current Plan: {plan === "free" ? "Free" : `Paperino ${plan.toUpperCase()}`}</span>
                 {isContributorPlus && (
                   <span className="text-emerald-400 font-semibold">(Free Plus Contributor)</span>
                 )}
@@ -338,8 +338,8 @@ export default function PricingPage() {
         {/* Pricing Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((p) => {
-            const isCurrent = plan === p.id && (!isContributorPlus || p.id === "plus");
-            const isContribPlusCard = p.id === "plus" && isContributorPlus;
+            const isCurrent = plan === p.id;
+            const isContribPlusCard = p.id === "plus" && isContributorPlus && plan === "plus";
 
             return (
               <div
@@ -409,9 +409,9 @@ export default function PricingPage() {
                 <div>
                   <button
                     onClick={() => handlePlanClick(p)}
-                    disabled={isCurrent || isContribPlusCard || isLoadingPlan !== null}
+                    disabled={isCurrent || p.id === "free" || isLoadingPlan !== null}
                     className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      isCurrent || isContribPlusCard || isLoadingPlan !== null
+                      isCurrent || p.id === "free" || isLoadingPlan !== null
                         ? "bg-white/10 text-gray-400 cursor-default border border-white/10"
                         : p.popular
                         ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_25px_rgba(168,85,247,0.35)] hover:scale-[1.02]"
@@ -423,16 +423,18 @@ export default function PricingPage() {
                         <svg className="animate-spin h-3.5 w-3.5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>Processing...</span>
                       </>
-                    ) : isCurrent ? (
-                      <>
-                        <ShieldCheck size={14} className="text-purple-400" />
-                        <span>Current Plan</span>
-                      </>
                     ) : isContribPlusCard ? (
                       <>
                         <Gift size={14} className="text-emerald-400" />
                         <span>Active (Contributor)</span>
                       </>
+                    ) : isCurrent ? (
+                      <>
+                        <ShieldCheck size={14} className="text-purple-400" />
+                        <span>Current Plan</span>
+                      </>
+                    ) : p.id === "free" ? (
+                      <span>Free Tier</span>
                     ) : (
                       <>
                         <span>{p.cta}</span>

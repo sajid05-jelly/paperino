@@ -8,7 +8,7 @@ import Link from "next/link";
 import { 
   Trophy, FileText, Edit2, Download, Copy, CheckCircle2, 
   Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles, 
-  Bell, Trash2, Info, Plus, Upload 
+  Bell, Trash2, Info, Plus, Upload, Gift 
 } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { getDownloadHref, triggerSecureDownload } from "@/lib/driveUtils";
@@ -123,11 +123,11 @@ export default function ContributorDashboardPage() {
   const rejectedCount = materials.filter(m => m.status === "rejected").length;
 
   // Next Milestone Target
-  let nextMilestone = 5;
-  if (approvedCount >= 20) nextMilestone = 20;
-  else if (approvedCount >= 15) nextMilestone = 20;
-  else if (approvedCount >= 10) nextMilestone = 15;
-  else if (approvedCount >= 5) nextMilestone = 10;
+  const nextMilestone = 10;
+  // Milestone fixed to 10 for Free Plus reward
+
+
+
 
   const uploadsRemaining = Math.max(0, nextMilestone - approvedCount);
   const progressPercent = Math.min(100, (approvedCount / nextMilestone) * 100);
@@ -210,9 +210,9 @@ export default function ContributorDashboardPage() {
           <div className="flex justify-between items-center text-xs">
             <span className="text-gray-400 font-medium flex items-center gap-1.5">
               <Trophy size={14} className="text-yellow-400" />
-              Next reward: <strong className="text-white">+{nextMilestone === 20 ? "30 Days Bonus" : "10 Days Premium"}</strong>
+              Next reward: <strong className="text-white">Plus Plan FREE 🎁</strong>
             </span>
-            <span className="text-fuchsia-400 font-bold">{uploadsRemaining} Approved Uploads Left</span>
+            <span className="text-fuchsia-400 font-bold">{uploadsRemaining} Approved Materials Left</span>
           </div>
           
           <div className="w-full bg-black/50 border border-white/5 h-2.5 rounded-full overflow-hidden p-0.5">
@@ -224,15 +224,15 @@ export default function ContributorDashboardPage() {
           
           <div className="flex justify-between text-[10px] text-gray-500 font-bold">
             <span>{approvedCount} Approved</span>
-            <span>{nextMilestone} Goal</span>
+            <span>10 Goal for Free Plus</span>
           </div>
         </div>
       ) : (
-        <div className="vision-glass p-6 rounded-3xl border border-yellow-500/20 bg-yellow-500/5 flex items-center gap-4">
-          <Trophy className="text-yellow-400 animate-bounce" size={24} />
+        <div className="vision-glass p-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 flex items-center gap-4">
+          <Gift className="text-emerald-400 animate-bounce" size={24} />
           <div>
-            <h4 className="text-sm font-bold text-white">Elite Contributor Achieved!</h4>
-            <p className="text-xs text-gray-400">You have completed all standard reward milestones. Thank you for building the community!</p>
+            <h4 className="text-sm font-bold text-white">Free Plus Plan Active! 🎁</h4>
+            <p className="text-xs text-gray-400">You have shared 10+ genuine approved materials with the community. Enjoy the Plus plan for free!</p>
           </div>
         </div>
       )}
@@ -313,24 +313,24 @@ export default function ContributorDashboardPage() {
 
                 <div className="vision-glass p-5 rounded-2xl border border-white/5 space-y-3">
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Sparkles className="text-amber-400" size={16} /> Milestone Rewards
+                    <Gift className="text-emerald-400" size={16} /> Contributor Reward Policy
                   </h4>
                   <ul className="text-xs text-gray-400 space-y-2 list-none pl-1">
                     <li className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>5 Approved Uploads:</strong> Unlocks +10 Days Premium</span>
+                      <span><strong>10+ Approved Materials:</strong> Unlocks Paperino Plus Plan FREE 🎁</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>10 Approved Uploads:</strong> Unlocks +10 Days Premium</span>
+                      <span><strong>Genuine Quality:</strong> Fake, duplicate, or low-quality uploads will not qualify.</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>15 Approved Uploads:</strong> Unlocks +10 Days Premium</span>
+                      <span><strong>Plus Only:</strong> Contributor rewards strictly grant Plus. Paid Pro and Premium remain paid subscriptions.</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>20 Approved Uploads:</strong> Unlocks +30 Days Premium</span>
+                      <span><strong>Community Sharing:</strong> Share knowledge, support fellow students, and unlock perks!</span>
                     </li>
                   </ul>
                 </div>
@@ -339,13 +339,13 @@ export default function ContributorDashboardPage() {
               {/* Suggestions, Premium Benefits, Journey */}
               <div className="space-y-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Star className="text-amber-400 animate-pulse" size={20} /> Premium Benefits
+                  <Star className="text-amber-400 animate-pulse" size={20} /> Plan Benefits & Safety
                 </h3>
                 
                 <div className="bg-gradient-to-r from-fuchsia-500/10 to-transparent p-5 rounded-2xl border border-fuchsia-500/20 space-y-3">
                   <h4 className="text-sm font-bold text-white">Daily Limits Safe Guard</h4>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Active premium accounts get safe limits of <strong>1000 credits/day</strong> for ATS Analyzer and PYQ Analyzer tools, displayed as "Premium Unlimited".
+                    Active paid accounts receive elevated limits for ATS and PYQ Analyzer tools, with unlimited power on Premium.
                   </p>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, X, Loader2, Award, Sparkles, BookOpen, Plus, Info, Zap, Users } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, X, Loader2, Award, Sparkles, BookOpen, Plus, Info, Zap, Users, Gift } from "lucide-react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -262,7 +262,7 @@ export default function ContributorUploadPage() {
                 <div className="w-5 h-5 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
                   <Sparkles size={12} />
                 </div>
-                Unlock Premium Rewards
+                Unlock Free Plus Plan 🎁
               </div>
               <div className="flex items-center gap-2.5 text-xs font-semibold text-cyan-300">
                 <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
@@ -302,14 +302,14 @@ export default function ContributorUploadPage() {
             
             <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-3.5 space-y-2">
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles size={12} /> Premium Benefits
+                <Gift size={12} /> Contributor Reward Policy
               </p>
               <ul className="text-[10px] text-gray-400 space-y-1 list-disc list-inside">
-                <li>5 Approved Uploads = 10 Days Premium</li>
-                <li>10 Approved Uploads = 10 Days Premium</li>
-                <li>15 Approved Uploads = 10 Days Premium</li>
-                <li>20 Approved Uploads = 30 Days Premium</li>
-                <li>Unlocks 1000 daily credits on AI Tools</li>
+                <li>10+ Approved Materials = Plus Plan FREE 🎁</li>
+                <li>Fake or low-quality materials won’t count</li>
+                <li>Only genuine, useful contributions qualify</li>
+                <li>Rewards grant Plus only — Pro & Premium are paid</li>
+                <li>Higher recognition tiers: Active & Elite Contributor</li>
               </ul>
             </div>
           </div>

@@ -19,7 +19,7 @@ import Link from "next/link";
 import SafeBackButton from "@/components/SafeBackButton";
 
 export default function AvatarStudioPage() {
-  const { user, isAdmin, plan, canAccess, paperinoAvatar, setPaperinoAvatar } = useAuth();
+  const { user, isAdmin, plan, isContributorPlus, canAccess, paperinoAvatar, setPaperinoAvatar } = useAuth();
   const { showPlanGate } = usePlanGate();
   
   // Customization State
@@ -177,12 +177,35 @@ export default function AvatarStudioPage() {
               companionId={previewCompanion} 
               size={48} 
               className="scale-125"
+              plan={plan}
             />
           </div>
 
           <div className="space-y-1 mb-8">
             <div className="text-xl font-extrabold text-white flex items-center justify-center gap-2">
               {user?.displayName || "Scholar"}
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              {plan === "premium" && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_15px_rgba(245,158,11,0.5)] border border-yellow-300">
+                  PREMIUM
+                </span>
+              )}
+              {plan === "pro" && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.5)] border border-cyan-400/40">
+                  PRO
+                </span>
+              )}
+              {plan === "plus" && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)] border border-purple-400/40">
+                  PLUS {isContributorPlus ? "(Contributor)" : ""}
+                </span>
+              )}
+              {plan === "free" && (
+                <span className="text-[10px] font-semibold tracking-wider px-3 py-1 rounded-full bg-white/10 text-gray-300 border border-white/10">
+                  FREE PLAN
+                </span>
+              )}
             </div>
             {/* Temporarily disabled for launch
             <div className="text-xs text-violet-400 font-bold tracking-wider uppercase">

@@ -322,43 +322,19 @@ export default function AdminReviewsPage() {
           
           const updates: Record<string, any> = {
             uploads: currentUploads,
+            approvedUploads: currentUploads,
             points: increment(10), // legacy backwards compatibility
             contributionPoints: currentPoints
           };
 
-          // Premium Rewarding Stacking Rules
-          let premiumDurationDays = 0;
-          if (currentUploads === 5) premiumDurationDays = 10;
-          else if (currentUploads === 10) premiumDurationDays = 10;
-          else if (currentUploads === 15) premiumDurationDays = 10;
-          else if (currentUploads === 20) premiumDurationDays = 30; // 30 Days bonus
-
-          if (premiumDurationDays > 0) {
-            const now = new Date();
-            let currentPremiumEnd = udata.premiumEndDate?.toDate ? udata.premiumEndDate.toDate() : (udata.premiumEndDate ? new Date(udata.premiumEndDate) : null);
-            
-            let premiumStartDate = now;
-            let premiumEndDate = new Date();
-
-            if (currentPremiumEnd && currentPremiumEnd > now) {
-              // Stack premium if already active
-              premiumStartDate = udata.premiumStartDate?.toDate ? udata.premiumStartDate.toDate() : new Date(udata.premiumStartDate);
-              premiumEndDate = new Date(currentPremiumEnd.getTime() + (premiumDurationDays * 24 * 60 * 60 * 1000));
-            } else {
-              // Start fresh premium
-              premiumEndDate = new Date(now.getTime() + (premiumDurationDays * 24 * 60 * 60 * 1000));
-            }
-
-            updates.premiumStartDate = premiumStartDate;
-            updates.premiumEndDate = premiumEndDate;
-
-            // Notify user about Premium
+          // Contributor Reward Milestone: 10+ Approved Materials = Plus Plan FREE
+          if (currentUploads === 10) {
             await notifyUser(
               db,
               mat.uploaderId,
-              "Premium Unlocked! 🚀",
-              `Congrats! Your ${currentUploads}th approved upload unlocked +${premiumDurationDays} Days of Premium benefits!`,
-              "premium_unlocked"
+              "Free Plus Plan Unlocked! 🎁",
+              "Congrats! You have shared 10 approved materials with the community and unlocked the Paperino Plus plan for FREE!",
+              "plus_unlocked"
             );
           }
 

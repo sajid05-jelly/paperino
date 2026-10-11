@@ -44,7 +44,9 @@ export async function verifyFeatureAccess(
     let effectivePlanObj = getEffectivePlan(userData);
     
     // Override db plan with token plan if token plan is higher/exists (similar to download API)
-    if (planClaim && planClaim !== "free") {
+    const claimSubStatus = ((decodedToken.razorpaySubscriptionStatus as string) || (userData?.razorpaySubscriptionStatus as string) || "").toLowerCase();
+    const isClaimCancelled = ["cancelled", "canceled", "halted", "completed", "expired", "inactive"].includes(claimSubStatus);
+    if (!isClaimCancelled && planClaim && planClaim !== "free") {
         effectivePlanObj.plan = planClaim;
     }
 

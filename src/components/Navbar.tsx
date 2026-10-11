@@ -487,16 +487,25 @@ export default function Navbar() {
               <div className="flex items-center gap-2 lg:gap-3">
                 <Link 
                   href="/avatar-studio" 
-                  className="flex flex-shrink-0 items-center gap-2.5 group p-1 pr-3.5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all cursor-pointer overflow-hidden"
+                  className="flex flex-shrink-0 items-center gap-2 group p-1 pr-3 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-all cursor-pointer"
                   title="Avatar Studio"
                   aria-label="Avatar Studio"
                 >
-                  <div className="flex items-center justify-center flex-shrink-0 relative overflow-hidden rounded-full border border-white/10 w-8 h-8">
+                  <div className="flex items-center justify-center flex-shrink-0 relative rounded-full border border-white/10 w-8 h-8">
                     <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={7} plan={plan} />
                   </div>
                   <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors hidden sm:block max-w-[80px] xl:max-w-[100px] truncate">
                     {user.displayName?.split(' ')[0] || 'Student'}
                   </span>
+                  {plan === "premium" && (
+                    <span className="hidden sm:inline-block text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_8px_#f59e0b]">PREM</span>
+                  )}
+                  {plan === "pro" && (
+                    <span className="hidden sm:inline-block text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.5)]">PRO</span>
+                  )}
+                  {plan === "plus" && (
+                    <span className="hidden sm:inline-block text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-[0_0_8px_rgba(168,85,247,0.5)]">PLUS</span>
+                  )}
                 </Link>
                 <div className="hidden md:flex items-center flex-shrink-0">
                   <button 
@@ -871,12 +880,37 @@ export default function Navbar() {
                   Log In
                 </Link>
               ) : (
-                <button
-                  onClick={() => { setIsMobileMenuOpen(false); logout(); }}
-                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 px-6 py-3 text-gray-300 hover:text-red-400 text-sm font-bold transition-all duration-300"
-                >
-                  <LogOut size={15} /> Log Out
-                </button>
+                <div className="space-y-2.5">
+                  <Link
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    href="/avatar-studio"
+                    className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/10"
+                  >
+                    <UserAvatar avatarId={paperinoAvatar} frameId={avatarFrame} companionId="none" size={10} plan={plan} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-white truncate">{user.displayName || "Student"}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+                    </div>
+                    {plan === "premium" && (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_8px_#f59e0b]">PREM</span>
+                    )}
+                    {plan === "pro" && (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.5)]">PRO</span>
+                    )}
+                    {plan === "plus" && (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-[0_0_8px_rgba(168,85,247,0.5)]">PLUS</span>
+                    )}
+                    {plan === "free" && (
+                      <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-white/10 text-gray-400">FREE</span>
+                    )}
+                  </Link>
+                  <button
+                    onClick={() => { setIsMobileMenuOpen(false); logout(); }}
+                    className="flex items-center justify-center gap-2 w-full rounded-xl bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 px-6 py-2.5 text-gray-300 hover:text-red-400 text-xs font-bold transition-all duration-300"
+                  >
+                    <LogOut size={14} /> Log Out
+                  </button>
+                </div>
               )}
             </div>
           </div>

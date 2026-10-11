@@ -27,6 +27,7 @@ export type NotificationType =
   | "subject_approved"
   | "subject_rejected"
   | "premium_unlocked"
+  | "plus_unlocked"
   | "free_class_reported"
   | "free_class_expired";
 

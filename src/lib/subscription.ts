@@ -176,17 +176,18 @@ export function getCurrentMonthKey(): string {
 }
 
 /**
- * Checks if user is eligible for Free Plus via approved contributions (> 10 approved materials)
+ * Checks if user is eligible for Free Plus via approved contributions (>= 10 genuine approved materials)
  */
 export function isContributorPlusEligible(userData?: { uploads?: number; approvedUploads?: number } | null): boolean {
   if (!userData) return false;
-  // Strictly requires more than 10 genuine approved materials
-  const approved = userData.uploads ?? userData.approvedUploads ?? 0;
-  return approved > 10;
+  // Strictly requires 10 or more genuine approved materials
+  const approved = userData.approvedUploads !== undefined ? userData.approvedUploads : (userData.uploads ?? 0);
+  return approved >= 10;
 }
 
 /**
- * Calculates effective user plan considering admin status, paid subscription, and contributor eligibility
+ * Calculates effective user plan considering admin status, verified paid subscription, and contributor eligibility.
+ * Single source of truth across client, server, and entitlement checks.
  */
 export function getEffectivePlan(userData?: any): {
   plan: PlanType;
@@ -202,30 +203,25 @@ export function getEffectivePlan(userData?: any): {
     return { plan: "premium", isContributorPlus: false, isPaidPlan: false };
   }
 
-  // Direct active subscription check (ready for future payment webhook updates)
-  const subStatus = userData.razorpaySubscriptionStatus || userData.subscriptionStatus;
+  const subStatus = (userData.razorpaySubscriptionStatus || userData.subscriptionStatus || "").toLowerCase();
   const rawPlan = (userData.plan || "").toLowerCase();
+  const isCancelledOrInactive = ["cancelled", "canceled", "halted", "completed", "expired", "inactive"].includes(subStatus);
 
-  if (rawPlan === "premium" && (subStatus === "active" || !subStatus)) {
-    return { plan: "premium", isContributorPlus: false, isPaidPlan: true };
-  }
-  if (rawPlan === "pro" && (subStatus === "active" || !subStatus)) {
-    return { plan: "pro", isContributorPlus: false, isPaidPlan: true };
-  }
-  if (rawPlan === "plus" && (subStatus === "active" || !subStatus)) {
-    return { plan: "plus", isContributorPlus: false, isPaidPlan: true };
-  }
-
-  // Legacy active premium date (if any)
-  if (userData.premiumEndDate) {
-    const now = new Date();
-    const end = userData.premiumEndDate.toDate ? userData.premiumEndDate.toDate() : new Date(userData.premiumEndDate);
-    if (now <= end) {
+  // Active verified paid subscription takes precedence over contributor rewards
+  if (!isCancelledOrInactive) {
+    if (rawPlan === "premium" && (subStatus === "active" || !subStatus)) {
       return { plan: "premium", isContributorPlus: false, isPaidPlan: true };
+    }
+    if (rawPlan === "pro" && (subStatus === "active" || !subStatus)) {
+      return { plan: "pro", isContributorPlus: false, isPaidPlan: true };
+    }
+    if (rawPlan === "plus" && (subStatus === "active" || !subStatus)) {
+      return { plan: "plus", isContributorPlus: false, isPaidPlan: true };
     }
   }
 
-  // Contributor Free Plus Rule: 10+ approved materials
+  // Contributor Free Plus Rule: exactly 10+ genuine approved materials get Plus plan FREE
+  // Never grants Pro or Premium based on contributor uploads
   if (isContributorPlusEligible(userData)) {
     return { plan: "plus", isContributorPlus: true, isPaidPlan: false };
   }
