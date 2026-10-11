@@ -348,7 +348,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     isContributor: boolean = false,
     contributorId?: string,
     contributorName?: string,
-    sections: string[] = ["pyq", "notes", "questions"]
+    sections: string[] = []
   ): Promise<string> => {
     const generatedId = code 
       ? code.toLowerCase().trim().replace(/[^a-z0-9]/g, "") 

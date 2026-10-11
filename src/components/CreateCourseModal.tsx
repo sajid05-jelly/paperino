@@ -49,7 +49,7 @@ export default function CreateCourseModal({
   const [semester, setSemester] = useState("1");
   const [subjectName, setSubjectName] = useState("");
   const [subjectCode, setSubjectCode] = useState("");
-  const [selectedSections, setSelectedSections] = useState<string[]>(["pyq", "notes", "questions"]);
+  const [selectedSections, setSelectedSections] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -76,7 +76,7 @@ export default function CreateCourseModal({
       setSemester(initialSemester || "1");
       setSubjectName("");
       setSubjectCode("");
-      setSelectedSections(["pyq", "notes", "questions"]);
+      setSelectedSections([]);
       
       setError("");
       setSuccess(false);
@@ -194,12 +194,6 @@ export default function CreateCourseModal({
 
       if (isDuplicate) {
         setError(`This subject already exists in ${deptDisplayName} – Semester ${semester}.`);
-        setLoading(false);
-        return;
-      }
-
-      if (selectedSections.length === 0) {
-        setError("Please select at least one material section (Question Papers, Notes, or Important Questions).");
         setLoading(false);
         return;
       }
@@ -445,8 +439,8 @@ export default function CreateCourseModal({
                       })}
                     </div>
                     {selectedSections.length === 0 && (
-                      <p className="text-xs text-rose-400 font-medium mt-1.5 animate-in fade-in">
-                        At least one section must be selected.
+                      <p className="text-xs text-gray-400 font-normal mt-1.5 animate-in fade-in">
+                        Sections can also be enabled individually on the subject page later.
                       </p>
                     )}
                   </div>

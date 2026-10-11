@@ -172,7 +172,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
         getDoc(doc(db, "dynamic_subjects", subDocId))
       ]);
 
-      let detectedSections: string[] | null = null;
+      let detectedSections: string[] = [];
       let hasExplicitConfig = false;
       const sectionTypesSet = new Set<string>();
 
@@ -204,11 +204,19 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
         console.warn("Could not query subject_sections:", secErr);
       }
 
+      let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
       if (hasExplicitConfig) {
         detectedSections = Array.from(sectionTypesSet);
+      } else {
+        // Fallback for legacy subjects without explicit section configuration:
+        // Only include categories that actually have approved materials uploaded!
+        // If no materials uploaded, detectedSections is [] (NONE enabled).
+        const categoriesWithMaterials = Array.from(
+          new Set(matList.map((m: any) => m.category).filter((c: any) => ["pyq", "notes", "questions"].includes(c)))
+        );
+        detectedSections = categoriesWithMaterials;
       }
-
-      let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       const list: any[] = [];
       
       const contributorIds = new Set<string>();
@@ -389,13 +397,12 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
   // Determine active sections:
   // 1. If subjectSections state is resolved from Firestore doc or subject_sections, use it.
   // 2. Else if subject?.sections from SubjectsContext is present, use it.
-  // 3. Fallback for legacy subjects without section configuration:
-  //    Default to all three ["pyq", "notes", "questions"], ensuring existing materials are never hidden or lost.
+  // 3. Otherwise empty array [] (never default all three sections).
   const activeSections: string[] = subjectSections !== null
     ? subjectSections
     : (subject?.sections && Array.isArray(subject.sections))
     ? subject.sections
-    : ["pyq", "notes", "questions"];
+    : [];
 
   const gridLayoutClass =
     activeSections.length === 1
@@ -434,14 +441,31 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
 
   const [creatingSection, setCreatingSection] = useState<string | null>(null);
 
+  const handleSectionClick = async (category: "pyq" | "notes" | "questions") => {
+    if (activeSections.includes(category)) {
+      // Already created: open / focus the section without creating a duplicate
+      const el = document.getElementById(`section-card-${category}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.classList.add("ring-2", "ring-purple-400/60");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-purple-400/60");
+        }, 1200);
+      }
+      return;
+    }
+
+    // Not created yet: create/enable only this specific section
+    await handleCreateSection(category);
+  };
+
   const handleCreateSection = async (category: "pyq" | "notes" | "questions") => {
     if (!user) {
-      showToast("Please sign in to create this section.", "error");
+      showToast("Please sign in to enable this section.", "error");
       return;
     }
 
     if (activeSections.includes(category)) {
-      showToast(`${SECTION_CONFIG[category].label} is already active!`, "info");
       return;
     }
 
@@ -498,11 +522,18 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
 
       // 4. Update local state immediately so section card appears right away
       setSubjectSections(prev => {
-        const base = prev !== null ? prev : (subject?.sections && Array.isArray(subject.sections) ? subject.sections : []);
+        const base = Array.isArray(prev) ? prev : [];
         return Array.from(new Set([...base, category]));
       });
 
-      showToast(`${SECTION_CONFIG[category].label} section created! You can now upload materials.`, "success");
+      showToast(`${SECTION_CONFIG[category].label} section enabled! You can now upload materials.`, "success");
+
+      setTimeout(() => {
+        const el = document.getElementById(`section-card-${category}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
     } catch (err: any) {
       console.error("Failed to create section:", err);
       showToast(err.message || "Failed to create section. Please try again.", "error");
@@ -652,57 +683,47 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
           />
         </div>
 
-        {/* ── Section Launcher & Status Bar ── */}
+        {/* ── Material Categories / Section Options ── */}
         {!fetchError && (
-          <div className="mb-8 p-4 rounded-2xl vision-glass border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Subject Sections:</span>
-              <span className="text-xs text-purple-300 font-mono font-semibold">
-                {activeSections.length}/3 Enabled
-              </span>
-            </div>
+          <div className="mb-8 flex flex-wrap items-center gap-2.5">
+            {ALL_SECTION_KEYS.map((key) => {
+              const conf = SECTION_CONFIG[key];
+              const Icon = conf.icon;
+              const isEnabled = activeSections.includes(key);
+              const isCreating = creatingSection === key;
+              const count = key === "pyq" ? pyqs.length : key === "notes" ? notes.length : questions.length;
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              {ALL_SECTION_KEYS.map((key) => {
-                const conf = SECTION_CONFIG[key];
-                const Icon = conf.icon;
-                const isActive = activeSections.includes(key);
-                const count = key === "pyq" ? pyqs.length : key === "notes" ? notes.length : questions.length;
-                const isCreating = creatingSection === key;
-
-                if (isActive) {
-                  return (
-                    <div
-                      key={key}
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border ${conf.bg}`}
-                    >
-                      <Icon size={14} className={conf.color} />
-                      <span>{conf.label}</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40 font-mono text-gray-300">
-                        {count}
-                      </span>
-                    </div>
-                  );
-                }
-
-                return (
-                  <button
-                    key={key}
-                    onClick={() => handleCreateSection(key)}
-                    disabled={isCreating}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-white/20 bg-white/[0.03] hover:bg-white/[0.08] text-gray-300 hover:text-white transition-all cursor-pointer ${conf.btnColor}`}
-                    title={`Click to create ${conf.label} section for this subject`}
-                  >
-                    {isCreating ? (
-                      <Loader2 size={13} className="animate-spin text-purple-400" />
-                    ) : (
-                      <Plus size={13} className={conf.color} />
-                    )}
-                    <span>Create {conf.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+              return (
+                <button
+                  key={key}
+                  id={`section-btn-${key}`}
+                  onClick={() => handleSectionClick(key)}
+                  disabled={isCreating}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                    isEnabled
+                      ? "bg-purple-600/15 border-purple-500/40 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:bg-purple-600/25"
+                      : "bg-white/[0.03] hover:bg-white/[0.08] border-white/10 text-gray-400 hover:text-white"
+                  }`}
+                  title={isEnabled ? `${conf.label} (Active - ${count} items)` : `Click to enable ${conf.label}`}
+                >
+                  {isCreating ? (
+                    <Loader2 size={13} className="animate-spin text-purple-400" />
+                  ) : (
+                    <Icon size={14} className={isEnabled ? conf.color : "text-gray-400"} />
+                  )}
+                  <span>{conf.label}</span>
+                  {isEnabled ? (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold">
+                      {count}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/5 text-gray-400 border border-white/10">
+                      + Enable
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -721,9 +742,9 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
           <div className="py-14 text-center max-w-2xl mx-auto vision-glass p-8 rounded-3xl border border-white/10 animate-in fade-in duration-500 space-y-6">
             <div>
               <FileText className="mx-auto mb-3 text-purple-400/60" size={42} />
-              <h3 className="text-xl font-bold text-white mb-2">No Material Sections Yet</h3>
+              <h3 className="text-xl font-bold text-white mb-2">No Material Sections Enabled Yet</h3>
               <p className="text-xs text-gray-400 max-w-md mx-auto">
-                Click any section below to create it immediately and start uploading materials:
+                Click any section option above (Question Papers, Notes, or Important Questions) to enable it for this subject and start uploading materials:
               </p>
             </div>
 
@@ -751,7 +772,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
                       {conf.label}
                     </span>
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <Plus size={10} /> Create Section
+                      <Plus size={10} /> Enable Section
                     </span>
                   </button>
                 );
@@ -774,7 +795,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
             
             {/* PYQ Section */}
             {activeSections.includes("pyq") && (
-              <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
+              <div id="section-card-pyq" className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)] transition-all duration-300">
                 <div>
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -853,7 +874,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
 
             {/* Notes Section */}
             {activeSections.includes("notes") && (
-              <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
+              <div id="section-card-notes" className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)] transition-all duration-300">
                 <div>
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -932,7 +953,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
 
             {/* Important Questions Section */}
             {activeSections.includes("questions") && (
-              <div className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)]">
+              <div id="section-card-questions" className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)] transition-all duration-300">
                 <div>
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
