@@ -68,6 +68,13 @@ function normalizeTitle(title: string): string {
  * Scrape events directly from Knowafest directory pages.
  * Handles both <tr> schema.org/Event structures and fallback <a> blocks.
  */
+/**
+ * Scrape events directly from Knowafest.
+ * Multi-layer strategy:
+ * 1. Modern responsive event cards (<article class="event-card">) from directory pages.
+ * 2. Official Knowafest RSS Feed (https://www.knowafest.com/feed.xml) for real-time live events.
+ * 3. Fallback table rows (<tr itemprop="Event">) for legacy mirrors.
+ */
 export async function scrapeKnowafestEvents(): Promise<{
   events: KnowafestEvent[];
   httpStatus: number;
@@ -75,30 +82,34 @@ export async function scrapeKnowafestEvents(): Promise<{
   failedSelectorReason?: string;
 }> {
   const events: KnowafestEvent[] = [];
-  const targetUrls = [
+  const seenUrls = new Set<string>();
+  const seenTitles = new Set<string>();
+
+  const targetHtmlUrls = [
     "https://www.knowafest.com/explore/upcomingfests",
-    "https://www.knowafest.com/",
+    "https://www.knowafest.com/events",
   ];
 
-  let lastHttpStatus = 0;
+  let lastHttpStatus = 200;
   let totalCardsFound = 0;
   let selectorFailReason: string | undefined;
 
-  for (const url of targetUrls) {
+  const reqHeaders = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Cache-Control": "no-cache",
+  };
+
+  // ── STRATEGY 1: Parse Modern Event Cards from HTML Pages ────────────────
+  for (const url of targetHtmlUrls) {
     try {
       console.log(`[Knowafest Scraper] Fetching ${url}...`);
       const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Cache-Control": "no-cache",
-        },
+        headers: reqHeaders,
         next: { revalidate: 0 },
       });
 
       lastHttpStatus = res.status;
-      console.log(`[Knowafest Scraper] HTTP Status for ${url}: ${res.status}`);
-
       if (!res.ok) {
         selectorFailReason = `HTTP ${res.status} returned from ${url}`;
         continue;
@@ -106,142 +117,188 @@ export async function scrapeKnowafestEvents(): Promise<{
 
       const html = await res.text();
 
-      // ── SELECTOR 1: Primary Table Rows with Schema.org/Event ──────────────
-      const trRegex = /<tr[^>]*itemtype=["']http:\/\/schema\.org\/Event["'][^>]*>([\s\S]*?)<\/tr>/gi;
-      let trMatch: RegExpExecArray | null;
-      let cardsFoundInUrl = 0;
+      // Check for <article class="event-card">
+      const cardRegex = /<article[^>]*class=["'][^"']*event-card[^"']*["'][^>]*>([\s\S]*?)<\/article>/gi;
+      let cardMatch: RegExpExecArray | null;
 
-      while ((trMatch = trRegex.exec(html)) !== null) {
-        cardsFoundInUrl++;
+      while ((cardMatch = cardRegex.exec(html)) !== null) {
         totalCardsFound++;
-        const trHtml = trMatch[0];
-        const inner = trMatch[1];
+        const cardHtml = cardMatch[1];
 
-        // Specific event detail link extraction
-        const onClickMatch = trHtml.match(/onClick=["']window\.open\(\s*['"]([^'"]+)['"]/i);
-        const relLink = onClickMatch ? onClickMatch[1].trim() : null;
-        const officialEventUrl = relLink ? (relLink.startsWith("http") ? relLink : `https://www.knowafest.com/${relLink.replace(/^\//, '')}`) : null;
+        const titleMatch = cardHtml.match(/<a[^>]*class=["'][^"']*card-title[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
+        let officialUrl = titleMatch ? titleMatch[1].trim() : null;
+        let title = titleMatch ? titleMatch[2].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim() : null;
 
-        // Skip events without specific detail URL (never use generic list URL)
-        if (!officialEventUrl || officialEventUrl.endsWith("/events") || officialEventUrl.endsWith("/upcomingfests")) {
-          continue;
+        if (!officialUrl) {
+          const anyLink = cardHtml.match(/href=["'](https?:\/\/[^"']*\/event\/[^"']+)["']/i);
+          if (anyLink) officialUrl = anyLink[1];
         }
 
-        // Start & End Date
-        const startDateMatch = inner.match(/itemprop=["']startDate["'][^>]*>([^<]+)</i);
-        const startDate = startDateMatch ? startDateMatch[1].trim() : null;
-        const endDateMatch = inner.match(/itemprop=["']endDate["'][^>]*>([^<]+)</i);
-        const endDate = endDateMatch ? endDateMatch[1].trim() : null;
+        if (!title && cardHtml.match(/alt=["']([^"']+)["']/i)) {
+          const altMatch = cardHtml.match(/alt=["']([^"']+)["']/i);
+          title = altMatch ? altMatch[1].trim() : null;
+        }
 
-        // Title
-        const nameMatch = inner.match(/itemprop=["']name["'][^>]*>([\s\S]*?)<span/i) || inner.match(/itemprop=["']name["'][^>]*>([^<]+)</i);
-        let title = nameMatch ? nameMatch[1].replace(/&#039;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim() : null;
+        if (!title || !officialUrl) continue;
+        const norm = normalizeTitle(title);
+        if (seenTitles.has(norm) || seenUrls.has(officialUrl)) continue;
 
-        if (!title) continue;
+        const imgMatch = cardHtml.match(/<img[^>]*class=["'][^"']*event-card-image[^"']*["'][^>]*src=["']([^"']+)["']/i) || cardHtml.match(/<img[^>]*src=["']([^"']+)["']/i);
+        const coverImage = imgMatch ? imgMatch[1].trim() : null;
 
-        // Event Category
-        const typeMatch = inner.match(/<td\s*>([^<]+)<\/td>/i);
-        const rawType = typeMatch ? typeMatch[1].trim() : "Event";
-        const titleLower = title.toLowerCase();
+        const tagMatch = cardHtml.match(/<span[^>]*class=["'][^"']*tag[^"']*["'][^>]*>([^<]+)<\/span>/i);
+        const rawTag = tagMatch ? tagMatch[1].trim() : "Events";
 
         let category = "Events";
-        if (rawType.toLowerCase().includes("internship") || titleLower.includes("internship")) category = "Internships";
-        else if (rawType.toLowerCase().includes("hackathon") || titleLower.includes("hackathon")) category = "Hackathons";
-        else if (rawType.toLowerCase().includes("workshop") || titleLower.includes("workshop")) category = "Workshops";
-        else if (rawType.toLowerCase().includes("placement") || titleLower.includes("placement")) category = "Placements";
+        const tagLower = rawTag.toLowerCase();
+        const titleLower = title.toLowerCase();
+        if (tagLower.includes("hackathon") || titleLower.includes("hackathon")) category = "Hackathons";
+        else if (tagLower.includes("workshop") || titleLower.includes("workshop") || tagLower.includes("fdp")) category = "Workshops";
+        else if (tagLower.includes("internship") || titleLower.includes("internship")) category = "Internships";
+        else if (tagLower.includes("conference") || titleLower.includes("conference")) category = "Conferences";
+        else if (tagLower.includes("cultural") || tagLower.includes("cultural") || tagLower.includes("fest")) category = "Cultural";
+        else if (tagLower.includes("technical") || tagLower.includes("symposium")) category = "Technical";
+        else category = rawTag;
 
-        // Mode
-        const mode: "Online" | "Offline" | "Hybrid" =
-          titleLower.includes("online") || titleLower.includes("virtual")
-            ? "Online"
-            : titleLower.includes("hybrid")
-            ? "Hybrid"
-            : "Offline";
+        let mode: "Online" | "Offline" | "Hybrid" = "Offline";
+        if (cardHtml.toLowerCase().includes("online") || titleLower.includes("online") || titleLower.includes("virtual")) {
+          mode = "Online";
+        } else if (cardHtml.toLowerCase().includes("hybrid") || titleLower.includes("hybrid")) {
+          mode = "Hybrid";
+        }
 
-        // Location & Organizer
-        const locationNameMatch = inner.match(/<span\s+itemprop=["']location["'][\s\S]*?<span\s+itemprop=["']name["'][^>]*>([^<]+)</i);
-        const addressMatch = inner.match(/itemprop=["']address["'][^>]*>([\s\S]*?)<\/span>/i);
+        const collegeMatch = cardHtml.match(/<a[^>]*class=["'][^"']*college[^"']*["'][^>]*>([^<]+)<\/a>/i);
+        const college = collegeMatch ? collegeMatch[1].replace(/&#039;/g, "'").replace(/&amp;/g, '&').trim() : null;
 
-        const organizer = locationNameMatch ? locationNameMatch[1].replace(/,$/, '').trim() : null;
-        const addressRaw = addressMatch ? addressMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : null;
-
+        const metaMatches = [...cardHtml.matchAll(/<span>([◷⌖\s]*[^<]+)<\/span>/gi)].map(m => m[1].replace(/[◷⌖]/g, '').trim()).filter(Boolean);
+        let eventDate: string | null = null;
         let city: string | null = null;
-        let state: string | null = null;
-        if (addressRaw && addressRaw.includes(",")) {
-          const parts = addressRaw.split(",");
-          city = parts[0].trim();
-          state = parts[1].trim();
-        } else if (addressRaw) {
-          city = addressRaw.trim();
-        }
-
-        // Try extracting direct external registration URL if available
-        let registrationUrl: string | null = null;
-        try {
-          const detailRes = await fetch(officialEventUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            },
-            next: { revalidate: 0 },
-          });
-          if (detailRes.ok) {
-            const detailHtml = await detailRes.text();
-            const extLinks = detailHtml.match(/href=["'](https?:\/\/[^"']+)["']/gi) || [];
-            for (const el of extLinks) {
-              const uMatch = el.match(/href=["']([^"']+)["']/i);
-              if (uMatch) {
-                const linkVal = uMatch[1];
-                const uLower = linkVal.toLowerCase();
-                if (
-                  (uLower.includes("form") || uLower.includes("docs.google") || uLower.includes("registration") || uLower.includes("register") || uLower.includes("unstop") || uLower.includes("apply")) &&
-                  !uLower.includes("knowafest.com") &&
-                  !uLower.includes("sharethis")
-                ) {
-                  registrationUrl = linkVal;
-                  break;
-                }
-              }
-            }
+        for (const m of metaMatches) {
+          if (/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i.test(m) || /\d{4}/.test(m)) {
+            eventDate = m;
+          } else if (m.toLowerCase() !== "online" && m.toLowerCase() !== "offline" && m.toLowerCase() !== "hybrid" && m !== rawTag) {
+            city = m;
           }
-        } catch (e) {
-          // Fallback to officialEventUrl if detail page fetch times out
         }
 
-        // Priority link selection: registrationUrl -> officialEventUrl
-        const effectiveRegistrationLink = registrationUrl || officialEventUrl;
+        const feeMatch = cardHtml.match(/<div[^>]*class=["'][^"']*card-footer[^"']*["'][\s\S]*?<strong>([^<]+)<\/strong>/i);
+        const registrationFee = feeMatch ? feeMatch[1].trim() : null;
+
+        seenTitles.add(norm);
+        seenUrls.add(officialUrl);
 
         events.push({
           eventTitle: title,
-          college: organizer,
+          college,
           city,
-          state,
+          state: null,
           country: "India",
           eventCategory: category,
           eventMode: mode,
-          eventDate: startDate || endDate || null,
-          registrationDeadline: endDate || startDate || null,
-          registrationLink: effectiveRegistrationLink,
-          officialEventUrl,
-          registrationUrl,
-          coverImage: null,
-          description: `${title}. Hosted by ${organizer || "Knowafest"}${city ? `, ${city}` : ""}. Event Type: ${rawType}. Dates: ${startDate || "TBA"} to ${endDate || "TBA"}.`,
-          organizer: organizer || "Knowafest Organizer",
+          eventDate,
+          registrationDeadline: eventDate,
+          registrationLink: officialUrl,
+          officialEventUrl: officialUrl,
+          registrationUrl: null,
+          coverImage,
+          description: `${title}. Hosted by ${college || "Knowafest"}${city ? `, ${city}` : ""}. Category: ${category}. Date: ${eventDate || "TBA"}.${registrationFee ? ` Fee: ${registrationFee}.` : ""}`,
+          organizer: college || "Knowafest Organizer",
           prizePool: null,
-          registrationFee: null,
+          registrationFee,
           teamSize: null,
           eligibleBatches: null,
           tags: ["knowafest", category.toLowerCase(), mode.toLowerCase()],
-          sourceUrl: officialEventUrl,
+          sourceUrl: officialUrl,
         });
 
         if (events.length >= 35) break;
-
-        if (events.length >= 40) break;
       }
 
-      // If selector 1 found events, break loop
-      if (cardsFoundInUrl > 0) {
-        break;
+      // Check legacy <tr> rows if no cards were found
+      if (events.length === 0) {
+        const trRegex = /<tr[^>]*itemtype=["']http:\/\/schema\.org\/Event["'][^>]*>([\s\S]*?)<\/tr>/gi;
+        let trMatch: RegExpExecArray | null;
+        while ((trMatch = trRegex.exec(html)) !== null) {
+          totalCardsFound++;
+          const trHtml = trMatch[0];
+          const inner = trMatch[1];
+
+          const onClickMatch = trHtml.match(/onClick=["']window\.open\(\s*['"]([^'"]+)['"]/i);
+          const relLink = onClickMatch ? onClickMatch[1].trim() : null;
+          const officialEventUrl = relLink ? (relLink.startsWith("http") ? relLink : `https://www.knowafest.com/${relLink.replace(/^\//, '')}`) : null;
+          if (!officialEventUrl || officialEventUrl.endsWith("/events") || officialEventUrl.endsWith("/upcomingfests")) continue;
+
+          const startDateMatch = inner.match(/itemprop=["']startDate["'][^>]*>([^<]+)</i);
+          const startDate = startDateMatch ? startDateMatch[1].trim() : null;
+          const endDateMatch = inner.match(/itemprop=["']endDate["'][^>]*>([^<]+)</i);
+          const endDate = endDateMatch ? endDateMatch[1].trim() : null;
+
+          const nameMatch = inner.match(/itemprop=["']name["'][^>]*>([\s\S]*?)<span/i) || inner.match(/itemprop=["']name["'][^>]*>([^<]+)</i);
+          const title = nameMatch ? nameMatch[1].replace(/&#039;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"').trim() : null;
+          if (!title) continue;
+
+          const norm = normalizeTitle(title);
+          if (seenTitles.has(norm) || seenUrls.has(officialEventUrl)) continue;
+
+          const typeMatch = inner.match(/<td\s*>([^<]+)<\/td>/i);
+          const rawType = typeMatch ? typeMatch[1].trim() : "Event";
+          const titleLower = title.toLowerCase();
+
+          let category = "Events";
+          if (rawType.toLowerCase().includes("internship") || titleLower.includes("internship")) category = "Internships";
+          else if (rawType.toLowerCase().includes("hackathon") || titleLower.includes("hackathon")) category = "Hackathons";
+          else if (rawType.toLowerCase().includes("workshop") || titleLower.includes("workshop")) category = "Workshops";
+          else if (rawType.toLowerCase().includes("placement") || titleLower.includes("placement")) category = "Placements";
+
+          const mode: "Online" | "Offline" | "Hybrid" =
+            titleLower.includes("online") || titleLower.includes("virtual")
+              ? "Online"
+              : titleLower.includes("hybrid")
+              ? "Hybrid"
+              : "Offline";
+
+          const locationNameMatch = inner.match(/<span\s+itemprop=["']location["'][\s\S]*?<span\s+itemprop=["']name["'][^>]*>([^<]+)</i);
+          const addressMatch = inner.match(/itemprop=["']address["'][^>]*>([\s\S]*?)<\/span>/i);
+          const organizer = locationNameMatch ? locationNameMatch[1].replace(/,$/, '').trim() : null;
+          const addressRaw = addressMatch ? addressMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : null;
+
+          let city: string | null = null;
+          let state: string | null = null;
+          if (addressRaw && addressRaw.includes(",")) {
+            const parts = addressRaw.split(",");
+            city = parts[0].trim();
+            state = parts[1].trim();
+          } else if (addressRaw) {
+            city = addressRaw.trim();
+          }
+
+          seenTitles.add(norm);
+          seenUrls.add(officialEventUrl);
+
+          events.push({
+            eventTitle: title,
+            college: organizer,
+            city,
+            state,
+            country: "India",
+            eventCategory: category,
+            eventMode: mode,
+            eventDate: startDate || endDate || null,
+            registrationDeadline: endDate || startDate || null,
+            registrationLink: officialEventUrl,
+            officialEventUrl,
+            registrationUrl: null,
+            coverImage: null,
+            description: `${title}. Hosted by ${organizer || "Knowafest"}${city ? `, ${city}` : ""}. Event Type: ${rawType}. Dates: ${startDate || "TBA"} to ${endDate || "TBA"}.`,
+            organizer: organizer || "Knowafest Organizer",
+            prizePool: null,
+            registrationFee: null,
+            teamSize: null,
+            eligibleBatches: null,
+            tags: ["knowafest", category.toLowerCase(), mode.toLowerCase()],
+            sourceUrl: officialEventUrl,
+          });
+        }
       }
     } catch (err: any) {
       console.error(`[Knowafest Scraper Error] ${url}:`, err.message || err);
@@ -249,8 +306,139 @@ export async function scrapeKnowafestEvents(): Promise<{
     }
   }
 
+  // ── STRATEGY 2: Official Knowafest RSS Feed (50 live events) ───────────
+  try {
+    console.log(`[Knowafest Scraper] Checking official RSS Feed https://www.knowafest.com/feed.xml...`);
+    const feedRes = await fetch("https://www.knowafest.com/feed.xml", {
+      headers: reqHeaders,
+      next: { revalidate: 0 },
+    });
+
+    if (feedRes.ok) {
+      const xml = await feedRes.text();
+      const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+      let itemMatch: RegExpExecArray | null;
+
+      while ((itemMatch = itemRegex.exec(xml)) !== null) {
+        totalCardsFound++;
+        const itemContent = itemMatch[1];
+        const titleMatch = itemContent.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+        const linkMatch = itemContent.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i);
+        const descMatch = itemContent.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
+        const catMatch = itemContent.match(/<category>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/category>/i);
+        const dateMatch = itemContent.match(/<pubDate>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/pubDate>/i);
+
+        const title = titleMatch ? titleMatch[1].replace(/&#039;/g, "'").replace(/&amp;/g, '&').trim() : null;
+        const link = linkMatch ? linkMatch[1].trim() : null;
+        const desc = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').replace(/&#039;/g, "'").replace(/&amp;/g, '&').trim() : "";
+        const rawCat = catMatch ? catMatch[1].trim() : "Events";
+        const pubDate = dateMatch ? dateMatch[1].trim() : null;
+
+        if (!title || !link) continue;
+        const norm = normalizeTitle(title);
+        if (seenTitles.has(norm) || seenUrls.has(link)) continue;
+
+        let organizer: string | null = null;
+        let city: string | null = null;
+        const orgMatch = desc.match(/organized by ([^,\.]+)(?:,\s*([^,\.]+))?/i);
+        if (orgMatch) {
+          organizer = orgMatch[1].trim();
+          if (orgMatch[2]) city = orgMatch[2].trim();
+        }
+
+        let category = "Events";
+        const titleLower = title.toLowerCase();
+        const catLower = rawCat.toLowerCase();
+        if (catLower.includes("hackathon") || titleLower.includes("hackathon")) category = "Hackathons";
+        else if (catLower.includes("workshop") || titleLower.includes("workshop") || catLower.includes("fdp")) category = "Workshops";
+        else if (catLower.includes("internship") || titleLower.includes("internship")) category = "Internships";
+        else if (catLower.includes("conference") || titleLower.includes("conference")) category = "Conferences";
+        else if (catLower.includes("cultural") || titleLower.includes("cultural")) category = "Cultural";
+        else if (catLower.includes("technical") || titleLower.includes("technical")) category = "Technical";
+        else category = rawCat;
+
+        const mode: "Online" | "Offline" | "Hybrid" =
+          desc.toLowerCase().includes("online") || titleLower.includes("online")
+            ? "Online"
+            : desc.toLowerCase().includes("hybrid") || titleLower.includes("hybrid")
+            ? "Hybrid"
+            : "Offline";
+
+        const formattedDate = pubDate ? new Date(pubDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+
+        seenTitles.add(norm);
+        seenUrls.add(link);
+
+        events.push({
+          eventTitle: title,
+          college: organizer,
+          city,
+          state: null,
+          country: "India",
+          eventCategory: category,
+          eventMode: mode,
+          eventDate: formattedDate,
+          registrationDeadline: formattedDate,
+          registrationLink: link,
+          officialEventUrl: link,
+          registrationUrl: null,
+          coverImage: null,
+          description: desc || `${title}. Hosted by ${organizer || "Knowafest"}.`,
+          organizer: organizer || "Knowafest Organizer",
+          prizePool: null,
+          registrationFee: null,
+          teamSize: null,
+          eligibleBatches: null,
+          tags: ["knowafest", category.toLowerCase(), mode.toLowerCase()],
+          sourceUrl: link,
+        });
+
+        if (events.length >= 40) break;
+      }
+    }
+  } catch (feedErr: any) {
+    console.warn("[Knowafest Feed Warning]:", feedErr?.message || feedErr);
+  }
+
+  // ── STRATEGY 3: Optional fast external registration resolution for top items ─
+  const enrichCount = Math.min(events.length, 5);
+  for (let i = 0; i < enrichCount; i++) {
+    const ev = events[i];
+    if (!ev.officialEventUrl) continue;
+    try {
+      const detailRes = await fetch(ev.officialEventUrl, {
+        headers: reqHeaders,
+        signal: AbortSignal.timeout(2500),
+      });
+      if (detailRes.ok) {
+        const detailHtml = await detailRes.text();
+        const extLinks = detailHtml.match(/href=["'](https?:\/\/[^"']+)["']/gi) || [];
+        for (const el of extLinks) {
+          const uMatch = el.match(/href=["']([^"']+)["']/i);
+          if (uMatch) {
+            const linkVal = uMatch[1];
+            const uLower = linkVal.toLowerCase();
+            if (
+              (uLower.includes("form") || uLower.includes("docs.google") || uLower.includes("registration") || uLower.includes("register") || uLower.includes("unstop") || uLower.includes("apply")) &&
+              !uLower.includes("knowafest.com") &&
+              !uLower.includes("sharethis")
+            ) {
+              ev.registrationUrl = linkVal;
+              ev.registrationLink = linkVal;
+              break;
+            }
+          }
+        }
+      }
+    } catch {
+      // Timeout or network error on detail page is safely ignored
+    }
+  }
+
   if (events.length === 0 && !selectorFailReason) {
-    selectorFailReason = "Selector match failed: No <tr> elements with itemprop='http://schema.org/Event' found in HTML.";
+    selectorFailReason = "Zero events extracted from Knowafest HTML cards and RSS feed.";
+  } else if (events.length > 0) {
+    selectorFailReason = undefined;
   }
 
   return {
