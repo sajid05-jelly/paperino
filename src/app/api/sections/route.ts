@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { getStoredSections, saveStoredSection } from "@/lib/sections-store";
+import { getStoredSections, setStoredSections } from "@/lib/sections-store";
 
 export const dynamic = "force-dynamic";
 
@@ -12,46 +12,57 @@ export async function GET(req: NextRequest) {
     const departmentId = searchParams.get("departmentId");
     const subjectId = searchParams.get("subjectId");
 
-    // 1. Get currently persisted sections
-    let allSections = getStoredSections();
+    let allSections: any[] = [];
 
-    // 2. Attempt to sync with Firestore if adminDb is available and circuit breaker is open
+    // 1. Attempt to fetch fresh source of truth from Firestore if available
     const shouldTryFirestore = adminDb && Date.now() > quotaExhaustedUntil;
 
     if (shouldTryFirestore && adminDb) {
       try {
         const secSnapshot = await adminDb.collection("subject_sections").get();
+        const freshList: any[] = [];
+        const seenKeys = new Set<string>();
+
         secSnapshot.forEach(docSnap => {
           const data = docSnap.data();
-          const cleanSec = {
-            id: docSnap.id,
-            subjectId: data.subjectId,
-            subjectName: data.subjectName || data.subjectId,
-            subjectCode: data.subjectCode || "",
-            departmentId: data.departmentId,
-            departmentName: data.departmentName || (data.departmentId ? data.departmentId.toUpperCase() : ""),
-            semesterId: String(data.semesterId || "1"),
-            sectionType: data.sectionType,
-            createdBy: data.createdBy,
-            creatorName: data.creatorName || (data.creatorEmail ? data.creatorEmail.split("@")[0] : undefined),
-            creatorEmail: data.creatorEmail,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
-          };
-          saveStoredSection(cleanSec as any);
+          const key = `${data.departmentId}_${data.semesterId}_${data.subjectId}_${data.sectionType}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            freshList.push({
+              id: docSnap.id,
+              subjectId: data.subjectId,
+              subjectName: data.subjectName || data.subjectId,
+              subjectCode: data.subjectCode || "",
+              departmentId: data.departmentId,
+              departmentName: data.departmentName || (data.departmentId ? data.departmentId.toUpperCase() : ""),
+              semesterId: String(data.semesterId || "1"),
+              sectionType: data.sectionType,
+              createdBy: data.createdBy,
+              creatorName: data.creatorName || (data.creatorEmail ? data.creatorEmail.split("@")[0] : undefined),
+              creatorEmail: data.creatorEmail,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
+            });
+          }
         });
-        allSections = getStoredSections();
+
+        allSections = freshList;
+        // Overwrite local persistent store so deleted sections are wiped from disk
+        setStoredSections(freshList);
       } catch (dbErr: any) {
         if (dbErr?.message?.includes("RESOURCE_EXHAUSTED") || dbErr?.code === 8) {
-          // Pause Firestore sweeps for 5 minutes to keep responses ultra-fast
           quotaExhaustedUntil = Date.now() + 5 * 60 * 1000;
           console.warn("[Sections API] Firestore daily quota exhausted; active circuit breaker for 5 mins.");
         } else {
           console.warn("[Sections API] Firestore sync warning:", dbErr?.message || dbErr);
         }
+        // Fallback to local stored sections only when Firestore read fails
+        allSections = getStoredSections();
       }
+    } else {
+      allSections = getStoredSections();
     }
 
-    // 3. Filter by departmentId and subjectId if requested
+    // 2. Filter by departmentId and subjectId if requested
     let result = allSections;
     if (departmentId && subjectId) {
       result = allSections.filter(

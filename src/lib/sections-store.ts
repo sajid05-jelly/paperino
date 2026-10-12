@@ -40,6 +40,15 @@ export function getStoredSections(): StoredSection[] {
   }
 }
 
+export function setStoredSections(sections: StoredSection[]): void {
+  try {
+    ensureDirectory();
+    fs.writeFileSync(FILE_PATH, JSON.stringify(sections, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Error setting stored sections:", err);
+  }
+}
+
 export function saveStoredSection(section: StoredSection): StoredSection[] {
   try {
     ensureDirectory();

@@ -199,9 +199,21 @@ export default function AdminSectionsPage() {
         sessionStorage.removeItem(cacheKey);
       }
 
-      // Update local state
-      setSections(prev => prev.filter(s => s.id !== deleteTarget.id));
+      // Update local state immediately
+      setSections(prev => prev.filter(s => {
+        if (s.id === deleteTarget.id) return false;
+        if (
+          s.departmentId === deleteTarget.departmentId &&
+          String(s.semesterId) === String(deleteTarget.semesterId) &&
+          s.subjectId === deleteTarget.subjectId &&
+          s.sectionType === deleteTarget.sectionType
+        ) {
+          return false;
+        }
+        return true;
+      }));
       await refreshSubjects();
+      await fetchSections();
 
       if (res.status === 207) {
         showToast(resData.warning || "Section removed, but some files could not be purged from storage.", "warning");

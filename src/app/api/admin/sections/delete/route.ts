@@ -103,17 +103,19 @@ export async function POST(req: NextRequest) {
     // Remove from local persistent store immediately
     removeStoredSection(sectionId, departmentId, semesterId, subjectId, sectionType);
 
-    // 2. Delete the section document from subject_sections (zero-read delete)
-    let resolvedSecDocId = sectionId;
-    if (!resolvedSecDocId && departmentId && semesterId && subjectId) {
-      resolvedSecDocId = `${departmentId}_sem${semesterId}_${subjectId}_${sectionType}`;
+    // 2. Delete the section document from subject_sections (delete all possible ID variations)
+    const docIdsToDelete = new Set<string>();
+    if (sectionId) docIdsToDelete.add(sectionId);
+    if (departmentId && semesterId && subjectId && sectionType) {
+      docIdsToDelete.add(`${departmentId}_sem${semesterId}_${subjectId}_${sectionType}`);
+      docIdsToDelete.add(`${departmentId}_${semesterId}_${subjectId}_${sectionType}`);
     }
 
-    if (resolvedSecDocId) {
+    for (const dId of docIdsToDelete) {
       try {
-        await adminDb.collection("subject_sections").doc(resolvedSecDocId).delete();
+        await adminDb.collection("subject_sections").doc(dId).delete();
       } catch (delErr) {
-        console.warn("Could not delete from subject_sections in firestore:", delErr);
+        console.warn(`Could not delete doc ${dId} from subject_sections:`, delErr);
       }
     }
 
