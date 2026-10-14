@@ -279,8 +279,10 @@ export default function AdminReviewsPage() {
       const mat = materials.find(m => m.id === id);
       if (!mat) throw new Error("Material not found.");
 
-      // 1. Approve material status & ensure Google Drive public sharing permission
-      if (mat.fileId && user) {
+      if (!user) throw new Error("Admin authentication required.");
+
+      // 1. Ensure Google Drive public sharing permission if fileId exists
+      if (mat.fileId) {
         try {
           const token = await user.getIdToken();
           await fetch("/api/upload", {
@@ -296,13 +298,72 @@ export default function AdminReviewsPage() {
         }
       }
 
-      await updateDoc(doc(db, "materials", id), { status: "approved" });
-      logAdminAction(user?.email || "unknown", "APPROVE_MATERIAL", id, `Approved material: ${mat.title || mat.fileName}`);
+      // 2. Fetch uploader profile for attribution (record original uploader separately from admin)
+      let udata: any = {};
+      let creatorName = mat.uploaderName || "Contributor";
+      let creatorEmail = mat.uploaderEmail || "";
 
       if (mat.uploaderId) {
+        try {
+          const userRef = doc(db, "users", mat.uploaderId);
+          const udoc = await getDoc(userRef);
+          if (udoc.exists()) {
+            udata = udoc.data() || {};
+            creatorName = udata.displayName || udata.name || creatorName;
+            creatorEmail = udata.email || creatorEmail;
+          }
+        } catch (uErr) {
+          console.warn("Could not fetch uploader profile:", uErr);
+        }
+      }
+
+      // 3. Ensure section exists or create it idempotently BEFORE approving material
+      const deptId = (mat as any).departmentId || "btech";
+      const semId = String(mat.semesterId || "1");
+      const subId = String(mat.subjectId);
+      const sectionType = String(mat.category);
+
+      const token = await user.getIdToken();
+      const secRes = await fetch("/api/sections/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          departmentId: deptId,
+          semesterId: semId,
+          subjectId: subId,
+          subjectName: subId,
+          sectionType: sectionType,
+          creatorId: mat.uploaderId || null,
+          creatorName: creatorName,
+          creatorEmail: creatorEmail
+        })
+      });
+
+      if (!secRes.ok) {
+        const secErrData = await secRes.json().catch(() => ({}));
+        throw new Error(secErrData.error || "Failed to create or verify section for material approval.");
+      }
+
+      // 4. Update material status to approved (guaranteed section exists)
+      await updateDoc(doc(db, "materials", id), {
+        status: "approved",
+        approvedAt: Date.now(),
+        approvedBy: user.email || user.uid
+      });
+      logAdminAction(user?.email || "unknown", "APPROVE_MATERIAL", id, `Approved material: ${mat.title || mat.fileName}`);
+
+      // Clear subject cache in sessionStorage so new section & material appear immediately
+      if (typeof window !== "undefined") {
+        const cacheKey = `paperino_subject_cache_${deptId}_${semId}_${subId}`;
+        sessionStorage.removeItem(cacheKey);
+      }
+
+      // 5. Update uploader contribution rewards if non-admin
+      if (mat.uploaderId) {
         const userRef = doc(db, "users", mat.uploaderId);
-        const udoc = await getDoc(userRef);
-        const udata = udoc.data() || {};
 
         const allowedAdminsList = [
           "mohamedsajid.sa@gmail.com",
@@ -352,7 +413,7 @@ export default function AdminReviewsPage() {
       }
 
       setMaterials(prev => prev.filter(m => m.id !== id));
-      showToast("Material approved successfully", "success");
+      showToast("Material approved and section published successfully", "success");
     } catch (err: any) {
       console.error("Approve error:", err);
       showToast(err.message || "Failed to approve material.", "error");

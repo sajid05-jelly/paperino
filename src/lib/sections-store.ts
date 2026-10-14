@@ -13,6 +13,8 @@ export interface StoredSection {
   createdBy?: string;
   creatorName?: string;
   creatorEmail?: string;
+  approvedByAdminId?: string;
+  approvedByAdminEmail?: string;
   createdAt?: any;
 }
 
