@@ -73,7 +73,15 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
     if (!snap || !snap.docs) return [];
 
     return snap.docs
-      .map((d: any) => ({ id: d.id, ...d.data() }))
+      .map((d: any) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || null,
+          uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate().toISOString() : data.uploadedAt || null,
+        };
+      })
       .filter((m: any) => (m.status === "approved" || !m.status) && (m.departmentId || "btech").toLowerCase() === deptId.toLowerCase());
   } catch (e) {
     return [];
@@ -123,7 +131,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ deptId
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <SubjectClientComponent params={params} serverOverview={serverOverview} />
+      <SubjectClientComponent params={params} serverOverview={serverOverview} initialMaterials={serverMaterials} />
     </>
   );
 }

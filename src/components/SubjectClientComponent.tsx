@@ -36,7 +36,15 @@ interface ServerOverview {
   questionsCount: number;
 }
 
-export default function SubjectClientComponent({ params, serverOverview }: { params: Promise<{ deptId: string, semId: string, subjectId: string }>, serverOverview?: ServerOverview }) {
+export default function SubjectClientComponent({
+  params,
+  serverOverview,
+  initialMaterials
+}: {
+  params: Promise<{ deptId: string, semId: string, subjectId: string }>;
+  serverOverview?: ServerOverview;
+  initialMaterials?: any[];
+}) {
   const resolvedParams = use(params);
   const { deptId, semId, subjectId } = resolvedParams;
   const { user, isAdmin, isContributor, loading: authLoading, canAccess } = useAuth();
@@ -50,10 +58,22 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
     }
   }, [deptId, semId, lazyLoadSubjects]);
   
-  const [materials, setMaterials] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>(initialMaterials || []);
   const [survivalNotes, setSurvivalNotes] = useState<any[]>([]);
-  const [subjectSections, setSubjectSections] = useState<string[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [subjectSections, setSubjectSections] = useState<string[] | null>(() => {
+    if (initialMaterials && initialMaterials.length > 0) {
+      return Array.from(
+        new Set(
+          initialMaterials
+            .filter((m: any) => m.status === "approved" || (!m.status && !m.rejectedAt))
+            .map((m: any) => m.category)
+            .filter((c: any) => ["pyq", "notes", "questions"].includes(c))
+        )
+      );
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => !initialMaterials || initialMaterials.length === 0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
@@ -146,16 +166,20 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
       return;
     }
 
-    setLoading(true);
+    if (!initialMaterials || initialMaterials.length === 0 || forceRefetch) {
+      setLoading(true);
+    }
     setFetchError(null);
     try {
       logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials and sections from Firestore concurrently");
       // 1. Fetch Subject Materials, Survival Advice & Subject Document concurrently
-      const qMaterials = query(
+      // Skip redundant client materials query when already delivered from SSR and not forceRefetch
+      const shouldQueryMaterials = forceRefetch || !initialMaterials;
+      const qMaterials = shouldQueryMaterials ? query(
         collection(db, "materials"),
         where("semesterId", "==", semId),
         where("subjectId", "==", realSubjectId)
-      );
+      ) : null;
       
       const qSurvival = query(
         collection(db, "survival_notes"),
@@ -167,7 +191,7 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
 
       const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
       const [matSnapshot, survSnapshot, subSnap] = await Promise.all([
-        getDocs(qMaterials),
+        qMaterials ? getDocs(qMaterials) : Promise.resolve(null),
         getDocs(qSurvival),
         getDoc(doc(db, "dynamic_subjects", subDocId))
       ]);
@@ -217,7 +241,12 @@ export default function SubjectClientComponent({ params, serverOverview }: { par
         }
       }
 
-      let matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      let matList: any[] = [];
+      if (matSnapshot) {
+        matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      } else if (initialMaterials) {
+        matList = initialMaterials;
+      }
 
       if (hasExplicitConfig) {
         detectedSections = Array.from(sectionTypesSet);

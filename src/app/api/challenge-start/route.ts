@@ -51,77 +51,7 @@ function getSeed(str: string): number {
   return hash;
 }
 
-/**
- * Build the public Top 5 leaderboard + compute user rank from challenge_results.
- * Scoped to the EXACT challengeId (= gameId + admin session key).
- */
-async function buildLeaderboard(challengeId: string, currentUid: string): Promise<{
-  leaderboard: any[];
-  userRank: number | null;
-}> {
-  const leaderboard: any[] = [];
-  let userRank: number | null = null;
-
-  if (!adminDb) return { leaderboard, userRank };
-
-  try {
-    const allResultsSnap = await adminDb.collection('challenge_results')
-      .where('challengeId', '==', challengeId)
-      .get();
-
-    const userBestMap = new Map<string, any>();
-    allResultsSnap.forEach((docSnap: any) => {
-      const d = docSnap.data();
-      if (!d.isOfficial) return; 
-
-      const entry = {
-        userId: d.userId,
-        displayName: d.displayName || 'Anonymous',
-        paperinoAvatar: d.paperinoAvatar || '',
-        score: d.score || 0,
-        durationMs: d.durationMs || 0,
-        completedAt: d.completedAt ? (d.completedAt.toDate ? d.completedAt.toDate().getTime() : d.completedAt) : 0
-      };
-      if (!userBestMap.has(d.userId)) {
-        userBestMap.set(d.userId, entry);
-      } else {
-        const existing = userBestMap.get(d.userId);
-        if (entry.score > existing.score || (entry.score === existing.score && entry.durationMs < existing.durationMs)) {
-          userBestMap.set(d.userId, entry);
-        }
-      }
-    });
-
-    const allEntries = Array.from(userBestMap.values());
-
-    allEntries.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (a.durationMs !== b.durationMs) return a.durationMs - b.durationMs;
-      return a.completedAt - b.completedAt;
-    });
-
-    allEntries.forEach((entry, idx) => {
-      const rank = idx + 1;
-      if (entry.userId === currentUid) {
-        userRank = rank;
-      }
-      if (rank <= 3) {
-        leaderboard.push({
-          userId: entry.userId,
-          displayName: entry.displayName,
-          paperinoAvatar: entry.paperinoAvatar,
-          score: entry.score,
-          durationMs: entry.durationMs,
-          rank
-        });
-      }
-    });
-  } catch (err: any) {
-    console.warn("[buildLeaderboard] ranking query failed:", err.message);
-  }
-
-  return { leaderboard, userRank };
-}
+import { getLeaderboard as buildLeaderboard } from '@/lib/challengeLeaderboard';
 
 export async function POST(request: Request) {
   try {

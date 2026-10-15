@@ -19,7 +19,17 @@ export async function GET(req: NextRequest) {
 
     if (shouldTryFirestore && adminDb) {
       try {
-        const secSnapshot = await adminDb.collection("subject_sections").get();
+        let secQuery: FirebaseFirestore.Query = adminDb.collection("subject_sections");
+        const hasFilter = Boolean(departmentId || subjectId);
+
+        if (departmentId) {
+          secQuery = secQuery.where("departmentId", "==", departmentId);
+        }
+        if (subjectId) {
+          secQuery = secQuery.where("subjectId", "==", subjectId);
+        }
+
+        const secSnapshot = await secQuery.get();
         const freshList: any[] = [];
         const seenKeys = new Set<string>();
 
@@ -46,8 +56,10 @@ export async function GET(req: NextRequest) {
         });
 
         allSections = freshList;
-        // Overwrite local persistent store so deleted sections are wiped from disk
-        setStoredSections(freshList);
+        // Only overwrite full local persistent store when an unfiltered sync was requested
+        if (!hasFilter) {
+          setStoredSections(freshList);
+        }
       } catch (dbErr: any) {
         if (dbErr?.message?.includes("RESOURCE_EXHAUSTED") || dbErr?.code === 8) {
           quotaExhaustedUntil = Date.now() + 5 * 60 * 1000;
@@ -62,12 +74,13 @@ export async function GET(req: NextRequest) {
       allSections = getStoredSections();
     }
 
-    // 2. Filter by departmentId and subjectId if requested
+    // 2. Ensure filter by departmentId and subjectId if requested (handles fallback or extra safety)
     let result = allSections;
-    if (departmentId && subjectId) {
-      result = allSections.filter(
-        s => s.departmentId === departmentId && s.subjectId === subjectId
-      );
+    if (departmentId) {
+      result = result.filter(s => s.departmentId === departmentId);
+    }
+    if (subjectId) {
+      result = result.filter(s => s.subjectId === subjectId);
     }
 
     result.sort((a, b) => (a.subjectName || "").localeCompare(b.subjectName || ""));
