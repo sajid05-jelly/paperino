@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
         code: cleanCode,
         departmentId,
         semesterId: String(semesterId),
-        sections: Array.isArray(sections) ? sections : [],
+        sections: [],
         createdBy: verifiedUser.uid,
         creatorName: creatorName || verifiedUser.email.split("@")[0] || "User",
         creatorEmail: creatorEmail || verifiedUser.email,
@@ -76,31 +76,9 @@ export async function POST(req: NextRequest) {
       { merge: true }
     );
 
-    // 2. Create corresponding documents in subject_sections if sections were specified
-    if (Array.isArray(sections) && sections.length > 0) {
-      const deptDisplay = departmentName || departmentId.toUpperCase();
-      const sectionPromises = sections.map((secType: string) => {
-        const secDocId = `${departmentId}_sem${semesterId}_${generatedId}_${secType}`;
-        return db.collection("subject_sections").doc(secDocId).set(
-          {
-            id: secDocId,
-            subjectId: generatedId,
-            subjectName: cleanName,
-            subjectCode: cleanCode,
-            departmentId,
-            departmentName: deptDisplay,
-            semesterId: String(semesterId),
-            sectionType: secType,
-            createdBy: verifiedUser.uid,
-            creatorName: creatorName || verifiedUser.email.split("@")[0] || "User",
-            creatorEmail: creatorEmail || verifiedUser.email,
-            createdAt: FieldValue.serverTimestamp()
-          },
-          { merge: true }
-        );
-      });
-      await Promise.all(sectionPromises);
-    }
+    // 2. Section documents in subject_sections are NOT created here.
+    // They are only created when an admin approves the first uploaded material
+    // for that section category, ensuring empty sections never appear publicly.
 
     return NextResponse.json({
       success: true,

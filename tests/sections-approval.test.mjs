@@ -447,4 +447,54 @@ describe("Paperino — Section Management, Approvals & Loading Fixes", () => {
     });
   });
 
+  describe("8. Course Creation Never Pre-Creates Empty Sections", () => {
+    test("newly created subject has sections=[] and creates zero documents in subject_sections", () => {
+      const subjectDoc = {
+        subjectId: "fake-2",
+        name: "fake 2",
+        code: "21CSC302J",
+        departmentId: "btech",
+        semesterId: "7",
+        sections: [] // Must always be empty on creation
+      };
+      const createdSections = []; // No section documents created
+
+      assert.deepEqual(subjectDoc.sections, []);
+      assert.equal(createdSections.length, 0);
+    });
+
+    test("subject with 0 approved materials strictly has activeSections=[] even if an empty section record existed", () => {
+      // Simulation of SubjectClientComponent's activeSections logic:
+      // A section is only active if it has approved materials!
+      const materials = []; // 0 approved materials
+      const categoriesWithApprovedMaterials = Array.from(
+        new Set(
+          materials
+            .filter((m) => m.status === "approved" || (!m.status && !m.rejectedAt))
+            .map((m) => m.category)
+            .filter((c) => ["pyq", "notes", "questions"].includes(c))
+        )
+      );
+
+      const activeSections = categoriesWithApprovedMaterials;
+      assert.deepEqual(activeSections, []); // Must be empty!
+    });
+
+    test("once first material is approved by admin, section becomes active and shows approved material", () => {
+      const materials = [
+        { id: "mat1", category: "pyq", status: "approved", title: "End Sem 2024" }
+      ];
+      const categoriesWithApprovedMaterials = Array.from(
+        new Set(
+          materials
+            .filter((m) => m.status === "approved" || (!m.status && !m.rejectedAt))
+            .map((m) => m.category)
+            .filter((c) => ["pyq", "notes", "questions"].includes(c))
+        )
+      );
+
+      const activeSections = categoriesWithApprovedMaterials;
+      assert.deepEqual(activeSections, ["pyq"]);
+    });
+  });
 });

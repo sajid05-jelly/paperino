@@ -248,22 +248,19 @@ export default function SubjectClientComponent({
         matList = initialMaterials;
       }
 
-      if (hasExplicitConfig) {
-        detectedSections = Array.from(sectionTypesSet);
-      } else {
-        // Fallback for legacy subjects without explicit section configuration:
-        // Only include categories that actually have approved materials uploaded!
-        // Pending or rejected materials must NEVER create or enable a section.
-        const categoriesWithMaterials = Array.from(
-          new Set(
-            matList
-              .filter((m: any) => m.status === "approved" || (!m.status && !m.rejectedAt))
-              .map((m: any) => m.category)
-              .filter((c: any) => ["pyq", "notes", "questions"].includes(c))
-          )
-        );
-        detectedSections = categoriesWithMaterials;
-      }
+      // Only include categories that actually have approved materials uploaded!
+      // Pending, rejected, or empty configured sections without approved materials
+      // must NEVER create or enable a publicly visible active section.
+      const categoriesWithApprovedMaterials = Array.from(
+        new Set(
+          matList
+            .filter((m: any) => m.status === "approved" || (!m.status && !m.rejectedAt))
+            .map((m: any) => m.category)
+            .filter((c: any) => ["pyq", "notes", "questions"].includes(c))
+        )
+      );
+
+      detectedSections = categoriesWithApprovedMaterials;
       const list: any[] = [];
       
       const contributorIds = new Set<string>();
@@ -456,8 +453,6 @@ export default function SubjectClientComponent({
   // 3. Otherwise empty array [] (never default all three sections).
   const activeSections: string[] = subjectSections !== null
     ? subjectSections
-    : (subject?.sections && Array.isArray(subject.sections))
-    ? subject.sections
     : [];
 
   const gridLayoutClass =

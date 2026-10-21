@@ -381,7 +381,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
             semesterId: semId,
             name: name.trim(),
             code: code ? code.trim() : "",
-            sections: sections,
+            sections: [],
             isSuggestion: isContributor,
             creatorName: contributorName || currentUser.displayName || currentUser.email?.split("@")[0],
             creatorEmail: currentUser.email
@@ -407,7 +407,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         code: code ? code.trim() : "",
         departmentId: deptId,
         semesterId: semId,
-        sections: sections,
+        sections: [],
         createdBy: contributorId || "system",
         contributorId: contributorId || null,
         contributorName: contributorName || null,
@@ -415,23 +415,9 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         createdAt: serverTimestamp()
       });
 
-      // Create corresponding section configuration documents in subject_sections
-      const sectionPromises = sections.map(secType => {
-        const sectionDocId = `${deptId}_sem${semId}_${generatedId}_${secType}`;
-        return setDoc(doc(db, "subject_sections", sectionDocId), {
-          id: sectionDocId,
-          subjectId: generatedId,
-          subjectName: name.trim(),
-          subjectCode: code ? code.trim() : "",
-          departmentId: deptId,
-          departmentName: deptDisplayName,
-          semesterId: semId,
-          sectionType: secType,
-          createdBy: contributorId || "system",
-          createdAt: serverTimestamp()
-        }, { merge: true });
-      });
-      await Promise.all(sectionPromises);
+      // Section documents in subject_sections are NOT created here.
+      // They are only created when an admin approves the first uploaded material
+      // for that section category, ensuring empty sections never appear publicly.
     }
 
     // Reset local cache so it gets refetched

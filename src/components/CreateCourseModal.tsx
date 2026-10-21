@@ -1,18 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, X, CheckCircle2, BookOpen, History, HelpCircle } from "lucide-react";
+import { Plus, X, CheckCircle2, BookOpen } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 
 import { useAuth } from "@/context/AuthContext";
 import { notifyAdmins } from "@/lib/notifications";
 import { db } from "@/lib/firebase";
-
-const SECTION_OPTIONS = [
-  { id: "pyq", label: "Question Papers", icon: History, desc: "Past semester exam question papers" },
-  { id: "notes", label: "Notes", icon: BookOpen, desc: "Lecture notes, syllabus & study material" },
-  { id: "questions", label: "Important Questions", icon: HelpCircle, desc: "Curated key questions & 2-mark / 16-mark guides" },
-];
 
 interface CreateCourseModalProps {
   isOpen: boolean;
@@ -49,7 +43,6 @@ export default function CreateCourseModal({
   const [semester, setSemester] = useState("1");
   const [subjectName, setSubjectName] = useState("");
   const [subjectCode, setSubjectCode] = useState("");
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -76,7 +69,6 @@ export default function CreateCourseModal({
       setSemester(initialSemester || "1");
       setSubjectName("");
       setSubjectCode("");
-      setSelectedSections([]);
       
       setError("");
       setSuccess(false);
@@ -207,7 +199,7 @@ export default function CreateCourseModal({
         isSuggestion,
         user?.uid,
         user?.displayName || user?.email || "Unknown",
-        selectedSections
+        []
       );
 
       if (isSuggestion) {
@@ -396,54 +388,7 @@ export default function CreateCourseModal({
                     />
                   </div>
 
-                  {/* Dynamic Material Section Selection */}
-                  <div className="pt-2">
-                    <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                      Material Sections <span className="text-xs text-fuchsia-400 font-normal">(Select sections to create)</span>
-                    </label>
-                    <div className="space-y-2 mt-2">
-                      {SECTION_OPTIONS.map((opt) => {
-                        const isChecked = selectedSections.includes(opt.id);
-                        const Icon = opt.icon;
-                        return (
-                          <label
-                            key={opt.id}
-                            className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                              isChecked
-                                ? "bg-fuchsia-500/10 border-fuchsia-500/40 text-white shadow-[0_0_15px_rgba(232,121,249,0.1)]"
-                                : "bg-white/[0.02] border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-300"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              disabled={loading}
-                              onChange={() => {
-                                setSelectedSections(prev =>
-                                  prev.includes(opt.id)
-                                    ? prev.filter(s => s !== opt.id)
-                                    : [...prev, opt.id]
-                                );
-                              }}
-                              className="w-4 h-4 mt-0.5 rounded border-gray-600 text-fuchsia-600 focus:ring-fuchsia-500 bg-black/40 accent-fuchsia-500 cursor-pointer"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <Icon size={14} className={isChecked ? "text-fuchsia-400" : "text-gray-500"} />
-                                <span className="text-xs font-bold text-white">{opt.label}</span>
-                              </div>
-                              <p className="text-[11px] text-gray-400 mt-0.5">{opt.desc}</p>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    {selectedSections.length === 0 && (
-                      <p className="text-xs text-gray-400 font-normal mt-1.5 animate-in fade-in">
-                        Sections can also be enabled individually on the subject page later.
-                      </p>
-                    )}
-                  </div>
+
                 </div>
               )}
 
@@ -469,7 +414,7 @@ export default function CreateCourseModal({
 
               <button 
                 type="submit" 
-                disabled={loading || isDuplicate || (deptMode === "new" ? !newDeptName.trim() : (!subjectName.trim() || selectedSections.length === 0))} 
+                disabled={loading || isDuplicate || (deptMode === "new" ? !newDeptName.trim() : !subjectName.trim())} 
                 className="w-full bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(232,121,249,0.3)] hover:shadow-[0_0_30px_rgba(232,121,249,0.5)]"
               >
                 {loading ? (
