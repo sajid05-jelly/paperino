@@ -54,8 +54,8 @@ interface SubjectsContextType {
     contributorName?: string,
     sections?: string[]
   ) => Promise<string>;
-  refreshSubjects: () => Promise<void>;
-  lazyLoadSubjects: (deptId: string, semId: string) => Promise<void>;
+  refreshSubjects: (forceRefresh?: boolean) => Promise<void>;
+  lazyLoadSubjects: (deptId: string, semId: string, force?: boolean) => Promise<void>;
   listenToDeptsWithMaterials: () => () => void;
 }
 
@@ -149,13 +149,20 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       let deptList: Department[] = [];
 
-      // Check local cache first (24 hour TTL)
+      if (forceRefresh && typeof window !== "undefined") {
+        sessionStorage.removeItem("paperino_cached_depts_v2");
+        sessionStorage.removeItem("paperino_cached_depts_ts_v2");
+        loadedSemestersRef.current = {};
+      }
+
+      // Check local cache first (60s TTL so updates and deletions reflect promptly)
+      const DEPT_CACHE_TTL_MS = 60 * 1000;
       if (!forceRefresh && typeof window !== "undefined") {
         const cachedDepts = sessionStorage.getItem("paperino_cached_depts_v2");
         const cacheTimestamp = sessionStorage.getItem("paperino_cached_depts_ts_v2");
         
         if (cachedDepts && cacheTimestamp) {
-          const isFresh = (Date.now() - parseInt(cacheTimestamp)) < 24 * 60 * 60 * 1000;
+          const isFresh = (Date.now() - parseInt(cacheTimestamp)) < DEPT_CACHE_TTL_MS;
           if (isFresh) {
             try {
               deptList = JSON.parse(cachedDepts);
@@ -236,9 +243,9 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-  const lazyLoadSubjects = async (deptId: string, semId: string) => {
+  const lazyLoadSubjects = async (deptId: string, semId: string, force: boolean = false) => {
     const cacheKey = `${deptId}_${semId}`;
-    if (loadedSemestersRef.current[cacheKey]) {
+    if (!force && loadedSemestersRef.current[cacheKey]) {
       return; // Cache Hit - Already loaded in this browser session
     }
 
@@ -256,7 +263,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       subSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         newSubjects.push({
-          id: data.subjectId,
+          id: data.subjectId || docSnap.id,
           name: data.name,
           code: data.code || "",
           departmentId: deptId,
@@ -289,13 +296,10 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       });
 
       setAllSubjectsList(prev => {
-        const copy = [...prev];
-        newSubjects.forEach(newSub => {
-          if (!copy.some(s => s.id === newSub.id && s.departmentId === deptId && s.semesterId === semId)) {
-            copy.push(newSub);
-          }
-        });
-        return copy;
+        const withoutThisDeptSem = prev.filter(
+          s => !(s.departmentId === deptId && String(s.semesterId) === String(semId) && s.contributorId !== "system")
+        );
+        return [...withoutThisDeptSem, ...newSubjects];
       });
 
       loadedSemestersRef.current[cacheKey] = true;

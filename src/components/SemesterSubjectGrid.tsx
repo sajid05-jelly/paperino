@@ -15,50 +15,42 @@ interface SemesterSubjectGridProps {
 
 export default function SemesterSubjectGrid({ initialData, deptId, semId }: SemesterSubjectGridProps) {
   const { subjects: clientSubjectsState, lazyLoadSubjects } = useSubjects();
+  const [clientLoaded, setClientLoaded] = React.useState(false);
 
-  // Trigger client-side synchronization on mount so newly added dynamic subjects appear immediately
+  // Trigger client-side synchronization on mount so newly added, renamed, or deleted subjects reflect immediately
   React.useEffect(() => {
+    let isMounted = true;
     if (deptId && semId && lazyLoadSubjects) {
-      lazyLoadSubjects(deptId, semId);
+      lazyLoadSubjects(deptId, semId).finally(() => {
+        if (isMounted) setClientLoaded(true);
+      });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [deptId, semId, lazyLoadSubjects]);
 
-  // Merge server initialData with any dynamically created subjects on the client
+  // Client subjects from Firestore are authoritative once loaded.
+  // Server initialData is used as the instant SSR fallback before client hydration/fetch completes.
   const displaySubjects = useMemo(() => {
-    // Start with server-provided subjects
-    const merged = [...initialData];
+    const clientSubs = clientSubjectsState?.[deptId]?.[semId];
 
-    // Get subjects from the client context for this exact dept and sem
-    const clientSubs = clientSubjectsState?.[deptId]?.[semId] || [];
+    if (!clientLoaded || !clientSubs) {
+      return initialData;
+    }
 
-    clientSubs.forEach((clientSub) => {
-      // Only include approved subjects (just like the server does)
-      if (clientSub.status === "approved" || !clientSub.status) {
-        // Prevent duplicates by checking id
-        const exists = merged.some(
-          (s) => 
-            s.id.toLowerCase() === clientSub.id.toLowerCase() &&
-            s.departmentId.toLowerCase() === clientSub.departmentId.toLowerCase() &&
-            String(s.semesterId) === String(clientSub.semesterId)
-        );
-
-        if (!exists) {
-          // Cast the client Subject into a UnifiedSubject format for rendering
-          merged.push({
-            id: clientSub.id,
-            name: clientSub.name,
-            code: clientSub.code || "",
-            departmentId: clientSub.departmentId,
-            semesterId: clientSub.semesterId,
-            status: clientSub.status,
-            createdAt: clientSub.createdAt,
-          });
-        }
-      }
-    });
-
-    return merged;
-  }, [initialData, clientSubjectsState, deptId, semId]);
+    return clientSubs
+      .filter((s) => s.status === "approved" || !s.status)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code || "",
+        departmentId: s.departmentId,
+        semesterId: s.semesterId,
+        status: s.status,
+        createdAt: s.createdAt,
+      }));
+  }, [initialData, clientSubjectsState, deptId, semId, clientLoaded]);
 
   if (displaySubjects.length === 0) {
     return (

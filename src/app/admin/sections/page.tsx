@@ -212,7 +212,7 @@ export default function AdminSectionsPage() {
         }
         return true;
       }));
-      await refreshSubjects();
+      await refreshSubjects(true);
       await fetchSections();
 
       if (res.status === 207) {
@@ -313,7 +313,7 @@ export default function AdminSectionsPage() {
         sessionStorage.removeItem(cacheKey);
       }
 
-      await refreshSubjects();
+      await refreshSubjects(true);
       await fetchSections();
 
       showToast(`Sections configured successfully for ${subName}!`, "success");

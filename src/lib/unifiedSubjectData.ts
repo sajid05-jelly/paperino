@@ -34,7 +34,12 @@ let inMemoryUnifiedData: {
   subjects: UnifiedSubject[];
 } | null = null;
 let lastUnifiedFetchTime = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minute TTL — reduces Firestore reads while still detecting new subjects reasonably fast
+const CACHE_TTL_MS = 60 * 1000; // 60s TTL so updates and deletions reflect promptly
+
+export function invalidateUnifiedDataCache() {
+  inMemoryUnifiedData = null;
+  lastUnifiedFetchTime = 0;
+}
 
 /**
  * Unified Data Provider for All Courses, Semesters, and Subjects in Paperino.

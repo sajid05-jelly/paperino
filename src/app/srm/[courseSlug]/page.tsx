@@ -6,6 +6,9 @@ import { SITE_CONFIG, getAbsoluteUrl } from "@/lib/siteConfig";
 import { BookOpen, ChevronRight, Layers } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
 
+export const revalidate = 60;
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
   const { departments } = await getAllUnifiedData();
   return departments.map((d) => ({

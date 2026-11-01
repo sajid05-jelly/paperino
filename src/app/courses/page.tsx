@@ -21,9 +21,11 @@ export default function CoursesPage() {
     return () => unsub();
   }, [listenToDeptsWithMaterials]);
 
-  // Filter for approved or admin or created by current user (and exclude sub-branches from root list)
+  // Filter for approved or pending created by current user (and exclude sub-branches & rejected courses from root list)
   const visibleDepts = departments.filter(d => {
-    const isOwnerOrApproved = d.status === "approved" || isAdmin || (user && d.createdBy === user.uid);
+    // Rejected departments should NEVER appear in the public courses explorer
+    if (d.status === "rejected") return false;
+    const isOwnerOrApproved = d.status === "approved" || (user && d.createdBy === user.uid) || (isAdmin && d.status === "pending");
     if (!isOwnerOrApproved) return false;
     // Don't show child branches in the top-level courses grid
     if (d.parentCourse) return false;

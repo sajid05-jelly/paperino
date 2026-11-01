@@ -102,7 +102,7 @@ export default function AdminCoursesPage() {
       }
 
       
-      await refreshSubjects();
+      await refreshSubjects(true);
 
       // Admin -> User notifications for approval have been disabled per requirements
     } catch (error) {
@@ -120,7 +120,7 @@ export default function AdminCoursesPage() {
       await updateDoc(doc(db, "departments", id), { status: "rejected" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "rejected" } : d));
       
-      await refreshSubjects();
+      await refreshSubjects(true);
 
       // Admin -> User notifications for rejection have been disabled per requirements
     } catch (error) {
@@ -137,7 +137,7 @@ export default function AdminCoursesPage() {
       await updateDoc(doc(db, "departments", id), { status: "pending" });
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, status: "pending" } : d));
       
-      await refreshSubjects();
+      await refreshSubjects(true);
     } catch (error) {
       console.error("Error restoring department:", error);
       alert("Failed to restore department.");
@@ -152,7 +152,7 @@ export default function AdminCoursesPage() {
       await deleteDoc(doc(db, "departments", id));
       setDepartmentsList(prev => prev.filter(d => d.id !== id));
       
-      await refreshSubjects();
+      await refreshSubjects(true);
     } catch (error) {
       console.error("Error deleting department:", error);
       alert("Failed to delete department.");
@@ -177,7 +177,7 @@ export default function AdminCoursesPage() {
       }
 
       
-      await refreshSubjects();
+      await refreshSubjects(true);
 
       // Admin -> User notifications for approval have been disabled per requirements
     } catch (error) {
@@ -195,7 +195,7 @@ export default function AdminCoursesPage() {
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "rejected" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "rejected" } : s));
       
-      await refreshSubjects();
+      await refreshSubjects(true);
 
       // Admin -> User notifications for rejection have been disabled per requirements
     } catch (error) {
@@ -212,7 +212,7 @@ export default function AdminCoursesPage() {
       await updateDoc(doc(db, "dynamic_subjects", id), { status: "pending" });
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, status: "pending" } : s));
       
-      await refreshSubjects();
+      await refreshSubjects(true);
     } catch (error) {
       console.error("Error restoring subject:", error);
       alert("Failed to restore subject.");
@@ -229,7 +229,7 @@ export default function AdminCoursesPage() {
       await deleteDoc(doc(db, "dynamic_subjects", id));
       setSubjectsList(prev => prev.filter(s => s.id !== id));
       
-      await refreshSubjects();
+      await refreshSubjects(true);
     } catch (error) {
       console.error("Error deleting subject:", error);
       alert("Failed to delete subject.");
@@ -267,7 +267,7 @@ export default function AdminCoursesPage() {
       setDepartmentsList(prev => prev.map(d => d.id === id ? { ...d, name: editName, code: editCode, totalSemesters: editSemesters } : d));
       setEditingId(null);
       
-      await refreshSubjects();
+      await refreshSubjects(true);
     } catch (error) {
       console.error("Error saving department:", error);
       alert("Failed to update department.");
@@ -294,7 +294,7 @@ export default function AdminCoursesPage() {
       setSubjectsList(prev => prev.map(s => s.id === id ? { ...s, name: editName, code: editCode, semesterId: editSemesterId } : s));
       setEditingId(null);
       
-      await refreshSubjects();
+      await refreshSubjects(true);
     } catch (error) {
       console.error("Error saving subject:", error);
       alert("Failed to update subject.");

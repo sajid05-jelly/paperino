@@ -9,6 +9,9 @@ import SafeBackButton from "@/components/SafeBackButton";
 import SemesterActionButtons from "@/components/SemesterActionButtons";
 import SemesterSubjectGrid from "@/components/SemesterSubjectGrid";
 
+export const revalidate = 60;
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
   const { departments } = await getAllUnifiedData();
   const params: { courseSlug: string; semesterSlug: string }[] = [];
