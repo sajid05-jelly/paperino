@@ -18,6 +18,7 @@ import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnosti
 
 import { getSubjectSlug } from "@/lib/seoUtils";
 import { SITE_CONFIG } from "@/lib/siteConfig";
+import { SUBJECTS } from "@/lib/subjects";
 
 const contributorCache: Record<string, string> = {};
 const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], sections?: string[], timestamp: number }> = {};
@@ -457,9 +458,29 @@ export default function SubjectClientComponent({
   // 1. If subjectSections state is resolved from Firestore doc or subject_sections, use it.
   // 2. Else if subject?.sections from SubjectsContext is present, use it.
   // 3. Otherwise empty array [] (never default all three sections).
-  const activeSections: string[] = subjectSections !== null
-    ? subjectSections
-    : [];
+  const isBuiltInSubject = (deptId.toLowerCase() === "btech" || deptId.toLowerCase() === "b.tech") && 
+    Boolean(SUBJECTS[semId]?.some(s => s.id.toLowerCase() === realSubjectId.toLowerCase() || s.id.toLowerCase() === subjectId.toLowerCase()));
+
+  const sectionsWithMaterials = Array.from(
+    new Set(
+      visibleMaterials
+        .map((m: any) => m.category)
+        .filter((c: any) => ["pyq", "notes", "questions"].includes(c))
+    )
+  );
+
+  const activeSections: string[] = isBuiltInSubject
+    ? ["pyq", "notes", "questions"]
+    : Array.from(
+        new Set([
+          ...sectionsWithMaterials,
+          ...(Array.isArray(subjectSections) ? subjectSections : []),
+          ...(Array.isArray(subject?.sections) ? subject.sections : [])
+        ])
+      );
+
+
+
 
   const gridLayoutClass =
     activeSections.length === 1
