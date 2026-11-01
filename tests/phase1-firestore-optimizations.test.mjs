@@ -243,7 +243,7 @@ describe("Phase 1 — Firestore Read Optimizations", () => {
           loading = true;
         }
 
-        const shouldQueryMaterials = forceRefetch || !initialMaterials;
+        const shouldQueryMaterials = forceRefetch || !initialMaterials || initialMaterials.length === 0;
         if (shouldQueryMaterials) {
           clientMaterialsQueryCount++;
         }
@@ -321,15 +321,16 @@ describe("Phase 1 — Firestore Read Optimizations", () => {
       assert.equal(state.skippedClientQuery, false);
     });
 
-    test("empty subject (0 materials) displays skeleton until detection completes, preventing empty flash", () => {
+    test("empty subject (0 materials) queries client to discover sections rather than assuming empty", () => {
       const state = simulateSubjectComponentMount({
         initialMaterials: [],
         cachedData: null,
         forceRefetch: false
       });
 
-      // Initial state was loading: true
-      assert.equal(state.materials.length, 0);
+      // When SSR provides 0 materials, client performs fresh query to verify
+      assert.equal(state.clientMaterialsQueryCount, 1);
+      assert.equal(state.materials.length, 1);
     });
   });
 

@@ -129,7 +129,7 @@ export default function SubjectClientComponent({
   }
 
   const fetchMaterials = async (forceRefetch = false) => {
-    const cacheKey = `paperino_subject_cache_${deptId}_${semId}_${realSubjectId}`;
+    const cacheKey = `paperino_subject_v3_cache_${deptId}_${semId}_${realSubjectId}`;
     
     if (forceRefetch) {
       delete subjectDataCache[cacheKey];
@@ -154,7 +154,8 @@ export default function SubjectClientComponent({
       }
     }
 
-    if (!forceRefetch && cachedData && (now - cachedData.timestamp < CACHE_TTL_MS)) {
+    const hasCachedContent = cachedData && ((Array.isArray(cachedData.materials) && cachedData.materials.length > 0) || (Array.isArray(cachedData.sections) && cachedData.sections.length > 0));
+    if (!forceRefetch && hasCachedContent && (now - cachedData.timestamp < CACHE_TTL_MS)) {
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
       setSurvivalNotes(cachedData.survivalNotes);
@@ -174,7 +175,7 @@ export default function SubjectClientComponent({
       logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials and sections from Firestore concurrently");
       // 1. Fetch Subject Materials, Survival Advice & Subject Document concurrently
       // Skip redundant client materials query when already delivered from SSR and not forceRefetch
-      const shouldQueryMaterials = forceRefetch || !initialMaterials;
+      const shouldQueryMaterials = forceRefetch || !initialMaterials || initialMaterials.length === 0;
       const qMaterials = shouldQueryMaterials ? query(
         collection(db, "materials"),
         where("semesterId", "==", semId),
@@ -244,7 +245,7 @@ export default function SubjectClientComponent({
       let matList: any[] = [];
       if (matSnapshot) {
         matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      } else if (initialMaterials) {
+      } else if (initialMaterials && initialMaterials.length > 0) {
         matList = initialMaterials;
       }
 
@@ -345,7 +346,12 @@ export default function SubjectClientComponent({
       setSubjectSections(detectedSections);
     } catch (error: any) {
       console.error("Error fetching subject data:", error);
-      setFetchError("Unable to load subject materials right now. Please try again.");
+      const isQuota = error?.message?.includes("Quota exceeded") || error?.code === "resource-exhausted" || error?.message?.includes("RESOURCE_EXHAUSTED");
+      if (isQuota) {
+        setFetchError("Database Daily Free Quota Limit Reached (50,000 reads/day). All materials are 100% safe in Firestore! Upgrade to Firebase Blaze plan or wait for the midnight PST quota reset.");
+      } else {
+        setFetchError("Unable to load subject materials right now. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
