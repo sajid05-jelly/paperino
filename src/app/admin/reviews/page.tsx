@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment, writeBatch, serverTimestamp, getDoc, where, startAfter, limit, orderBy } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, deleteDoc, setDoc, increment, writeBatch, serverTimestamp, getDoc, where, startAfter, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   CheckCircle2, Trash2, Ban, Loader2, ShieldAlert, FileText,
@@ -31,6 +31,11 @@ interface Material {
   uploaderName?: string;
   uploaderEmail?: string;
   status?: string;
+  departmentId?: string;
+  isNewSubjectRequest?: boolean;
+  subjectName?: string;
+  subjectCode?: string;
+  newSubjectData?: any;
 }
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
@@ -323,6 +328,27 @@ export default function AdminReviewsPage() {
       const subId = String(mat.subjectId);
       const sectionType = String(mat.category);
 
+      // If this was a new subject request, establish the subject in dynamic_subjects first
+      if ((mat as any).isNewSubjectRequest) {
+        const subName = (mat as any).subjectName || (mat as any).newSubjectData?.name || (mat as any).title || subId;
+        const subCode = (mat as any).subjectCode || (mat as any).newSubjectData?.code || "";
+        const docId = `${deptId}_sem${semId}_${subId}`;
+
+        await setDoc(doc(db, "dynamic_subjects", docId), {
+          subjectId: subId,
+          name: subName.trim(),
+          code: subCode.trim(),
+          departmentId: deptId,
+          semesterId: semId,
+          status: "approved",
+          createdBy: mat.uploaderId || "contributor",
+          contributorId: mat.uploaderId || null,
+          contributorName: creatorName || null,
+          createdAt: serverTimestamp(),
+          sections: [sectionType]
+        }, { merge: true });
+      }
+
       const token = await user.getIdToken();
       const secRes = await fetch("/api/sections/create", {
         method: "POST",
@@ -334,7 +360,7 @@ export default function AdminReviewsPage() {
           departmentId: deptId,
           semesterId: semId,
           subjectId: subId,
-          subjectName: subId,
+          subjectName: (mat as any).subjectName || (mat as any).newSubjectData?.name || subId,
           sectionType: sectionType,
           creatorId: mat.uploaderId || null,
           creatorName: creatorName,
@@ -427,28 +453,53 @@ export default function AdminReviewsPage() {
       const mat = materials.find(m => m.id === id);
       if (!mat) throw new Error("Material not found.");
 
-      // Set status to rejected and rejectedAt timestamp (stays in Rejected Queue for 7 days)
-      await updateDoc(doc(db, "materials", id), { 
-        status: "rejected",
-        rejectedAt: Date.now()
-      });
-      logAdminAction(user?.email || "unknown", "REJECT_MATERIAL", id, `Rejected material: ${mat.title || mat.fileName}`);
+      // 1. Delete file permanently from Google Drive
+      if (mat.fileId) {
+        try {
+          const token = user ? await user.getIdToken() : "";
+          const res = await fetch(`/api/upload?fileId=${mat.fileId}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (!res.ok) {
+            const resData = await res.json().catch(() => ({}));
+            console.warn("Drive delete warning on reject:", resData.error);
+          }
+        } catch (driveErr) {
+          console.warn("Drive delete error on reject:", driveErr);
+        }
+      }
 
-      // Update local state item status
-      setMaterials(prev => prev.map(m => m.id === id ? { ...m, status: "rejected", rejectedAt: Date.now() } : m));
+      // 2. If it was a new subject request, delete any pending dynamic_subjects document
+      if ((mat as any).isNewSubjectRequest) {
+        const deptId = (mat as any).departmentId || "btech";
+        const semId = String(mat.semesterId || "1");
+        const subId = String(mat.subjectId);
+        const docId = `${deptId}_sem${semId}_${subId}`;
+        try {
+          await deleteDoc(doc(db, "dynamic_subjects", docId));
+        } catch (e) {}
+      }
 
-      // Notify the uploader that their material was rejected
+      // 3. Completely delete document from Firestore materials collection
+      await deleteDoc(doc(db, "materials", id));
+      logAdminAction(user?.email || "unknown", "REJECT_AND_DELETE_MATERIAL", id, `Rejected and permanently deleted: ${mat.title || mat.fileName}`);
+
+      // 4. Update local state
+      setMaterials(prev => prev.filter(m => m.id !== id));
+
+      // 5. Notify the uploader
       if (mat.uploaderId) {
         await notifyUser(
           db,
           mat.uploaderId,
-          "Material Rejected ❌",
-          `Your material '${mat.title || mat.fileName || "Untitled"}' has been rejected and moved to review.`,
+          "Submission Rejected ❌",
+          `Your submission '${mat.title || mat.fileName || "Untitled"}' was not approved and has been completely deleted.`,
           "material_rejected"
         );
       }
 
-      showToast("Material moved to Rejected queue", "info");
+      showToast("Submission rejected and completely deleted from Firebase & Google Drive.", "info");
     } catch (err: any) {
       console.error("Reject error:", err);
       showToast(err.message || "Failed to reject material.", "error");
@@ -736,6 +787,12 @@ export default function AdminReviewsPage() {
                               Needs Review
                             </span>
                           )}
+                          {mat.isNewSubjectRequest && (
+                            <span className="text-[10px] uppercase tracking-wider font-extrabold text-fuchsia-300 bg-fuchsia-500/20 border border-fuchsia-500/40 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-[0_0_12px_rgba(217,70,239,0.25)]">
+                              <Sparkles size={11} className="text-fuchsia-400" />
+                              New Subject + Material
+                            </span>
+                          )}
                           <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
                             Sem {mat.semesterId}
                           </span>
@@ -748,6 +805,7 @@ export default function AdminReviewsPage() {
                         </div>
 
                         <h4 className="text-white font-bold text-xl leading-tight mb-2 truncate" title={mat.title || mat.fileName}>
+                          {mat.isNewSubjectRequest && mat.subjectName ? `${mat.subjectName}${mat.subjectCode ? ` (${mat.subjectCode})` : ""} — ` : ""}
                           {mat.title || mat.fileName || "Untitled Material"}
                         </h4>
 

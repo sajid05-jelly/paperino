@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CheckCircle2, Trash2, Calendar, User, BookOpen, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, Trash2, Calendar, User, BookOpen, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -204,6 +205,25 @@ export default function SubjectRequestsAdminPage() {
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-500">
       
+      {/* Unified Queue Notice */}
+      <div className="p-5 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300 shrink-0">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-white">Unified Subject + Material Review Flow</h4>
+            <p className="text-xs text-gray-400">Empty subjects are no longer created without content. Students now submit subjects with attached study materials directly to the Pending Reviews queue.</p>
+          </div>
+        </div>
+        <Link
+          href="/admin/reviews"
+          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs whitespace-nowrap transition-all shadow-[0_0_15px_rgba(147,51,234,0.3)]"
+        >
+          Go to Pending Reviews →
+        </Link>
+      </div>
+
       {/* Header Panel */}
       <div className="glass-panel p-8 rounded-3xl border border-white/10 relative overflow-hidden">
         <div className="absolute -right-20 -top-20 w-64 h-64 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none"></div>

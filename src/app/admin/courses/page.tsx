@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Ban, RotateCcw, Search } from "lucide-react";
+import { BookOpen, CheckCircle2, XCircle, Loader2, Calendar, Edit2, Check, X, GraduationCap, Trash2, Sparkles, Ban, RotateCcw, Search } from "lucide-react";
 
 import { useSubjects } from "@/context/SubjectsContext";
 import { notifyUser } from "@/lib/notifications";
@@ -367,6 +368,26 @@ export default function AdminCoursesPage() {
           Rejected ({activeReviewType === "departments" ? departmentsList.filter(d => d.status === "rejected").length : subjectsList.filter(s => s.status === "rejected").length})
         </button>
       </div>
+
+      {activeReviewType === "subjects" && activeTab === "pending" && (
+        <div className="mb-6 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300 shrink-0">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white">Subject Requests Now Include Study Materials</h4>
+              <p className="text-xs text-gray-400">All new subject requests require study materials (Notes, PYQs, Questions) and are reviewed together in Pending Reviews to prevent empty subjects.</p>
+            </div>
+          </div>
+          <Link
+            href="/admin/reviews"
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs whitespace-nowrap transition-all shadow-[0_0_15px_rgba(147,51,234,0.3)]"
+          >
+            Open Pending Reviews →
+          </Link>
+        </div>
+      )}
 
       {activeReviewType === "subjects" && activeTab === "approved" && (
         <div className="mb-6 relative max-w-md">
