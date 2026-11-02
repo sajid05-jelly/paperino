@@ -10,13 +10,13 @@ export async function POST(req: NextRequest) {
 
   /* 🛡️ Entitlement Check 🛡️ */
   const authHeader = req.headers.get("authorization");
-  const entitlement = await verifyFeatureAccess(authHeader, 'seniorInsight');
+  const entitlement = await verifyFeatureAccess(authHeader, 'examEmergency');
   
   if (entitlement.status !== "ALLOWED") {
     const statusCode = entitlement.status === "LIMIT_REACHED" ? 429 : 403;
     return NextResponse.json(
       { 
-        error: entitlement.error || "Senior Insight is available with Paperino Plus, Pro or Premium.",
+        error: entitlement.error || "Assistant is available with Paperino Pro or Premium.",
         status: entitlement.status,
         plan: entitlement.plan || "free",
         limit: entitlement.limit || 0,

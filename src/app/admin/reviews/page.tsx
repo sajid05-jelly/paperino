@@ -12,7 +12,6 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { notifyUser } from "@/lib/notifications";
-import UserAvatar from "@/components/UserAvatar";
 import { logAdminAction } from "@/lib/admin-logger";
 import { useBadges } from "@/context/BadgeContext";
 
@@ -43,13 +42,12 @@ interface Material {
 export default function AdminReviewsPage() {
   const { user } = useAuth();
   const { markAdminSectionSeen } = useBadges();
-  const [activeTab, setActiveTab] = useState<"pending" | "insights" | "rejected">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "rejected">("pending");
 
   useEffect(() => {
     markAdminSectionSeen("reviews");
   }, [markAdminSectionSeen]);
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [pendingInsights, setPendingInsights] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -82,11 +80,7 @@ export default function AdminReviewsPage() {
   };
 
   useEffect(() => {
-    if (activeTab === "insights") {
-      fetchPendingInsights();
-    } else {
-      fetchMaterials(true);
-    }
+    fetchMaterials(true);
   }, [activeTab]);
 
   const fetchMaterials = async (reset = false) => {
@@ -196,246 +190,48 @@ export default function AdminReviewsPage() {
     }
   };
 
-  const fetchPendingInsights = async () => {
-    try {
-      const q = query(
-        collection(db, "survival_notes"),
-        where("status", "==", "pending")
-      );
-      const snap = await getDocs(q);
-      const list: any[] = [];
-      
-      const userIds = new Set<string>();
-      snap.forEach(d => {
-        const data = d.data();
-        if (data.contributorId) userIds.add(data.contributorId);
-      });
-      
-      const userAvatars: Record<string, string> = {};
-      if (userIds.size > 0) {
-        const uids = Array.from(userIds);
-        const userPromises = uids.map(uid => getDoc(doc(db, "users", uid)));
-        const userSnaps = await Promise.all(userPromises);
-        userSnaps.forEach(us => {
-          if (us.exists()) {
-            const udata = us.data();
-            userAvatars[us.id] = udata.paperinoAvatar || "";
-          }
-        });
-      }
-
-      snap.forEach(d => {
-        const data = d.data();
-        list.push({
-          id: d.id,
-          ...data,
-          paperinoAvatar: userAvatars[data.contributorId] || null
-        });
-      });
-      list.sort((a, b) => {
-        const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt || 0);
-        const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt || 0);
-        return bTime - aTime;
-      });
-      setPendingInsights(list);
-    } catch (err) {
-      console.error("Error fetching pending insights:", err);
-    }
-  };
-
-  const handleApproveInsight = async (note: any) => {
-    setActionLoading(note.id);
-    try {
-      await updateDoc(doc(db, "survival_notes", note.id), { status: "approved" });
-      if (note.contributorId) {
-        await updateDoc(doc(db, "users", note.contributorId), {
-          contributionPoints: increment(15),
-          uploads: increment(1)
-        });
-      }
-      setPendingInsights(prev => prev.filter(n => n.id !== note.id));
-      showToast("Senior Insight approved successfully!", "success");
-      logAdminAction(user?.email || "unknown", "APPROVE_INSIGHT", note.id, `Approved insight: ${note.title || "Untitled"}`);
-    } catch (err) {
-      console.error("Approve insight error:", err);
-      showToast("Failed to approve insight", "error");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleRejectInsight = async (noteId: string) => {
-    setActionLoading(noteId);
-    try {
-      await deleteDoc(doc(db, "survival_notes", noteId));
-      setPendingInsights(prev => prev.filter(n => n.id !== noteId));
-      showToast("Senior Insight rejected and deleted", "success");
-    } catch (err) {
-      console.error("Reject insight error:", err);
-      showToast("Failed to reject insight", "error");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const handleApprove = async (id: string) => {
     setActionLoading(id);
     try {
       const mat = materials.find(m => m.id === id);
       if (!mat) throw new Error("Material not found.");
-
       if (!user) throw new Error("Admin authentication required.");
 
-      // 1. Ensure Google Drive public sharing permission if fileId exists
-      if (mat.fileId) {
-        try {
-          const token = await user.getIdToken();
-          await fetch("/api/upload", {
-            method: "PATCH",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ fileId: mat.fileId })
-          });
-        } catch (e) {
-          console.warn("[Admin Review] Drive permission patch skipped:", e);
-        }
-      }
-
-      // 2. Fetch uploader profile for attribution (record original uploader separately from admin)
-      let udata: any = {};
-      let creatorName = mat.uploaderName || "Contributor";
-      let creatorEmail = mat.uploaderEmail || "";
-
-      if (mat.uploaderId) {
-        try {
-          const userRef = doc(db, "users", mat.uploaderId);
-          const udoc = await getDoc(userRef);
-          if (udoc.exists()) {
-            udata = udoc.data() || {};
-            creatorName = udata.displayName || udata.name || creatorName;
-            creatorEmail = udata.email || creatorEmail;
-          }
-        } catch (uErr) {
-          console.warn("Could not fetch uploader profile:", uErr);
-        }
-      }
-
-      // 3. Ensure section exists or create it idempotently BEFORE approving material
-      const deptId = (mat as any).departmentId || "btech";
-      const semId = String(mat.semesterId || "1");
-      const subId = String(mat.subjectId);
-      const sectionType = String(mat.category);
-
-      // If this was a new subject request, establish the subject in dynamic_subjects first
-      if ((mat as any).isNewSubjectRequest) {
-        const subName = (mat as any).subjectName || (mat as any).newSubjectData?.name || (mat as any).title || subId;
-        const subCode = (mat as any).subjectCode || (mat as any).newSubjectData?.code || "";
-        const docId = `${deptId}_sem${semId}_${subId}`;
-
-        await setDoc(doc(db, "dynamic_subjects", docId), {
-          subjectId: subId,
-          name: subName.trim(),
-          code: subCode.trim(),
-          departmentId: deptId,
-          semesterId: semId,
-          status: "approved",
-          createdBy: mat.uploaderId || "contributor",
-          contributorId: mat.uploaderId || null,
-          contributorName: creatorName || null,
-          createdAt: serverTimestamp(),
-          sections: [sectionType]
-        }, { merge: true });
-      }
-
       const token = await user.getIdToken();
-      const secRes = await fetch("/api/sections/create", {
+      const res = await fetch("/api/admin/approve-material", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          departmentId: deptId,
-          semesterId: semId,
-          subjectId: subId,
-          subjectName: (mat as any).subjectName || (mat as any).newSubjectData?.name || subId,
-          sectionType: sectionType,
-          creatorId: mat.uploaderId || null,
-          creatorName: creatorName,
-          creatorEmail: creatorEmail
+          materialId: mat.id,
+          departmentId: mat.departmentId || "btech",
+          semesterId: mat.semesterId || "1",
+          subjectId: mat.subjectId,
+          subjectName: mat.subjectName || (mat as any).newSubjectData?.name || mat.title,
+          subjectCode: mat.subjectCode || (mat as any).newSubjectData?.code || "",
+          category: mat.category,
+          title: mat.title,
+          fileName: mat.fileName,
+          fileId: mat.fileId,
+          uploaderId: mat.uploaderId,
+          uploaderName: mat.uploaderName,
+          uploaderEmail: mat.uploaderEmail,
+          isNewSubjectRequest: (mat as any).isNewSubjectRequest,
+          newSubjectData: (mat as any).newSubjectData
         })
       });
 
-      if (!secRes.ok) {
-        const secErrData = await secRes.json().catch(() => ({}));
-        throw new Error(secErrData.error || "Failed to create or verify section for material approval.");
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(resData.error || "Failed to approve material.");
       }
-
-      // 4. Update material status to approved (guaranteed section exists)
-      await setDoc(doc(db, "materials", id), {
-        status: "approved",
-        approvedAt: Date.now(),
-        approvedBy: user.email || user.uid
-      }, { merge: true });
-      logAdminAction(user?.email || "unknown", "APPROVE_MATERIAL", id, `Approved material: ${mat.title || mat.fileName}`);
 
       // Clear subject cache in sessionStorage so new section & material appear immediately
       if (typeof window !== "undefined") {
-        const cacheKey = `paperino_subject_cache_${deptId}_${semId}_${subId}`;
+        const cacheKey = `paperino_subject_cache_${mat.departmentId || "btech"}_${mat.semesterId || "1"}_${mat.subjectId}`;
         sessionStorage.removeItem(cacheKey);
-      }
-
-      // 5. Update uploader contribution rewards if non-admin
-      if (mat.uploaderId) {
-        const userRef = doc(db, "users", mat.uploaderId);
-
-        const allowedAdminsList = [
-          "mohamedsajid.sa@gmail.com",
-          "sudharajsekar2005@gmail.com",
-          "admin.paperinoirfan27@gmail.com",
-          "admin.paperinosam14@gmail.com",
-          "gameplayitlifeitis@gmail.com",
-          "dejasvini28@gmail.com",
-          "kaushika13official@gmail.com"
-        ];
-        const isUploaderAdmin = udata.role === "admin" || (udata.email && allowedAdminsList.includes(udata.email.toLowerCase()));
-
-        if (!isUploaderAdmin) {
-          // Increment approved contribution count & points (+10 contribution points) for non-admins
-          const currentUploads = Math.max(0, (udata.uploads || 0) + 1);
-          const currentPoints = Math.max(0, (udata.contributionPoints || 0) + 10);
-          
-          const updates: Record<string, any> = {
-            uploads: currentUploads,
-            approvedUploads: currentUploads,
-            points: increment(10), // legacy backwards compatibility
-            contributionPoints: currentPoints
-          };
-
-          // Contributor Reward Milestone: 10+ Approved Materials = Plus Plan FREE
-          if (currentUploads === 10) {
-            await notifyUser(
-              db,
-              mat.uploaderId,
-              "Free Plus Plan Unlocked! 🎁",
-              "Congrats! You have shared 10 approved materials with the community and unlocked the Paperino Plus plan for FREE!",
-              "plus_unlocked"
-            );
-          }
-
-          await setDoc(userRef, updates, { merge: true });
-        }
-
-        // Notify the uploader
-        await notifyUser(
-          db,
-          mat.uploaderId,
-          "Material Approved! ✅",
-          `Your material '${mat.title || mat.fileName || "Untitled"}' has been approved and is now live.`,
-          "material_approved"
-        );
       }
 
       setMaterials(prev => prev.filter(m => m.id !== id));
@@ -452,54 +248,35 @@ export default function AdminReviewsPage() {
     try {
       const mat = materials.find(m => m.id === id);
       if (!mat) throw new Error("Material not found.");
+      if (!user) throw new Error("Admin authentication required.");
 
-      // 1. Delete file permanently from Google Drive
-      if (mat.fileId) {
-        try {
-          const token = user ? await user.getIdToken() : "";
-          const res = await fetch(`/api/upload?fileId=${mat.fileId}`, {
-            method: "DELETE",
-            headers: { "Authorization": `Bearer ${token}` }
-          });
-          if (!res.ok) {
-            const resData = await res.json().catch(() => ({}));
-            console.warn("Drive delete warning on reject:", resData.error);
-          }
-        } catch (driveErr) {
-          console.warn("Drive delete error on reject:", driveErr);
-        }
+      const token = await user.getIdToken();
+      const res = await fetch("/api/admin/reject-material", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          materialId: mat.id,
+          fileId: mat.fileId,
+          departmentId: mat.departmentId || "btech",
+          semesterId: mat.semesterId || "1",
+          subjectId: mat.subjectId,
+          title: mat.title,
+          fileName: mat.fileName,
+          uploaderId: mat.uploaderId,
+          isNewSubjectRequest: (mat as any).isNewSubjectRequest
+        })
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(resData.error || "Failed to reject material.");
       }
 
-      // 2. If it was a new subject request, delete any pending dynamic_subjects document
-      if ((mat as any).isNewSubjectRequest) {
-        const deptId = (mat as any).departmentId || "btech";
-        const semId = String(mat.semesterId || "1");
-        const subId = String(mat.subjectId);
-        const docId = `${deptId}_sem${semId}_${subId}`;
-        try {
-          await deleteDoc(doc(db, "dynamic_subjects", docId));
-        } catch (e) {}
-      }
-
-      // 3. Completely delete document from Firestore materials collection
-      await deleteDoc(doc(db, "materials", id));
-      logAdminAction(user?.email || "unknown", "REJECT_AND_DELETE_MATERIAL", id, `Rejected and permanently deleted: ${mat.title || mat.fileName}`);
-
-      // 4. Update local state
       setMaterials(prev => prev.filter(m => m.id !== id));
-
-      // 5. Notify the uploader
-      if (mat.uploaderId) {
-        await notifyUser(
-          db,
-          mat.uploaderId,
-          "Submission Rejected ❌",
-          `Your submission '${mat.title || mat.fileName || "Untitled"}' was not approved and has been completely deleted.`,
-          "material_rejected"
-        );
-      }
-
-      showToast("Submission rejected and completely deleted from Firebase & Google Drive.", "info");
+      showToast("Submission rejected and completely deleted.", "info");
     } catch (err: any) {
       console.error("Reject error:", err);
       showToast(err.message || "Failed to reject material.", "error");
@@ -511,7 +288,7 @@ export default function AdminReviewsPage() {
     setActionLoading(id);
     try {
       // Restore status to pending and remove rejectedAt
-      await updateDoc(doc(db, "materials", id), { 
+      await updateDoc(doc(db, "materials", id), {
         status: "pending",
         rejectedAt: null
       });
@@ -547,8 +324,26 @@ export default function AdminReviewsPage() {
         }
       }
       
-      // 2. Delete document from Firestore
-      await deleteDoc(doc(db, "materials", mat.id));
+      // 2. Delete document from Firestore via Admin API (0 client reads)
+      const token = user ? await user.getIdToken() : "";
+      const delRes = await fetch("/api/admin/reject-material", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          materialId: mat.id,
+          fileId: mat.fileId,
+          departmentId: mat.departmentId || "btech",
+          semesterId: mat.semesterId || "1",
+          subjectId: mat.subjectId
+        })
+      });
+      if (!delRes.ok) {
+        const delData = await delRes.json().catch(() => ({}));
+        throw new Error(delData.error || "Failed to permanently delete material.");
+      }
 
       setMaterials(prev => prev.filter(m => m.id !== mat.id));
       showToast("Material permanently deleted", "success");
@@ -627,7 +422,7 @@ export default function AdminReviewsPage() {
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
               <ShieldAlert className="text-amber-400" /> Pending Upload Reviews
             </h1>
-            <p className="text-gray-400">Review and moderate study materials and senior insights submitted by contributors.</p>
+            <p className="text-gray-400">Review and moderate study materials submitted by contributors.</p>
           </div>
           <button
             disabled={repairingPermissions}
@@ -649,12 +444,6 @@ export default function AdminReviewsPage() {
             Pending Requests ({materials.filter(m => !m.status || m.status === "pending").length})
           </button>
           <button 
-            onClick={() => setActiveTab("insights")} 
-            className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${activeTab === "insights" ? "bg-violet-500/10 border-violet-500/30 text-violet-400" : "bg-white/5 border-transparent text-gray-400 hover:text-white"}`}
-          >
-            Senior Insights ({pendingInsights.length})
-          </button>
-          <button 
             onClick={() => setActiveTab("rejected")} 
             className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${activeTab === "rejected" ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-white/5 border-transparent text-gray-400 hover:text-white"}`}
           >
@@ -671,95 +460,18 @@ export default function AdminReviewsPage() {
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-xl font-bold text-white">
                 {activeTab === "pending" && "Materials Awaiting Approval"}
-                {activeTab === "insights" && "Senior Insights Pending Review"}
                 {activeTab === "rejected" && "Rejected Materials (Deletes in 7 days)"}
               </h2>
               <span className={`px-3 py-1 text-xs font-bold rounded-full ${
                 activeTab === "pending" ? "bg-amber-500/20 text-amber-400" :
-                activeTab === "insights" ? "bg-violet-500/20 text-violet-400" :
                 "bg-red-500/20 text-red-400"
               }`}>
-                {activeTab === "insights" ? pendingInsights.length : filteredMaterials.length} Items
+                {filteredMaterials.length} Items
               </span>
             </div>
 
-            {/* ── Tab: Senior Insights Pending Review ── */}
-            {activeTab === "insights" ? (
-              pendingInsights.length === 0 ? (
-                <div className="text-center py-16 px-4 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="text-emerald-400" size={32} />
-                  </div>
-                  <p className="text-lg font-medium text-white mb-1">All clean!</p>
-                  <p className="text-gray-500">There are no pending senior insights to review.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-6">
-                  {pendingInsights.map((insight) => (
-                    <div 
-                      key={insight.id} 
-                      className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-violet-500/30 transition-colors flex flex-col gap-4 relative"
-                    >
-                      {/* Submitter profile header */}
-                      <div className="flex items-center justify-between flex-wrap gap-3">
-                        <div className="flex items-center gap-3">
-                          <UserAvatar avatarId={insight.paperinoAvatar} className="w-10 h-10 border border-white/10" size={18} />
-                          <div>
-                            <p className="text-white font-bold text-sm">{insight.contributorName || "Anonymous Senior"}</p>
-                            <p className="text-[10px] text-gray-500">
-                              Submitted: {insight.createdAt?.toDate ? insight.createdAt.toDate().toLocaleString() : new Date(insight.createdAt || 0).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full text-[10px] font-bold tracking-wide uppercase">
-                          {insight.category}
-                        </span>
-                      </div>
-
-                      {/* Course / Subject metadata labels */}
-                      <div className="flex flex-wrap gap-2.5">
-                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-400 uppercase font-bold">
-                          DEPT: {insight.departmentId}
-                        </span>
-                        <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] text-gray-400 uppercase font-bold">
-                          SEM: {insight.semesterId}
-                        </span>
-                        <span className="bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded text-[10px] text-violet-300 uppercase font-bold">
-                          SUBJECT: {insight.subjectId}
-                        </span>
-                      </div>
-
-                      {/* Content */}
-                      <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                        <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-line font-medium">
-                          {insight.content}
-                        </p>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-end gap-3 border-t border-white/[0.06] pt-4">
-                        <button
-                          onClick={() => handleRejectInsight(insight.id)}
-                          disabled={actionLoading !== null}
-                          className="px-4 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 text-orange-400 text-xs font-semibold transition-all flex items-center gap-1.5"
-                        >
-                          {actionLoading === insight.id ? <Loader2 size={12} className="animate-spin" /> : <span>✗ Reject</span>}
-                        </button>
-                        <button
-                          onClick={() => handleApproveInsight(insight)}
-                          disabled={actionLoading !== null}
-                          className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-                        >
-                          {actionLoading === insight.id ? <Loader2 size={12} className="animate-spin" /> : <span>✓ Approve</span>}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : (
-              /* ── Tab: Materials pending or rejected ── */
-              filteredMaterials.length === 0 ? (
+            {/* ── Tab: Materials pending or rejected ── */}
+            {filteredMaterials.length === 0 ? (
                 <div className="text-center py-16 px-4 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
                   <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle2 className="text-emerald-400" size={32} />
@@ -937,8 +649,7 @@ export default function AdminReviewsPage() {
                     </div>
                   )}
                 </div>
-              )
-            )}
+              )}
           </div>
         )}
       </div>

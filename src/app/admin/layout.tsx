@@ -7,7 +7,7 @@ import Link from "next/link";
 import { 
   Upload, Activity, Bot, FileText, Layers,
   ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, 
-  BrainCircuit, Wrench, Building2, ChevronDown, Sparkles, Gamepad2, FlaskConical
+  BrainCircuit, Wrench, ChevronDown, Sparkles, Gamepad2, FlaskConical
 } from "lucide-react";
 import CreateCourseModal from "@/components/CreateCourseModal";
 import { useBadges } from "@/context/BadgeContext";
@@ -28,7 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isLeadAdmin = user?.email?.toLowerCase() === LEAD_ADMIN_EMAIL.toLowerCase();
 
   // System Control Sub-menu Expand State
-  const isSystemPath = ["/admin/system", "/admin/analytics", "/admin/header-message", "/admin/ats", "/admin/career-dna", "/admin/free-class-finder"].some(path => pathname?.startsWith(path));
+  const isSystemPath = ["/admin/system", "/admin/analytics", "/admin/header-message", "/admin/ats", "/admin/career-dna"].some(path => pathname?.startsWith(path));
   const [isSystemControlOpen, setIsSystemControlOpen] = useState(isSystemPath);
 
   // Protected Lead-Admin-Only Routes
@@ -39,7 +39,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     "/admin/header-message",
     "/admin/ats",
     "/admin/career-dna",
-    "/admin/free-class-finder",
     "/admin/analytics"
   ];
 
@@ -209,18 +208,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <span>Career DNA Admin</span>
                       </Link>
 
-                      {/* 5. Free Class Finder Control */}
-                      <Link 
-                        href="/admin/free-class-finder" 
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          pathname === "/admin/free-class-finder" ? "bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        <Building2 size={15} className="text-violet-400 shrink-0" />
-                        <span>Free Class Finder Control</span>
-                      </Link>
-
-                      {/* 6. Challenges Control */}
+                      {/* Challenges Control */}
                       <Link 
                         href="/admin/system/challenges" 
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${

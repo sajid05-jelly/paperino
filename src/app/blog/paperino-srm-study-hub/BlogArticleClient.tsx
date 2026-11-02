@@ -390,12 +390,12 @@ export default function BlogArticleClient() {
             The Attendance Shield (also known as the &quot;75% Calculator&quot;) helps you manage your attendance percentage. Enter your current attendance data, and it calculates exactly how many classes you can safely skip — or how many consecutive lectures you need to attend to recover above the 75% threshold. Free for all users.
           </p>
 
-          <h3 className="text-base font-bold text-white mt-6 mb-2">Free Class Finder</h3>
+          <h3 className="text-base font-bold text-white mt-6 mb-2">Paperino Labs</h3>
           <p>
             A crowdsourced tool that shows which classrooms are currently vacant across campus. Filter by building, floor, and amenities (like AC or seating capacity). Students can validate or update classroom availability in real time. Free for all users.
           </p>
 
-          <h3 className="text-base font-bold text-white mt-6 mb-2">Senior Insights</h3>
+          <h3 className="text-base font-bold text-white mt-6 mb-2">Study Notes</h3>
           <p>
             Verified course survival guides written by seniors who have already completed the subject. Get practical tips on teacher scoring patterns, preparation strategies, important chapters, and difficulty levels. Available on Plus plans and above.
           </p>
@@ -418,9 +418,9 @@ export default function BlogArticleClient() {
               description="Calculate exactly how many classes you can skip or need to attend."
             />
             <FeatureCard
-              href="/free-class-finder"
+              href="/srm"
               icon={<Search size={16} className="text-teal-400" />}
-              title="Free Class Finder"
+              title="Paperino Labs"
               description="Find vacant classrooms across campus in real time."
             />
             <FeatureCard
@@ -496,7 +496,7 @@ export default function BlogArticleClient() {
             Paperino grows through its community. Any registered student can upload study materials — notes, question papers, lab manuals — through the <Link href="/contributor/upload" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Contributor Upload</Link> page. Submitted materials go through a review process before being published.
           </p>
           <p>
-            There&apos;s a genuine incentive to contribute: students who get <strong className="text-white">10 or more uploads approved</strong> automatically unlock <strong className="text-white">Paperino Plus for free</strong> — no subscription payment required. This includes benefits like PDF preview, Senior Insights, Semester Calculator, and increased monthly usage limits.
+            There&apos;s a genuine incentive to contribute: students who get <strong className="text-white">10 or more uploads approved</strong> automatically unlock <strong className="text-white">Paperino Plus for free</strong> — no subscription payment required. This includes benefits like PDF preview, Semester Calculator, and increased monthly usage limits.
           </p>
           <p>
             Contributors can track their upload history, approval statuses, and earned benefits from their <Link href="/contributor" className="text-violet-400 hover:text-violet-300 underline underline-offset-2">Contributor Dashboard</Link>. Students can also suggest new subjects or courses they want to see on the platform.

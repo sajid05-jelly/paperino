@@ -8,13 +8,6 @@ import { useAuth } from "@/context/AuthContext";
 
 
 interface BadgeContextType {
-  // Paperino Labs & Free Class Finder Badges
-  freeClassUnreadCount: number;
-  labsTotalUnreadCount: number;
-  markFreeClassSeen: () => void;
-
-  
-
   // Admin Badges & Section Reads
   adminSubjectRequestsCount: number;
   adminPendingReviewsCount: number;
@@ -25,13 +18,6 @@ interface BadgeContextType {
 }
 
 const BadgeContext = createContext<BadgeContextType>({
-  freeClassUnreadCount: 0,
-  labsTotalUnreadCount: 0,
-  markFreeClassSeen: () => {},
-  
-  
-  
-  
   adminSubjectRequestsCount: 0,
   adminPendingReviewsCount: 0,
   adminPendingCoursesCount: 0,
@@ -46,112 +32,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   const { user, isAdmin } = useAuth();
 
   // ─────────────────────────────────────────────────────────────
-  // 1. FREE CLASS FINDER & PAPERINO LABS UNREAD BADGE LOGIC
-  // ─────────────────────────────────────────────────────────────
-  const [lastSeenFreeClassTime, setLastSeenFreeClassTime] = useState<number>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("paperino_last_seen_free_class");
-      return saved ? parseInt(saved, 10) : 0;
-    }
-    return 0;
-  });
-
-  const [activeReportsTimeList, setActiveReportsTimeList] = useState<{ id: string; createdAt: number; expiresAt: number }[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = sessionStorage.getItem("paperino_cached_fcf_badge");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed.items)) return parsed.items;
-        }
-      } catch {}
-    }
-    return [];
-  });
-
-  const lastFreeClassCheckRef = useRef<number>(0);
-
-  const fetchActiveReportsForBadge = useCallback(async (forceRefresh: boolean = false) => {
-    if (!user) {
-      setActiveReportsTimeList([]);
-      return;
-    }
-
-    const now = Date.now();
-    let cachedTs = 0;
-    if (typeof window !== "undefined") {
-      try {
-        const stored = sessionStorage.getItem("paperino_cached_fcf_badge_ts");
-        if (stored) cachedTs = parseInt(stored, 10);
-      } catch {}
-    }
-    const lastCheck = Math.max(lastFreeClassCheckRef.current, cachedTs);
-    // Cache for 15 minutes per session to aggressively conserve Firestore read quota
-    if (!forceRefresh && (now - lastCheck) < 15 * 60 * 1000) {
-      return;
-    }
-
-    try {
-      const q = query(collection(db, "free_class_reports"), limit(25));
-      const snap = await getDocs(q);
-      const items: { id: string; createdAt: number; expiresAt: number }[] = [];
-      snap.forEach((d) => {
-        const data = d.data();
-        const createdAt = data.createdAtMs || (data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || now);
-        const durationMin = data.expectedFreeDurationMinutes || 30;
-        const expiresAt = data.expiresAtMs || (data.expiresAt?.toDate ? data.expiresAt.toDate().getTime() : createdAt + durationMin * 60 * 1000);
-        
-        if (!data.isDeleted && data.status !== "flagged" && (data.falseVotes || 0) < 5) {
-          items.push({ id: d.id, createdAt, expiresAt });
-        }
-      });
-      setActiveReportsTimeList(items);
-      lastFreeClassCheckRef.current = now;
-      if (typeof window !== "undefined") {
-        try {
-          sessionStorage.setItem("paperino_cached_fcf_badge", JSON.stringify({ items }));
-          sessionStorage.setItem("paperino_cached_fcf_badge_ts", now.toString());
-        } catch {}
-      }
-    } catch (e: any) {
-      console.warn("[BadgeContext] Free class badge count fallback:", e?.message || e);
-    }
-  }, [user]);
-
-  // Check badge once on mount/login, without continuous polling
-  useEffect(() => {
-    if (user) {
-      fetchActiveReportsForBadge();
-    } else {
-      setActiveReportsTimeList([]);
-    }
-  }, [user, fetchActiveReportsForBadge]);
-
-  const freeClassUnreadCount = useMemo(() => {
-    if (!activeReportsTimeList.length) return 0;
-    const now = Date.now();
-    const baseline = lastSeenFreeClassTime > 0 ? lastSeenFreeClassTime : now - (24 * 60 * 60 * 1000);
-
-    return activeReportsTimeList.filter((item) => item.createdAt > baseline).length;
-  }, [activeReportsTimeList, lastSeenFreeClassTime]);
-
-  const markFreeClassSeen = useCallback(() => {
-    const now = Date.now();
-    setLastSeenFreeClassTime(now);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("paperino_last_seen_free_class", now.toString());
-      } catch (e) {}
-    }
-  }, []);
-
-  const labsTotalUnreadCount = freeClassUnreadCount;
-
-  // ─────────────────────────────────────────────────────────────
-  
-
-  // ─────────────────────────────────────────────────────────────
-  // 3. ADMIN BADGES (Subject Requests, Pending Reviews, Pending Courses)
+  // ADMIN BADGES (Subject Requests, Pending Reviews, Pending Courses)
   // ─────────────────────────────────────────────────────────────
   const [adminSubjectRequestsRaw, setAdminSubjectRequestsRaw] = useState<{ id: string; createdAt: number }[]>(() => {
     if (typeof window !== "undefined") {
@@ -281,8 +162,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
         { type: "subject_requests", q: query(collection(db, "subject_requests"), limit(50)) },
         { type: "courses", q: query(collection(db, "departments"), where("status", "==", "pending"), limit(30)) },
         { type: "courses", q: query(collection(db, "dynamic_subjects"), where("status", "==", "pending"), limit(30)) },
-        { type: "reviews", q: query(collection(db, "materials"), where("status", "==", "pending"), limit(30)) },
-        { type: "reviews", q: query(collection(db, "survival_notes"), where("status", "==", "pending"), limit(30)) }
+        { type: "reviews", q: query(collection(db, "materials"), where("status", "==", "pending"), limit(30)) }
       ];
 
       const results = await Promise.all(
@@ -394,13 +274,6 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   return (
     <BadgeContext.Provider
       value={{
-        freeClassUnreadCount,
-        labsTotalUnreadCount,
-        markFreeClassSeen,
-        
-        
-        
-        
         adminSubjectRequestsCount,
         adminPendingReviewsCount,
         adminPendingCoursesCount,

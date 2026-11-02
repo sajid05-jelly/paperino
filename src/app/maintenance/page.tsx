@@ -22,7 +22,6 @@ const INITIAL_TASKS = [
   { label: "Database Optimization", done: true },
   { label: "AI Modules", done: true },
   { label: "Notification Engine", done: true },
-  { label: "Deploying Free Class Finder", done: false },
   { label: "Security Hardening", done: false },
   { label: "Performance Tuning", done: false },
 ];

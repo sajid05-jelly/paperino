@@ -194,17 +194,6 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ── Survival Notes / Senior Insights ────────────────────────────────────
-    match /survival_notes/{noteId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (request.resource.data.status == "pending" || isAdmin());
-      allow update: if isAdmin() || (
-        isSignedIn() && 
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'subjectId', 'departmentId', 'semesterId', 'category', 'content', 'contributorId', 'contributorName', 'createdAt']))
-      );
-      allow delete: if isAdmin();
-    }
-
     // ── Subject Requests ────────────────────────────────────────────────────
     match /subject_requests/{requestId} {
       allow create: if true;
@@ -243,28 +232,6 @@ service cloud.firestore {
     match /admin_logs/{logId} {
       allow read, create: if isAdmin();
       allow update, delete: if false;
-    }
-
-    // ── Free Class Finder (EXACT COLLECTION: freeClassrooms) ────────────────
-    match /freeClassrooms/{reportId} {
-      allow read: if true;
-      allow create, update, delete: if isSignedIn();
-    }
-
-    match /freeClassrooms {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Legacy fallback rules for backwards compatibility
-    match /free_class_reports/{reportId} {
-      allow read: if true;
-      allow create, update, delete: if isSignedIn();
-    }
-
-    match /free_class_reports {
-      allow read: if true;
-      allow write: if isSignedIn();
     }
 
     // ── Weekly Challenges ─────────────────────────────────────────────────

@@ -15,11 +15,9 @@ export type FeatureKey =
   | "pyqAnalyzer"
   | "ats"
   | "examEmergency"
-  | "seniorInsight"
   | "careerDna"
   | "attendanceShield"
   | "uploadMaterials"
-  | "freeClassFinder"
   | "semesterCalculator"
   | "githubIntelligence"
   | "avatarChange"
@@ -38,7 +36,6 @@ export interface PlanLimits {
   examEmergency: number; // per month
   githubIntelligence: number; // per month
   pdfPreview: boolean;
-  seniorInsight: boolean;
   careerDna: boolean;
   semesterCalculator: boolean;
   avatarChange: boolean;
@@ -54,7 +51,6 @@ export interface PlanLimits {
   paperinoPulse: boolean;
   attendanceShield: boolean;
   uploadMaterials: boolean;
-  freeClassFinder: boolean;
   youtubeStudy: boolean;
 }
 
@@ -66,7 +62,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     examEmergency: 0,
     githubIntelligence: 2,
     pdfPreview: false,
-    seniorInsight: false,
     careerDna: false,
     semesterCalculator: false,
     avatarChange: false,
@@ -82,7 +77,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     paperinoPulse: true,
     attendanceShield: true,
     uploadMaterials: true,
-    freeClassFinder: true,
     youtubeStudy: false,
   },
   plus: {
@@ -92,7 +86,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     examEmergency: 0,
     githubIntelligence: 4,
     pdfPreview: true,
-    seniorInsight: true,
     careerDna: false,
     semesterCalculator: true,
     avatarChange: true,
@@ -108,7 +101,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     paperinoPulse: true,
     attendanceShield: true,
     uploadMaterials: true,
-    freeClassFinder: true,
     youtubeStudy: false,
   },
   pro: {
@@ -118,7 +110,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     examEmergency: 11,
     githubIntelligence: 11,
     pdfPreview: true,
-    seniorInsight: true,
     careerDna: true,
     semesterCalculator: true,
     avatarChange: true,
@@ -134,7 +125,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     paperinoPulse: true,
     attendanceShield: true,
     uploadMaterials: true,
-    freeClassFinder: true,
     youtubeStudy: true,
   },
   premium: {
@@ -144,7 +134,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     examEmergency: Infinity,
     githubIntelligence: Infinity,
     pdfPreview: true,
-    seniorInsight: true,
     careerDna: true,
     semesterCalculator: true,
     avatarChange: true,
@@ -160,7 +149,6 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     paperinoPulse: true,
     attendanceShield: true,
     uploadMaterials: true,
-    freeClassFinder: true,
     youtubeStudy: true,
   },
 };

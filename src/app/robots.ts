@@ -16,7 +16,6 @@ export default function robots(): MetadataRoute.Robots {
           '/gpa',
           '/calculator',
           '/grades',
-          '/free-class-finder',
           '/career-dna',
           '/github-intelligence',
           '/team',

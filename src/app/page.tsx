@@ -303,30 +303,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Senior Insights Card */}
-          <div 
-            onClick={() => {
-              if (plan === "free") {
-                showPlanGate("Senior Insights", "plus", "Upgrade to Plus to unlock Senior Insights.");
-              } else {
-                router.push("/survival-notes");
-              }
-            }} 
-            className="w-full flex"
-          >
-            <div className="relative w-full h-full rounded-[2.5rem] bg-[#110F1C]/95 md:bg-[#110F1C]/90 md:backdrop-blur-xl border border-[rgba(124,58,237,0.2)] md:border-[rgba(124,58,237,0.35)] shadow-md md:shadow-[0_0_30px_rgba(124,58,237,0.25)] p-8 md:p-10 flex flex-col group cursor-pointer overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_50px_rgba(124,58,237,0.4)] hover:border-[rgba(124,58,237,0.5)] hardware-accelerated">
-              <div className="flex flex-col h-full relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-8 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-all duration-500 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
-                  <BookOpen size={26} aria-hidden="true" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3 tracking-tight group-hover:text-violet-300 transition-colors">Senior Insights</h3>
-                <p className="text-gray-400 flex-grow leading-relaxed font-light text-xs md:text-sm">Access syllabus reviews, subject ratings, and survival guides compiled directly by top-scoring seniors who survived the course.</p>
-                <div className="mt-8 flex items-center gap-2 text-violet-400 font-medium text-xs group-hover:text-violet-300 transition-colors uppercase tracking-wider">
-                  Read Insights <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300" aria-hidden="true" />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 

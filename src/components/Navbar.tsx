@@ -30,13 +30,8 @@ export default function Navbar() {
   const router = useRouter();
   const { user, isAdmin, isContributor, logout, paperinoAvatar, setPaperinoAvatar, avatarFrame, avatarCompanion, plan } = useAuth();
   const { categoryPulseUnreadCounts } = usePulseNotifications();
-  const fcfPulseCount = categoryPulseUnreadCounts["Free Class Finder"] || 0;
   
-  const { 
-
-
-    markFreeClassSeen, 
-    adminTotalUnreadCount} = useBadges();
+  const { adminTotalUnreadCount } = useBadges();
   const dashboardUnreadCount = 0;
   const [isChangingAvatar, setIsChangingAvatar] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -276,33 +271,12 @@ export default function Navbar() {
                   Paperino Labs
                 </span>
 
-                {fcfPulseCount > 0 && (
-                  <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_10px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/40 animate-in zoom-in duration-300">
-                    {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
-                  </span>
-                )}
-
                 <ChevronDown size={14} className={`transition-transform duration-300 relative z-10 text-cyan-400 ${isLabsOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {isLabsOpen && (
                 <div className="absolute right-0 mt-2.5 w-64 rounded-2xl bg-[#07050e]/95 backdrop-blur-3xl border border-white/[0.08] p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.03] via-transparent to-transparent pointer-events-none rounded-2xl" />
-                  <Link
-                    href="/free-class-finder"
-                    onClick={() => { setIsLabsOpen(false); markFreeClassSeen(); }}
-                    className="flex items-center justify-between px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <Building2 size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" />
-                      <span>Free Class Finder</span>
-                    </span>
-                    {fcfPulseCount > 0 && (
-                      <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/50">
-                        {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
-                      </span>
-                    )}
-                  </Link>
                   <Link
                     href="/pyq"
                     onClick={() => setIsLabsOpen(false)}
@@ -337,19 +311,6 @@ export default function Navbar() {
                   >
                     <ShieldCheck size={15} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Attendance Shield
                   </Link>
-                  <button
-                    onClick={() => {
-                      setIsLabsOpen(false);
-                      if (plan === "free") {
-                        showPlanGate("Senior Insights", "plus", "Upgrade to Plus to unlock Senior Insights.");
-                      } else {
-                        router.push("/survival-notes");
-                      }
-                    }}
-                    className="w-full flex items-center justify-start gap-2.5 px-3.5 py-3 rounded-xl text-gray-300 hover:text-white hover:bg-white/[0.04] transition-all text-xs font-bold group/item text-left"
-                  >
-                    <GraduationCap size={15} className="text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] group-hover/item:text-cyan-400 transition-colors shrink-0" /> Senior Insights
-                  </button>
                   <Link
                     href="/career-dna"
                     onClick={() => setIsLabsOpen(false)}
@@ -700,32 +661,12 @@ export default function Navbar() {
                         <span>Paperino Labs</span>
                       </span>
                       <div className="flex items-center gap-2">
-                        {fcfPulseCount > 0 && (
-                          <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[10px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
-                            {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
-                          </span>
-                        )}
                         <ChevronDown size={15} className={`transition-transform duration-300 text-cyan-400 ${isLabsMobileOpen ? 'rotate-180' : ''}`} />
                       </div>
                     </button>
                     
                     {isLabsMobileOpen && (
                       <div className="px-1.5 pb-1.5 pt-1 space-y-1 animate-in fade-in duration-200 border-t border-white/[0.06] mt-1">
-                        <Link 
-                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); markFreeClassSeen(); }} 
-                          href="/free-class-finder" 
-                          className={`flex items-center justify-between w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/free-class-finder' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <Building2 size={15} className="text-emerald-400 shrink-0" />
-                            <span>Free Class Finder</span>
-                          </span>
-                          {fcfPulseCount > 0 && (
-                            <span className="flex h-4 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1 text-[9px] font-black text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]">
-                              {fcfPulseCount > 99 ? "99+" : fcfPulseCount}
-                            </span>
-                          )}
-                        </Link>
                         <Link 
                           onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
                           href="/pyq" 
@@ -757,14 +698,6 @@ export default function Navbar() {
                         >
                           <ShieldCheck size={15} className="text-emerald-400 shrink-0" />
                           <span>Attendance Shield</span>
-                        </Link>
-                        <Link 
-                          onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 
-                          href="/survival-notes" 
-                          className={`flex items-center gap-2.5 w-full min-h-[40px] px-3 py-2 rounded-lg transition-all text-xs font-semibold ${pathname === '/survival-notes' ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'text-gray-300 hover:text-white hover:bg-white/[0.05]'}`}
-                        >
-                          <GraduationCap size={15} className="text-amber-400 shrink-0" />
-                          <span>Senior Insights</span>
                         </Link>
                         <Link 
                           onClick={() => { setIsMobileMenuOpen(false); setIsLabsMobileOpen(false); }} 

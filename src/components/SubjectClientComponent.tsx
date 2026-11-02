@@ -49,7 +49,7 @@ const setCachedContributorLevel = (uid: string, level: string) => {
     } catch {}
   }
 };
-const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], sections?: string[], timestamp: number }> = {};
+const subjectDataCache: Record<string, { materials: any[], sections?: string[], timestamp: number }> = {};
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10-minute cache TTL
 
 interface ServerOverview {
@@ -88,7 +88,6 @@ export default function SubjectClientComponent({
   }, [deptId, semId, lazyLoadSubjects]);
   
   const [materials, setMaterials] = useState<any[]>(initialMaterials || []);
-  const [survivalNotes, setSurvivalNotes] = useState<any[]>([]);
   const [subjectSections, setSubjectSections] = useState<string[] | null>(() => {
     if (initialMaterials && initialMaterials.length > 0) {
       return Array.from(
@@ -187,7 +186,6 @@ export default function SubjectClientComponent({
     if (!forceRefetch && hasCachedContent && (now - cachedData.timestamp < CACHE_TTL_MS)) {
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
-      setSurvivalNotes(cachedData.survivalNotes);
       if (Array.isArray(cachedData.sections)) {
         setSubjectSections(cachedData.sections);
       }
@@ -201,8 +199,8 @@ export default function SubjectClientComponent({
     }
     setFetchError(null);
     try {
-      logFirestoreRead(`materials & survival_notes (${cacheKey})`, "Fetching subject materials and sections from Firestore concurrently");
-      // 1. Fetch Subject Materials, Survival Advice & Subject Document concurrently
+      logFirestoreRead(`materials (${cacheKey})`, "Fetching subject materials and sections from Firestore concurrently");
+      // 1. Fetch Subject Materials & Subject Document concurrently
       // Skip redundant client materials query when already delivered from SSR and not forceRefetch
       const shouldQueryMaterials = forceRefetch || !initialMaterials || initialMaterials.length === 0;
       const qMaterials = shouldQueryMaterials ? query(
@@ -210,19 +208,10 @@ export default function SubjectClientComponent({
         where("semesterId", "==", semId),
         where("subjectId", "==", realSubjectId)
       ) : null;
-      
-      const qSurvival = query(
-        collection(db, "survival_notes"),
-        where("departmentId", "==", deptId),
-        where("semesterId", "==", semId),
-        where("subjectId", "==", realSubjectId),
-        where("status", "==", "approved")
-      );
 
       const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
-      const [matSnapshot, survSnapshot, subSnap] = await Promise.all([
+      const [matSnapshot, subSnap] = await Promise.all([
         qMaterials ? getDocs(qMaterials) : Promise.resolve(null),
-        getDocs(qSurvival),
         getDoc(doc(db, "dynamic_subjects", subDocId))
       ]);
 
@@ -291,70 +280,9 @@ export default function SubjectClientComponent({
       );
 
       detectedSections = categoriesWithApprovedMaterials;
-      const list: any[] = [];
-      
-      const contributorIds = new Set<string>();
-      survSnapshot.forEach(d => {
-        const data = d.data();
-        if (data.contributorId) contributorIds.add(data.contributorId);
-      });
-
-      const userLevels: Record<string, string> = {};
-      const uidsToFetch: string[] = [];
-      contributorIds.forEach(uid => {
-        const cached = getCachedContributorLevel(uid);
-        if (cached) {
-          userLevels[uid] = cached;
-        } else {
-          uidsToFetch.push(uid);
-        }
-      });
-
-      if (uidsToFetch.length > 0) {
-        const userPromises = uidsToFetch.map(uid => getDoc(doc(db, "users", uid)));
-        const userSnaps = await Promise.all(userPromises);
-        userSnaps.forEach(us => {
-          if (us.exists()) {
-            const data = us.data();
-            const urole = data.role || "";
-            const count = data.uploads || 0;
-            let level = "STUDENT";
-            if (urole === "admin") {
-              level = "LEAD ADMIN";
-            } else if (count >= 20) {
-              level = "ELITE CONTRIBUTOR";
-            } else if (count >= 5) {
-              level = "ACTIVE CONTRIBUTOR";
-            } else if (data.isModerator) {
-              level = "MODERATOR";
-            } else if (urole === "contributor") {
-              level = "CONTRIBUTOR";
-            }
-            setCachedContributorLevel(us.id, level);
-            userLevels[us.id] = level;
-          }
-        });
-      }
-
-      survSnapshot.forEach(d => {
-        const data = d.data();
-        list.push({
-          id: d.id,
-          ...data,
-          contributorLevel: userLevels[data.contributorId] || "STUDENT"
-        });
-      });
-
-      // Sort by helpfulness score (helpful - notHelpful)
-      list.sort((a, b) => {
-        const scoreA = (a.helpfulCount || 0) - (a.notHelpfulCount || 0);
-        const scoreB = (b.helpfulCount || 0) - (b.notHelpfulCount || 0);
-        return scoreB - scoreA;
-      });
 
       const finalCacheData = {
         materials: matList,
-        survivalNotes: list,
         sections: detectedSections || undefined,
         timestamp: Date.now()
       };
@@ -372,7 +300,6 @@ export default function SubjectClientComponent({
       }
 
       setMaterials(matList);
-      setSurvivalNotes(list);
       setSubjectSections(detectedSections);
     } catch (error: any) {
       console.error("Error fetching subject data:", error);
@@ -384,70 +311,6 @@ export default function SubjectClientComponent({
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVote = async (noteId: string, type: "helpful" | "notHelpful") => {
-    if (!user) return;
-    const noteRef = doc(db, "survival_notes", noteId);
-    const note = survivalNotes.find(n => n.id === noteId);
-    if (!note) return;
-
-    const uid = user.uid;
-    const helpfulUsers = note.helpfulUsers || [];
-    const notHelpfulUsers = note.notHelpfulUsers || [];
-    const hasVotedHelpful = helpfulUsers.includes(uid);
-    const hasVotedNotHelpful = notHelpfulUsers.includes(uid);
-
-    try {
-      if (type === "helpful") {
-        if (hasVotedHelpful) {
-          await updateDoc(noteRef, {
-            helpfulCount: increment(-1),
-            helpfulUsers: arrayRemove(uid)
-          });
-        } else {
-          await updateDoc(noteRef, {
-            helpfulCount: increment(1),
-            helpfulUsers: arrayUnion(uid),
-            ...(hasVotedNotHelpful ? {
-              notHelpfulCount: increment(-1),
-              notHelpfulUsers: arrayRemove(uid)
-            } : {})
-          });
-        }
-      } else {
-        if (hasVotedNotHelpful) {
-          await updateDoc(noteRef, {
-            notHelpfulCount: increment(-1),
-            notHelpfulUsers: arrayRemove(uid)
-          });
-        } else {
-          await updateDoc(noteRef, {
-            notHelpfulCount: increment(1),
-            notHelpfulUsers: arrayUnion(uid),
-            ...(hasVotedHelpful ? {
-              helpfulCount: increment(-1),
-              helpfulUsers: arrayRemove(uid)
-            } : {})
-          });
-        }
-      }
-      fetchMaterials(true); // Reload lists to refresh UI immediately and invalidate cache
-    } catch (err) {
-      console.error("Voting failed:", err);
-    }
-  };
-
-  const handleDeleteInsight = async (noteId: string) => {
-    if (!isAdmin) return;
-    if (!confirm("Are you sure you want to permanently delete this Senior Insight?")) return;
-    try {
-      await deleteDoc(doc(db, "survival_notes", noteId));
-      delete subjectDataCache[`${deptId}_${semId}_${subjectId}`];
-      setSurvivalNotes(prev => prev.filter(n => n.id !== noteId));
-    } catch (err) {
-      console.error("Delete insight failed:", err);
     }
   };
 
@@ -1055,112 +918,6 @@ export default function SubjectClientComponent({
               </div>
             )}
 
-          </div>
-        )}
-
-        {/* ── Senior Survival Advice Section ── */}
-        {!loading && (
-          <div className="mt-12 space-y-6 animate-in fade-in duration-700">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">
-                  <Sparkles size={16} className="text-violet-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">Senior Survival Advice</h2>
-              </div>
-            </div>
-
-            {survivalNotes.length === 0 ? (
-              <div className="text-center py-12 px-4 bg-white/[0.02] rounded-3xl border border-white/5 border-dashed">
-                <p className="text-gray-400 text-sm font-medium">No Senior Insights available for this subject yet.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {survivalNotes.map((note) => {
-                  const hasVotedHelpful = note.helpfulUsers?.includes(user?.uid || "");
-                  const hasVotedNotHelpful = note.notHelpfulUsers?.includes(user?.uid || "");
-
-                  return (
-                    <div 
-                      key={note.id} 
-                      className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between shadow-[0_0_30px_rgba(var(--primary-rgb),0.04)] hover:shadow-[0_0_45px_rgba(var(--primary-rgb),0.08)] transition-all duration-300 group hover:border-violet-500/20"
-                    >
-                      <div>
-                        {/* Header */}
-                        <div className="flex justify-between items-start mb-4 gap-2">
-                          <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full text-[10px] font-bold tracking-wide uppercase">
-                            {note.category}
-                          </span>
-                          
-                          {/* Admin Manage Mode Delete Button */}
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleDeleteInsight(note.id)}
-                              className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 hover:border-red-500/40 text-red-400 transition-all cursor-pointer"
-                              title="Delete insight permanently"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Text */}
-                        <p className="text-gray-200 text-sm leading-relaxed whitespace-pre-line font-medium mb-4">
-                          {note.content}
-                        </p>
-                      </div>
-
-                      {/* Footer & Voting info */}
-                      <div className="border-t border-white/[0.06] pt-4 mt-auto flex flex-col gap-3">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          {/* Contributor Profile */}
-                          <div className="flex flex-col">
-                            <span className="text-xs text-white font-bold">{note.contributorName || "Anonymous Senior"}</span>
-                            <span className="text-[9px] text-violet-400 font-bold uppercase tracking-wider">
-                              Level: {note.contributorLevel || "Contributor"}
-                            </span>
-                          </div>
-
-                          {/* Date Info */}
-                          <span className="text-[10px] text-gray-500 font-semibold">
-                            {note.createdAt?.toDate ? note.createdAt.toDate().toLocaleDateString() : new Date(note.createdAt || 0).toLocaleDateString()}
-                          </span>
-                        </div>
-
-                        {/* Interactive Voting Row */}
-                        <div className="flex items-center justify-end gap-2 text-xs">
-                          <button
-                            onClick={() => handleVote(note.id, "helpful")}
-                            disabled={!user}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                              hasVotedHelpful
-                                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
-                                : "bg-white/5 border-transparent text-gray-400 hover:text-white"
-                            }`}
-                          >
-                            <ThumbsUp size={12} />
-                            <span>Helpful ({note.helpfulCount || 0})</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleVote(note.id, "notHelpful")}
-                            disabled={!user}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                              hasVotedNotHelpful
-                                ? "bg-rose-500/20 border-rose-500/40 text-rose-400"
-                                : "bg-white/5 border-transparent text-gray-400 hover:text-white"
-                            }`}
-                          >
-                            <ThumbsDown size={12} />
-                            <span>Not Helpful ({note.notHelpfulCount || 0})</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
 

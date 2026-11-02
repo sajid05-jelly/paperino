@@ -1899,13 +1899,6 @@ export default function CareerDnaPage() {
                     <span className="text-[10px] text-gray-500">Grade target</span>
                   </Link>
 
-                  <Link href="/survival-notes" className="flex items-center justify-between p-3 rounded-xl border border-white/5 hover:border-white/10 hover:bg-white/5 text-gray-300 hover:text-white transition">
-                    <span className="flex items-center gap-2">
-                      <Layers size={14} className="text-purple-400" /> Senior Insights
-                    </span>
-                    <span className="text-[10px] text-gray-500">Survival tips</span>
-                  </Link>
-
                   <Link href="/attendance-mafia" className="flex items-center justify-between p-3 rounded-xl border border-white/5 hover:border-white/10 hover:bg-white/5 text-gray-300 hover:text-white transition">
                     <span className="flex items-center gap-2">
                       <Shield size={14} className="text-purple-400" /> Attendance Shield
