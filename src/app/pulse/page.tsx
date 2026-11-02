@@ -217,8 +217,18 @@ export default function PulsePage() {
   const isNew = (ts?: Timestamp) => ts ? (Date.now() - ts.seconds * 1000) / 86400000 <= 3 : false;
   const isExpiredTs = (ts?: Timestamp) => ts ? Date.now() > ts.seconds * 1000 : false;
 
-  // ─── CATEGORY & OUT OF DATE FILTERING LOGIC ──────────────────────────────────
+  // ─── CATEGORY, OUT OF DATE & UNSTOP EXCLUSION FILTERING LOGIC ───────────────
+  const isUnstopItem = (u: PulseUpdate) => {
+    const sName = (u.sourceName || "").toLowerCase();
+    const link = (u.link || "").toLowerCase();
+    const organizer = ((u as any).organizer || "").toLowerCase();
+    return sName.includes("unstop") || link.includes("unstop.com") || organizer.includes("unstop");
+  };
+
   const filteredUpdates = updates.filter(u => {
+    // Unconditionally remove all Unstop hackathon records
+    if (isUnstopItem(u)) return false;
+
     const expired = isExpiredTs(u.deadline);
     if (activeCategory === "Out of Date") {
       return expired;

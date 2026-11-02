@@ -5,7 +5,6 @@ import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, updateDoc, Timestamp, limit } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Radio, Plus, Edit, Trash2, Pin, PinOff, Link as LinkIcon, AlertCircle, RefreshCw, CheckCircle2, Clock, MapPin } from "lucide-react";
-import Link from "next/link";
 import { getIdToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -19,6 +18,8 @@ interface PulseUpdate {
   createdAt: Timestamp;
   createdBy: string;
   isPinned: boolean;
+  sourceName?: string;
+  organizer?: string;
 }
 
 interface KnowafestSyncInfo {
@@ -115,7 +116,13 @@ export default function AdminPulsePage() {
   useEffect(() => {
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(25));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate));
+      const data = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate))
+        .filter(u => {
+          const sName = (u.sourceName || "").toLowerCase();
+          const link = (u.link || "").toLowerCase();
+          return !sName.includes("unstop") && !link.includes("unstop.com");
+        });
       // Sort pinned posts to top locally to ensure they always show first
       data.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
@@ -231,12 +238,6 @@ export default function AdminPulsePage() {
           <p className="text-gray-400 mt-2">Create and manage internal news, announcements, and opportunities.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Link 
-            href="/admin/pulse/queue"
-            className="flex items-center gap-2 px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30 rounded-xl font-bold transition-colors"
-          >
-            Review Queue
-          </Link>
           <button 
             onClick={openModalForCreate}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold transition-colors shadow-[0_0_15px_rgba(6,182,212,0.4)]"

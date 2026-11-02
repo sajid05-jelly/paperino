@@ -324,137 +324,23 @@ export async function GET(req: Request) {
     skippedBlacklisted: 0
   };
 
-  // Pre-fetch blacklist, queue, and recent pulse updates ONCE to eliminate N*3 read queries in loops
+  // Pre-fetch blacklist and recent pulse updates ONCE to eliminate N*3 read queries in loops
   const blacklistedLinks = new Set<string>();
-  const existingQueueLinks = new Set<string>();
   const existingPulseLinks = new Set<string>();
 
   try {
-    const [blacklistSnap, queueSnap, updatesSnap] = await Promise.all([
+    const [blacklistSnap, updatesSnap] = await Promise.all([
       db.collection("pulse_blacklist").select("link").limit(100).get(),
-      db.collection("pulse_queue").select("link").limit(100).get(),
       db.collection("pulse_updates").select("link").limit(100).get()
     ]);
     blacklistSnap.docs.forEach(d => { const l = d.data()?.link; if (l) blacklistedLinks.add(l); });
-    queueSnap.docs.forEach(d => { const l = d.data()?.link; if (l) existingQueueLinks.add(l); });
     updatesSnap.docs.forEach(d => { const l = d.data()?.link; if (l) existingPulseLinks.add(l); });
   } catch (err: any) {
     console.warn("[Cron Fetch-Pulse] Cache prefetch notice:", err?.message || err);
   }
 
   try {
-    // --- 1. Fetch from Unstop ---
-    try {
-      const res = await fetch("https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&page=1", {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "application/json"
-        },
-        cache: 'no-store'
-      });
-      
-      if (res.ok) {
-        const json = await res.json();
-        const items = json?.data?.data || [];
-        stats.totalFetched += items.length;
-
-        await Promise.all(items.map(async (item: any) => {
-          if (!item.title || !item.public_url) return;
-          
-          const link = item.short_url || `https://unstop.com/${item.public_url}`;
-          const title = item.title;
-          
-          // Parse Mode
-          const modeVal = (item.region || "").toLowerCase();
-          const mode = modeVal === "online" ? "Online" : "Offline";
-
-          // Parse Location
-          const rawCity = item.address_with_country_logo?.city || "";
-          const rawState = item.address_with_country_logo?.state || "";
-          const country = item.address_with_country_logo?.country?.name || "";
-
-          // Exclude International
-          if (isInternational(country)) {
-            console.log(`Skipped: ${title} | Reason: International Event`);
-            return;
-          }
-
-          // Parse Deadline
-          const deadlineStr = item.regnRequirements?.end_regn_dt || item.end_date;
-          const deadline = deadlineStr && !isNaN(Date.parse(deadlineStr)) ? new Date(deadlineStr) : null;
-          
-          // Validation: Skip Expired or Ended
-          if (deadline && deadline < now) {
-            console.log(`Skipped: ${title} | Reason: Expired`);
-            stats.skippedExpired++;
-            return;
-          }
-          if (item.regnRequirements?.reg_status === "ENDED") {
-            console.log(`Skipped: ${title} | Reason: Expired`);
-            stats.skippedExpired++;
-            return;
-          }
-
-          // Check Blacklist (In-Memory Set lookup - 0 extra reads)
-          if (blacklistedLinks.has(link)) {
-            console.log(`Skipped: ${title} | Reason: Blacklisted`);
-            stats.skippedBlacklisted++;
-            return;
-          }
-          
-          // Check Duplicates (In-Memory Set lookup - 0 extra reads)
-          if (existingQueueLinks.has(link) || existingPulseLinks.has(link)) {
-            console.log(`Skipped: ${title} | Reason: Duplicate`);
-            stats.skippedDuplicates++;
-            return;
-          }
-
-          const cleanedDescription = cleanHtml(item.details || item.desc || item.seo_meta_description || item.tagline || "");
-
-          // 1. Detect location using local properties
-          let resolvedLocation = detectLocationInfo(title, cleanedDescription, item.organisation?.name || "", rawCity, rawState, "");
-          
-          // 2. Scrape target page if local detection failed
-          if (!resolvedLocation && link) {
-            resolvedLocation = await scrapeLocationFromUrl(link);
-          }
-
-          const finalLocation = resolvedLocation?.location || "Location Unknown";
-          const finalState = resolvedLocation?.state || "";
-
-          // Apply Exclusion Filter
-          const exclusionQuery = `${title} ${cleanedDescription} ${item.organisation?.name || ""} ${finalLocation} ${finalState}`.toLowerCase();
-          const exclusions = ["delhi", "mumbai", "pune", "kolkata", "gujarat", "rajasthan", "punjab"];
-          const isExcluded = exclusions.some(e => exclusionQuery.includes(e));
-          if (isExcluded) {
-            console.log(`Skipped: ${title} | Reason: Excluded Location (${exclusions.filter(e => exclusionQuery.includes(e)).join(", ")})`);
-            return;
-          }
-
-          await db.collection("pulse_queue").add({
-            title: title,
-            description: cleanedDescription || `A new opportunity on Unstop: ${title}.`,
-            category: "Hackathons",
-            sourceName: "Unstop",
-            link: link,
-            isPinned: false,
-            status: "pending",
-            createdAt: now,
-            organizer: item.organisation?.name || "Unstop",
-            deadline: deadline,
-            location: finalLocation,
-            state: finalState,
-            mode: mode
-          });
-          existingQueueLinks.add(link);
-          stats.active++;
-        }));
-      }
-    } catch (e) {
-      console.error("Unstop fetch error:", e);
-    }
-
-    // --- 2. Fetch from Devfolio ---
+    // --- Devfolio Hackathons (Direct to Pulse Updates, Unstop completely removed) ---
     try {
       const res = await fetch("https://api.devfolio.co/api/hackathons?page=1&limit=30", {
         headers: {
@@ -505,7 +391,7 @@ export async function GET(req: Request) {
           }
 
           // Check Duplicates (In-Memory Set lookup - 0 extra reads)
-          if (existingQueueLinks.has(link) || existingPulseLinks.has(link)) {
+          if (existingPulseLinks.has(link)) {
             console.log(`Skipped: ${title} | Reason: Duplicate`);
             stats.skippedDuplicates++;
             return;
@@ -535,14 +421,17 @@ export async function GET(req: Request) {
             return;
           }
 
-          await db.collection("pulse_queue").add({
+          await db.collection("pulse_updates").add({
             title: title,
             description: rawDescription || `A new hackathon on Devfolio: ${title}.`,
             category: "Hackathons",
             sourceName: "Devfolio",
             link: link,
+            priority: "normal",
             isPinned: false,
-            status: "pending",
+            verifiedSource: true,
+            createdByRole: "system",
+            isCreatedByAdmin: false,
             createdAt: now,
             organizer: item.hackathon_setting?.subdomain || "Devfolio",
             deadline: deadline,
@@ -550,7 +439,7 @@ export async function GET(req: Request) {
             state: finalState,
             mode: mode
           });
-          existingQueueLinks.add(link);
+          existingPulseLinks.add(link);
           stats.active++;
         }));
       }
