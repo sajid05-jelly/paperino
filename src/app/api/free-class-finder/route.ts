@@ -54,9 +54,9 @@ export async function GET(req: NextRequest) {
 
     await adminAuth.verifyIdToken(token);
 
-    // Simple query without orderBy to avoid composite index requirements
+    // Simple bounded query to prevent read quota exhaustion
     console.log(`[FCF API GET] Querying collection: ${COLLECTION_NAME}`);
-    const snapshot = await adminDb.collection(COLLECTION_NAME).limit(100).get();
+    const snapshot = await adminDb.collection(COLLECTION_NAME).limit(35).get();
     console.log(`[FCF API GET] Firestore returned ${snapshot.docs.length} total documents`);
     const now = Date.now();
     const list: any[] = [];

@@ -56,7 +56,18 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     return 0;
   });
 
-  const [activeReportsTimeList, setActiveReportsTimeList] = useState<{ id: string; createdAt: number; expiresAt: number }[]>([]);
+  const [activeReportsTimeList, setActiveReportsTimeList] = useState<{ id: string; createdAt: number; expiresAt: number }[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("paperino_cached_fcf_badge");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.items)) return parsed.items;
+        }
+      } catch {}
+    }
+    return [];
+  });
 
   const lastFreeClassCheckRef = useRef<number>(0);
 
@@ -67,8 +78,16 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     }
 
     const now = Date.now();
-    // Cache for 3 minutes per session - NO global background setInterval
-    if (!forceRefresh && (now - lastFreeClassCheckRef.current) < 3 * 60 * 1000) {
+    let cachedTs = 0;
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem("paperino_cached_fcf_badge_ts");
+        if (stored) cachedTs = parseInt(stored, 10);
+      } catch {}
+    }
+    const lastCheck = Math.max(lastFreeClassCheckRef.current, cachedTs);
+    // Cache for 15 minutes per session to aggressively conserve Firestore read quota
+    if (!forceRefresh && (now - lastCheck) < 15 * 60 * 1000) {
       return;
     }
 
@@ -88,10 +107,16 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
       });
       setActiveReportsTimeList(items);
       lastFreeClassCheckRef.current = now;
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("paperino_cached_fcf_badge", JSON.stringify({ items }));
+          sessionStorage.setItem("paperino_cached_fcf_badge_ts", now.toString());
+        } catch {}
+      }
     } catch (e: any) {
       console.warn("[BadgeContext] Free class badge count fallback:", e?.message || e);
     }
-  }, [user, activeReportsTimeList.length]);
+  }, [user]);
 
   // Check badge once on mount/login, without continuous polling
   useEffect(() => {
@@ -128,9 +153,42 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   // ─────────────────────────────────────────────────────────────
   // 3. ADMIN BADGES (Subject Requests, Pending Reviews, Pending Courses)
   // ─────────────────────────────────────────────────────────────
-  const [adminSubjectRequestsRaw, setAdminSubjectRequestsRaw] = useState<{ id: string; createdAt: number }[]>([]);
-  const [adminPendingReviewsRaw, setAdminPendingReviewsRaw] = useState<{ id: string; createdAt: number }[]>([]);
-  const [adminPendingCoursesRaw, setAdminPendingCoursesRaw] = useState<{ id: string; createdAt: number }[]>([]);
+  const [adminSubjectRequestsRaw, setAdminSubjectRequestsRaw] = useState<{ id: string; createdAt: number }[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("paperino_admin_badges_data");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.subjectRequests)) return parsed.subjectRequests;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [adminPendingReviewsRaw, setAdminPendingReviewsRaw] = useState<{ id: string; createdAt: number }[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("paperino_admin_badges_data");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.reviews)) return parsed.reviews;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [adminPendingCoursesRaw, setAdminPendingCoursesRaw] = useState<{ id: string; createdAt: number }[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("paperino_admin_badges_data");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.courses)) return parsed.courses;
+        }
+      } catch {}
+    }
+    return [];
+  });
 
   // Per-section last-seen timestamps to support section-specific read clearing
   const [lastSeenAdminSections, setLastSeenAdminSections] = useState<{
@@ -148,13 +206,19 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     return { subject_requests: 0, reviews: 0, courses: 0 };
   });
 
-  // Sync persistent last-seen timestamps from Firestore for this admin user
+  // Sync persistent last-seen timestamps from Firestore for this admin user (cached per session)
   useEffect(() => {
     if (!user || !isAdmin) return;
 
     let isMounted = true;
     const fetchAdminSeenFromFirestore = async () => {
       try {
+        const now = Date.now();
+        const cachedTs = typeof window !== "undefined" ? sessionStorage.getItem("paperino_admin_seen_synced_ts") : null;
+        if (cachedTs && (now - parseInt(cachedTs, 10)) < 15 * 60 * 1000) {
+          return; // Use locally cached seen timestamps for 15 mins
+        }
+
         const adminDocRef = doc(db, "users", user.uid);
         const adminDocSnap = await getDoc(adminDocRef);
         if (adminDocSnap.exists()) {
@@ -172,6 +236,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
                   localStorage.setItem("paperino_admin_seen_subject_requests", updated.subject_requests.toString());
                   localStorage.setItem("paperino_admin_seen_reviews", updated.reviews.toString());
                   localStorage.setItem("paperino_admin_seen_courses", updated.courses.toString());
+                  sessionStorage.setItem("paperino_admin_seen_synced_ts", now.toString());
                 } catch (e) {}
               }
               return updated;
@@ -193,18 +258,25 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
 
   const lastAdminBadgesFetchTimeRef = useRef<number>(0);
 
-  // 3. Admin Pending Items Badge Logic (Optimized from Real-time Listeners to One-time Fetch)
+  // 3. Admin Pending Items Badge Logic (Optimized from Real-time Listeners to One-time Fetch with 5m cache)
   const fetchAdminBadges = useCallback(async (forceRefresh: boolean = false) => {
     const isOnAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
     if (!user || !isAdmin || !isOnAdminRoute) return;
 
     const now = Date.now();
-    if (!forceRefresh && (now - lastAdminBadgesFetchTimeRef.current) < 3 * 60 * 1000) {
+    let cachedAdminTs = 0;
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem("paperino_admin_badges_ts");
+        if (stored) cachedAdminTs = parseInt(stored, 10);
+      } catch {}
+    }
+    const lastCheck = Math.max(lastAdminBadgesFetchTimeRef.current, cachedAdminTs);
+    if (!forceRefresh && (now - lastCheck) < 5 * 60 * 1000) {
       return;
     }
 
     try {
-      const pendingItemsList: { type: string; id: string; createdAt: number }[] = [];
       const queries = [
         { type: "subject_requests", q: query(collection(db, "subject_requests"), limit(50)) },
         { type: "courses", q: query(collection(db, "departments"), where("status", "==", "pending"), limit(30)) },
@@ -233,10 +305,25 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
       );
 
       const allItems = results.flat();
-      setAdminSubjectRequestsRaw(allItems.filter(i => i.type === "subject_requests"));
-      setAdminPendingCoursesRaw(allItems.filter(i => i.type === "courses"));
-      setAdminPendingReviewsRaw(allItems.filter(i => i.type === "reviews"));
+      const subjectReqs = allItems.filter(i => i.type === "subject_requests");
+      const pendingCourses = allItems.filter(i => i.type === "courses");
+      const pendingReviews = allItems.filter(i => i.type === "reviews");
+
+      setAdminSubjectRequestsRaw(subjectReqs);
+      setAdminPendingCoursesRaw(pendingCourses);
+      setAdminPendingReviewsRaw(pendingReviews);
       lastAdminBadgesFetchTimeRef.current = now;
+
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("paperino_admin_badges_ts", now.toString());
+          sessionStorage.setItem("paperino_admin_badges_data", JSON.stringify({
+            subjectRequests: subjectReqs,
+            courses: pendingCourses,
+            reviews: pendingReviews,
+          }));
+        } catch {}
+      }
     } catch (e) {
       console.warn("[BadgeContext] Error fetching admin pending badges:", e);
     }

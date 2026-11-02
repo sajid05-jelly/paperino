@@ -16,10 +16,10 @@ export default function MaintenanceBanner() {
     let isMounted = true;
     const fetchMaintenanceStatus = async () => {
       try {
-        const cached = typeof window !== 'undefined' ? sessionStorage.getItem('paperino_maint_banner') : null;
+        const cached = typeof window !== 'undefined' ? (localStorage.getItem('paperino_maint_banner') || sessionStorage.getItem('paperino_maint_banner')) : null;
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Date.now() - parsed.ts < 5 * 60 * 1000) {
+          if (Date.now() - parsed.ts < 15 * 60 * 1000) {
             if (isMounted) {
               setShowBanner(parsed.isActive);
               if (parsed.message) setMessage(parsed.message);
@@ -37,7 +37,9 @@ export default function MaintenanceBanner() {
             setShowBanner(isActive);
             if (isActive && msg) setMessage(msg);
             if (typeof window !== 'undefined') {
-              sessionStorage.setItem('paperino_maint_banner', JSON.stringify({ isActive, message: msg, ts: Date.now() }));
+              const payload = JSON.stringify({ isActive, message: msg, ts: Date.now() });
+              try { localStorage.setItem('paperino_maint_banner', payload); } catch {}
+              try { sessionStorage.setItem('paperino_maint_banner', payload); } catch {}
             }
           } else {
             setShowBanner(false);

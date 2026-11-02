@@ -204,7 +204,7 @@ function FreeClassFinderContent() {
 
     try {
       const collectionName = "free_class_reports";
-      const reportsQuery = query(collection(db, collectionName), limit(100));
+      const reportsQuery = query(collection(db, collectionName), limit(35));
       unsub = onSnapshot(
         reportsQuery,
         (snap) => {

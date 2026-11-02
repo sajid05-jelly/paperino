@@ -59,10 +59,10 @@ export default function Navbar() {
     const fetchTagline = async () => {
       try {
         const cached = typeof window !== "undefined" ? localStorage.getItem("paperino_header_tagline") : null;
-        const cachedTime = typeof window !== "undefined" ? sessionStorage.getItem("paperino_header_tagline_ts") : null;
+        const cachedTime = typeof window !== "undefined" ? localStorage.getItem("paperino_header_tagline_ts") : null;
         
-        if (cached && cachedTime && (Date.now() - parseInt(cachedTime, 10) < 10 * 60 * 1000)) {
-          return; // Still fresh within 10 minutes
+        if (cached && cachedTime && (Date.now() - parseInt(cachedTime, 10) < 30 * 60 * 1000)) {
+          return; // Still fresh within 30 minutes across all browser tabs
         }
 
         const snap = await getDoc(doc(db, "settings", "headerMessage"));
@@ -73,7 +73,7 @@ export default function Navbar() {
             setTagline(msg);
             if (typeof window !== "undefined") {
               localStorage.setItem("paperino_header_tagline", msg);
-              sessionStorage.setItem("paperino_header_tagline_ts", Date.now().toString());
+              localStorage.setItem("paperino_header_tagline_ts", Date.now().toString());
             }
           }
         }

@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       throw new Error("Database not initialized.");
     }
 
-    const snapshot = await adminDb.collection(targetCollection).orderBy("createdAt", "desc").get();
+    const snapshot = await adminDb.collection(targetCollection).orderBy("createdAt", "desc").limit(50).get();
     const results = snapshot.docs.map(doc => {
       const data = doc.data();
       const formattedData = { ...data };

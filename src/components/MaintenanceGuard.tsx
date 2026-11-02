@@ -22,10 +22,10 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     let isMounted = true;
     const checkSiteConfig = async () => {
       try {
-        const cached = typeof window !== "undefined" ? sessionStorage.getItem("paperino_site_config_maint") : null;
+        const cached = typeof window !== "undefined" ? (localStorage.getItem("paperino_site_config_maint") || sessionStorage.getItem("paperino_site_config_maint")) : null;
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Date.now() - parsed.ts < 5 * 60 * 1000) {
+          if (Date.now() - parsed.ts < 15 * 60 * 1000) {
             if (isMounted) {
               setMaintenanceMode(parsed.maintenance);
               setLoadingConfig(false);
@@ -42,7 +42,9 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
             const youtubeStudy = data.youtubeStudy !== false;
             setMaintenanceMode(maint);
             if (typeof window !== "undefined") {
-              sessionStorage.setItem("paperino_site_config_maint", JSON.stringify({ maintenance: maint, youtubeStudy, ts: Date.now() }));
+              const payload = JSON.stringify({ maintenance: maint, youtubeStudy, ts: Date.now() });
+              try { localStorage.setItem("paperino_site_config_maint", payload); } catch {}
+              try { sessionStorage.setItem("paperino_site_config_maint", payload); } catch {}
             }
           } else {
             setMaintenanceMode(false);

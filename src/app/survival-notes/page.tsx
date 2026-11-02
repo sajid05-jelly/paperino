@@ -59,8 +59,36 @@ interface SurvivalNote {
   createdAt: any;
 }
 
-// Module-level cache to eliminate N+1 user profile reads during session
+// Module-level and session-level cache to eliminate N+1 user profile reads during session
 const survivalContributorCache: Record<string, string> = {};
+const getCachedSurvivalRole = (uid: string): string | null => {
+  if (survivalContributorCache[uid]) return survivalContributorCache[uid];
+  if (typeof window !== "undefined") {
+    try {
+      const stored = sessionStorage.getItem("paperino_contributor_cache");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed[uid]) {
+          survivalContributorCache[uid] = parsed[uid];
+          return parsed[uid];
+        }
+      }
+    } catch {}
+  }
+  return null;
+};
+
+const setCachedSurvivalRole = (uid: string, role: string) => {
+  survivalContributorCache[uid] = role;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = sessionStorage.getItem("paperino_contributor_cache");
+      const parsed = stored ? JSON.parse(stored) : {};
+      parsed[uid] = role;
+      sessionStorage.setItem("paperino_contributor_cache", JSON.stringify(parsed));
+    } catch {}
+  }
+};
 
 export default function SeniorInsightsPage() {
   const { showPlanGate } = usePlanGate();
@@ -149,8 +177,9 @@ export default function SeniorInsightsPage() {
       const uidsToFetch: string[] = [];
       if (contributorIds.size > 0) {
         contributorIds.forEach(uid => {
-          if (survivalContributorCache[uid]) {
-            userRoles[uid] = survivalContributorCache[uid];
+          const cached = getCachedSurvivalRole(uid);
+          if (cached) {
+            userRoles[uid] = cached;
           } else {
             uidsToFetch.push(uid);
           }
@@ -171,7 +200,7 @@ export default function SeniorInsightsPage() {
               } else if (urole === "contributor") {
                 roleTitle = "CONTRIBUTOR";
               }
-              survivalContributorCache[us.id] = roleTitle;
+              setCachedSurvivalRole(us.id, roleTitle);
               userRoles[us.id] = roleTitle;
             }
           });

@@ -21,6 +21,34 @@ import { SITE_CONFIG } from "@/lib/siteConfig";
 import { SUBJECTS } from "@/lib/subjects";
 
 const contributorCache: Record<string, string> = {};
+const getCachedContributorLevel = (uid: string): string | null => {
+  if (contributorCache[uid]) return contributorCache[uid];
+  if (typeof window !== "undefined") {
+    try {
+      const stored = sessionStorage.getItem("paperino_contributor_cache");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed[uid]) {
+          contributorCache[uid] = parsed[uid];
+          return parsed[uid];
+        }
+      }
+    } catch {}
+  }
+  return null;
+};
+
+const setCachedContributorLevel = (uid: string, level: string) => {
+  contributorCache[uid] = level;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = sessionStorage.getItem("paperino_contributor_cache");
+      const parsed = stored ? JSON.parse(stored) : {};
+      parsed[uid] = level;
+      sessionStorage.setItem("paperino_contributor_cache", JSON.stringify(parsed));
+    } catch {}
+  }
+};
 const subjectDataCache: Record<string, { materials: any[], survivalNotes: any[], sections?: string[], timestamp: number }> = {};
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10-minute cache TTL
 
@@ -274,8 +302,9 @@ export default function SubjectClientComponent({
       const userLevels: Record<string, string> = {};
       const uidsToFetch: string[] = [];
       contributorIds.forEach(uid => {
-        if (contributorCache[uid]) {
-          userLevels[uid] = contributorCache[uid];
+        const cached = getCachedContributorLevel(uid);
+        if (cached) {
+          userLevels[uid] = cached;
         } else {
           uidsToFetch.push(uid);
         }
@@ -301,7 +330,7 @@ export default function SubjectClientComponent({
             } else if (urole === "contributor") {
               level = "CONTRIBUTOR";
             }
-            contributorCache[us.id] = level;
+            setCachedContributorLevel(us.id, level);
             userLevels[us.id] = level;
           }
         });

@@ -261,12 +261,13 @@ async function cleanExpiredUserNotifications() {
     const now = Date.now();
     const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
     
-    // Fetch all admin user IDs from users collection so admin notifications are never touched
-    const adminSnap = await adminDb.collection("users").where("role", "in", ["admin", "lead-admin", "lead_admin", "super-admin"]).get();
+    // Fetch admin user IDs (bounded to 50) so admin notifications are never touched
+    const adminSnap = await adminDb.collection("users").where("role", "in", ["admin", "lead-admin", "lead_admin", "super-admin"]).select("role").limit(50).get();
     const adminUids = new Set<string>(["ADMIN"]);
     adminSnap.docs.forEach(d => adminUids.add(d.id));
 
-    const notifSnap = await adminDb.collection("notifications").get();
+    // Bounded query (limit 50 per cron cycle) to prevent full collection scans that drain Firestore quota
+    const notifSnap = await adminDb.collection("notifications").limit(50).get();
     let deletedCount = 0;
 
     for (const docSnap of notifSnap.docs) {
@@ -323,6 +324,24 @@ export async function GET(req: Request) {
     skippedBlacklisted: 0
   };
 
+  // Pre-fetch blacklist, queue, and recent pulse updates ONCE to eliminate N*3 read queries in loops
+  const blacklistedLinks = new Set<string>();
+  const existingQueueLinks = new Set<string>();
+  const existingPulseLinks = new Set<string>();
+
+  try {
+    const [blacklistSnap, queueSnap, updatesSnap] = await Promise.all([
+      db.collection("pulse_blacklist").select("link").limit(100).get(),
+      db.collection("pulse_queue").select("link").limit(100).get(),
+      db.collection("pulse_updates").select("link").limit(100).get()
+    ]);
+    blacklistSnap.docs.forEach(d => { const l = d.data()?.link; if (l) blacklistedLinks.add(l); });
+    queueSnap.docs.forEach(d => { const l = d.data()?.link; if (l) existingQueueLinks.add(l); });
+    updatesSnap.docs.forEach(d => { const l = d.data()?.link; if (l) existingPulseLinks.add(l); });
+  } catch (err: any) {
+    console.warn("[Cron Fetch-Pulse] Cache prefetch notice:", err?.message || err);
+  }
+
   try {
     // --- 1. Fetch from Unstop ---
     try {
@@ -376,19 +395,15 @@ export async function GET(req: Request) {
             return;
           }
 
-          // Check Blacklist
-          const blacklistQuery = await db.collection("pulse_blacklist").where("link", "==", link).get();
-          if (!blacklistQuery.empty) {
+          // Check Blacklist (In-Memory Set lookup - 0 extra reads)
+          if (blacklistedLinks.has(link)) {
             console.log(`Skipped: ${title} | Reason: Blacklisted`);
             stats.skippedBlacklisted++;
             return;
           }
           
-          // Check Duplicates
-          const queueQuery = await db.collection("pulse_queue").where("link", "==", link).get();
-          const updatesQuery = await db.collection("pulse_updates").where("link", "==", link).get();
-          
-          if (!queueQuery.empty || !updatesQuery.empty) {
+          // Check Duplicates (In-Memory Set lookup - 0 extra reads)
+          if (existingQueueLinks.has(link) || existingPulseLinks.has(link)) {
             console.log(`Skipped: ${title} | Reason: Duplicate`);
             stats.skippedDuplicates++;
             return;
@@ -431,6 +446,7 @@ export async function GET(req: Request) {
             state: finalState,
             mode: mode
           });
+          existingQueueLinks.add(link);
           stats.active++;
         }));
       }
@@ -481,19 +497,15 @@ export async function GET(req: Request) {
             return;
           }
 
-          // Check Blacklist
-          const blacklistQuery = await db.collection("pulse_blacklist").where("link", "==", link).get();
-          if (!blacklistQuery.empty) {
+          // Check Blacklist (In-Memory Set lookup - 0 extra reads)
+          if (blacklistedLinks.has(link)) {
             console.log(`Skipped: ${title} | Reason: Blacklisted`);
             stats.skippedBlacklisted++;
             return;
           }
 
-          // Check Duplicates
-          const queueQuery = await db.collection("pulse_queue").where("link", "==", link).get();
-          const updatesQuery = await db.collection("pulse_updates").where("link", "==", link).get();
-
-          if (!queueQuery.empty || !updatesQuery.empty) {
+          // Check Duplicates (In-Memory Set lookup - 0 extra reads)
+          if (existingQueueLinks.has(link) || existingPulseLinks.has(link)) {
             console.log(`Skipped: ${title} | Reason: Duplicate`);
             stats.skippedDuplicates++;
             return;
@@ -538,6 +550,7 @@ export async function GET(req: Request) {
             state: finalState,
             mode: mode
           });
+          existingQueueLinks.add(link);
           stats.active++;
         }));
       }

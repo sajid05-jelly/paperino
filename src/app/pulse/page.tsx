@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc, limit } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, getDocs, Timestamp, doc, deleteDoc, limit } from "firebase/firestore";
 import {
   Radio, Pin, ShieldCheck, Clock, Trash2, Share2, Bookmark, FileText,
   Download, ExternalLink, MapPin, Building2, Monitor, CalendarDays, Users,
@@ -154,9 +154,24 @@ export default function PulsePage() {
     return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   };
 
-  useEffect(() => {
-    const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(20));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+  const fetchPulseUpdates = async (forceRefresh: boolean = false) => {
+    try {
+      const now = Date.now();
+      const cached = typeof window !== "undefined" ? sessionStorage.getItem("paperino_cached_pulse_updates") : null;
+      const cachedTs = typeof window !== "undefined" ? sessionStorage.getItem("paperino_cached_pulse_updates_ts") : null;
+      if (!forceRefresh && cached && cachedTs && (now - parseInt(cachedTs, 10)) < 5 * 60 * 1000) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setUpdates(parsed);
+            setLoading(false);
+            return;
+          }
+        } catch {}
+      }
+
+      const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(20));
+      const snapshot = await getDocs(q);
       const fetched: PulseUpdate[] = [];
       snapshot.forEach(d => fetched.push({ id: d.id, ...d.data() } as PulseUpdate));
       fetched.sort((a, b) => {
@@ -165,18 +180,33 @@ export default function PulsePage() {
         return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
       });
       setUpdates(fetched);
-      setLoading(false);
-    }, (error) => {
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("paperino_cached_pulse_updates", JSON.stringify(fetched));
+          sessionStorage.setItem("paperino_cached_pulse_updates_ts", now.toString());
+        } catch {}
+      }
+    } catch (error) {
       console.error("Pulse fetch error:", error);
-      showToast("Failed to load live updates.", "error");
+      showToast("Failed to load updates.", "error");
+    } finally {
       setLoading(false);
-    });
-    return () => unsubscribe();
+    }
+  };
+
+  useEffect(() => {
+    fetchPulseUpdates();
   }, []);
 
   const handleDelete = async (id: string) => {
     try {
       await deleteDoc(doc(db, "pulse_updates", id));
+      setUpdates(prev => prev.filter(u => u.id !== id));
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem("paperino_cached_pulse_updates");
+        } catch {}
+      }
       showToast("Post deleted successfully", "success");
       setDeleteConfirmId(null);
     } catch {
