@@ -34,6 +34,18 @@ interface KnowafestSyncInfo {
   extractedTitles?: string[];
   failedSelectorReason?: string;
   error?: string;
+  hackathons?: {
+    lastSynced?: string;
+    totalDiscovered?: number;
+    validActive?: number;
+    imported?: number;
+    updated?: number;
+    skippedDuplicates?: number;
+    expiredSkipped?: number;
+    sourcesChecked?: string[];
+    sourceBreakdown?: Record<string, any>;
+    sampleTitles?: string[];
+  };
 }
 
 const CATEGORIES = [
@@ -335,6 +347,87 @@ export default function AdminPulsePage() {
             <span className="font-semibold text-gray-300">Recently Extracted Event Titles:</span>{" "}
             {syncInfo.extractedTitles.slice(0, 4).join(" • ")}
             {syncInfo.extractedTitles.length > 4 ? ` (+${syncInfo.extractedTitles.length - 4} more)` : ""}
+          </div>
+        )}
+      </div>
+
+      {/* ── Multi-Source Hackathon Discovery Engine ── */}
+      <div className="rounded-2xl p-5 border border-cyan-500/30 bg-gradient-to-r from-cyan-950/20 via-black/40 to-blue-950/20 backdrop-blur-xl shadow-[0_0_30px_rgba(6,182,212,0.08)] flex flex-col gap-4 w-full max-w-full box-border">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚡</span>
+              <h3 className="text-base font-bold text-white tracking-wide">Multi-Source Hackathon Engine</h3>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                Active • Devfolio • Devpost • MLH • HackerEarth
+              </span>
+            </div>
+            <p className="text-xs text-gray-400">
+              Aggregates live hackathons across India & international ecosystems with prize pools, format detection, and duplicate prevention.
+            </p>
+          </div>
+
+          <button
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+            <span>{syncing ? "Syncing All Sources..." : "Sync All Sources"}</span>
+          </button>
+        </div>
+
+        {/* ── Hackathon Diagnostics Bar ── */}
+        <div className="pt-3 border-t border-white/10 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3 text-xs w-full max-w-full box-border">
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Sources Checked</span>
+            <span className="font-mono font-bold text-sm text-cyan-300">
+              {syncInfo.hackathons?.sourcesChecked?.length || 4} Active
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Total Discovered</span>
+            <span className="font-mono font-bold text-sm text-purple-300">
+              {syncInfo.hackathons?.totalDiscovered || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Active Upcoming</span>
+            <span className="font-mono font-bold text-sm text-emerald-400">
+              {syncInfo.hackathons?.validActive || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Imported to Pulse</span>
+            <span className="font-mono font-bold text-sm text-emerald-300">
+              {syncInfo.hackathons?.imported || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Updated / Synced</span>
+            <span className="font-mono font-bold text-sm text-blue-300">
+              {syncInfo.hackathons?.updated || 0}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-0.5 w-full box-border">
+            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Expired / Skipped</span>
+            <span className="font-mono font-bold text-sm text-amber-300">
+              {syncInfo.hackathons?.expiredSkipped || 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Sample Hackathon Titles Preview */}
+        {syncInfo.hackathons?.sampleTitles && syncInfo.hackathons.sampleTitles.length > 0 && (
+          <div className="text-[11px] text-gray-400 pt-1">
+            <span className="font-semibold text-gray-300">Discovered Hackathons:</span>{" "}
+            {syncInfo.hackathons.sampleTitles.slice(0, 5).join(" • ")}
+            {syncInfo.hackathons.sampleTitles.length > 5 ? ` (+${syncInfo.hackathons.sampleTitles.length - 5} more)` : ""}
           </div>
         )}
       </div>
