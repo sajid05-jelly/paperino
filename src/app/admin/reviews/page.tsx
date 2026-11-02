@@ -374,11 +374,11 @@ export default function AdminReviewsPage() {
       }
 
       // 4. Update material status to approved (guaranteed section exists)
-      await updateDoc(doc(db, "materials", id), {
+      await setDoc(doc(db, "materials", id), {
         status: "approved",
         approvedAt: Date.now(),
         approvedBy: user.email || user.uid
-      });
+      }, { merge: true });
       logAdminAction(user?.email || "unknown", "APPROVE_MATERIAL", id, `Approved material: ${mat.title || mat.fileName}`);
 
       // Clear subject cache in sessionStorage so new section & material appear immediately
@@ -425,7 +425,7 @@ export default function AdminReviewsPage() {
             );
           }
 
-          await updateDoc(userRef, updates);
+          await setDoc(userRef, updates, { merge: true });
         }
 
         // Notify the uploader

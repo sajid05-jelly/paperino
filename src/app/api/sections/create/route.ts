@@ -74,10 +74,18 @@ export async function POST(req: NextRequest) {
     const cleanCode = subjectCode ? subjectCode.trim() : "";
     const cleanDeptName = departmentName || departmentId.toUpperCase();
 
-    // Check if section already exists with primary canonical ID
+    // Check if section already exists with primary canonical ID (safe read against quota exhaustion)
     const secDocRef = db.collection("subject_sections").doc(secDocId);
-    const existingDoc = await secDocRef.get();
-    if (existingDoc.exists) {
+    let alreadyExisted = false;
+    try {
+      const existingDoc = await secDocRef.get();
+      if (existingDoc && existingDoc.exists) {
+        alreadyExisted = true;
+      }
+    } catch (e: any) {
+      console.warn("[Section Create] Primary read check skipped (quota or timeout):", e?.message);
+    }
+    if (alreadyExisted) {
       return NextResponse.json({
         success: true,
         sectionId: secDocId,
@@ -88,8 +96,15 @@ export async function POST(req: NextRequest) {
     // Check if section already exists with alternate ID format
     const altSecDocId = `${departmentId}_${semesterId}_${subjectId}_${sectionType}`;
     const altDocRef = db.collection("subject_sections").doc(altSecDocId);
-    const altDoc = await altDocRef.get();
-    if (altDoc.exists) {
+    try {
+      const altDoc = await altDocRef.get();
+      if (altDoc && altDoc.exists) {
+        alreadyExisted = true;
+      }
+    } catch (e: any) {
+      console.warn("[Section Create] Alt read check skipped (quota or timeout):", e?.message);
+    }
+    if (alreadyExisted) {
       return NextResponse.json({
         success: true,
         sectionId: altSecDocId,
