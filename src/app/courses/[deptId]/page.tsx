@@ -71,8 +71,8 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
       </div>
 
       <div className="text-center mb-10 w-full relative z-10">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 mb-6 tracking-tight text-glow">
-          {activeDept.name}
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200 mb-6 tracking-tight text-glow uppercase">
+          {(activeDept.name || "").toUpperCase()}
         </h1>
         <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
           Select a semester or search for a specific subject to access study materials.
@@ -118,13 +118,13 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
                       <BookOpen size={22} />
                     </div>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-lg">
-                      {branch.code}
+                      {(branch.code || "").toUpperCase()}
                     </span>
                   </div>
 
                   <div className="relative z-10">
-                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
-                      {branch.name}
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors uppercase">
+                      {(branch.name || "").toUpperCase()}
                     </h3>
                     <p className="text-xs text-gray-400 mb-4 font-medium">
                       8 Semesters • Study Materials & Question Papers

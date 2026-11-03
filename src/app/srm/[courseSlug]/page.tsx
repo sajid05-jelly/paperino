@@ -57,8 +57,8 @@ export default async function SrmCoursePage({
       <SafeBackButton fallbackUrl="/courses" label="Back to Materials" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors gap-2" size={16} />
 
       <div className="space-y-3 mb-12">
-        <span className="text-xs font-bold text-purple-400 uppercase tracking-widest">{SITE_CONFIG.universityShortName} · {dept.code}</span>
-        <h1 className="text-4xl font-extrabold text-white">{dept.name}</h1>
+        <span className="text-xs font-bold text-purple-400 uppercase tracking-widest">{SITE_CONFIG.universityShortName} · {(dept.code || "").toUpperCase()}</span>
+        <h1 className="text-4xl font-extrabold text-white uppercase">{(dept.name || "").toUpperCase()}</h1>
         <p className="text-gray-400 text-lg">Select a semester to access subjects, PYQs, and verified notes.</p>
       </div>
 

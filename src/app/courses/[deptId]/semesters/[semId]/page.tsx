@@ -64,7 +64,7 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-12">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-white mb-2">{activeDept.name}</h1>
+          <h1 className="text-4xl font-bold text-white mb-2 uppercase">{(activeDept.name || "").toUpperCase()}</h1>
           <h2 className="text-xl text-purple-400 font-semibold">Semester {semId}</h2>
           <p className="text-gray-400 text-lg">Select a subject to view its study materials.</p>
         </div>

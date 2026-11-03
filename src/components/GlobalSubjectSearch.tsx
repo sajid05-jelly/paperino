@@ -63,8 +63,8 @@ export default function GlobalSubjectSearch({
                           {sub.name}
                         </h3>
                         <div className="flex flex-col gap-1.5 mt-4">
-                          <div className="flex items-center text-xs text-gray-400 bg-white/5 w-fit px-2 py-1 rounded">
-                            <Building2 size={12} className="mr-1.5 text-purple-400" /> {deptName}
+                          <div className="flex items-center text-xs text-gray-400 bg-white/5 w-fit px-2 py-1 rounded uppercase">
+                            <Building2 size={12} className="mr-1.5 text-purple-400" /> {(deptName || "").toUpperCase()}
                           </div>
                           <div className="flex items-center text-xs text-gray-400 bg-white/5 w-fit px-2 py-1 rounded">
                             <Calendar size={12} className="mr-1.5 text-fuchsia-400" /> Semester {sub.semesterId}

@@ -274,7 +274,7 @@ export default function CreateCourseModal({
                   >
                     {visibleDepartments.map(d => (
                       <option key={d.id} value={d.id} className="bg-[#07050d] text-white">
-                        {d.name} ({d.code})
+                        {(d.name || "").toUpperCase()} ({(d.code || "").toUpperCase()})
                       </option>
                     ))}
                     {!lockDepartment && (

@@ -177,12 +177,12 @@ export default function Home() {
                       <div className="relative z-10 flex flex-col h-full justify-between">
                         <div>
                           <div className="flex items-center justify-between mb-8">
-                            <div className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-xs tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-md">
-                              {dept.code || dept.id.toUpperCase()}
+                            <div className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-xs tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-md uppercase">
+                              {(dept.code || dept.id || "").toUpperCase()}
                             </div>
                             <BookOpen size={28} className="text-gray-500 group-hover:text-purple-400 transition-colors" aria-hidden="true" />
                           </div>
-                          <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-purple-300 transition-colors">{dept.name}</h3>
+                          <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-purple-300 transition-colors uppercase">{(dept.name || "").toUpperCase()}</h3>
                           <p className="text-gray-400 text-sm font-light leading-relaxed">
                             Access all {dept.totalSemesters} semesters of carefully curated question papers, notes, and lab manuals.
                           </p>

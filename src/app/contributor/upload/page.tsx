@@ -174,7 +174,7 @@ export default function ContributorUploadPage() {
                 <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase">Department</label>
                 <select name="department" value={formData.department} onChange={handleChange} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-fuchsia-500 cursor-pointer">
                   {approvedDepts.map(d => (
-                    <option key={d.id} value={d.id} className="bg-[#0a0714] text-white">{d.name}</option>
+                    <option key={d.id} value={d.id} className="bg-[#0a0714] text-white">{(d.name || "").toUpperCase()}</option>
                   ))}
                 </select>
               </div>

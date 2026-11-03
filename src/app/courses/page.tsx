@@ -198,13 +198,13 @@ export default function CoursesPage() {
                         </div>
 
                         <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                          {dept.code}
+                          {(dept.code || "").toUpperCase()}
                         </span>
                       </div>
 
                       <div className="relative z-10">
-                        <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
-                          {dept.name}
+                        <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors uppercase">
+                          {(dept.name || "").toUpperCase()}
                         </h3>
                         {matchingSubjectName && (
                           <div className="mb-3 text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-md px-2 py-1.5 flex items-start gap-1.5">

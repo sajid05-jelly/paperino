@@ -442,7 +442,7 @@ export default function SubjectClientComponent({
                     </span>
                   )}
                   <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
-                    {serverOverview.deptName} ({serverOverview.deptCode})
+                    {(serverOverview.deptName || "").toUpperCase()} ({(serverOverview.deptCode || "").toUpperCase()})
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
                     Semester {serverOverview.semId}

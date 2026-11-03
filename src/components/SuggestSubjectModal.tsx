@@ -306,9 +306,9 @@ export default function SuggestSubjectModal({
                   </label>
                   <input
                     type="text"
-                    value={departmentName}
+                    value={(departmentName || "").toUpperCase()}
                     disabled
-                    className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2 text-xs text-gray-400 cursor-not-allowed truncate"
+                    className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2 text-xs text-gray-400 cursor-not-allowed truncate uppercase"
                   />
                 </div>
                 <div>
@@ -346,7 +346,7 @@ export default function SuggestSubjectModal({
                 />
                 {isDuplicate && (
                   <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-1.5 px-0.5">
-                    <span>✓ This subject already exists in {departmentName} – Semester {semesterId}.</span>
+                    <span>✓ This subject already exists in {(departmentName || "").toUpperCase()} – Semester {semesterId}.</span>
                   </p>
                 )}
               </div>
