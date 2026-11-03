@@ -34,7 +34,7 @@ let inMemoryUnifiedData: {
   subjects: UnifiedSubject[];
 } | null = null;
 let lastUnifiedFetchTime = 0;
-const CACHE_TTL_MS = 60 * 1000; // 60s TTL so updates and deletions reflect promptly
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30m TTL to protect read quota across crawlers & SSR
 
 export function invalidateUnifiedDataCache() {
   inMemoryUnifiedData = null;
@@ -55,13 +55,12 @@ export const getAllUnifiedData = cache(async (
   subjects: UnifiedSubject[];
 }> => {
   const now = Date.now();
-  const isGlobalFetch = !filterDeptId && !filterSemId;
   if (!forceRefetch && inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
-    if (isGlobalFetch) {
-      logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 1m server cache`);
+    if (!filterDeptId && !filterSemId) {
+      logFirestoreCacheHit("getAllUnifiedData", `Serving ${inMemoryUnifiedData.subjects.length} subjects from 30m server cache`);
       return inMemoryUnifiedData;
     } else {
-      logFirestoreCacheHit("getAllUnifiedData", `Serving filtered subjects from global 1m server cache`);
+      logFirestoreCacheHit("getAllUnifiedData", `Serving filtered subjects from global 30m server cache`);
       return {
         departments: filterDeptId 
           ? inMemoryUnifiedData.departments.filter(d => d.id === filterDeptId)
@@ -75,11 +74,7 @@ export const getAllUnifiedData = cache(async (
     }
   }
 
-  if (isGlobalFetch) {
-    logFirestoreRead("departments & dynamic_subjects", "getAllUnifiedData cache miss - executing global server fetch");
-  } else {
-    logFirestoreRead("departments & dynamic_subjects", `getAllUnifiedData filtered fetch for dept: ${filterDeptId}, sem: ${filterSemId}`);
-  }
+  logFirestoreRead("departments & dynamic_subjects", "getAllUnifiedData cache miss - executing complete catalog fetch");
   const departmentsMap = new Map<string, UnifiedDepartment>();
   const subjectsList: UnifiedSubject[] = [];
   const subjectKeysSet = new Set<string>();
@@ -95,10 +90,6 @@ export const getAllUnifiedData = cache(async (
 
   // 2. Add Static Default Subjects (B.Tech Semesters 1-8)
   Object.entries(STATIC_SUBJECTS).forEach(([semId, subs]) => {
-    // If filtering, only add static subjects that match the filter
-    if (filterDeptId && filterDeptId !== "btech") return;
-    if (filterSemId && filterSemId !== semId) return;
-
     subs.forEach((s) => {
       const uniqueKey = `btech_${semId}_${s.id}`;
       subjectKeysSet.add(uniqueKey);
@@ -124,15 +115,9 @@ export const getAllUnifiedData = cache(async (
       const timeoutMs = 3000;
       const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore fetch timeout")), ms));
 
-      let subjectsQuery: FirebaseFirestore.Query = adminDb.collection("dynamic_subjects");
-      if (filterDeptId) {
-        subjectsQuery = subjectsQuery.where("departmentId", "==", filterDeptId);
-      }
-      // Not filtering by semId to avoid complex index requirements, filtering in memory is fine for a single dept
-
       const [deptResult, subResult] = await Promise.allSettled([
         Promise.race([adminDb.collection("departments").get(), timeout(timeoutMs)]),
-        Promise.race([subjectsQuery.get(), timeout(timeoutMs)]),
+        Promise.race([adminDb.collection("dynamic_subjects").get(), timeout(timeoutMs)]),
       ]);
 
       if (deptResult.status === "fulfilled" && deptResult.value) {
@@ -148,11 +133,7 @@ export const getAllUnifiedData = cache(async (
       const deptSnap = await getDocs(collection(db, "departments"));
       deptDocs = deptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      let subQ = collection(db, "dynamic_subjects") as any;
-      if (filterDeptId) {
-        subQ = query(subQ, where("departmentId", "==", filterDeptId));
-      }
-      const subSnap = await getDocs(subQ);
+      const subSnap = await getDocs(collection(db, "dynamic_subjects"));
       subjectDocs = subSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() || {}) }));
     }
 
@@ -221,17 +202,28 @@ export const getAllUnifiedData = cache(async (
     console.warn("[getAllUnifiedData] Dynamic Firestore fetch skipped or deferred:", err);
   }
 
-  const result = {
+  const fullResult = {
     departments: Array.from(departmentsMap.values()),
     subjects: subjectsList,
   };
 
-  if (isGlobalFetch) {
-    inMemoryUnifiedData = result;
-    lastUnifiedFetchTime = Date.now();
+  inMemoryUnifiedData = fullResult;
+  lastUnifiedFetchTime = Date.now();
+
+  if (filterDeptId || filterSemId) {
+    return {
+      departments: filterDeptId 
+        ? fullResult.departments.filter(d => d.id === filterDeptId)
+        : fullResult.departments,
+      subjects: fullResult.subjects.filter(s => {
+        if (filterDeptId && s.departmentId !== filterDeptId) return false;
+        if (filterSemId && s.semesterId !== filterSemId) return false;
+        return true;
+      })
+    };
   }
 
-  return result;
+  return fullResult;
 });
 
 /**

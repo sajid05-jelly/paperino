@@ -152,13 +152,26 @@ export default function AdminReviewsPage() {
         await Promise.all(deletePromises);
       }
 
-      // Fetch emails for each uploader
+      // Fetch emails for each uploader (cache and skip if already known)
+      const uploaderEmailCache = new Map<string, string>();
       const enrichedMats = await Promise.all(mats.map(async (m) => {
+        if (m.uploaderEmail) {
+          if (m.uploaderId) uploaderEmailCache.set(m.uploaderId, m.uploaderEmail);
+          return m;
+        }
         if (m.uploaderId) {
+          if (uploaderEmailCache.has(m.uploaderId)) {
+            m.uploaderEmail = uploaderEmailCache.get(m.uploaderId);
+            return m;
+          }
           try {
             const userSnap = await getDoc(doc(db, "users", m.uploaderId));
             if (userSnap.exists()) {
-              m.uploaderEmail = userSnap.data()?.email || undefined;
+              const email = userSnap.data()?.email;
+              if (email) {
+                m.uploaderEmail = email;
+                uploaderEmailCache.set(m.uploaderId, email);
+              }
             }
           } catch (e) {
             console.warn("Failed to fetch uploader email for", m.uploaderId, e);
@@ -376,7 +389,7 @@ export default function AdminReviewsPage() {
     setRepairingPermissions(true);
     showToast("Starting Google Drive permissions repair for contributor PDFs...", "info");
     try {
-      const snap = await getDocs(collection(db, "materials"));
+      const snap = await getDocs(query(collection(db, "materials"), limit(50)));
       const token = await user.getIdToken();
       let repairedCount = 0;
 

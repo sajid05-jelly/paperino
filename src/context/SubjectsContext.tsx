@@ -155,8 +155,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         loadedSemestersRef.current = {};
       }
 
-      // Check local cache first (60s TTL so updates and deletions reflect promptly)
-      const DEPT_CACHE_TTL_MS = 60 * 1000;
+      // Check local cache first (15m TTL to prevent repeated reads on navigation/tabs)
+      const DEPT_CACHE_TTL_MS = 15 * 60 * 1000;
       if (!forceRefresh && typeof window !== "undefined") {
         const cachedDepts = sessionStorage.getItem("paperino_cached_depts_v2");
         const cacheTimestamp = sessionStorage.getItem("paperino_cached_depts_ts_v2");

@@ -182,7 +182,7 @@ export default function SubjectClientComponent({
       }
     }
 
-    const hasCachedContent = cachedData && ((Array.isArray(cachedData.materials) && cachedData.materials.length > 0) || (Array.isArray(cachedData.sections) && cachedData.sections.length > 0));
+    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials);
     if (!forceRefetch && hasCachedContent && (now - cachedData.timestamp < CACHE_TTL_MS)) {
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
@@ -199,8 +199,7 @@ export default function SubjectClientComponent({
     }
     setFetchError(null);
     try {
-      logFirestoreRead(`materials (${cacheKey})`, "Fetching subject materials and sections from Firestore concurrently");
-      // 1. Fetch Subject Materials & Subject Document concurrently
+      logFirestoreRead(`materials (${cacheKey})`, "Fetching subject materials from Firestore");
       // Skip redundant client materials query when already delivered from SSR and not forceRefetch
       const shouldQueryMaterials = forceRefetch || !initialMaterials || initialMaterials.length === 0;
       const qMaterials = shouldQueryMaterials ? query(
@@ -209,57 +208,9 @@ export default function SubjectClientComponent({
         where("subjectId", "==", realSubjectId)
       ) : null;
 
-      const subDocId = `${deptId}_sem${semId}_${realSubjectId}`;
-      const [matSnapshot, subSnap] = await Promise.all([
-        qMaterials ? getDocs(qMaterials) : Promise.resolve(null),
-        getDoc(doc(db, "dynamic_subjects", subDocId))
-      ]);
+      const matSnapshot = qMaterials ? await getDocs(qMaterials) : null;
 
       let detectedSections: string[] = [];
-      let hasExplicitConfig = false;
-      const sectionTypesSet = new Set<string>();
-
-      if (subSnap.exists()) {
-        const subData = subSnap.data();
-        if (Array.isArray(subData.sections)) {
-          hasExplicitConfig = true;
-          subData.sections.forEach((s: string) => sectionTypesSet.add(s));
-        }
-      }
-
-      // Check subject_sections collection (try client query, fallback to /api/sections)
-      try {
-        const qSec = query(
-          collection(db, "subject_sections"),
-          where("departmentId", "==", deptId),
-          where("semesterId", "==", semId),
-          where("subjectId", "==", realSubjectId)
-        );
-        const secSnap = await getDocs(qSec);
-        if (!secSnap.empty) {
-          hasExplicitConfig = true;
-          secSnap.docs.forEach(d => {
-            const st = d.data().sectionType;
-            if (st) sectionTypesSet.add(st);
-          });
-        }
-      } catch (secErr) {
-        try {
-          const apiRes = await fetch(`/api/sections?departmentId=${encodeURIComponent(deptId)}&subjectId=${encodeURIComponent(realSubjectId)}`);
-          if (apiRes.ok) {
-            const apiData = await apiRes.json();
-            if (apiData.sections && apiData.sections.length > 0) {
-              hasExplicitConfig = true;
-              apiData.sections.forEach((sec: any) => {
-                if (sec.sectionType) sectionTypesSet.add(sec.sectionType);
-              });
-            }
-          }
-        } catch (apiErr) {
-          console.warn("Could not query subject_sections via API:", apiErr);
-        }
-      }
-
       let matList: any[] = [];
       if (matSnapshot) {
         matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -316,7 +267,7 @@ export default function SubjectClientComponent({
 
   useEffect(() => {
     fetchMaterials(false);
-  }, [deptId, semId, subjectId, user, isAdmin]);
+  }, [deptId, semId, subjectId]);
 
   // Analytics tracking for Most Visited Subject (deduplicated per session)
   useEffect(() => {

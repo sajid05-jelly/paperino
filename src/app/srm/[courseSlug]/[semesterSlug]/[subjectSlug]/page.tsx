@@ -102,8 +102,18 @@ export async function generateMetadata({
  * Fetch materials for server-side HTML rendering so search engine crawlers (Googlebot)
  * see real crawlable text without needing JavaScript interaction.
  */
+const serverMaterialsCache = new Map<string, { data: any[]; timestamp: number }>();
+const SERVER_MATS_CACHE_TTL = 15 * 60 * 1000;
+
 async function fetchServerMaterials(deptId: string, semId: string, subjectId: string) {
   if (!adminDb) return [];
+  const cacheKey = `${deptId.toLowerCase()}_${semId}_${subjectId.toLowerCase()}`;
+  const now = Date.now();
+  const cached = serverMaterialsCache.get(cacheKey);
+  if (cached && (now - cached.timestamp < SERVER_MATS_CACHE_TTL)) {
+    return cached.data;
+  }
+
   try {
     const fetchPromise = adminDb
       .collection("materials")
@@ -114,9 +124,9 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
     const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
     const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
 
-    if (!snap || !snap.docs) return [];
+    if (!snap || !snap.docs) return cached ? cached.data : [];
 
-    return snap.docs
+    const materials = snap.docs
       .map((d: any) => {
         const data = d.data();
         return {
@@ -127,8 +137,11 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
         };
       })
       .filter((m: any) => (m.status === "approved" || !m.status) && (m.departmentId || "btech").toLowerCase() === deptId.toLowerCase());
+
+    serverMaterialsCache.set(cacheKey, { data: materials, timestamp: now });
+    return materials;
   } catch (e) {
-    return [];
+    return cached ? cached.data : [];
   }
 }
 

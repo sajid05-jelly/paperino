@@ -166,8 +166,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userRef = doc(db, "users", currentUser.uid);
         let finalUserData: any = null;
 
-        try {
-          const userSnap = await getDoc(userRef);
+        const profileCacheKey = `paperino_user_profile_${currentUser.uid}`;
+        const USER_PROFILE_TTL_MS = 15 * 60 * 1000;
+
+        // Check sessionStorage cache first (15m TTL to avoid getDoc on every refresh/tab)
+        if (typeof window !== "undefined") {
+          try {
+            const cachedRaw = sessionStorage.getItem(profileCacheKey);
+            if (cachedRaw) {
+              const cachedObj = JSON.parse(cachedRaw);
+              if (cachedObj && (Date.now() - cachedObj.timestamp) < USER_PROFILE_TTL_MS) {
+                finalUserData = cachedObj.data;
+              }
+            }
+          } catch {}
+        }
+
+        if (!finalUserData) {
+          try {
+            const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
             // Always create as "student" first (Firestore rules require role="student" on create)
             const newUserData = {
@@ -237,6 +254,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } catch (claimErr) {}
           clearTimeout(safetyTimeout);
+        }
+
+        }
+
+        if (finalUserData && typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(profileCacheKey, JSON.stringify({
+              data: finalUserData,
+              timestamp: Date.now()
+            }));
+          } catch {}
         }
 
         // Apply the fetched data to state without doing a second Firestore read
@@ -348,18 +376,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Subscribe to real-time user credits
         const monthKey = getCurrentMonthKey();
+        const creditsCacheKey = `paperino_credits_${currentUser.uid}_${monthKey}`;
+        if (typeof window !== "undefined") {
+          try {
+            const cachedCredits = sessionStorage.getItem(creditsCacheKey);
+            if (cachedCredits) {
+              setUserCredits(JSON.parse(cachedCredits));
+            }
+          } catch {}
+        }
+
         const usageRef = doc(db, "user_monthly_usage", `${currentUser.uid}_${monthKey}`);
         unsubCreditsDoc = onSnapshot(usageRef, (snap) => {
+          let credits: UserCredits;
           if (snap.exists()) {
             const data = snap.data();
-            setUserCredits({
+            credits = {
               pyqUsed: data.pyqAnalyzer || 0,
               atsUsed: data.ats || 0,
               githubUsed: data.githubIntelligence || 0,
               lastResetDate: monthKey,
-            });
+            };
           } else {
-            setUserCredits({ pyqUsed: 0, atsUsed: 0, githubUsed: 0, lastResetDate: monthKey });
+            credits = { pyqUsed: 0, atsUsed: 0, githubUsed: 0, lastResetDate: monthKey };
+          }
+          setUserCredits(credits);
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem(creditsCacheKey, JSON.stringify(credits));
+            } catch {}
           }
         }, (err) => {
           console.warn("[AuthContext] Usage listener error:", err);
@@ -498,6 +543,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      if (user) {
+        try {
+          sessionStorage.removeItem(`paperino_user_profile_${user.uid}`);
+        } catch {}
+      }
       await signOut(auth);
     } catch (error) {
       console.error("Error logging out:", error);

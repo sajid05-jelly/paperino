@@ -48,7 +48,7 @@ export default function AdminDashboard() {
     setClearingNotifs(true);
     setClearResult(null);
     try {
-      const snap = await getDocs(collection(db, "notifications"));
+      const snap = await getDocs(query(collection(db, "notifications"), limit(500)));
       if (snap.empty) {
         setClearResult({ type: "success", message: "No notifications to clear." });
         setClearingNotifs(false);
