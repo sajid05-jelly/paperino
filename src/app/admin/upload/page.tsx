@@ -21,7 +21,8 @@ export default function AdminUploadPage() {
   const [successCount, setSuccessCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { departments, subjects: dynamicSubjects, loading: contextLoading } = useSubjects();
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const { departments, subjects: dynamicSubjects, loading: contextLoading, lazyLoadSubjects } = useSubjects();
   const approvedDepts = departments.filter(d => d.status === "approved");
 
   const [formData, setFormData] = useState({
@@ -34,10 +35,25 @@ export default function AdminUploadPage() {
   useEffect(() => {
     if (approvedDepts.length > 0 && !formData.department) {
       const firstDeptId = approvedDepts[0].id;
-      const firstSubId = dynamicSubjects[firstDeptId]?.["1"]?.[0]?.id || "";
-      setFormData(prev => ({ ...prev, department: firstDeptId, semester: "1", subject: firstSubId }));
+      setFormData(prev => ({ ...prev, department: firstDeptId, semester: "1", subject: "" }));
     }
-  }, [approvedDepts, dynamicSubjects, formData.department]);
+  }, [approvedDepts, formData.department]);
+
+  useEffect(() => {
+    if (!formData.department || !formData.semester) return;
+    let isMounted = true;
+    setLoadingSubjects(true);
+
+    lazyLoadSubjects(formData.department, formData.semester)
+      .catch((err) => console.error("Error loading subjects in AdminUploadPage:", err))
+      .finally(() => {
+        if (isMounted) setLoadingSubjects(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.department, formData.semester, lazyLoadSubjects]);
 
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -63,13 +79,11 @@ export default function AdminUploadPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === "department") {
-      const firstSubId = dynamicSubjects[value]?.["1"]?.[0]?.id || "";
-      setFormData({ ...formData, department: value, semester: "1", subject: firstSubId });
+      setFormData(prev => ({ ...prev, department: value, semester: "1", subject: "" }));
     } else if (name === "semester") {
-      const firstSubId = dynamicSubjects[formData.department]?.[value]?.[0]?.id || "";
-      setFormData({ ...formData, semester: value, subject: firstSubId });
+      setFormData(prev => ({ ...prev, semester: value, subject: "" }));
     } else {
-      setFormData({ ...formData, [name]: value });
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
@@ -126,7 +140,25 @@ export default function AdminUploadPage() {
 
   const selectedDeptObj = approvedDepts.find(d => d.id === formData.department);
   const semCount = selectedDeptObj?.totalSemesters || 8;
-  const currentSubjects = (dynamicSubjects[formData.department]?.[formData.semester] || []).filter(s => s.status !== "pending");
+  const currentSubjects = (dynamicSubjects[formData.department]?.[formData.semester] || []).filter(
+    s => s.status !== "pending" && s.status !== "rejected"
+  );
+
+  // Auto-sync selected subject when subjects finish loading or change
+  useEffect(() => {
+    if (loadingSubjects) return;
+    if (currentSubjects.length > 0) {
+      const exists = currentSubjects.some(s => s.id === formData.subject);
+      if (!formData.subject || !exists) {
+        setFormData(prev => ({ ...prev, subject: currentSubjects[0].id }));
+      }
+    } else {
+      if (formData.subject !== "") {
+        setFormData(prev => ({ ...prev, subject: "" }));
+      }
+    }
+  }, [currentSubjects, formData.subject, loadingSubjects]);
+
   const selectedSubject = currentSubjects.find(s => s.id === formData.subject);
   const allowedCategories: string[] = (selectedSubject?.sections && selectedSubject.sections.length > 0)
     ? selectedSubject.sections
@@ -162,10 +194,24 @@ export default function AdminUploadPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Subject</label>
-            <select name="subject" value={formData.subject} onChange={handleChange} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-purple-500 cursor-pointer">
-              {currentSubjects.map(sub => (
-                <option key={sub.id} value={sub.id} className="bg-[#0a0714] text-white">{sub.name}</option>
-              ))}
+            <select 
+              name="subject" 
+              value={formData.subject} 
+              onChange={handleChange} 
+              disabled={loadingSubjects || currentSubjects.length === 0}
+              className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-purple-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingSubjects ? (
+                <option value="" disabled className="bg-[#0a0714] text-gray-400">Loading subjects...</option>
+              ) : currentSubjects.length === 0 ? (
+                <option value="" disabled className="bg-[#0a0714] text-gray-400">No subjects available for this semester</option>
+              ) : (
+                currentSubjects.map(sub => (
+                  <option key={sub.id} value={sub.id} className="bg-[#0a0714] text-white">
+                    {sub.name} {sub.code ? `(${sub.code})` : ""}
+                  </option>
+                ))
+              )}
             </select>
           </div>
         </div>

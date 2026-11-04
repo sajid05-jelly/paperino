@@ -30,7 +30,8 @@ export default function ExamEmergencyPage() {
   const router = useRouter();
   const { showPlanGate } = usePlanGate();
   const { user, isAdmin, plan, canAccess } = useAuth();
-  const { departments, subjects, loading: subjectsLoading } = useSubjects();
+  const { departments, subjects, loading: subjectsLoading, lazyLoadSubjects } = useSubjects();
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
 
   // Selected targets
   const [selectedDept, setSelectedDept] = useState("");
@@ -242,15 +243,43 @@ export default function ExamEmergencyPage() {
     return list;
   }
 
+  // Lazy load subjects when department and semester are selected
+  useEffect(() => {
+    if (!selectedDept || !selectedSem) {
+      setLoadingSubjects(false);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingSubjects(true);
+
+    lazyLoadSubjects(selectedDept, selectedSem)
+      .catch((err) => console.error("Error loading subjects in ExamEmergencyPage:", err))
+      .finally(() => {
+        if (isMounted) setLoadingSubjects(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDept, selectedSem, lazyLoadSubjects]);
+
   // Semesters list
   const activeDeptObj = departments.find(d => d.id === selectedDept);
   const totalSemesters = activeDeptObj ? activeDeptObj.totalSemesters : 0;
   const semestersArray = Array.from({ length: totalSemesters }, (_, i) => (i + 1).toString());
 
-  // Subjects for chosen sem
+  // Subjects for chosen sem (exclude pending/rejected)
   const filteredSubjects = (selectedDept && selectedSem && subjects[selectedDept]?.[selectedSem]) 
-    ? subjects[selectedDept][selectedSem].filter(s => s.status === "approved" || s.contributorId === "system")
+    ? subjects[selectedDept][selectedSem].filter(s => s.status !== "pending" && s.status !== "rejected")
     : [];
+
+  // Reset selectedSubject if it becomes invalid in filteredSubjects
+  useEffect(() => {
+    if (selectedSubject && filteredSubjects.length > 0 && !filteredSubjects.some(s => s.id === selectedSubject)) {
+      setSelectedSubject("");
+    }
+  }, [filteredSubjects, selectedSubject]);
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-[rgba(var(--primary-rgb),0.15)] via-[var(--background)] to-[var(--background)] text-white py-8 relative overflow-hidden selection:bg-red-500/20">
@@ -373,15 +402,27 @@ export default function ExamEmergencyPage() {
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Select Subject</label>
                   <select 
-                    disabled={!selectedSem}
+                    disabled={!selectedSem || loadingSubjects}
                     value={selectedSubject}
                     onChange={(e) => setSelectedSubject(e.target.value)}
                     className="w-full bg-black/60 border border-white/[0.08] rounded-xl p-3.5 text-white outline-none focus:border-red-500/40 focus:shadow-[0_0_15px_rgba(239,68,68,0.1)] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <option value="" className="bg-gray-900">Choose Subject...</option>
-                    {filteredSubjects.map(s => (
-                      <option key={s.id} value={s.id} className="bg-gray-900">{s.name}</option>
-                    ))}
+                    {!selectedSem ? (
+                      <option value="" className="bg-gray-900">Choose Semester first...</option>
+                    ) : loadingSubjects ? (
+                      <option value="" className="bg-gray-900">Loading subjects...</option>
+                    ) : filteredSubjects.length === 0 ? (
+                      <option value="" className="bg-gray-900">No subjects found for this semester</option>
+                    ) : (
+                      <>
+                        <option value="" className="bg-gray-900">Choose Subject...</option>
+                        {filteredSubjects.map(s => (
+                          <option key={s.id} value={s.id} className="bg-gray-900">
+                            {s.name} {s.code ? `(${s.code})` : ""}
+                          </option>
+                        ))}
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -395,7 +436,7 @@ export default function ExamEmergencyPage() {
 
               <button 
                 onClick={handleActivateMode}
-                disabled={!selectedSubject || isActivating}
+                disabled={!selectedSubject || isActivating || loadingSubjects}
                 className="w-full mt-8 group relative disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2.5 transition-all duration-300 overflow-hidden bg-gradient-to-r from-red-600 via-red-500 to-red-600 shadow-[0_0_30px_rgba(239,68,68,0.35)] hover:shadow-[0_0_45px_rgba(239,68,68,0.5)] active:scale-[0.98]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 ease-in-out" />

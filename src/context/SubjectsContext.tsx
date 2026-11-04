@@ -101,7 +101,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
   const [deptsWithMaterials, setDeptsWithMaterials] = useState<Set<string>>(new Set()); // Kept for backwards compatibility if needed, but not populated
   const [deptMaterialCounts, setDeptMaterialCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const loadedSemestersRef = useRef<Record<string, boolean>>({});
+  const loadedSemestersRef = useRef<Record<string, boolean | undefined>>({});
+  const inFlightRequestsRef = useRef<Record<string, Promise<void> | undefined>>({});
   const initialFetchDone = useRef(false);
   const countsLoadedRef = useRef(false);
 
@@ -243,70 +244,118 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-  const lazyLoadSubjects = async (deptId: string, semId: string, force: boolean = false) => {
-    const cacheKey = `${deptId}_${semId}`;
+  const lazyLoadSubjects = useCallback(async (deptId: string, semId: string, force: boolean = false): Promise<void> => {
+    if (!deptId || !semId) return;
+
+    const normDept = deptId.toLowerCase().trim();
+    const normSem = String(semId).trim();
+    const cacheKey = `${normDept}_${normSem}`;
+
     if (!force && loadedSemestersRef.current[cacheKey]) {
       return; // Cache Hit - Already loaded in this browser session
     }
 
-    try {
-      console.log(`[SubjectsContext] Lazy loading dynamic subjects for: ${deptId} Sem ${semId}...`);
-      const q = query(
-        collection(db, "dynamic_subjects"),
-        where("departmentId", "==", deptId),
-        where("semesterId", "==", semId)
-      );
-      
-      const subSnapshot = await getDocs(q);
-      const newSubjects: Subject[] = [];
-
-      subSnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        newSubjects.push({
-          id: data.subjectId || docSnap.id,
-          name: data.name,
-          code: data.code || "",
-          departmentId: deptId,
-          semesterId: semId,
-          sections: Array.isArray(data.sections) ? data.sections : undefined,
-          status: data.status || "approved",
-          contributorId: data.contributorId || null,
-          contributorName: data.contributorName || null,
-          createdAt: data.createdAt
-        });
-      });
-
-      // Update state in-memory
-      setSubjects(prev => {
-        const copy = { ...prev };
-        if (!copy[deptId]) copy[deptId] = {};
-        
-        // Retain static entries
-        const staticSubs = getStaticBTechSubjects().filter(s => s.departmentId === deptId && s.semesterId === semId);
-        const combined = [...staticSubs];
-        
-        newSubjects.forEach(newSub => {
-          if (!combined.some(s => s.id === newSub.id)) {
-            combined.push(newSub);
-          }
-        });
-        
-        copy[deptId][semId] = combined;
-        return copy;
-      });
-
-      setAllSubjectsList(prev => {
-        const withoutThisDeptSem = prev.filter(
-          s => !(s.departmentId === deptId && String(s.semesterId) === String(semId) && s.contributorId !== "system")
-        );
-        return [...withoutThisDeptSem, ...newSubjects];
-      });
-
-      loadedSemestersRef.current[cacheKey] = true;
-    } catch (err) {
-      console.error("[SubjectsContext] Failed to lazy load subjects:", err);
+    const inFlight = inFlightRequestsRef.current[cacheKey];
+    if (inFlight) {
+      return inFlight; // Concurrency lock: await existing request
     }
-  };
+
+    const fetchPromise = (async () => {
+      try {
+        console.log(`[SubjectsContext] Lazy loading dynamic subjects for: ${deptId} Sem ${semId}...`);
+        
+        const semNum = Number(normSem);
+        const semValues = !isNaN(semNum) ? [normSem, semNum] : [normSem];
+
+        // Query dynamic_subjects for this department and semester
+        // Note: Firestore allows 'in' on at most ONE field per query, so we use '==' for departmentId and 'in' for semesterId (to match string "7" and number 7)
+        const q = query(
+          collection(db, "dynamic_subjects"),
+          where("departmentId", "==", normDept),
+          where("semesterId", "in", semValues)
+        );
+        
+        let subSnapshot = await getDocs(q);
+
+        // Fallback: if empty and raw deptId differs in casing, try raw deptId
+        if (subSnapshot.empty && normDept !== deptId) {
+          const fallbackQ = query(
+            collection(db, "dynamic_subjects"),
+            where("departmentId", "==", deptId),
+            where("semesterId", "in", semValues)
+          );
+          subSnapshot = await getDocs(fallbackQ);
+        }
+
+        const newSubjects: Subject[] = [];
+
+        subSnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          newSubjects.push({
+            id: data.subjectId || docSnap.id,
+            name: data.name,
+            code: data.code || "",
+            departmentId: normDept,
+            semesterId: normSem,
+            sections: Array.isArray(data.sections) ? data.sections : undefined,
+            status: data.status || "approved",
+            contributorId: data.contributorId || null,
+            contributorName: data.contributorName || null,
+            createdAt: data.createdAt
+          });
+        });
+
+        // Update state in-memory
+        setSubjects(prev => {
+          const copy = { ...prev };
+          if (!copy[deptId]) copy[deptId] = {};
+          if (normDept !== deptId && !copy[normDept]) copy[normDept] = {};
+          
+          // Retain static entries
+          const staticSubs = getStaticBTechSubjects().filter(s => 
+            (s.departmentId === deptId || s.departmentId === normDept) && 
+            String(s.semesterId) === normSem
+          );
+          const combined = [...staticSubs];
+          
+          newSubjects.forEach(newSub => {
+            if (!combined.some(s => s.id === newSub.id)) {
+              combined.push(newSub);
+            }
+          });
+          
+          copy[deptId][normSem] = combined;
+          if (normDept !== deptId) {
+            copy[normDept][normSem] = combined;
+          }
+          return copy;
+        });
+
+        setAllSubjectsList(prev => {
+          const withoutThisDeptSem = prev.filter(
+            s => !(
+              (s.departmentId === deptId || s.departmentId === normDept) && 
+              String(s.semesterId) === normSem && 
+              s.contributorId !== "system"
+            )
+          );
+          return [...withoutThisDeptSem, ...newSubjects];
+        });
+
+        loadedSemestersRef.current[cacheKey] = true;
+        if (normDept !== deptId) {
+          loadedSemestersRef.current[`${deptId}_${normSem}`] = true;
+        }
+      } catch (err) {
+        console.error("[SubjectsContext] Failed to lazy load subjects:", err);
+      } finally {
+        delete inFlightRequestsRef.current[cacheKey];
+      }
+    })();
+
+    inFlightRequestsRef.current[cacheKey] = fetchPromise;
+    return fetchPromise;
+  }, []);
 
   useEffect(() => {
     if (!initialFetchDone.current) {
