@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 import { randomUUID } from "crypto";
 import { checkMonthlyUsage } from "@/lib/monthly-usage";
+import { resolveUserDownloaderName } from "@/lib/watermark";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let bodyDisplayName = "";
+  try {
+    const body = await req.json().catch(() => null);
+    if (body?.displayName && typeof body.displayName === "string") {
+      bodyDisplayName = body.displayName.trim();
+    }
+  } catch {}
+
   const token = authHeader.substring(7);
   let uid = "";
   let email = "student@paperino.app";
@@ -27,7 +36,15 @@ export async function POST(req: NextRequest) {
     decodedToken = await admin.auth().verifyIdToken(token);
     uid = decodedToken.uid;
     if (decodedToken.email) email = decodedToken.email;
-    name = decodedToken.name || email.split("@")[0] || "Paperino User";
+    
+    // Resolve user's actual profile name from Firestore / Auth / body / email
+    name = await resolveUserDownloaderName({
+      uid,
+      providedName: bodyDisplayName,
+      tokenName: decodedToken.name,
+      email,
+      adminDb
+    });
     
     const allowedAdmins = [
       "mohamedsajid.sa@gmail.com",

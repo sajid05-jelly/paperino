@@ -15,6 +15,7 @@ import { PDFDocument, rgb, degrees, StandardFonts } from "pdf-lib";
 import { randomUUID } from "crypto";
 import { incrementMonthlyUsage, checkMonthlyUsage } from "@/lib/monthly-usage";
 import { getEffectivePlan, isFeatureAllowed, PlanType } from "@/lib/subscription";
+import { resolveUserDownloaderName } from "@/lib/watermark";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
   let userEmail = "student@paperino.app";
   let isAdmin = false;
   let tokenPlan: string | null = null;
+  let decodedToken: admin.auth.DecodedIdToken | null = null;
 
   let rawToken = "";
   if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -108,7 +110,7 @@ export async function GET(req: NextRequest) {
 
   if (rawToken) {
     try {
-      const decodedToken = await admin.auth().verifyIdToken(rawToken);
+      decodedToken = await admin.auth().verifyIdToken(rawToken);
       uid = decodedToken.uid;
       tokenPlan = (decodedToken.plan as string) || null;
       userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Paperino User";
@@ -148,6 +150,16 @@ export async function GET(req: NextRequest) {
     } catch (err: any) {
       console.warn("[Download API Token Query Notice]:", err.message);
     }
+  }
+
+  // Authoritative resolution of actual downloader's profile name from Firestore / Auth if still fallback
+  if ((!userName || userName === "Paperino User" || userName === "Student") && uid && uid !== "GUEST") {
+    userName = await resolveUserDownloaderName({
+      uid,
+      tokenName: decodedToken?.name,
+      email: userEmail,
+      adminDb
+    });
   }
 
   if (!adminDb) {
@@ -359,6 +371,40 @@ export async function GET(req: NextRequest) {
         }
         const page = pdfDoc.addPage([embeddedImg.width, embeddedImg.height]);
         page.drawImage(embeddedImg, { x: 0, y: 0, width: embeddedImg.width, height: embeddedImg.height });
+
+        // Apply identical security watermark to image downloads
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const watermarkColor = rgb(0.545, 0.361, 0.965); // #8B5CF6 Paperino Purple
+        const watermarkOpacity = 0.14;
+        const watermarkAngle = degrees(-35);
+
+        const { width, height } = page.getSize();
+        const totalTextHeight = 40 + (detailLines.length * 32);
+        const centerX = width * 0.25;
+        const centerY = (height / 2) + (totalTextHeight / 2);
+
+        page.drawText("PAPERINO", {
+          x: centerX,
+          y: centerY,
+          size: 40,
+          font: fontBold,
+          color: watermarkColor,
+          opacity: watermarkOpacity,
+          rotate: watermarkAngle,
+        });
+
+        detailLines.forEach((lineText, idx) => {
+          page.drawText(lineText, {
+            x: centerX,
+            y: centerY - 45 - (idx * 30),
+            size: 26,
+            font: fontBold,
+            color: watermarkColor,
+            opacity: watermarkOpacity,
+            rotate: watermarkAngle,
+          });
+        });
+
         matName = `${matName.split('.')[0]}_watermarked.pdf`;
         mimeType = "application/pdf";
         const pdfBytes = await pdfDoc.save();

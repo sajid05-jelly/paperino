@@ -101,12 +101,35 @@ export async function triggerSecureDownload(
 
     const token = await user.getIdToken();
 
-    // 1. Fetch secure temporary download token
+    // Check cached profile in sessionStorage for user's explicit profile name
+    let clientDisplayName = user.displayName || "";
+    if (typeof window !== "undefined") {
+      try {
+        const cachedRaw = sessionStorage.getItem(`paperino_user_profile_${user.uid}`);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw);
+          const d = cached?.data;
+          if (d?.displayName && d.displayName !== "Student" && d.displayName !== "Paperino User") {
+            clientDisplayName = d.displayName;
+          } else if (d?.username) {
+            clientDisplayName = d.username;
+          } else if (d?.name) {
+            clientDisplayName = d.name;
+          }
+        }
+      } catch {}
+    }
+
+    // 1. Fetch secure temporary download token with user profile info
     const tokenRes = await fetch("/api/download/token", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${token}`
-      }
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        displayName: clientDisplayName || user.displayName || ""
+      })
     });
 
     if (!tokenRes.ok) {
