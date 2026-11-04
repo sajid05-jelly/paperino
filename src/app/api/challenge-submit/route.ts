@@ -49,7 +49,7 @@ function getSeed(str: string): number {
   return hash;
 }
 
-import { getLeaderboard as buildLeaderboard, invalidateLeaderboardCache } from '@/lib/challengeLeaderboard';
+import { getLeaderboard as buildLeaderboard, invalidateLeaderboardCache, invalidateWeeklyLeaderboardCache } from '@/lib/challengeLeaderboard';
 
 export async function POST(request: Request) {
   try {
@@ -444,8 +444,9 @@ export async function POST(request: Request) {
       console.warn("[challenge-submit] failed to write deterministic result doc:", writeErr.message);
     }
 
-    // 5. Build leaderboard scoped to this challengeId
+    // 5. Invalidate caches and build leaderboard scoped to this challengeId
     invalidateLeaderboardCache(challengeId);
+    invalidateWeeklyLeaderboardCache();
     const { leaderboard, userRank } = await buildLeaderboard(challengeId, uid);
 
     // Fallback if leaderboard query returned empty (e.g. quota limit or first player)

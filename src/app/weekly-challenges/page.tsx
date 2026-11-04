@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -75,8 +75,7 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
+  const fetchLeaderboard = useCallback(() => {
     setLoading(true);
     setErrorMsg(null);
     fetch('/api/weekly-leaderboard')
@@ -87,14 +86,19 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
         const text = await res.text();
         try {
           return JSON.parse(text);
-        } catch (err) {
+        } catch {
           console.error("Invalid JSON response:", text.substring(0, 50) + "...");
           throw new Error("Invalid API response format");
         }
       })
       .then(d => {
-        if (d.leaderboard) setData(d.leaderboard);
-        else if (d.error) throw new Error(d.error);
+        if (d && Array.isArray(d.leaderboard)) {
+          setData(d.leaderboard);
+        } else if (d && d.error) {
+          throw new Error(d.error);
+        } else {
+          setData([]);
+        }
         setLoading(false);
       })
       .catch(e => {
@@ -103,7 +107,13 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
         setData([]);
         setLoading(false);
       });
-  }, [isOpen]);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLeaderboard();
+    }
+  }, [isOpen, fetchLeaderboard]);
 
   if (!isOpen) return null;
 
@@ -135,6 +145,12 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
           <div className="py-12 text-center">
             <p className="text-rose-400 text-sm font-semibold">{errorMsg}</p>
             <p className="text-gray-500 text-xs mt-2">Please try again later.</p>
+            <button
+              onClick={fetchLeaderboard}
+              className="mt-4 px-4 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-xs font-medium border border-purple-500/30 transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         ) : data.length === 0 ? (
           <div className="py-12 text-center">
