@@ -1,20 +1,17 @@
 import * as admin from 'firebase-admin';
 
-const firebaseAdmin = (admin as any).default || admin;
-const apps = firebaseAdmin?.apps || [];
-
-if (!apps.length && firebaseAdmin?.credential) {
+if (!admin.apps.length) {
   try {
     let credential;
 
     // Check if the single JSON string environment variable exists
     if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      credential = firebaseAdmin.credential.cert(serviceAccount);
+      credential = admin.credential.cert(serviceAccount);
     } 
     // Fallback to individual variables if available
     else if (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-      credential = firebaseAdmin.credential.cert({
+      credential = admin.credential.cert({
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
@@ -24,7 +21,7 @@ if (!apps.length && firebaseAdmin?.credential) {
     }
 
     if (credential) {
-      firebaseAdmin.initializeApp({
+      admin.initializeApp({
         credential,
       });
     }
@@ -33,8 +30,7 @@ if (!apps.length && firebaseAdmin?.credential) {
   }
 }
 
-const activeApps = firebaseAdmin?.apps || [];
-const adminDb = activeApps.length ? firebaseAdmin.firestore() : null;
-const adminAuth = activeApps.length ? firebaseAdmin.auth() : null;
+const adminDb = admin.apps.length ? admin.firestore() : null;
+const adminAuth = admin.apps.length ? admin.auth() : null;
 
 export { adminDb, adminAuth };
