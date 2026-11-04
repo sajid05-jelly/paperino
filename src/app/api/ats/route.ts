@@ -36,14 +36,20 @@ export async function POST(req: NextRequest) {
   const entitlement = await verifyFeatureAccess(authHeader, 'ats');
   
   if (entitlement.status !== "ALLOWED") {
+    let statusCode = 403;
+    if (entitlement.status === "LIMIT_REACHED") statusCode = 429;
+    else if (entitlement.status === "AUTH_REQUIRED") statusCode = 401;
+    else if (entitlement.status === "USAGE_VERIFICATION_UNAVAILABLE") statusCode = 503;
+
     return NextResponse.json(
       { 
         error: entitlement.error || "Credit limit reached or unauthorized.",
+        status: entitlement.status,
         plan: entitlement.plan || "free",
-        limit: entitlement.limit || 0,
+        limit: entitlement.limit !== undefined ? entitlement.limit : 0,
         used: entitlement.used || 0
       },
-      { status: 429 }
+      { status: statusCode }
     );
   }
 

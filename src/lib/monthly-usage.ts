@@ -177,19 +177,43 @@ export async function checkAndConsumeMonthlyUsage(uid: string, feature: MonthlyF
   const month = getCurrentMonthKey();
 
   if (!adminDb) {
+    if (resolvedPlan === "premium") {
+      return { allowed: true, plan: "premium", used: 0, limit: Infinity, remaining: Infinity, month };
+    }
     return { 
-      allowed: false, plan: "free", used: 0, limit: 0, remaining: 0, month,
+      allowed: false, plan: resolvedPlan || "free", used: 0, limit: 0, remaining: 0, month,
       error: "System configuration error. Please try again later."
     };
   }
 
   try {
-    // 1. Determine plan and limit
-    const userDoc = await adminDb.collection("users").doc(uid).get();
-    const userData = userDoc.exists ? userDoc.data() : null;
-    const { plan } = getEffectivePlan(userData);
+    // 1. Determine plan and limit (use pre-resolved plan if provided)
+    let plan: PlanType = resolvedPlan || "free";
+    if (!resolvedPlan) {
+      try {
+        const userDoc = await adminDb.collection("users").doc(uid).get();
+        const userData = userDoc.exists ? userDoc.data() : null;
+        plan = getEffectivePlan(userData).plan;
+      } catch (fErr) {
+        // Fallback to Firebase Auth Custom Claims when Firestore read quota is exhausted
+        try {
+          const { adminAuth } = await import("./firebase-admin");
+          if (adminAuth) {
+            const uRec = await adminAuth.getUser(uid);
+            const claimPlan = uRec.customClaims?.plan as PlanType;
+            if (claimPlan && ["plus", "pro", "premium"].includes(claimPlan)) {
+              plan = claimPlan;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     const limit = getMonthlyLimit(plan, feature);
 
+    // If unlimited (Premium, or Pro for downloads) - immediate zero-friction access
     if (limit === Infinity) {
       return { allowed: true, plan, used: 0, limit: Infinity, remaining: Infinity, month };
     }
@@ -200,7 +224,7 @@ export async function checkAndConsumeMonthlyUsage(uid: string, feature: MonthlyF
       };
     }
 
-    // 2. Atomic read + increment
+    // 2. Atomic read + increment for metered features
     const usageDocId = `${uid}_${month}`;
     const usageRef = adminDb.collection("user_monthly_usage").doc(usageDocId);
 
@@ -244,9 +268,12 @@ export async function checkAndConsumeMonthlyUsage(uid: string, feature: MonthlyF
 
   } catch (err: any) {
     console.error(`[checkAndConsumeMonthlyUsage] Error for ${uid}:`, err);
-    // FAIL-CLOSED
+    // Paid premium subscribers must never be blocked by transient counter errors
+    if (resolvedPlan === "premium") {
+      return { allowed: true, plan: "premium", used: 0, limit: Infinity, remaining: Infinity, month };
+    }
     return { 
-      allowed: false, plan: "free", used: 0, limit: 0, remaining: 0, month,
+      allowed: false, plan: resolvedPlan || "free", used: 0, limit: 0, remaining: 0, month,
       error: "Temporary system error while verifying usage limits. Please try again later."
     };
   }

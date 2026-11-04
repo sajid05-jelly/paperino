@@ -287,29 +287,39 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "GitHub username is required" }, { status: 400 });
     }
 
-          const authHeader = req.headers.get("authorization");
-      entitlement = await verifyFeatureAccess(authHeader, 'githubIntelligence');
-      if (entitlement.status !== "ALLOWED") {
-         let statusCode = 403;
-         if (entitlement.status === "LIMIT_REACHED") statusCode = 429;
-         else if (entitlement.status === "AUTH_REQUIRED") statusCode = 401;
-         else if (entitlement.status === "USAGE_VERIFICATION_UNAVAILABLE") statusCode = 503;
-         
-         return NextResponse.json({
-            error: entitlement.error || "Access denied.",
-            status: entitlement.status,
-            plan: entitlement.plan,
-            limit: entitlement.limit,
-            used: entitlement.used
-         }, { status: statusCode });
-      }
+    if (username.includes("github.com/")) {
+      const parts = username.split("github.com/")[1].split("/").filter(Boolean);
+      username = parts[0] || username;
+    }
+    username = username.toLowerCase();
 
-      if (username.includes("github.com/")) {
-        const parts = username.split("github.com/")[1].split("/").filter(Boolean);
-        username = parts[0] || username;
-      }
-      username = username.toLowerCase();
-      const cacheKey = `github-intelligence:v6:${username}`;
+    // Strict GitHub username validation: 1-39 chars, alphanumeric and single hyphens, no leading/trailing hyphen
+    const GITHUB_USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/;
+    if (!GITHUB_USERNAME_REGEX.test(username)) {
+      return NextResponse.json(
+        { error: `Invalid GitHub username format. Usernames can only contain letters, numbers, and hyphens, and cannot start or end with a hyphen.` },
+        { status: 400 }
+      );
+    }
+
+    const authHeader = req.headers.get("authorization");
+    entitlement = await verifyFeatureAccess(authHeader, 'githubIntelligence');
+    if (entitlement.status !== "ALLOWED") {
+      let statusCode = 403;
+      if (entitlement.status === "LIMIT_REACHED") statusCode = 429;
+      else if (entitlement.status === "AUTH_REQUIRED") statusCode = 401;
+      else if (entitlement.status === "USAGE_VERIFICATION_UNAVAILABLE") statusCode = 503;
+      
+      return NextResponse.json({
+        error: entitlement.error || "Access denied.",
+        status: entitlement.status,
+        plan: entitlement.plan,
+        limit: entitlement.limit,
+        used: entitlement.used
+      }, { status: statusCode });
+    }
+
+    const cacheKey = `github-intelligence:v6:${username}`;
 
       const now = Date.now();
       if (!forceFresh && cache.has(cacheKey)) {

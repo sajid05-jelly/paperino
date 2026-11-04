@@ -26,8 +26,8 @@ function normalizeTitle(t: string): string {
 
 /**
  * Fetches active internship listings directly from Firestore pulse_updates (Knowafest, Admin, etc.)
- * AND combines live aggregated listings (Unstop, Devfolio, etc.) from InternshipManager.
- * Merges duplicate entries across sources into single opportunity cards.
+ * AND combines curated verified opportunities from INITIAL_INTERNSHIPS.
+ * Excludes Unstop records per application policy and deduplicates cleanly.
  */
 async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
   const allRawInternships: any[] = [];
@@ -43,6 +43,13 @@ async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
       if (!snap.empty) {
         snap.docs.forEach((docSnap) => {
           const d = docSnap.data();
+          const sourceName = d.sourceName || d.source || "Knowafest";
+          const link = d.link || d.registrationUrl || d.officialEventUrl || d.applyUrl || "";
+          // Exclude any Unstop-sourced opportunities per strict project policy
+          if (sourceName.toLowerCase().includes("unstop") || link.toLowerCase().includes("unstop.com")) {
+            return;
+          }
+
           allRawInternships.push({
             id: docSnap.id,
             title: d.title,
@@ -62,12 +69,12 @@ async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
             minCgpa: 6.0,
             requiredSkills: Array.isArray(d.tags) ? d.tags.filter((t: string) => !["knowafest", "internship", "internships", "online", "offline"].includes(t.toLowerCase())) : [],
             targetRoles: [d.title],
-            applyUrl: d.link || d.registrationUrl || d.officialEventUrl || d.applyUrl || "",
+            applyUrl: link,
             postedDate: d.createdAt?.toDate ? d.createdAt.toDate().getTime() : Date.now() - 2 * 24 * 60 * 60 * 1000,
             deadline: d.deadline?.toDate ? d.deadline.toDate().getTime() : Date.now() + 30 * 24 * 60 * 60 * 1000,
             verified: d.verifiedSource !== false,
-            source: d.sourceName || d.source || "Knowafest",
-            sources: Array.isArray(d.sources) ? d.sources : [d.sourceName || d.source || "Knowafest"],
+            source: sourceName,
+            sources: Array.isArray(d.sources) ? d.sources : [sourceName],
             active: true,
           });
         });
@@ -77,45 +84,20 @@ async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
     console.error("[Career DNA API] Error reading Firestore pulse_updates:", err);
   }
 
-  // 2. Fetch Live Unstop / Provider Internships via InternshipManager
-  try {
-    const manager = new InternshipManager();
-    const unstopItems = await manager.getAggregatedInternships(forceSync);
-    unstopItems.forEach((item) => {
-      allRawInternships.push({
-        id: item.id,
-        title: item.title,
-        company: item.company || "Unstop Partner",
-        companyLogo: item.companyLogo || "https://unstop.com/favicon.ico",
-        location: item.location || "Remote",
-        workType: item.location?.toLowerCase().includes("remote") ? "Remote" : "Onsite",
-        type: "Internship",
-        stipend: "Unstop Stipend Standard",
-        duration: "3-6 Months",
-        departmentEligibility: item.eligibility?.departments || ["All"],
-        minYear: item.eligibility?.targetYears?.[0] || 1,
-        minCgpa: item.eligibility?.minCgpa || 6.0,
-        requiredSkills: item.skills || [],
-        targetRoles: [item.title],
-        applyUrl: item.applyUrl,
-        postedDate: Date.now() - 2 * 24 * 60 * 60 * 1000,
-        deadline: item.deadline ? new Date(item.deadline).getTime() : Date.now() + 30 * 24 * 60 * 60 * 1000,
-        verified: true,
-        source: "Unstop",
-        sources: ["Unstop"],
-        active: true,
-      });
-    });
-  } catch (err) {
-    console.error("[Career DNA API] Error reading Unstop internships via InternshipManager:", err);
-  }
+  // 2. Add curated opportunities from INITIAL_INTERNSHIPS (filtering any unstop URLs)
+  INITIAL_INTERNSHIPS.forEach(item => {
+    const isUnstop = (item.source || "").toLowerCase().includes("unstop") || (item.applyUrl || "").toLowerCase().includes("unstop.com");
+    if (!isUnstop) {
+      allRawInternships.push(item);
+    }
+  });
 
   // Fallback to INITIAL_INTERNSHIPS if empty
   if (allRawInternships.length === 0) {
     return INITIAL_INTERNSHIPS;
   }
 
-  // 3. Deduplicate & Merge duplicate opportunities across sources (Knowafest + Unstop + Devfolio)
+  // 3. Deduplicate & Merge duplicate opportunities across sources
   const mergedMap = new Map<string, any>();
 
   for (const item of allRawInternships) {
@@ -292,6 +274,9 @@ Return STRICTLY a JSON object with these key outputs:
 }`;
 
         console.log(`[Career DNA API] Requesting AI Analysis for: ${uid}...`);
+        const aiController = new AbortController();
+        const aiTimeoutId = setTimeout(() => aiController.abort(), 12000); // 12-sec strict timeout
+
         const response = await fetch(OPENROUTER_API_URL, {
           method: "POST",
           headers: {
@@ -307,8 +292,10 @@ Return STRICTLY a JSON object with these key outputs:
               { role: "user", content: prompt }
             ],
             response_format: { type: "json_object" }
-          })
+          }),
+          signal: aiController.signal
         });
+        clearTimeout(aiTimeoutId);
 
         if (response.ok) {
           const resData = await response.json();

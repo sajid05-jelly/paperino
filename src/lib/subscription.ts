@@ -193,7 +193,16 @@ export function getEffectivePlan(userData?: any): {
 
   const subStatus = (userData.razorpaySubscriptionStatus || userData.subscriptionStatus || "").toLowerCase();
   const rawPlan = (userData.plan || "").toLowerCase();
-  const isCancelledOrInactive = ["cancelled", "canceled", "halted", "completed", "expired", "inactive"].includes(subStatus);
+  const isCancelledOrInactive = [
+    "cancelled",
+    "canceled",
+    "halted",
+    "completed",
+    "expired",
+    "inactive",
+    "failed",
+    "unpaid",
+  ].includes(subStatus);
 
   // Check if time-limited plan has expired
   if (userData.premiumEndDate) {
@@ -208,18 +217,24 @@ export function getEffectivePlan(userData?: any): {
       return isContributorPlusEligible(userData)
         ? { plan: "plus", isContributorPlus: true, isPaidPlan: false }
         : { plan: "free", isContributorPlus: false, isPaidPlan: false };
+    } else if (!isCancelledOrInactive) {
+      // Active time-limited paid plan
+      const paidPlan: PlanType = (rawPlan === "plus" || rawPlan === "pro" || rawPlan === "premium") ? rawPlan : "premium";
+      return { plan: paidPlan, isContributorPlus: false, isPaidPlan: true };
     }
   }
 
   // Active verified paid subscription takes precedence over contributor rewards
-  if (!isCancelledOrInactive) {
-    if (rawPlan === "premium" && (subStatus === "active" || !subStatus)) {
+  // Non-cancelled statuses including active, authenticated, captured, authorized, paid, created, pending, or empty
+  const isActiveSubStatus = ["active", "authenticated", "captured", "authorized", "paid", "created", "pending", ""].includes(subStatus);
+  if (!isCancelledOrInactive && isActiveSubStatus) {
+    if (rawPlan === "premium") {
       return { plan: "premium", isContributorPlus: false, isPaidPlan: true };
     }
-    if (rawPlan === "pro" && (subStatus === "active" || !subStatus)) {
+    if (rawPlan === "pro") {
       return { plan: "pro", isContributorPlus: false, isPaidPlan: true };
     }
-    if (rawPlan === "plus" && (subStatus === "active" || !subStatus)) {
+    if (rawPlan === "plus") {
       return { plan: "plus", isContributorPlus: false, isPaidPlan: true };
     }
   }
@@ -231,6 +246,23 @@ export function getEffectivePlan(userData?: any): {
   }
 
   return { plan: "free", isContributorPlus: false, isPaidPlan: false };
+}
+
+/**
+ * List of features that use monthly consumption counters
+ */
+export const COUNTED_MONTHLY_FEATURES = [
+  "downloads",
+  "pyqAnalyzer",
+  "ats",
+  "examEmergency",
+  "githubIntelligence"
+] as const;
+
+export type CountedMonthlyFeature = typeof COUNTED_MONTHLY_FEATURES[number];
+
+export function isCountedMonthlyFeature(feature: string): feature is CountedMonthlyFeature {
+  return COUNTED_MONTHLY_FEATURES.includes(feature as CountedMonthlyFeature);
 }
 
 /**
@@ -246,8 +278,13 @@ export function isFeatureAllowed(plan: PlanType, feature: FeatureKey): boolean {
 }
 
 /**
- * Get monthly limit for a counted feature
+ * Get monthly limit for a counted feature (returns Infinity for boolean features that are true)
  */
-export function getMonthlyLimit(plan: PlanType, feature: "downloads" | "pyqAnalyzer" | "ats" | "examEmergency" | "githubIntelligence"): number {
-  return PLAN_LIMITS[plan][feature];
+export function getMonthlyLimit(plan: PlanType, feature: CountedMonthlyFeature | FeatureKey | string): number {
+  const limits = PLAN_LIMITS[plan];
+  if (!limits) return 0;
+  const val = (limits as any)[feature];
+  if (typeof val === "number") return val;
+  if (typeof val === "boolean") return val ? Infinity : 0;
+  return 0;
 }

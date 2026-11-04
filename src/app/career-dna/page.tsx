@@ -324,9 +324,12 @@ export default function CareerDnaPage() {
   // AI analysis fetcher
   const triggerAnalysis = async (profileData = formData, forceSync = false) => {
     setAnalysing(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s client-side timeout
+
     try {
       const idToken = await auth.currentUser?.getIdToken();
-      if (!idToken) throw new Error("Auth failed");
+      if (!idToken) throw new Error("Please sign in to run Career DNA analysis.");
 
       const res = await fetch("/api/career-dna", {
         method: "POST",
@@ -334,11 +337,18 @@ export default function CareerDnaPage() {
           "Authorization": `Bearer ${idToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ profile: profileData, forceSync })
+        body: JSON.stringify({ profile: profileData, forceSync }),
+        signal: controller.signal
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        throw new Error("Unable to parse server response. Please try again.");
+      }
+
+      if (!res.ok) throw new Error(data.error || "Analysis failed. Please try again.");
 
       setProfile(profileData as CareerDnaProfile);
       setAnalysis(data);
@@ -347,8 +357,13 @@ export default function CareerDnaPage() {
       showToast("AI Career Analysis & Opportunities updated!", "success");
     } catch (err: any) {
       console.error(err);
-      showToast(err.message || "AI Analysis failed", "error");
+      if (err.name === 'AbortError') {
+        showToast("Sync request timed out. Please check your connection and try again.", "error");
+      } else {
+        showToast(err.message || "AI Analysis failed", "error");
+      }
     } finally {
+      clearTimeout(timeoutId);
       setAnalysing(false);
     }
   };
