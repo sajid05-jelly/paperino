@@ -22,7 +22,7 @@ export default function ATSAnalyzerPage() {
   const [activeSection, setActiveSection] = useState<number | null>(null);
 
   // ATS Config State
-  const [atsEnabled, setAtsEnabled] = useState<boolean | null>(null);
+  const [atsEnabled, setAtsEnabled] = useState<boolean>(true);
   const [maintenanceTitle, setMaintenanceTitle] = useState("");
   const [maintenanceMessage, setMaintenanceMessage] = useState("");
   
@@ -50,23 +50,31 @@ export default function ATSAnalyzerPage() {
 
   // Fetch Global Config
   useEffect(() => {
+    let isMounted = true;
     const fetchConfig = async () => {
       try {
-        const configDoc = await getDoc(doc(db, "platform_config", "features"));
-        if (configDoc.exists()) {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Config fetch timeout")), 2000)
+        );
+        const configDoc = (await Promise.race([
+          getDoc(doc(db, "platform_config", "features")),
+          timeoutPromise
+        ])) as any;
+
+        if (isMounted && configDoc && configDoc.exists()) {
           const data = configDoc.data();
           if (data.atsEnabled !== undefined) setAtsEnabled(data.atsEnabled);
           if (data.maintenanceTitle) setMaintenanceTitle(data.maintenanceTitle);
           if (data.maintenanceMessage) setMaintenanceMessage(data.maintenanceMessage);
-        } else {
-          setAtsEnabled(true);
         }
-      } catch (err) {
-        console.error("Failed to load ATS config:", err);
-        setAtsEnabled(true); // Fallback to enabled if DB fails
+      } catch {
+        // Fallback to enabled silently if Firestore is slow or offline
       }
     };
     fetchConfig();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const loadingSteps = [
@@ -222,16 +230,6 @@ export default function ATSAnalyzerPage() {
       setLoadingStep(0);
     }
   };
-
-  if (atsEnabled === null) {
-    return (
-      <div className="min-h-screen pt-24 bg-background text-white flex justify-center items-center relative overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[rgba(var(--primary-rgb),0.1)] blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[rgba(var(--secondary-rgb),0.1)] blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="w-12 h-12 border-4 border-[rgba(var(--primary-rgb),0.3)] border-t-[rgb(var(--primary-rgb))] rounded-full animate-spin relative z-10"></div>
-      </div>
-    );
-  }
 
   if (atsEnabled === false) {
     return (

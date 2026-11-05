@@ -5,6 +5,7 @@ import { generateJSONResponse } from "@/services/groqService";
 import { verifyFeatureAccess, consumeFeatureUsage, refundFeatureUsage } from "@/lib/server-entitlement";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from 'firebase-admin';
+import { extractPdfText } from "@/lib/pdfTextExtractor";
 
 export const maxDuration = 60;
 
@@ -12,8 +13,12 @@ export async function POST(req: NextRequest) {
   /* ── Security: ATS Maintenance Mode Check ── */
   if (adminDb) {
     try {
-      const configDoc = await adminDb.collection("platform_config").doc("features").get();
-      if (configDoc.exists) {
+      const configTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+      const configDoc: any = await Promise.race([
+        adminDb.collection("platform_config").doc("features").get(),
+        configTimeout
+      ]);
+      if (configDoc && configDoc.exists) {
         const config = configDoc.data();
         if (config && config.atsEnabled === false) {
           return NextResponse.json(
@@ -77,19 +82,6 @@ export async function POST(req: NextRequest) {
 // ============================================================================
 async function handleExtraction(req: NextRequest) {
   console.log("[ATS] Starting file extraction...");
-  
-  // Polyfill DOM elements for pdf.js running in Node
-  if (typeof global !== "undefined") {
-    if (!global.DOMMatrix) global.DOMMatrix = class DOMMatrix {} as any;
-    if (!global.ImageData) global.ImageData = class ImageData {} as any;
-    if (!global.Path2D) global.Path2D = class Path2D {} as any;
-  }
-
-  const pdfParseModule = require("pdf-parse");
-  const pdfParse =
-    typeof pdfParseModule === "function"
-      ? pdfParseModule
-      : pdfParseModule.default;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -109,29 +101,9 @@ async function handleExtraction(req: NextRequest) {
   let pageCount = 0;
 
   if (file.name.toLowerCase().endsWith(".pdf")) {
-    try {
-      const pdfData = await pdfParse(buffer);
-      text = pdfData.text || "";
-      pageCount = pdfData.numpages || 1;
-    } catch (err: any) {
-      console.warn("[ATS] pdf-parse failed, falling back to pdf2json:", err.message);
-    }
-
-    if (!text || text.trim().length < 50) {
-      try {
-        const PDFParser = require("pdf2json");
-        text = await new Promise<string>((resolve, reject) => {
-          const pdfParser = new PDFParser(null, 1);
-          pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
-          pdfParser.on("pdfParser_dataReady", () => resolve(pdfParser.getRawTextContent()));
-          pdfParser.parseBuffer(buffer);
-        });
-        // We cannot reliably get page count from raw text output of pdf2json, default to 1.
-        pageCount = 1;
-      } catch (fallbackErr: any) {
-        console.error("[ATS] Fallback pdf2json failed:", fallbackErr.message);
-      }
-    }
+    const extracted = await extractPdfText(buffer);
+    text = extracted.text || "";
+    pageCount = extracted.numpages || 1;
   } else if (file.name.toLowerCase().endsWith(".docx")) {
     try {
       const result = await mammoth.extractRawText({ buffer });

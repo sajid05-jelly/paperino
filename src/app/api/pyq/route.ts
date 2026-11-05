@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runApiGuard } from "@/lib/api-guard";
 import { verifyFeatureAccess, consumeFeatureUsage, refundFeatureUsage } from "@/lib/server-entitlement";
 import { analyzeLargePYQ } from "@/services/groqService";
+import { extractPdfText } from "@/lib/pdfTextExtractor";
 
 export const maxDuration = 60; // 60 seconds as multi-PDF parsing might take time
 
@@ -35,13 +36,6 @@ export async function POST(req: NextRequest) {
       if (!global.ImageData) global.ImageData = class ImageData {} as any;
       if (!global.Path2D) global.Path2D = class Path2D {} as any;
     }
-
-    // Dynamically import pdf-parse to bypass Next.js static ESM strictness
-    const pdfParseModule = await import("pdf-parse" as any);
-    const pdfParse =
-      typeof pdfParseModule === "function"
-        ? pdfParseModule
-        : pdfParseModule.default || pdfParseModule;
 
     const formData = await req.formData();
     const files = formData.getAll("files") as File[];
@@ -107,10 +101,10 @@ export async function POST(req: NextRequest) {
 
         let text = "";
         try {
-          const pdfData = await pdfParse(buffer);
-          text = pdfData.text || "";
+          const extracted = await extractPdfText(buffer);
+          text = extracted.text || "";
         } catch (err: any) {
-          console.warn(`pdf-parse failed for ${file.name}:`, err.message);
+          console.warn(`PDF extraction failed for ${file.name}:`, err.message);
         }
         text = cleanPDFText(text);
         if (text.trim().length > 0) {
