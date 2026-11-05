@@ -101,9 +101,17 @@ export async function triggerSecureDownload(
 
     const token = await user.getIdToken();
 
-    // Check cached profile in sessionStorage for user's explicit profile name
+    // Resolve user's actual profile name from Firebase Auth / Google Provider / sessionStorage / email
     let clientDisplayName = user.displayName || "";
-    if (typeof window !== "undefined") {
+    if (!clientDisplayName && user.providerData && user.providerData.length > 0) {
+      for (const provider of user.providerData) {
+        if (provider.displayName) {
+          clientDisplayName = provider.displayName;
+          break;
+        }
+      }
+    }
+    if (!clientDisplayName && typeof window !== "undefined") {
       try {
         const cachedRaw = sessionStorage.getItem(`paperino_user_profile_${user.uid}`);
         if (cachedRaw) {
@@ -119,6 +127,9 @@ export async function triggerSecureDownload(
         }
       } catch {}
     }
+    if (!clientDisplayName && user.email) {
+      clientDisplayName = user.email.split("@")[0].replace(/[._-]/g, " ").trim();
+    }
 
     // 1. Fetch secure temporary download token with user profile info
     const tokenRes = await fetch("/api/download/token", {
@@ -128,7 +139,9 @@ export async function triggerSecureDownload(
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        displayName: clientDisplayName || user.displayName || ""
+        displayName: clientDisplayName || user.displayName || "",
+        email: user.email || "",
+        uid: user.uid
       })
     });
 

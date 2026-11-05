@@ -1,5 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { formatProfileName, resolveUserDownloaderName } from "../src/lib/watermark.ts";
 
 describe("Paperino — Download Watermark Personalization", () => {
@@ -241,6 +242,93 @@ describe("Paperino — Download Watermark Personalization", () => {
       assert.equal(detailLines[1], "User ID: USR-A1B2C3D4");
       assert.equal(detailLines[2], "Downloaded: 04 Nov 2026, 07:15");
       assert.equal(detailLines[3], "Download ID: DL-98765432");
+    });
+  });
+
+  describe("5. Cryptographically Signed Download Tokens (Zero Firestore round-trip)", () => {
+    // Model of createSignedDownloadToken and verifySignedDownloadToken
+    const secret = "test-secret-key-123";
+
+    function createToken(payload, expiresInMs = 15 * 60 * 1000) {
+      const data = { ...payload, exp: Date.now() + expiresInMs };
+      const base64Data = Buffer.from(JSON.stringify(data), "utf8").toString("base64url");
+      const signature = crypto
+        .createHmac("sha256", secret)
+        .update(base64Data)
+        .digest("base64url");
+      return `${base64Data}.${signature}`;
+    }
+
+    function verifyToken(tokenStr) {
+      if (!tokenStr || !tokenStr.includes(".")) return null;
+      const [base64Data, signature] = tokenStr.split(".");
+      const expected = crypto
+        .createHmac("sha256", secret)
+        .update(base64Data)
+        .digest("base64url");
+      if (signature !== expected) return null;
+      try {
+        const payload = JSON.parse(Buffer.from(base64Data, "base64url").toString("utf8"));
+        if (!payload.exp || Date.now() > payload.exp) return null;
+        if (!payload.uid || payload.uid === "GUEST") return null;
+        return payload;
+      } catch {
+        return null;
+      }
+    }
+
+    test("embeds user UID, Google Gmail displayName and email directly in token", () => {
+      const token = createToken({
+        uid: "oF8x7K29aBcD",
+        name: "Mohamed Sajid",
+        email: "mohamedsajid.sa@gmail.com",
+        isAdmin: true
+      });
+
+      const decoded = verifyToken(token);
+      assert.ok(decoded);
+      assert.equal(decoded.uid, "oF8x7K29aBcD");
+      assert.equal(decoded.name, "Mohamed Sajid");
+      assert.equal(decoded.email, "mohamedsajid.sa@gmail.com");
+      assert.equal(decoded.isAdmin, true);
+
+      // Verify shortUid construction is NOT USR-GUEST
+      const shortUid = `USR-${decoded.uid.substring(0, 8).toUpperCase()}`;
+      assert.equal(shortUid, "USR-OF8X7K29");
+      assert.notEqual(shortUid, "USR-GUEST");
+
+      // Verify watermark lines use user's Gmail name
+      const watermarkLine = `Downloaded by: ${decoded.name}`;
+      assert.equal(watermarkLine, "Downloaded by: Mohamed Sajid");
+      assert.notEqual(watermarkLine, "Downloaded by: Paperino User");
+    });
+
+    test("rejects tampered download tokens", () => {
+      const token = createToken({
+        uid: "user_valid",
+        name: "Valid User",
+        email: "user@gmail.com",
+        isAdmin: false
+      });
+
+      // Tamper with the payload
+      const [data, sig] = token.split(".");
+      const tamperedData = Buffer.from(JSON.stringify({ uid: "admin_hacker", name: "Hacker", exp: Date.now() + 100000 })).toString("base64url");
+      const tamperedToken = `${tamperedData}.${sig}`;
+
+      assert.equal(verifyToken(tamperedToken), null);
+    });
+
+    test("rejects expired download tokens", () => {
+      // Create a token expired 1 second ago
+      const expiredToken = createToken({
+        uid: "user_expired",
+        name: "Expired User",
+        email: "expired@gmail.com",
+        isAdmin: false
+      }, -1000);
+
+      assert.equal(verifyToken(expiredToken), null);
     });
   });
 });

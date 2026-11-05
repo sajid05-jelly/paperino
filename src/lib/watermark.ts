@@ -50,11 +50,15 @@ export async function resolveUserDownloaderName(params: {
     return !s || s === "student" || s === "paperino user" || s === "user" || s === "guest" || s === "contributor";
   };
 
-  // 1. Authoritative: Fetch from Firestore users/{uid} document
+  // 1. Authoritative: Fetch from Firestore users/{uid} document with timeout protection
   if (adminDb && uid && uid !== "GUEST") {
     try {
-      const uSnap = await adminDb.collection("users").doc(uid).get();
-      if (uSnap.exists) {
+      const uTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+      const uSnap: any = await Promise.race([
+        adminDb.collection("users").doc(uid).get(),
+        uTimeout
+      ]);
+      if (uSnap && uSnap.exists) {
         const uData = uSnap.data() || {};
         const profileDisplay = typeof uData.displayName === "string" ? uData.displayName.trim() : "";
         const profileUsername = typeof uData.username === "string" ? uData.username.trim() : "";
@@ -85,17 +89,23 @@ export async function resolveUserDownloaderName(params: {
     return formatProfileName(tokenName!);
   }
 
-  // 4. Firebase Auth user record lookup via Admin SDK
+  // 4. Firebase Auth user record lookup via Admin SDK with timeout protection
   if (uid && uid !== "GUEST" && admin.apps?.length) {
     try {
-      const authRecord = await admin.auth().getUser(uid);
-      if (!isGeneric(authRecord.displayName)) {
-        return formatProfileName(authRecord.displayName!);
-      }
-      if (authRecord.email && authRecord.email.toLowerCase() !== "student@paperino.app") {
-        const prefix = authRecord.email.split("@")[0].replace(/[._-]/g, " ").trim();
-        if (prefix) {
-          return formatProfileName(prefix);
+      const authTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+      const authRecord: any = await Promise.race([
+        admin.auth().getUser(uid),
+        authTimeout
+      ]);
+      if (authRecord) {
+        if (!isGeneric(authRecord.displayName)) {
+          return formatProfileName(authRecord.displayName!);
+        }
+        if (authRecord.email && authRecord.email.toLowerCase() !== "student@paperino.app") {
+          const prefix = authRecord.email.split("@")[0].replace(/[._-]/g, " ").trim();
+          if (prefix) {
+            return formatProfileName(prefix);
+          }
         }
       }
     } catch (err: any) {

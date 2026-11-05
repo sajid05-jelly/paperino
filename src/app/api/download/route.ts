@@ -15,7 +15,8 @@ import { PDFDocument, rgb, degrees, StandardFonts } from "pdf-lib";
 import { randomUUID } from "crypto";
 import { incrementMonthlyUsage, checkMonthlyUsage } from "@/lib/monthly-usage";
 import { getEffectivePlan, isFeatureAllowed, PlanType } from "@/lib/subscription";
-import { resolveUserDownloaderName } from "@/lib/watermark";
+import { resolveUserDownloaderName, formatProfileName } from "@/lib/watermark";
+import { verifySignedDownloadToken } from "@/lib/downloadToken";
 
 export const dynamic = "force-dynamic";
 
@@ -103,52 +104,75 @@ export async function GET(req: NextRequest) {
   let tokenPlan: string | null = null;
   let decodedToken: admin.auth.DecodedIdToken | null = null;
 
-  let rawToken = "";
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    rawToken = authHeader.substring(7);
-  }
-
-  if (rawToken) {
-    try {
-      decodedToken = await admin.auth().verifyIdToken(rawToken);
-      uid = decodedToken.uid;
-      tokenPlan = (decodedToken.plan as string) || null;
-      userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Paperino User";
-      userEmail = decodedToken.email || "student@paperino.app";
-      
-      const allowedAdmins = [
-        "mohamedsajid.sa@gmail.com",
-        "sudharajsekar2005@gmail.com",
-        "admin.paperinoirfan27@gmail.com",
-        "admin.paperinosam14@gmail.com",
-        "gameplayitlifeitis@gmail.com",
-        "dejasvini28@gmail.com",
-        "kaushika13official@gmail.com"
-      ];
-      if (userEmail && allowedAdmins.includes(userEmail.toLowerCase())) {
-        isAdmin = true;
-      }
-    } catch (err: any) {
-      console.warn("[Download API Stage 1 Notice] Auth token decoding notice:", err.message);
+  // PRIORITY 1: Check signed tamper-proof token (Zero database reads, zero latency, immune to Firestore quota limits)
+  const verifiedSignedToken = verifySignedDownloadToken(queryTokenParam);
+  if (verifiedSignedToken) {
+    uid = verifiedSignedToken.uid;
+    userName = verifiedSignedToken.name;
+    userEmail = verifiedSignedToken.email;
+    isAdmin = verifiedSignedToken.isAdmin;
+    tokenPlan = verifiedSignedToken.plan || null;
+  } else {
+    // PRIORITY 2: Check Authorization Bearer ID Token
+    let rawToken = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      rawToken = authHeader.substring(7);
     }
-  } else if (queryTokenParam && adminDb) {
-    try {
-      const tokenDocTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
-      const tokenSnap: any = await Promise.race([
-        adminDb.collection("download_tokens").doc(queryTokenParam).get(),
-        tokenDocTimeout
-      ]);
-      if (tokenSnap && tokenSnap.exists) {
-        const tData = tokenSnap.data() || {};
-        uid = tData.uid || "GUEST";
-        userName = tData.name || "Paperino User";
-        userEmail = tData.email || "student@paperino.app";
-        if (tData.isAdmin) {
+
+    if (rawToken) {
+      try {
+        decodedToken = await admin.auth().verifyIdToken(rawToken);
+        uid = decodedToken.uid;
+        tokenPlan = (decodedToken.plan as string) || null;
+        userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Paperino User";
+        userEmail = decodedToken.email || "student@paperino.app";
+        
+        const allowedAdmins = [
+          "mohamedsajid.sa@gmail.com",
+          "sudharajsekar2005@gmail.com",
+          "admin.paperinoirfan27@gmail.com",
+          "admin.paperinosam14@gmail.com",
+          "gameplayitlifeitis@gmail.com",
+          "dejasvini28@gmail.com",
+          "kaushika13official@gmail.com"
+        ];
+        if (userEmail && allowedAdmins.includes(userEmail.toLowerCase())) {
           isAdmin = true;
         }
+      } catch (err: any) {
+        console.warn("[Download API Stage 1 Notice] Auth token decoding notice:", err.message);
       }
-    } catch (err: any) {
-      console.warn("[Download API Token Query Notice]:", err.message);
+    } else if (queryTokenParam) {
+      // PRIORITY 3: Check if queryTokenParam is a direct Firebase ID token
+      try {
+        decodedToken = await admin.auth().verifyIdToken(queryTokenParam);
+        uid = decodedToken.uid;
+        tokenPlan = (decodedToken.plan as string) || null;
+        userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Paperino User";
+        userEmail = decodedToken.email || "student@paperino.app";
+      } catch {
+        // PRIORITY 4: Legacy Firestore download_tokens lookup fallback
+        if (adminDb) {
+          try {
+            const tokenDocTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
+            const tokenSnap: any = await Promise.race([
+              adminDb.collection("download_tokens").doc(queryTokenParam).get(),
+              tokenDocTimeout
+            ]);
+            if (tokenSnap && tokenSnap.exists) {
+              const tData = tokenSnap.data() || {};
+              uid = tData.uid || "GUEST";
+              userName = tData.name || "Paperino User";
+              userEmail = tData.email || "student@paperino.app";
+              if (tData.isAdmin) {
+                isAdmin = true;
+              }
+            }
+          } catch (err: any) {
+            console.warn("[Download API Token Query Notice]:", err.message);
+          }
+        }
+      }
     }
   }
 
@@ -160,6 +184,14 @@ export async function GET(req: NextRequest) {
       email: userEmail,
       adminDb
     });
+  }
+
+  // Fallback to email handle prefix: if userName is STILL generic, extract name from userEmail
+  if ((!userName || userName === "Paperino User" || userName === "Student") && userEmail && userEmail !== "student@paperino.app") {
+    const prefix = userEmail.split("@")[0].replace(/[._-]/g, " ").trim();
+    if (prefix) {
+      userName = formatProfileName(prefix);
+    }
   }
 
   if (!adminDb) {

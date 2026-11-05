@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
-import { randomUUID } from "crypto";
 import { checkMonthlyUsage } from "@/lib/monthly-usage";
 import { resolveUserDownloaderName } from "@/lib/watermark";
+import { createSignedDownloadToken } from "@/lib/downloadToken";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +18,14 @@ export async function POST(req: NextRequest) {
   }
 
   let bodyDisplayName = "";
+  let bodyEmail = "";
   try {
     const body = await req.json().catch(() => null);
     if (body?.displayName && typeof body.displayName === "string") {
       bodyDisplayName = body.displayName.trim();
+    }
+    if (body?.email && typeof body.email === "string") {
+      bodyEmail = body.email.trim();
     }
   } catch {}
 
@@ -35,9 +39,13 @@ export async function POST(req: NextRequest) {
   try {
     decodedToken = await admin.auth().verifyIdToken(token);
     uid = decodedToken.uid;
-    if (decodedToken.email) email = decodedToken.email;
+    if (decodedToken.email) {
+      email = decodedToken.email;
+    } else if (bodyEmail) {
+      email = bodyEmail;
+    }
     
-    // Resolve user's actual profile name from Firestore / Auth / body / email
+    // Resolve user's actual profile name from Google Account / Firestore / Auth / body / email
     name = await resolveUserDownloaderName({
       uid,
       providedName: bodyDisplayName,
@@ -65,10 +73,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!adminDb) {
-    return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
-  }
-
   // Check Monthly Download Limit for non-admins and non-premium users
   const userPlan = (decodedToken?.plan as any) || undefined;
   const isUnlimitedPlan = userPlan === "premium" || userPlan === "pro";
@@ -90,11 +94,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const downloadToken = randomUUID();
+    // Generate tamper-proof cryptographically signed token containing user's exact Gmail identity
+    const downloadToken = createSignedDownloadToken({
+      uid,
+      name,
+      email,
+      isAdmin,
+      plan: userPlan
+    });
     
-    // Save to Firestore with 5 min validity period (with 2s fallback timeout to avoid hanging on quota limits)
-    const tokenSaveTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 2000));
-    await Promise.race([
+    // Non-blocking fire-and-forget save to Firestore (will not block or fail download if Firestore is slow/over quota)
+    if (adminDb) {
       adminDb.collection("download_tokens").doc(downloadToken).set({
         uid,
         email,
@@ -103,9 +113,10 @@ export async function POST(req: NextRequest) {
         token: downloadToken,
         used: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }),
-      tokenSaveTimeout,
-    ]);
+      }).catch((err: any) => {
+        console.warn("[Token API] Firestore token backup notice:", err.message);
+      });
+    }
 
     return NextResponse.json({ success: true, token: downloadToken });
   } catch (err: any) {
