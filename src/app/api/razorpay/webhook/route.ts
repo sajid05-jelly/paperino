@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebase-admin";
 import Razorpay from "razorpay";
+import { isSpecialOfferActive } from "@/lib/premiumOffer";
 
 export const dynamic = "force-dynamic";
 
@@ -96,9 +97,11 @@ export async function POST(req: Request) {
 
       if (notesPlan) {
         targetPlan = notesPlan.toLowerCase();
-      } else if (desc.includes("plus") || amount === 4900) {
+      } else if (desc.includes("premium") || (isSpecialOfferActive() && amount === 7900) || amount === 9900) {
+        targetPlan = "premium";
+      } else if (desc.includes("plus") || amount === 2900 || amount === 4900) {
         targetPlan = "plus";
-      } else if (desc.includes("pro") || amount === 7900) {
+      } else if (desc.includes("pro") || amount === 5900 || (!isSpecialOfferActive() && amount === 7900)) {
         targetPlan = "pro";
       } else {
         targetPlan = "premium";

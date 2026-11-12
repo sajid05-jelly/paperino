@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { verifyServerAuth } from "@/lib/auth-verify";
+import { getPremiumRazorpayPlanId, isSpecialOfferActive } from "@/lib/premiumOffer";
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     const planMap: Record<string, string | undefined> = {
       PLUS: process.env.RAZORPAY_PLUS_PLAN_ID,
       PRO: process.env.RAZORPAY_PRO_PLAN_ID,
-      PREMIUM: process.env.RAZORPAY_PREMIUM_PLAN_ID,
+      PREMIUM: getPremiumRazorpayPlanId(),
     };
 
     const planId = planMap[planName];
@@ -37,19 +38,23 @@ export async function POST(req: Request) {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
+    const isOffer = planName === 'PREMIUM' && isSpecialOfferActive();
+
     const subscription = await instance.subscriptions.create({
       plan_id: planId,
       customer_notify: 0,
       total_count: 120,
       notes: {
         userId: auth.uid,
-        plan: planName.toLowerCase(), // keep lowercase for backward compatibility or use whatever is expected
+        plan: planName.toLowerCase(), // keep lowercase for backward compatibility
+        specialOffer: isOffer ? "48hr_special_offer_79" : "standard",
       }
     });
 
     return NextResponse.json({ 
       subscriptionId: subscription.id,
-      keyId: process.env.RAZORPAY_KEY_ID
+      keyId: process.env.RAZORPAY_KEY_ID,
+      isOfferApplied: isOffer
     });
   } catch (error: any) {
     console.error("Razorpay Sub Creation Error:", error);
