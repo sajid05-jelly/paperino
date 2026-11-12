@@ -4,15 +4,10 @@ import { adminDb } from "@/lib/firebase-admin";
 import { verifyFeatureAccess } from "@/lib/server-entitlement";
 import * as admin from 'firebase-admin';
 import { INITIAL_INTERNSHIPS, rankOpportunitiesForUser } from "@/services/internshipService";
-import { InternshipManager } from "@/services/internshipProviders/manager";
 import { Internship } from "@/types/internship";
+import { generateJSONResponse } from "@/services/groqService";
 
 export const maxDuration = 60;
-
-// OpenRouter Settings
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "openrouter/free";
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || "";
 
 /**
  * Normalizes title for deduplication matching
@@ -31,6 +26,7 @@ function normalizeTitle(t: string): string {
  */
 async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
   const allRawInternships: any[] = [];
+  const now = Date.now();
 
   // 1. Fetch Firestore pulse_updates internships (Knowafest, Admin posts, etc.)
   try {
@@ -47,6 +43,12 @@ async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
           const link = d.link || d.registrationUrl || d.officialEventUrl || d.applyUrl || "";
           // Exclude any Unstop-sourced opportunities per strict project policy
           if (sourceName.toLowerCase().includes("unstop") || link.toLowerCase().includes("unstop.com")) {
+            return;
+          }
+
+          const docDeadline = d.deadline?.toDate ? d.deadline.toDate().getTime() : (typeof d.deadline === 'number' ? d.deadline : null);
+          // Skip if deadline is strictly in the past
+          if (docDeadline && docDeadline < now) {
             return;
           }
 
@@ -70,8 +72,8 @@ async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
             requiredSkills: Array.isArray(d.tags) ? d.tags.filter((t: string) => !["knowafest", "internship", "internships", "online", "offline"].includes(t.toLowerCase())) : [],
             targetRoles: [d.title],
             applyUrl: link,
-            postedDate: d.createdAt?.toDate ? d.createdAt.toDate().getTime() : Date.now() - 2 * 24 * 60 * 60 * 1000,
-            deadline: d.deadline?.toDate ? d.deadline.toDate().getTime() : Date.now() + 30 * 24 * 60 * 60 * 1000,
+            postedDate: d.createdAt?.toDate ? d.createdAt.toDate().getTime() : now - 2 * 24 * 60 * 60 * 1000,
+            deadline: docDeadline || (now + 30 * 24 * 60 * 60 * 1000),
             verified: d.verifiedSource !== false,
             source: sourceName,
             sources: Array.isArray(d.sources) ? d.sources : [sourceName],
@@ -84,25 +86,25 @@ async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
     console.error("[Career DNA API] Error reading Firestore pulse_updates:", err);
   }
 
-  // 2. Add curated opportunities from INITIAL_INTERNSHIPS (filtering any unstop URLs)
+  // 2. Add curated opportunities from INITIAL_INTERNSHIPS with rolling active deadlines
   INITIAL_INTERNSHIPS.forEach(item => {
     const isUnstop = (item.source || "").toLowerCase().includes("unstop") || (item.applyUrl || "").toLowerCase().includes("unstop.com");
     if (!isUnstop) {
-      allRawInternships.push(item);
+      allRawInternships.push({
+        ...item,
+        postedDate: item.postedDate || (now - 2 * 24 * 60 * 60 * 1000),
+        deadline: (item.deadline && item.deadline > now) ? item.deadline : (now + 25 * 24 * 60 * 60 * 1000),
+        active: true,
+      });
     }
   });
 
-  // Fallback to INITIAL_INTERNSHIPS if empty
-  if (allRawInternships.length === 0) {
-    return INITIAL_INTERNSHIPS;
-  }
-
-  // 3. Deduplicate & Merge duplicate opportunities across sources
+  // Deduplicate & Merge duplicate opportunities across sources
   const mergedMap = new Map<string, any>();
 
   for (const item of allRawInternships) {
     const normKey = normalizeTitle(item.title);
-    const itemSources = item.sources || [item.source || "Paperino Pulse"];
+    const itemSources = item.sources || [item.source || "Paperino Verified"];
 
     if (mergedMap.has(normKey)) {
       const existing = mergedMap.get(normKey);
@@ -117,7 +119,6 @@ async function fetchPulseInternships(forceSync = false): Promise<Internship[]> {
   }
 
   const mergedInternships: Internship[] = Array.from(mergedMap.values());
-  const now = Date.now();
   return mergedInternships.filter((item) => !item.deadline || item.deadline > now);
 }
 
@@ -187,12 +188,13 @@ export async function POST(req: NextRequest) {
     }));
 
     // Calculate overall Career Readiness score
-    const readinessLevel = Math.min(100, Math.max(30, Math.round(
+    const readinessScore = Math.min(100, Math.max(30, Math.round(
       ((profile.cgpa || 8.0) * 4) +
       (((profile.languages || []).length + (profile.frameworks || []).length + (profile.tools || []).length) * 3) +
       ((profile.projects || []).length * 8) +
       (profile.resumeText ? 15 : 0)
     )));
+    const readinessLevel = readinessScore >= 75 ? "High Ready" : readinessScore >= 50 ? "Medium Ready" : "Beginner";
 
     // ── 2. AI Caching & Profile Change Controller ──
     const todayStr = new Date().toISOString().split("T")[0];
@@ -236,13 +238,14 @@ export async function POST(req: NextRequest) {
       console.log(`[Career DNA AI Cache] Returning cached analysis for: ${uid}`);
       return NextResponse.json({
         readinessLevel,
+        readinessScore,
         opportunities: finalOpportunities,
         lastSyncedAt,
         ...savedData.analysis
       });
     }
 
-    // ── 3. OpenRouter AI Skill Gap & Roadmap Analysis ──
+    // ── 3. Groq AI Skill Gap & Roadmap Analysis ──
     let aiResponse = {
       suggestions: [
         "Upload your updated ATS-friendly resume to increase role alignment.",
@@ -255,15 +258,15 @@ export async function POST(req: NextRequest) {
     };
 
     try {
-      if (OPENROUTER_API_KEY) {
-        const prompt = `You are an elite AI Career Coach.
+      const skillsList = [...(profile.languages || []), ...(profile.frameworks || []), ...(profile.tools || [])].filter(Boolean).join(", ");
+      const prompt = `You are an elite AI Career Coach.
 Analyze this student technical profile to generate career improvement steps, roadmap, and learning recommendations.
 
 STUDENT PROFILE:
 - Target Role: ${profile.dreamRole || "Software Developer"}
-- Skills: ${[...(profile.languages || []), ...(profile.frameworks || []), ...(profile.tools || [])].join(", ")}
+- Skills: ${skillsList || "General Software Engineering Fundamentals"}
 - CGPA: ${profile.cgpa || 8.0}
-- Projects: ${(profile.projects || []).join("; ")}
+- Projects: ${(profile.projects || []).filter(Boolean).join("; ") || "Academic projects"}
 
 Return STRICTLY a JSON object with these key outputs:
 {
@@ -273,47 +276,42 @@ Return STRICTLY a JSON object with these key outputs:
   "learningRecommendations": ["2-3 recommended course topics"]
 }`;
 
-        console.log(`[Career DNA API] Requesting AI Analysis for: ${uid}...`);
-        const aiController = new AbortController();
-        const aiTimeoutId = setTimeout(() => aiController.abort(), 12000); // 12-sec strict timeout
+      console.log(`[Career DNA API] Requesting AI Analysis for: ${uid}...`);
+      const aiController = new AbortController();
+      const aiTimeoutId = setTimeout(() => aiController.abort(), 12000); // 12-sec strict timeout
 
-        const response = await fetch(OPENROUTER_API_URL, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://paperino.app",
-            "X-Title": "Paperino"
-          },
-          body: JSON.stringify({
-            model: DEFAULT_MODEL,
-            messages: [
-              { role: "system", content: "You are a professional JSON generator. Respond only with raw JSON." },
-              { role: "user", content: prompt }
-            ],
-            response_format: { type: "json_object" }
-          }),
-          signal: aiController.signal
-        });
-        clearTimeout(aiTimeoutId);
+      const aiPromise = generateJSONResponse(prompt);
+      const timeoutPromise = new Promise((_, reject) => {
+        aiController.signal.addEventListener("abort", () => reject(new Error("AI generation timed out")));
+      });
 
-        if (response.ok) {
-          const resData = await response.json();
-          const content = resData.choices?.[0]?.message?.content || "{}";
-          const parsed = JSON.parse(content.replace(/^```json\s*/i, "").replace(/```$/i, "").trim());
-          if (parsed.suggestions && parsed.roadmap) {
-            aiResponse = parsed;
-          }
+      const parsed: any = await Promise.race([aiPromise, timeoutPromise]);
+      clearTimeout(aiTimeoutId);
+
+      if (parsed && typeof parsed === "object") {
+        if (Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0) {
+          aiResponse.suggestions = parsed.suggestions;
+        }
+        if (Array.isArray(parsed.roadmap) && parsed.roadmap.length > 0) {
+          aiResponse.roadmap = parsed.roadmap;
+        }
+        if (Array.isArray(parsed.skillGap) && parsed.skillGap.length > 0) {
+          aiResponse.skillGap = parsed.skillGap;
+        }
+        if (Array.isArray(parsed.learningRecommendations) && parsed.learningRecommendations.length > 0) {
+          aiResponse.learningRecommendations = parsed.learningRecommendations;
         }
       }
-    } catch (aiErr) {
-      console.warn("[Career DNA AI Failover Warning]:", aiErr);
+    } catch (aiErr: any) {
+      console.warn("[Career DNA AI Failover Warning]:", aiErr?.message || aiErr);
     }
 
     // ── 4. Persist Analysis & Return ──
     const finalAnalysis = {
       ...aiResponse,
-      readinessLevel
+      readinessLevel,
+      readinessScore,
+      opportunities: finalOpportunities
     };
 
     if (userDnaRef) {
@@ -332,10 +330,8 @@ Return STRICTLY a JSON object with these key outputs:
     }
 
     return NextResponse.json({
-      readinessLevel,
-      opportunities: finalOpportunities,
-      lastSyncedAt,
-      ...aiResponse
+      ...finalAnalysis,
+      lastSyncedAt
     });
 
   } catch (err: any) {
