@@ -635,5 +635,44 @@
     "approvedByAdminId": "admin",
     "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
     "createdAt": "2026-11-13T13:14:14.258Z"
+  },
+  {
+    "id": "mca_sem1_disaster-management_questions",
+    "subjectId": "disaster-management",
+    "subjectName": "Disaster Management",
+    "subjectCode": "ACE402",
+    "departmentId": "mca",
+    "departmentName": "MCA",
+    "semesterId": "1",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-13T13:35:01.746Z"
+  },
+  {
+    "id": "mca_sem1_python-programming-laboratory_questions",
+    "subjectId": "python-programming-laboratory",
+    "subjectName": "Python Programming Laboratory",
+    "subjectCode": "MC4167",
+    "departmentId": "mca",
+    "departmentName": "MCA",
+    "semesterId": "1",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-13T13:35:01.746Z"
+  },
+  {
+    "id": "mca_sem1_database-technologies-laboratory_questions",
+    "subjectId": "database-technologies-laboratory",
+    "subjectName": "Database Technologies Laboratory",
+    "subjectCode": "MC4166",
+    "departmentId": "mca",
+    "departmentName": "MCA",
+    "semesterId": "1",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-13T13:35:01.746Z"
   }
 ]
