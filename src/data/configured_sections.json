@@ -934,5 +934,31 @@
     "approvedByAdminId": "admin",
     "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
     "createdAt": "2026-11-13T14:27:31.840Z"
+  },
+  {
+    "id": "mca_sem3_neural-network-and-deep-learning_questions",
+    "subjectId": "neural-network-and-deep-learning",
+    "subjectName": "Neural Network and Deep Learning",
+    "subjectCode": "PMC102",
+    "departmentId": "mca",
+    "departmentName": "MCA",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-13T14:38:56.251Z"
+  },
+  {
+    "id": "mca_sem3_image-processing-and-machine-vision_questions",
+    "subjectId": "image-processing-and-machine-vision",
+    "subjectName": "Image Processing and Machine Vision",
+    "subjectCode": "PMC104",
+    "departmentId": "mca",
+    "departmentName": "MCA",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-13T14:39:03.420Z"
   }
 ]
