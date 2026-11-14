@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Book, ChevronRight, Loader2, Plus } from "lucide-react";
 import SafeBackButton from "@/components/SafeBackButton";
+import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
-import CreateCourseModal from "@/components/CreateCourseModal";
-import SuggestSubjectModal from "@/components/SuggestSubjectModal";
+const CreateCourseModal = dynamic(() => import("@/components/CreateCourseModal"), { ssr: false });
+const SuggestSubjectModal = dynamic(() => import("@/components/SuggestSubjectModal"), { ssr: false });
 import { useAuth } from "@/context/AuthContext";
 import { getSubjectSeoPath } from "@/lib/seoUtils";
 

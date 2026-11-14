@@ -96,11 +96,11 @@ export default function Navbar() {
         }
       }
     };
-    // Check initially and poll a bit to let MaintenanceGuard fetch it
+    // Check initially and re-check occasionally (30s) or on route change
     checkConfig();
-    const interval = setInterval(checkConfig, 2000);
+    const interval = setInterval(checkConfig, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [pathname]);
 
   const labsRef = useRef<HTMLDivElement>(null);
 
@@ -122,10 +122,17 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 

@@ -25,7 +25,7 @@ export default function Home() {
     return () => unsub();
   }, [listenToDeptsWithMaterials]);
 
-  const approvedDepts = departments.filter(d => d.status === "approved");
+  const approvedDepts = departments.filter(d => d.status === "approved" && !d.parentCourse);
   const sortedDepts = sortDepartments(approvedDepts, deptMaterialCounts);
 
   return (

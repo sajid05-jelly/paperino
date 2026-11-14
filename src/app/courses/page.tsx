@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { GraduationCap, Calendar, Search, ChevronRight, Loader2, Plus, Building2, Layers } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
-import CreateCourseModal from "@/components/CreateCourseModal";
+const CreateCourseModal = dynamic(() => import("@/components/CreateCourseModal"), { ssr: false });
 import GlobalSubjectSearch from "@/components/GlobalSubjectSearch";
 import { useAuth } from "@/context/AuthContext";
 import { sortDepartments } from "@/lib/courseSorting";

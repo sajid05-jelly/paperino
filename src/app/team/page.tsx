@@ -30,9 +30,9 @@ export default function BecomeContributorPage() {
 
   return (
     <div className="w-full min-h-screen bg-[#05030a] py-16 relative overflow-hidden selection:bg-purple-500/30">
-      {/* Ambient Glows */}
-      <div className="absolute top-[-10%] right-[-5%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(168,85,247,0.15)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[120px] pointer-events-none z-0"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(244,63,94,0.08)_0%,transparent_70%)] rounded-full mix-blend-screen filter blur-[100px] pointer-events-none z-0"></div>
+      {/* Ambient Glows - GPU Optimized on mobile */}
+      <div className="absolute top-[-10%] right-[-5%] w-[320px] sm:w-[500px] md:w-[800px] h-[320px] sm:h-[500px] md:h-[800px] bg-[radial-gradient(circle,rgba(168,85,247,0.15)_0%,transparent_70%)] rounded-full md:mix-blend-screen filter blur-[40px] sm:blur-[70px] md:blur-[120px] pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] left-[-10%] w-[280px] sm:w-[400px] md:w-[600px] h-[280px] sm:h-[400px] md:h-[600px] bg-[radial-gradient(circle,rgba(244,63,94,0.08)_0%,transparent_70%)] rounded-full md:mix-blend-screen filter blur-[35px] sm:blur-[60px] md:blur-[100px] pointer-events-none z-0"></div>
 
       <div className="max-w-5xl mx-auto px-6 relative z-10 space-y-16">
         

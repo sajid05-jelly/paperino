@@ -251,9 +251,9 @@ a, button, input, select, textarea, [role="button"] {
 }
 
 @keyframes shimmer-sweep {
-  0% { left: -100%; }
-  20% { left: 200%; }
-  100% { left: 200%; }
+  0% { transform: translateX(-150%) skewX(-20deg) translateZ(0); }
+  25% { transform: translateX(350%) skewX(-20deg) translateZ(0); }
+  100% { transform: translateX(350%) skewX(-20deg) translateZ(0); }
 }
 
 /* ── Apple Vision Pro / Liquid Glass Extensions ─────────── */
@@ -320,18 +320,21 @@ a, button, input, select, textarea, [role="button"] {
 }
 
 .vision-hover {
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
 }
 
-.vision-hover:hover {
-  transform: scale(1.05);
-  border-color: rgba(168, 85, 247, 0.4) !important;
-  box-shadow: 
-    0 0 40px rgba(168, 85, 247, 0.35),
-    inset 0 0 20px rgba(168, 85, 247, 0.1) !important;
-  background: linear-gradient(to bottom right, rgba(168, 85, 247, 0.1), rgba(236, 72, 153, 0.05)) !important;
-  backdrop-filter: blur(24px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+@media (hover: hover) and (pointer: fine) {
+  .vision-hover:hover {
+    transform: scale(1.03);
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    box-shadow: 
+      0 0 40px rgba(168, 85, 247, 0.35),
+      inset 0 0 20px rgba(168, 85, 247, 0.1) !important;
+    background: linear-gradient(to bottom right, rgba(168, 85, 247, 0.1), rgba(236, 72, 153, 0.05)) !important;
+    backdrop-filter: blur(24px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  }
 }
 
 .modal-glass {
@@ -825,18 +828,63 @@ html, body {
   filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.65));
 }
 
-/* ── Mobile Performance Overrides ────────────────────────────── */
-@media (max-width: 768px) {
-  .vision-glass, .liquid-glass, .premium-panel, .glass-card, .glass-panel {
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+/* ── Mobile & Touch Hardware-Accelerated Performance Overrides ── */
+@media (pointer: coarse) {
+  html {
+    scroll-behavior: auto !important; /* Restore native 120 FPS inertial momentum scrolling on iOS */
   }
-  
+}
+
+@media (max-width: 1024px), (pointer: coarse), (hover: none) {
+  /* Optimize heavy blur filter layers for mobile GPUs */
+  .vision-glass, .liquid-glass, .premium-panel, .glass-card, .glass-panel {
+    backdrop-filter: blur(6px) saturate(125%) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(125%) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* Disable expensive mask composites on mobile */
+  .vision-glass::before,
+  .liquid-glass::before,
+  .glass-card::before,
+  .modal-glass::before {
+    display: none !important;
+  }
+
+  /* Stop continuous background layout repaints across all cards */
+  .vision-glass::after,
+  .liquid-glass::after,
+  .liquid-btn::after {
+    display: none !important;
+    animation: none !important;
+  }
+
+  /* Turn off expensive CPU/GPU background blob animations */
   .animate-blob {
     animation: none !important;
-    opacity: 0.5 !important;
+    opacity: 0.35 !important;
     transform: translateZ(0) !important;
+  }
+
+  /* Turn off gamification continuous background frame/glow loops */
+  .active-anim .avatar-frame-glow,
+  .active-anim .gold-sparkle-shine {
+    animation: none !important;
+  }
+}
+
+/* iOS Safari Hardware Compositor & Momentum Acceleration */
+@supports (-webkit-touch-callout: none) {
+  .vision-glass,
+  .liquid-glass,
+  .glass-card,
+  .glass-panel {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+  html, body {
+    -webkit-overflow-scrolling: touch;
   }
 }
 

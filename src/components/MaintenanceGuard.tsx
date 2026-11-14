@@ -10,8 +10,21 @@ import PaperinoLoader from "@/components/PaperinoLoader";
 
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
-  const [maintenanceMode, setMaintenanceMode] = useState<boolean | null>(null);
-  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [maintenanceMode, setMaintenanceMode] = useState<boolean | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("paperino_site_config_maint") || sessionStorage.getItem("paperino_site_config_maint");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Date.now() - parsed.ts < 15 * 60 * 1000) {
+            return parsed.maintenance || false;
+          }
+        }
+      } catch {}
+    }
+    return false;
+  });
+  const [loadingConfig, setLoadingConfig] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   
   const pathname = usePathname();
@@ -112,8 +125,14 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
 
   const isMaintenancePage = pathname === "/maintenance";
 
-  if (loading || loadingConfig) {
-    return <PaperinoLoader />;
+  // Only block render if the site is actively in maintenance mode
+  if (maintenanceMode === true && !isAdmin) {
+    if (loading) {
+      return <PaperinoLoader />;
+    }
+    if (!isMaintenancePage && pathname !== "/login" && !pathname?.startsWith("/admin")) {
+      return <PaperinoLoader />;
+    }
   }
 
   // If visitor page is maintenance, render children cleanly without global Navbar/Footer

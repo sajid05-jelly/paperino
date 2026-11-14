@@ -8,9 +8,19 @@ import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Uplo
 import SafeBackButton from "@/components/SafeBackButton";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
-import QuickUploadModal from "@/components/QuickUploadModal";
-import SuggestSubjectModal from "@/components/SuggestSubjectModal";
-import DocPreviewViewer from "@/components/DocPreviewViewer";
+import dynamic from "next/dynamic";
+
+const QuickUploadModal = dynamic(() => import("@/components/QuickUploadModal"), { ssr: false });
+const SuggestSubjectModal = dynamic(() => import("@/components/SuggestSubjectModal"), { ssr: false });
+const DocPreviewViewer = dynamic(() => import("@/components/DocPreviewViewer"), {
+  loading: () => (
+    <div className="flex flex-col items-center justify-center p-12 text-purple-400">
+      <Loader2 className="animate-spin mb-3" size={32} />
+      <p className="text-xs text-gray-400">Loading document viewer...</p>
+    </div>
+  ),
+  ssr: false
+});
 import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { usePlanGate } from "@/context/PlanGateContext";
@@ -397,18 +407,18 @@ export default function SubjectClientComponent({
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-[rgba(var(--primary-rgb),0.12)] via-[var(--background)] to-[var(--background)] text-white py-12 relative overflow-hidden selection:bg-purple-500/20">
-      {/* ── Background Ambient Glow Layers ── */}
-      <div className="fixed inset-0 pointer-events-none z-0">
+      {/* ── Background Ambient Glow Layers (Responsive GPU-optimized) ── */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         {/* Primary violet orb — top-left */}
-        <div className="absolute top-[-15%] left-[-10%] w-[900px] h-[900px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.22)_0%,transparent_65%)] rounded-full mix-blend-screen filter blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[350px] sm:w-[500px] md:w-[900px] h-[350px] sm:h-[500px] md:h-[900px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.22)_0%,transparent_65%)] rounded-full md:mix-blend-screen filter blur-[40px] sm:blur-[60px] md:blur-[100px]" />
         {/* Secondary cyan orb — bottom-right */}
-        <div className="absolute bottom-[-15%] right-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.16)_0%,transparent_65%)] rounded-full mix-blend-screen filter blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[300px] sm:w-[450px] md:w-[800px] h-[300px] sm:h-[450px] md:h-[800px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.16)_0%,transparent_65%)] rounded-full md:mix-blend-screen filter blur-[40px] sm:blur-[60px] md:blur-[120px]" />
         {/* Center hero glow */}
-        <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-[radial-gradient(ellipse,rgba(var(--primary-rgb),0.18)_0%,transparent_70%)] filter blur-[80px]" />
-        {/* Subtle mid-page violet wash */}
-        <div className="absolute top-[40%] left-[20%] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.08)_0%,transparent_70%)] filter blur-[90px]" />
-        {/* Cyan accent — right side */}
-        <div className="absolute top-[30%] right-[-5%] w-[400px] h-[600px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.10)_0%,transparent_70%)] filter blur-[100px]" />
+        <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[300px] sm:w-[450px] md:w-[700px] h-[200px] sm:h-[300px] md:h-[400px] bg-[radial-gradient(ellipse,rgba(var(--primary-rgb),0.18)_0%,transparent_70%)] filter blur-[35px] sm:blur-[50px] md:blur-[80px]" />
+        {/* Subtle mid-page violet wash (Desktop only to prevent mobile overdraw) */}
+        <div className="hidden md:block absolute top-[40%] left-[20%] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.08)_0%,transparent_70%)] filter blur-[90px]" />
+        {/* Cyan accent — right side (Desktop only to prevent mobile overdraw) */}
+        <div className="hidden md:block absolute top-[30%] right-[-5%] w-[400px] h-[600px] bg-[radial-gradient(circle,rgba(var(--secondary-rgb),0.10)_0%,transparent_70%)] filter blur-[100px]" />
       </div>
 
       <div className="max-w-6xl mx-auto px-6 relative z-10">

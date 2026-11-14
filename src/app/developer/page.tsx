@@ -29,13 +29,13 @@ export default function DeveloperPage() {
     <div className="bg-[#05030a] relative overflow-hidden pt-14 md:pt-20 pb-8 px-6 sm:px-12 selection:bg-violet-500/30">
       
       {/* --- CINEMATIC VIOLET LIQUID BACKGROUND --- */}
-      {/* Deep Violet Liquid Orbs */}
-      <div className="absolute top-[-20%] left-[-10%] w-[900px] h-[900px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.25)_0%,transparent_70%)] rounded-full mix-blend-color-dodge filter blur-[120px] animate-[pulse_8s_ease-in-out_infinite] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.2)_0%,transparent_70%)] rounded-full mix-blend-color-dodge filter blur-[140px] animate-[pulse_10s_ease-in-out_infinite_reverse] pointer-events-none"></div>
-      <div className="absolute top-[40%] left-[50%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(196,181,253,0.15)_0%,transparent_70%)] rounded-full mix-blend-color-dodge filter blur-[100px] translate-x-[-50%] animate-[pulse_12s_ease-in-out_infinite] pointer-events-none"></div>
+      {/* Deep Violet Liquid Orbs - GPU Optimized on mobile */}
+      <div className="absolute top-[-20%] left-[-10%] w-[350px] sm:w-[500px] md:w-[900px] h-[350px] sm:h-[500px] md:h-[900px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.25)_0%,transparent_70%)] rounded-full md:mix-blend-color-dodge filter blur-[40px] sm:blur-[70px] md:blur-[120px] md:animate-[pulse_8s_ease-in-out_infinite] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[320px] sm:w-[450px] md:w-[800px] h-[320px] sm:h-[450px] md:h-[800px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.2)_0%,transparent_70%)] rounded-full md:mix-blend-color-dodge filter blur-[40px] sm:blur-[70px] md:blur-[140px] md:animate-[pulse_10s_ease-in-out_infinite_reverse] pointer-events-none"></div>
+      <div className="hidden md:block absolute top-[40%] left-[50%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(196,181,253,0.15)_0%,transparent_70%)] rounded-full mix-blend-color-dodge filter blur-[100px] translate-x-[-50%] animate-[pulse_12s_ease-in-out_infinite] pointer-events-none"></div>
 
-      {/* Floating Violet Glass Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Floating Violet Glass Particles - Desktop Only */}
+      <div className="hidden md:block absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[15%] left-[20%] w-3 h-3 bg-violet-400/40 backdrop-blur-md rounded-full shadow-[0_0_20px_rgba(var(--primary-rgb),0.8)] animate-[bounce_6s_infinite] mix-blend-screen"></div>
         <div className="absolute top-[65%] left-[85%] w-5 h-5 bg-fuchsia-400/30 backdrop-blur-md rounded-full shadow-[0_0_25px_rgba(var(--secondary-rgb),0.6)] animate-[bounce_7s_infinite_1s] mix-blend-screen"></div>
         <div className="absolute top-[85%] left-[25%] w-2 h-2 bg-purple-300/50 backdrop-blur-md rounded-full shadow-[0_0_15px_rgba(216,180,254,0.9)] animate-[bounce_5s_infinite_2s] mix-blend-screen"></div>
