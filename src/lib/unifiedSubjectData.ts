@@ -21,6 +21,7 @@ export interface UnifiedDepartment {
   name: string;
   code: string;
   totalSemesters: number;
+  parentCourse?: string;
   status?: string;
   updatedAt?: any;
   createdAt?: any;
@@ -157,6 +158,7 @@ export const getAllUnifiedData = cache(async (
           name: d.name || d.id.toUpperCase(),
           code: d.code || d.name || d.id.toUpperCase(),
           totalSemesters: d.totalSemesters || 8,
+          parentCourse: d.parentCourse || undefined,
           status: d.status || "approved",
           updatedAt: serializeTimestamp(d.updatedAt || d.createdAt),
           createdAt: serializeTimestamp(d.createdAt),

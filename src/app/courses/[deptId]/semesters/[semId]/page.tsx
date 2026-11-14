@@ -29,8 +29,12 @@ export default function SemesterSubjectsPage({ params }: { params: Promise<{ dep
     }
   }, [deptId, semId, lazyLoadSubjects]);
 
-  // Find active department
-  const activeDept = departments.find(d => d.id === deptId);
+  // Find active department (supports exact ID or normalized code/alias)
+  const activeDept = departments.find(d => d.id === deptId) || 
+    departments.find(d => 
+      d.id.toLowerCase() === deptId.toLowerCase() || 
+      (d.code && d.code.toLowerCase().replace(/[^a-z0-9]/g, "") === deptId.toLowerCase().replace(/[^a-z0-9]/g, ""))
+    );
 
   // Filter out pending subjects for public users
   const deptSubjects = (subjects[deptId]?.[semId] || []).filter(sub => sub.status !== "pending");

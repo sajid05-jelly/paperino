@@ -17,8 +17,12 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
   const { departments, subjects: dynamicSubjects, loading } = useSubjects();
   const { user, isAdmin } = useAuth();
 
-  // Find active department
-  const activeDept = departments.find(d => d.id === deptId);
+  // Find active department (supports exact ID or normalized code/alias e.g. "me" or "m-e")
+  const activeDept = departments.find(d => d.id === deptId) || 
+    departments.find(d => 
+      d.id.toLowerCase() === deptId.toLowerCase() || 
+      (d.code && d.code.toLowerCase().replace(/[^a-z0-9]/g, "") === deptId.toLowerCase().replace(/[^a-z0-9]/g, ""))
+    );
 
   // If not loaded yet
   if (loading) {
@@ -44,13 +48,14 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
     );
   }
 
-  const childBranches = departments.filter(d => d.parentCourse === deptId && (d.status === "approved" || isAdmin || (user && d.createdBy === user.uid)));
+  const targetDeptId = activeDept?.id || deptId;
+  const childBranches = departments.filter(d => (d.parentCourse === targetDeptId || d.parentCourse === deptId) && (d.status === "approved" || isAdmin || (user && d.createdBy === user.uid)));
   const isParentCourseWithBranches = childBranches.length > 0;
 
-  const semesters = Array.from({ length: activeDept.totalSemesters }, (_, i) => i + 1);
+  const semesters = Array.from({ length: activeDept.totalSemesters || 8 }, (_, i) => i + 1);
 
   // Flatten all approved subjects under this department for search
-  const deptSubjectsGroup = dynamicSubjects[deptId] || {};
+  const deptSubjectsGroup = dynamicSubjects[targetDeptId] || dynamicSubjects[deptId] || {};
   const allDeptSubjects = Object.entries(deptSubjectsGroup).flatMap(([sem, subs]) => 
     subs.filter(sub => sub.status !== "pending").map(sub => ({ ...sub, semId: sem }))
   );
@@ -67,7 +72,12 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
       <AmbientOrbs />
       
       <div className="w-full relative z-10 mb-8 flex justify-start">
-        <SafeBackButton fallbackUrl="/courses" label="Back to Departments" className="inline-flex items-center text-gray-400 hover:text-white transition-colors gap-2" size={16} />
+        <SafeBackButton 
+          fallbackUrl={activeDept.parentCourse ? `/courses/${activeDept.parentCourse}` : "/courses"} 
+          label={activeDept.parentCourse ? "Back to Specializations" : "Back to Courses"} 
+          className="inline-flex items-center text-gray-400 hover:text-white transition-colors gap-2" 
+          size={16} 
+        />
       </div>
 
       <div className="text-center mb-10 w-full relative z-10">
@@ -75,25 +85,29 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
           {(activeDept.name || "").toUpperCase()}
         </h1>
         <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
-          Select a semester or search for a specific subject to access study materials.
+          {isParentCourseWithBranches
+            ? "Select your specialization / branch to explore semester study materials and question papers."
+            : "Select a semester or search for a specific subject to access study materials."}
         </p>
 
-        {/* Search Bar */}
-        <div className="relative w-full max-w-2xl mx-auto group">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-full blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-60 transition-opacity duration-500"></div>
-          <div className="relative flex items-center bg-[#07050d]/80 border border-white/10 group-focus-within:border-purple-500/50 rounded-full p-2 backdrop-blur-xl shadow-lg transition-colors">
-            <div className="pl-4 pr-2 text-gray-400 group-focus-within:text-purple-400 transition-colors">
-              <Search size={20} />
+        {/* Search Bar - only shown when browsing subjects directly */}
+        {!isParentCourseWithBranches && (
+          <div className="relative w-full max-w-2xl mx-auto group">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-full blur-md opacity-20 group-hover:opacity-40 group-focus-within:opacity-60 transition-opacity duration-500"></div>
+            <div className="relative flex items-center bg-[#07050d]/80 border border-white/10 group-focus-within:border-purple-500/50 rounded-full p-2 backdrop-blur-xl shadow-lg transition-colors">
+              <div className="pl-4 pr-2 text-gray-400 group-focus-within:text-purple-400 transition-colors">
+                <Search size={20} />
+              </div>
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for subjects in this department..." 
+                className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 py-3 text-sm md:text-base"
+              />
             </div>
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for subjects in this department..." 
-              className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 py-3 text-sm md:text-base"
-            />
           </div>
-        </div>
+        )}
       </div>
 
       {isParentCourseWithBranches ? (
@@ -127,7 +141,7 @@ export default function DepartmentSemestersPage({ params }: { params: Promise<{ 
                       {(branch.name || "").toUpperCase()}
                     </h3>
                     <p className="text-xs text-gray-400 mb-4 font-medium">
-                      8 Semesters • Study Materials & Question Papers
+                      {branch.totalSemesters || 8} Semesters • Study Materials & Question Papers
                     </p>
                     <div className="flex items-center text-xs font-semibold text-purple-400 group-hover:text-purple-300 transition-colors gap-1.5 pt-3 border-t border-white/5">
                       <span>Explore Semesters</span>
