@@ -25,9 +25,9 @@ export default function ChallengesControlPage() {
   const [wcOpenTime, setWcOpenTime] = useState("00:00");
   const [wcCloseTime, setWcCloseTime] = useState("23:59");
   const [wcOfficialAttempts, setWcOfficialAttempts] = useState(1);
-  const [wcAvailableDays, setWcAvailableDays] = useState<number[]>([2, 4, 5]); // Tue, Thu, Fri
+  const [wcAvailableDays, setWcAvailableDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // All days
   const [wcActiveGames, setWcActiveGames] = useState<string[]>([
-    "code-breaker", "memory-matrix", "impossible-room", "word-forge"
+    "bug-hunter", "memory-rush", "typing-blitz", "number-detective", "logic-master", "code-breaker", "circuit-master"
   ]);
   const [wcHasResults, setWcHasResults] = useState(false);
   const [wcChallengeSessionId, setWcChallengeSessionId] = useState<string>("");
@@ -286,14 +286,20 @@ export default function ChallengesControlPage() {
               </label>
               <div className="flex flex-col gap-2">
                 {[
-                  { id: 'code-breaker', name: 'Code Breaker' },
-                  { id: 'memory-matrix', name: 'Memory Matrix' },
-                  { id: 'impossible-room', name: 'The Impossible Room' },
-                  { id: 'word-forge', name: 'Word Forge' },
-                  { id: 'target-number', name: '🎯 Target Number' },
-                  { id: 'memory-heist', name: '🧠 Memory Heist' },
-                  { id: 'the-impostor', name: '🕵️ The Impostor' },
-                  { id: 'paradox', name: '🌀 Paradox' },
+                  { id: 'bug-hunter', name: '🐛 Bug Hunter (Find & fix bugs)' },
+                  { id: 'memory-rush', name: '✨ Memory Rush (Match concept pairs)' },
+                  { id: 'typing-blitz', name: '⌨️ Typing Blitz (Speed & accuracy)' },
+                  { id: 'number-detective', name: '🔍 Number Detective (Math sequences)' },
+                  { id: 'logic-master', name: '🧠 Logic Master (Visual reasoning)' },
+                  { id: 'code-breaker', name: '💻 Code Breaker (Binary & crypto)' },
+                  { id: 'circuit-master', name: '⚡ Circuit Master (Interactive logic gates)' },
+                  { id: 'memory-matrix', name: 'Memory Matrix (Legacy)' },
+                  { id: 'impossible-room', name: 'The Impossible Room (Legacy)' },
+                  { id: 'word-forge', name: 'Word Forge (Legacy)' },
+                  { id: 'target-number', name: '🎯 Target Number (Legacy)' },
+                  { id: 'memory-heist', name: '🧠 Memory Heist (Legacy)' },
+                  { id: 'the-impostor', name: '🕵️ The Impostor (Legacy)' },
+                  { id: 'paradox', name: '🌀 Paradox (Legacy)' },
                 ].map(game => (
                   <label key={game.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
                     <input 
