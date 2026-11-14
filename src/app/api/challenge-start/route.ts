@@ -135,16 +135,16 @@ export async function POST(request: Request) {
     if (configSnap && configSnap.exists) {
       const cfg = configSnap.data() || {};
 
-      if (cfg.enabled === false && !isAdminBypass) {
+      if (cfg.enabled === false) {
         return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
       }
-      if (cfg.maintenanceMode === true && !isAdminBypass) {
+      if (cfg.maintenanceMode === true) {
         return NextResponse.json({ error: 'Weekly challenges are currently under maintenance' }, { status: 403 });
       }
-      if (cfg.activeGames && Array.isArray(cfg.activeGames) && cfg.activeGames.length > 0 && !cfg.activeGames.includes(gameId) && !isAdminBypass) {
+      if (cfg.activeGames && Array.isArray(cfg.activeGames) && !cfg.activeGames.includes(gameId)) {
         return NextResponse.json({ error: 'This game is currently disabled by admin' }, { status: 403 });
       }
-      if (cfg.availableDays && Array.isArray(cfg.availableDays) && cfg.availableDays.length > 0 && !cfg.availableDays.includes(now.getDay()) && !isAdminBypass) {
+      if (cfg.availableDays && Array.isArray(cfg.availableDays) && (!cfg.availableDays.includes(now.getDay()) || cfg.availableDays.length === 0)) {
         return NextResponse.json({ error: 'Weekly challenges are not available today' }, { status: 403 });
       }
     }
