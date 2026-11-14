@@ -212,8 +212,10 @@ describe("Paperino Challenge Arena — 7 Interactive Games & Answer Review Verif
       assert.equal(isChallengeDay([today]), true);
       const otherDay = (today + 1) % 7;
       assert.equal(isChallengeDay([otherDay]), false);
-      // Empty or all days returns true
-      assert.equal(isChallengeDay([]), true);
+      // Empty array means admin deselected all days -> false
+      assert.equal(isChallengeDay([]), false);
+      // Undefined means default to all days -> true
+      assert.equal(isChallengeDay(undefined), true);
     });
 
     test("isChallengeHour correctly validates openTime and closeTime", async () => {

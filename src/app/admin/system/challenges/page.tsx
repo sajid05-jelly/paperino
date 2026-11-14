@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, limit, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Link from "next/link";
 import { 
   Trophy, Save, AlertCircle, Calendar, Gamepad2, 
-  Loader2, CheckCircle2, ShieldAlert, Clock, Rocket
+  Loader2, CheckCircle2, ShieldAlert, Clock, Rocket,
+  ExternalLink, Eye, RotateCcw, Sparkles
 } from "lucide-react";
 
 function getIsoWeek() {
@@ -17,6 +19,25 @@ function getIsoWeek() {
   return `${d.getFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
 }
 
+const ALL_GAMES = [
+  { id: 'bug-hunter', name: '🐛 Bug Hunter (Find & fix bugs)', isArena: true },
+  { id: 'memory-rush', name: '✨ Memory Rush (Match concept pairs)', isArena: true },
+  { id: 'typing-blitz', name: '⌨️ Typing Blitz (Speed & accuracy)', isArena: true },
+  { id: 'number-detective', name: '🔍 Number Detective (Math sequences)', isArena: true },
+  { id: 'logic-master', name: '🧠 Logic Master (Visual reasoning)', isArena: true },
+  { id: 'code-breaker', name: '💻 Code Breaker (Binary & crypto)', isArena: true },
+  { id: 'circuit-master', name: '⚡ Circuit Master (Interactive logic gates)', isArena: true },
+  { id: 'memory-matrix', name: 'Memory Matrix (Legacy)', isArena: false },
+  { id: 'impossible-room', name: 'The Impossible Room (Legacy)', isArena: false },
+  { id: 'word-forge', name: 'Word Forge (Legacy)', isArena: false },
+  { id: 'target-number', name: '🎯 Target Number (Legacy)', isArena: false },
+  { id: 'memory-heist', name: '🧠 Memory Heist (Legacy)', isArena: false },
+  { id: 'the-impostor', name: '🕵️ The Impostor (Legacy)', isArena: false },
+  { id: 'paradox', name: '🌀 Paradox (Legacy)', isArena: false },
+];
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export default function ChallengesControlPage() {
   const [wcEnabled, setWcEnabled] = useState(true);
   const [wcAdminTestMode, setWcAdminTestMode] = useState(false);
@@ -25,7 +46,7 @@ export default function ChallengesControlPage() {
   const [wcOpenTime, setWcOpenTime] = useState("00:00");
   const [wcCloseTime, setWcCloseTime] = useState("23:59");
   const [wcOfficialAttempts, setWcOfficialAttempts] = useState(1);
-  const [wcAvailableDays, setWcAvailableDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // All days
+  const [wcAvailableDays, setWcAvailableDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [wcActiveGames, setWcActiveGames] = useState<string[]>([
     "bug-hunter", "memory-rush", "typing-blitz", "number-detective", "logic-master", "code-breaker", "circuit-master"
   ]);
@@ -52,14 +73,15 @@ export default function ChallengesControlPage() {
           setWcOpenTime(data.openTime || "00:00");
           setWcCloseTime(data.closeTime || "23:59");
           setWcOfficialAttempts(data.officialAttempts || 1);
-          setWcAvailableDays(data.availableDays || [2, 4, 5]);
-          setWcActiveGames(data.activeGames || [
-            "code-breaker", "memory-matrix", "impossible-room", "word-forge"
-          ]);
+          if (Array.isArray(data.availableDays)) {
+            setWcAvailableDays(data.availableDays);
+          }
+          if (Array.isArray(data.activeGames)) {
+            setWcActiveGames(data.activeGames);
+          }
           setWcChallengeSessionId(data.challengeSessionId || "");
         }
 
-        // Bounded query to check participation status (isolated so index/query errors do not fail config loading)
         try {
           const resultsSnap = await getDocs(query(collection(db, "challenge_results"), limit(1)));
           setWcHasResults(!resultsSnap.empty);
@@ -100,7 +122,7 @@ export default function ChallengesControlPage() {
       }, { merge: true });
 
       setSessionSuccess(true);
-      setSuccess(true); // show both generic and specific success
+      setSuccess(true);
       setTimeout(() => {
         setSessionSuccess(false);
         setSuccess(false);
@@ -153,27 +175,48 @@ export default function ChallengesControlPage() {
     );
   }
 
+  const activeDaysSummary = wcAvailableDays.length === 7 
+    ? 'All 7 Days (Every day)' 
+    : wcAvailableDays.length === 0 
+    ? 'None (Challenges Closed)' 
+    : wcAvailableDays.map(d => DAY_LABELS[d]).join(', ');
+
   return (
     <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
       
       {/* Header Panel */}
-      <div className="glass-panel p-8 rounded-3xl border border-violet-500/20 relative overflow-hidden shadow-[0_0_40px_rgba(var(--primary-rgb),0.1)]">
+      <div className="glass-panel p-8 rounded-3xl border border-violet-500/20 relative overflow-hidden shadow-[0_0_40px_rgba(var(--primary-rgb),0.1)] flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="absolute -right-20 -top-20 w-64 h-64 bg-violet-500/20 blur-[80px] rounded-full pointer-events-none"></div>
         <div>
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <Trophy className="text-violet-400 animate-pulse" /> Challenges Control
+            <Trophy className="text-violet-400 animate-pulse" /> Challenges Control Panel
           </h1>
-          <p className="text-violet-200/60 max-w-2xl">
-            Configure Weekly Challenges, game availability, schedule, leaderboard and participation settings.
+          <p className="text-violet-200/60 max-w-2xl text-sm">
+            Configure Paperino Challenge Arena, active games, weekly schedules, leaderboard and live student access.
           </p>
         </div>
+
+        {/* Live Arena Link */}
+        <Link
+          href="/weekly-challenges"
+          target="_blank"
+          className="liquid-btn px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold uppercase tracking-wider border border-white/20 transition-all flex items-center gap-2 self-start md:self-auto cursor-pointer"
+        >
+          <span>Open Live Arena</span>
+          <ExternalLink size={14} />
+        </Link>
       </div>
 
       {/* Main Form Panel */}
       <div className="glass-panel p-8 rounded-3xl border border-white/10 space-y-6">
-        <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-2">
-          <Gamepad2 className="text-violet-400" /> Weekly Challenges Configuration
-        </h2>
+        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <Gamepad2 className="text-violet-400" /> Arena Settings & Schedule
+          </h2>
+          <span className="text-xs text-purple-300 font-mono">
+            {wcActiveGames.length} Active Games · {wcAvailableDays.length} Days Open
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
@@ -182,9 +225,13 @@ export default function ChallengesControlPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-white/5">
               <div>
                 <h3 className="text-sm font-semibold text-white">Feature Enabled</h3>
-                <p className="text-xs text-gray-500">Turns the entire feature on or off globally.</p>
+                <p className="text-xs text-gray-500">Turns the entire challenge arena on or off globally.</p>
               </div>
-              <button onClick={() => setWcEnabled(!wcEnabled)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcEnabled ? 'bg-violet-600' : 'bg-white/10'}`}>
+              <button 
+                type="button"
+                onClick={() => setWcEnabled(!wcEnabled)} 
+                className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcEnabled ? 'bg-violet-600' : 'bg-white/10'}`}
+              >
                 <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcEnabled ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
               </button>
             </div>
@@ -195,9 +242,13 @@ export default function ChallengesControlPage() {
                   Admin Test Mode
                   {wcAdminTestMode && <span className="text-[10px] bg-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/40">TEST MODE ACTIVE</span>}
                 </h3>
-                <p className="text-xs text-gray-400">Allows admins to preview and test experimental challenge versions without exposing them to public students.</p>
+                <p className="text-xs text-gray-400">Allows administrators to bypass day restrictions and test games anytime without student restrictions.</p>
               </div>
-              <button onClick={() => setWcAdminTestMode(!wcAdminTestMode)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcAdminTestMode ? 'bg-purple-600' : 'bg-white/10'}`}>
+              <button 
+                type="button"
+                onClick={() => setWcAdminTestMode(!wcAdminTestMode)} 
+                className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcAdminTestMode ? 'bg-purple-600' : 'bg-white/10'}`}
+              >
                 <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcAdminTestMode ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
               </button>
             </div>
@@ -207,7 +258,11 @@ export default function ChallengesControlPage() {
                 <h3 className="text-sm font-semibold text-white">Maintenance Mode</h3>
                 <p className="text-xs text-gray-500">Locks challenges specifically without affecting the rest of the site.</p>
               </div>
-              <button onClick={() => setWcMaintenanceMode(!wcMaintenanceMode)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcMaintenanceMode ? 'bg-rose-600' : 'bg-white/10'}`}>
+              <button 
+                type="button"
+                onClick={() => setWcMaintenanceMode(!wcMaintenanceMode)} 
+                className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcMaintenanceMode ? 'bg-rose-600' : 'bg-white/10'}`}
+              >
                 <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcMaintenanceMode ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
               </button>
             </div>
@@ -217,7 +272,11 @@ export default function ChallengesControlPage() {
                 <h3 className="text-sm font-semibold text-white">Global Leaderboard</h3>
                 <p className="text-xs text-gray-500">Show or hide the challenge leaderboard to users.</p>
               </div>
-              <button onClick={() => setWcLeaderboardEnabled(!wcLeaderboardEnabled)} className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcLeaderboardEnabled ? 'bg-violet-600' : 'bg-white/10'}`}>
+              <button 
+                type="button"
+                onClick={() => setWcLeaderboardEnabled(!wcLeaderboardEnabled)} 
+                className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcLeaderboardEnabled ? 'bg-violet-600' : 'bg-white/10'}`}
+              >
                 <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcLeaderboardEnabled ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
               </button>
             </div>
@@ -262,52 +321,107 @@ export default function ChallengesControlPage() {
 
           {/* Right Column: Days & Games Selection */}
           <div className="space-y-6">
+            {/* Days Section */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
-                <Calendar size={14} /> Available Days
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                  <Calendar size={14} /> Available Days ({wcAvailableDays.length} selected)
+                </label>
+              </div>
+
+              {/* Day Preset Buttons */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setWcAvailableDays([0, 1, 2, 3, 4, 5, 6])}
+                  className="px-2.5 py-1 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 text-[11px] font-semibold border border-violet-500/30 transition-colors cursor-pointer"
+                >
+                  All 7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWcAvailableDays([1, 2, 3, 4, 5])}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-semibold border border-white/10 transition-colors cursor-pointer"
+                >
+                  Weekdays (Mon–Fri)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWcAvailableDays([0, 6])}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-semibold border border-white/10 transition-colors cursor-pointer"
+                >
+                  Weekends (Sat–Sun)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWcAvailableDays([])}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-rose-300 text-[11px] font-semibold border border-white/10 transition-colors cursor-pointer"
+                >
+                  Clear Days
+                </button>
+              </div>
+
+              {/* Day Toggle Buttons */}
               <div className="flex flex-wrap gap-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                {DAY_LABELS.map((day, i) => (
                   <button 
                     key={day} 
                     type="button"
-                    onClick={() => setWcAvailableDays(prev => prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i].sort())}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${wcAvailableDays.includes(i) ? 'bg-violet-600 text-white shadow-md shadow-violet-900/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                    onClick={() => setWcAvailableDays(prev => prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i].sort((a,b)=>a-b))}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${wcAvailableDays.includes(i) ? 'bg-violet-600 text-white shadow-md shadow-violet-900/30 ring-1 ring-violet-400/50' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
                   >
                     {day}
                   </button>
                 ))}
               </div>
+              <p className="text-[11px] text-gray-500 mt-2">
+                Active: <strong className="text-purple-300">{activeDaysSummary}</strong>
+              </p>
             </div>
 
+            {/* Active Games Selection */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1">
-                <Gamepad2 size={14} /> Active Games Selection
-              </label>
-              <div className="flex flex-col gap-2">
-                {[
-                  { id: 'bug-hunter', name: '🐛 Bug Hunter (Find & fix bugs)' },
-                  { id: 'memory-rush', name: '✨ Memory Rush (Match concept pairs)' },
-                  { id: 'typing-blitz', name: '⌨️ Typing Blitz (Speed & accuracy)' },
-                  { id: 'number-detective', name: '🔍 Number Detective (Math sequences)' },
-                  { id: 'logic-master', name: '🧠 Logic Master (Visual reasoning)' },
-                  { id: 'code-breaker', name: '💻 Code Breaker (Binary & crypto)' },
-                  { id: 'circuit-master', name: '⚡ Circuit Master (Interactive logic gates)' },
-                  { id: 'memory-matrix', name: 'Memory Matrix (Legacy)' },
-                  { id: 'impossible-room', name: 'The Impossible Room (Legacy)' },
-                  { id: 'word-forge', name: 'Word Forge (Legacy)' },
-                  { id: 'target-number', name: '🎯 Target Number (Legacy)' },
-                  { id: 'memory-heist', name: '🧠 Memory Heist (Legacy)' },
-                  { id: 'the-impostor', name: '🕵️ The Impostor (Legacy)' },
-                  { id: 'paradox', name: '🌀 Paradox (Legacy)' },
-                ].map(game => (
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                  <Gamepad2 size={14} /> Active Games ({wcActiveGames.length} of {ALL_GAMES.length} selected)
+                </label>
+              </div>
+
+              {/* Game Preset Buttons */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setWcActiveGames(ALL_GAMES.map(g => g.id))}
+                  className="px-2.5 py-1 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 text-[11px] font-semibold border border-violet-500/30 transition-colors cursor-pointer"
+                >
+                  ⚡ Select All 14 Games
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWcActiveGames(ALL_GAMES.filter(g => g.isArena).map(g => g.id))}
+                  className="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-[11px] font-semibold border border-purple-500/30 transition-colors cursor-pointer"
+                >
+                  🎮 7 Arena Games Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWcActiveGames([])}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-rose-300 text-[11px] font-semibold border border-white/10 transition-colors cursor-pointer"
+                >
+                  🧹 Deselect All
+                </button>
+              </div>
+
+              {/* Checkboxes List */}
+              <div className="flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1">
+                {ALL_GAMES.map(game => (
                   <label key={game.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
                     <input 
                       type="checkbox" 
                       checked={wcActiveGames.includes(game.id)}
                       onChange={(e) => {
-                        if (e.target.checked) setWcActiveGames([...wcActiveGames, game.id]);
-                        else setWcActiveGames(wcActiveGames.filter(id => id !== game.id));
+                        const checked = e.target.checked;
+                        setWcActiveGames(prev => checked ? [...prev.filter(id => id !== game.id), game.id] : prev.filter(id => id !== game.id));
                       }}
                       className="w-4 h-4 rounded border-white/20 bg-black/50 text-violet-600 focus:ring-violet-500/50 cursor-pointer"
                     />
@@ -317,6 +431,7 @@ export default function ChallengesControlPage() {
               </div>
             </div>
 
+            {/* Session Metadata */}
             <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-violet-300 uppercase">Current Challenge Week</span>
@@ -326,7 +441,6 @@ export default function ChallengesControlPage() {
                 <span className="text-xs font-bold text-violet-300 uppercase">Data Status</span>
                 <span className="text-xs font-medium text-gray-300">{wcHasResults ? '🟢 Results recorded' : '⚪ No results yet'}</span>
               </div>
-              {/* Current Session ID */}
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-violet-300 uppercase">Challenge Session</span>
                 <span className="text-xs font-mono font-medium text-gray-300 truncate max-w-[140px]" title={wcChallengeSessionId || 'Not set'}>
@@ -335,6 +449,7 @@ export default function ChallengesControlPage() {
               </div>
             </div>
 
+            {/* Start New Session Button */}
             <button
               type="button"
               disabled={startingSession || saving}
@@ -359,12 +474,6 @@ export default function ChallengesControlPage() {
                 </>
               )}
             </button>
-
-            {wcChallengeSessionId && (
-              <p className="text-[10px] text-emerald-400/80 text-center font-medium">
-                Active Session: {wcChallengeSessionId}
-              </p>
-            )}
           </div>
         </div>
 
@@ -375,20 +484,27 @@ export default function ChallengesControlPage() {
         )}
 
         {/* Save Button Row */}
-        <div className="flex items-center justify-end gap-4 pt-6 border-t border-white/5">
-          {success && (
-            <span className="text-emerald-400 text-xs font-semibold flex items-center gap-1 animate-in fade-in duration-300">
-              <CheckCircle2 size={14} /> Challenges Configuration saved!
-            </span>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer shadow-lg shadow-violet-900/30"
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            Save Challenges Config
-          </button>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/5">
+          <p className="text-xs text-gray-400">
+            Changes save to Firestore and update the Challenge Arena in real-time.
+          </p>
+
+          <div className="flex items-center gap-3">
+            {success && (
+              <span className="text-emerald-400 text-xs font-semibold flex items-center gap-1 animate-in fade-in duration-300">
+                <CheckCircle2 size={14} /> Challenges Configuration saved!
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-7 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-violet-900/30 hover:scale-[1.02]"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Save Challenges Config
+            </button>
+          </div>
         </div>
       </div>
 

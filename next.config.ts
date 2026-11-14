@@ -34,6 +34,16 @@ const nextConfig: NextConfig = {
         destination: '/srm/btech/semester-:semId',
         permanent: true,
       },
+      {
+        source: '/challenges',
+        destination: '/weekly-challenges',
+        permanent: true,
+      },
+      {
+        source: '/challenges/:path*',
+        destination: '/weekly-challenges/:path*',
+        permanent: true,
+      },
     ];
   },
   async headers() {

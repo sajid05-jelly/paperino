@@ -156,7 +156,8 @@ export function getChallengeDate(): string {
 }
 
 export function isChallengeDay(availableDays: number[]): boolean {
-  if (!Array.isArray(availableDays) || availableDays.length === 0) return true;
+  if (!Array.isArray(availableDays)) return true;
+  if (availableDays.length === 0) return false;
   const today = new Date().getDay();
   return availableDays.includes(today);
 }
@@ -172,7 +173,8 @@ export function isChallengeHour(openTime?: string, closeTime?: string): boolean 
   return currentMins >= openMins && currentMins <= closeMins;
 }
 
-export function getNextChallengeDay(availableDays: number[]): Date {
+export function getNextChallengeDay(availableDays: number[]): Date | null {
+  if (!Array.isArray(availableDays) || availableDays.length === 0) return null;
   const now = new Date();
   const today = now.getDay();
 
