@@ -3,8 +3,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, HelpCircle, Loader2, ArrowLeft, Lock, Award, AlertCircle } from 'lucide-react';
+import { 
+  Terminal, 
+  CheckCircle2, 
+  Loader2, 
+  Clock, 
+  Award, 
+  Zap, 
+  ChevronRight, 
+  Binary 
+} from 'lucide-react';
 import GameTimer from '@/components/challenges/GameTimer';
 import GameResult from '@/components/challenges/GameResult';
 import ChallengeGameShell from '@/components/challenges/ChallengeGameShell';
@@ -12,21 +20,11 @@ import { useRouter } from 'next/navigation';
 
 type GameState = 'intro' | 'loading' | 'playing' | 'submitting' | 'result';
 
-function getSeed(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return hash;
-}
-
-function mulberry32(seed: number) {
-  return function() {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
+interface CodeBreakerQuestion {
+  id: string;
+  category: string;
+  question: string;
+  options: string[];
 }
 
 export default function CodeBreakerPage() {
@@ -35,24 +33,20 @@ export default function CodeBreakerPage() {
   const [gameState, setGameState] = useState<GameState>('intro');
   const [sessionId, setSessionId] = useState<string>('');
   const [isOfficial, setIsOfficial] = useState(false);
-  const [challengeDate, setChallengeDate] = useState<string>('');
+  const [difficulty, setDifficulty] = useState<'novice' | 'adept' | 'master'>('adept');
   
-  const [secretCode, setSecretCode] = useState<number[]>([]);
-  const [currentGuess, setCurrentGuess] = useState<string[]>(['', '', '', '']);
-  const [attempts, setAttempts] = useState<number[][]>([]);
-  const [validationMsg, setValidationMsg] = useState('');
-  
+  const [questions, setQuestions] = useState<CodeBreakerQuestion[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+
   const [resultData, setResultData] = useState<any>(null);
   const [error, setError] = useState('');
   const [startTime, setStartTime] = useState<number>(0);
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [checkingAttempt, setCheckingAttempt] = useState(true);
   const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false);
 
-  // Guard reference to prevent duplicate session creation
   const isCreatingSession = useRef(false);
-  const [loadProgress, setLoadProgress] = useState(0);
-  const [loadStage, setLoadStage] = useState('');
 
   useEffect(() => {
     async function checkAttempt() {
@@ -94,492 +88,322 @@ export default function CodeBreakerPage() {
       }
     }
     
-    // Subscribe to auth state transitions
     const unsubscribe = auth.onAuthStateChanged((u: any) => {
-      if (u) {
-        checkAttempt();
-      } else {
-        setCheckingAttempt(false);
-      }
+      if (u) checkAttempt();
+      else setCheckingAttempt(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const startGame = async () => {
+  const handleStartGame = async () => {
     if (isCreatingSession.current) return;
+    isCreatingSession.current = true;
+    setError('');
+    setGameState('loading');
+
     try {
-      isCreatingSession.current = true;
-      setError('');
-      setGameState('loading');
-      setLoadProgress(10);
-      setLoadStage('Securing your session...');
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("Please log in to play");
+      const token = await currentUser.getIdToken();
 
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error('Please sign in to play');
-      
-      setLoadProgress(30);
-      setLoadStage("Preparing today's puzzle...");
-
-      const res = await fetch('/api/challenge-start', {
-        method: 'POST',
+      const res = await fetch("/api/challenge-start", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ gameId: 'code-breaker' })
+        body: JSON.stringify({ gameId: "code-breaker", difficulty })
       });
-      
+
       const data = await res.json();
-      if (res.status === 409 && data.completed) {
-        setResultData({
-          score: data.score,
-          durationMs: data.durationMs,
-          rank: data.rank,
-          isOfficial: true,
-          leaderboard: data.leaderboard || []
-        });
-        setWasAlreadyCompleted(true);
-        setGameState('result');
-        return;
-      }
-      if (!res.ok) throw new Error(data.error || 'Failed to start game');
-      
-      setLoadProgress(70);
-      setLoadStage('Loading challenge...');
-      setSessionId(data.sessionId);
-      setIsOfficial(data.isOfficial);
-      setChallengeDate(data.challengeDate);
-      
-      // Generate secret code deterministically (digits 0-7, no repeats)
-      const seedNum = getSeed(data.challengeId);
-      const rand = mulberry32(seedNum);
-      const code: number[] = [];
-      const digits = [0, 1, 2, 3, 4, 5, 6, 7];
-      for (let i = 0; i < 4; i++) {
-        const idx = Math.floor(rand() * digits.length);
-        code.push(digits[idx]);
-        digits.splice(idx, 1);
+      if (!res.ok) {
+        if (res.status === 409 && data.completed) {
+          setResultData({
+            score: data.score,
+            durationMs: data.durationMs,
+            rank: data.rank,
+            isOfficial: true,
+            leaderboard: data.leaderboard || []
+          });
+          setWasAlreadyCompleted(true);
+          setGameState("result");
+          return;
+        }
+        throw new Error(data.error || "Failed to initialize game");
       }
 
-      setSecretCode(code);
-      setAttempts([]);
-      setCurrentGuess(['', '', '', '']);
+      setSessionId(data.sessionId);
+      setIsOfficial(Boolean(data.isOfficial));
+      if (data.puzzleData?.questions) {
+        setQuestions(data.puzzleData.questions);
+      }
       setStartTime(Date.now());
-      setLoadProgress(100);
-      setLoadStage('Ready!');
       setGameState('playing');
     } catch (err: any) {
-      console.error("Start challenge error:", err);
-      setError(err.message || 'Unable to start challenge');
+      setError(err.message || "Failed to start challenge");
       setGameState('intro');
     } finally {
       isCreatingSession.current = false;
     }
   };
 
-  const handleDigitChange = (index: number, val: string) => {
-    if (!/^[0-7]?$/.test(val)) return;
-    const nextGuess = [...currentGuess];
-    nextGuess[index] = val;
-    setCurrentGuess(nextGuess);
-    setValidationMsg('');
-  };
-
-  const isSubmittingGame = useRef(false);
-
-  const getFeedback = (guess: number[], targetCode: number[] = secretCode) => {
-    return guess.map((g, i) => {
-      if (g === targetCode[i]) return 'correct'; // Green (correct digit & position)
-      if (targetCode.includes(g)) return 'misplaced'; // Yellow (correct digit, wrong position)
-      return 'absent'; // Gray (digit not in code)
-    });
-  };
-
-  const handleGuessSubmit = () => {
-    if (gameState !== 'playing' || isSubmittingGame.current) return;
-    if (currentGuess.some(d => d === '')) {
-      setValidationMsg('Enter 4 digits from 0–7.');
-      return;
-    }
-
-    const numGuess = currentGuess.map(Number);
-    
-    // Check for duplicate digits
-    const uniqueDigits = new Set(numGuess);
-    if (uniqueDigits.size !== 4) {
-      setValidationMsg('Digits cannot repeat.');
-      return;
-    }
-
-    // Validate digits range [0-7]
-    if (numGuess.some(d => isNaN(d) || d < 0 || d > 7)) {
-      setValidationMsg('All digits must be between 0 and 7.');
-      return;
-    }
-
-    const newAttempts = [...attempts, numGuess];
-    setAttempts(newAttempts);
-    setCurrentGuess(['', '', '', '']);
-    setValidationMsg('');
-    
-    // Check if the current guess matches secret code exactly
-    const isWin = secretCode.length === 4 && 
-                  numGuess.length === 4 && 
-                  numGuess.every((d, idx) => d === secretCode[idx]);
-    
-    if (isWin) {
-      submitGame(newAttempts);
+  const handleSelectOption = (opt: string) => {
+    setSelectedOption(opt);
+    const q = questions[currentIndex];
+    if (q) {
+      setUserAnswers(prev => ({ ...prev, [q.id]: opt }));
     }
   };
 
-  const submitGame = async (finalAttempts: number[][]) => {
-    if (isSubmittingGame.current) return;
+  const handleNextQuestion = () => {
+    if (currentIndex < questions.length - 1) {
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      const nextQ = questions[nextIdx];
+      setSelectedOption(nextQ ? (userAnswers[nextQ.id] || null) : null);
+    } else {
+      handleSubmitGame();
+    }
+  };
+
+  const handleSubmitGame = async () => {
+    if (gameState === 'submitting') return;
+    setGameState('submitting');
+
     try {
-      isSubmittingGame.current = true;
-      setGameState('submitting');
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error('Not authenticated');
-      
-      const finalGuess = finalAttempts.length > 0 ? finalAttempts[finalAttempts.length - 1] : [];
-      
-      const res = await fetch('/api/challenge-submit', {
-        method: 'POST',
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("Authentication session expired");
+      const token = await currentUser.getIdToken();
+      const durationMs = Math.max(1000, Date.now() - startTime);
+
+      const res = await fetch("/api/challenge-submit", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
           sessionId,
           gameData: {
-            attempts: finalAttempts,
-            finalGuess,
-            durationMs: Date.now() - startTime,
-            gameId: 'code-breaker'
+            gameId: "code-breaker",
+            userAnswers,
+            durationMs
           }
         })
       });
-      
+
       const data = await res.json();
-      if (!res.ok) {
-        console.error('Submit failed:', data.error);
-        const duration = Date.now() - startTime;
-        const speedRatio = Math.max(0, 1 - (duration / 180000));
-        const calculatedScore = Math.max(50, Math.min(100, Math.round(50 + 50 * speedRatio)));
-        setResultData({
-          score: calculatedScore,
-          durationMs: duration,
-          rank: isOfficial ? 1 : null,
-          isOfficial: isOfficial,
-          leaderboard: [{
-            userId: auth.currentUser?.uid || 'user',
-            displayName: auth.currentUser?.displayName || 'Student',
-            paperinoAvatar: '',
-            score: calculatedScore,
-            durationMs: duration,
-            rank: 1
-          }]
-        });
-        setGameState('result');
-        return;
-      }
-      
-      const officialLeaderboard = Array.isArray(data.leaderboard) && data.leaderboard.length > 0
-        ? data.leaderboard
-        : (isOfficial ? [{
-            userId: auth.currentUser?.uid || 'user',
-            displayName: auth.currentUser?.displayName || 'Student',
-            paperinoAvatar: '',
-            score: data.score || 50,
-            durationMs: data.durationMs || (Date.now() - startTime),
-            rank: 1
-          }] : []);
+      if (!res.ok) throw new Error(data.error || "Submission failed");
 
       setResultData({
-        ...data,
-        rank: data.rank ?? (isOfficial ? 1 : null),
-        leaderboard: officialLeaderboard
+        score: data.score,
+        durationMs: data.durationMs,
+        rank: data.rank,
+        isOfficial: data.isOfficial,
+        leaderboard: data.leaderboard || [],
+        xpEarned: data.xp,
+        accuracy: data.accuracy,
+        correctCount: data.correctCount,
+        totalQuestions: data.totalQuestions,
+        reviewItems: data.reviewItems || []
       });
       setGameState('result');
     } catch (err: any) {
-      console.error('Submit error:', err);
-      const duration = Date.now() - startTime;
-      const speedRatio = Math.max(0, 1 - (duration / 180000));
-      const calculatedScore = Math.max(50, Math.min(100, Math.round(50 + 50 * speedRatio)));
-      setResultData({
-        score: calculatedScore,
-        durationMs: duration,
-        rank: isOfficial ? 1 : null,
-        isOfficial: isOfficial,
-        leaderboard: [{
-          userId: auth.currentUser?.uid || 'user',
-          displayName: auth.currentUser?.displayName || 'Student',
-          paperinoAvatar: '',
-          score: calculatedScore,
-          durationMs: duration,
-          rank: 1
-        }]
-      });
-      setGameState('result');
+      setError(err.message || "Failed to submit challenge");
+      setGameState('playing');
     }
   };
 
+  const timeLimitMs = difficulty === 'novice' ? 180000 : difficulty === 'adept' ? 150000 : 120000;
 
-
-  if (gameState === 'intro') {
+  if (checkingAttempt) {
     return (
-      <div className="min-h-screen p-6 flex flex-col items-center justify-center max-w-xl mx-auto">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 text-center flex flex-col items-center gap-6"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
-            <Lock size={32} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-extrabold text-white mb-2">Code Breaker</h1>
-            <p className="text-sm text-gray-300 max-w-sm mx-auto leading-relaxed">
-              Crack the secret 4-digit code using logic and color feedback. Each digit is between 0 and 7 with no repeats. Try to solve it as fast as possible!
-            </p>
-          </div>
-
-          <div className="w-full bg-black/40 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-left text-gray-300">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
-              <span><strong>Green:</strong> Correct digit & position</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0"></span>
-              <span><strong>Yellow:</strong> Correct digit, wrong position</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-gray-500 shrink-0"></span>
-              <span><strong>Gray:</strong> Digit not in code</span>
-            </div>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs flex items-center gap-2">
-              <AlertCircle size={14} /> {error}
-            </div>
-          )}
-
-          <button onClick={startGame} className="liquid-btn w-full py-3.5 font-bold text-sm uppercase tracking-wider">
-            Start Challenge
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (gameState === 'loading') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 text-center flex flex-col items-center gap-6"
-        >
-          <div className="text-4xl animate-bounce">🔐</div>
-          <div>
-            <h2 className="text-xl font-bold text-white mb-1">Preparing Challenge</h2>
-            <p className="text-xs text-gray-400">{loadStage || 'Securing your session...'}</p>
-          </div>
-
-          <div className="w-full space-y-3">
-            <div className="w-full bg-white/5 rounded-full h-3 overflow-hidden border border-white/10 relative">
-              <motion.div 
-                className="bg-gradient-to-r from-purple-500 via-indigo-400 to-purple-500 h-full rounded-full w-1/2 absolute left-0"
-                animate={{
-                  x: ['-100%', '200%']
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.8,
-                  ease: "easeInOut"
-                }}
-              />
-            </div>
-            <p className="text-[12px] text-amber-300/90 font-medium animate-pulse">Please wait for 25 seconds while we set up your challenge session...</p>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (gameState === 'submitting') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 text-center flex flex-col items-center gap-6"
-        >
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30">
-            <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white mb-1">Submitting Challenge</h2>
-            <p className="text-xs text-gray-400 mb-2">Saving official results...</p>
-            <p className="text-[11px] text-purple-300/80 font-medium">Please wait up to 20 seconds to see your result.</p>
-          </div>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-[#07040f]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-emerald-400 animate-spin" />
+          <p className="text-gray-400 font-medium text-sm">Decoding binary streams...</p>
+        </div>
       </div>
     );
   }
 
   if (gameState === 'result' && resultData) {
     return (
-      <div className="min-h-screen p-6 flex items-center justify-center">
-        <GameResult 
+      <div className="min-h-screen bg-[#07040f] py-8">
+        <GameResult
           score={resultData.score}
           durationMs={resultData.durationMs}
           rank={resultData.rank}
           isOfficial={resultData.isOfficial}
           gameId="code-breaker"
           gameName="Code Breaker"
-          onViewLeaderboard={() => {}}
-          onPlayAgain={() => window.location.reload()}
-          onBackToHub={() => router.push("/weekly-challenges")}
           leaderboard={resultData.leaderboard}
           wasAlreadyCompleted={wasAlreadyCompleted}
+          xpEarned={resultData.xpEarned}
+          accuracy={resultData.accuracy}
+          correctCount={resultData.correctCount}
+          totalQuestions={resultData.totalQuestions}
+          reviewItems={resultData.reviewItems}
+          onViewLeaderboard={() => router.push("/weekly-challenges")}
+          onBackToHub={() => router.push("/weekly-challenges")}
         />
       </div>
     );
   }
 
-  // Add auto-focus reference navigation for digits input boxes
-  const handleDigitChangeWithFocus = (index: number, val: string) => {
-    if (!/^[0-7]?$/.test(val)) return;
-    const nextGuess = [...currentGuess];
-    nextGuess[index] = val;
-    setCurrentGuess(nextGuess);
-    setValidationMsg('');
-
-    if (val && index < 3) {
-      const nextInput = document.getElementById(`cb-input-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !currentGuess[index] && index > 0) {
-      const prevInput = document.getElementById(`cb-input-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
-
-  const rulesContent = (
-    <ul className="space-y-2.5 list-disc list-inside text-sm">
-      <li>Crack the 4-digit secret code.</li>
-      <li>All digits are in the range of <strong>0 to 7</strong>.</li>
-      <li>Digits cannot be repeated in the code.</li>
-      <li>You can make unlimited guesses.</li>
-      <li><strong>Green Circle:</strong> Digit is correct and in the right position.</li>
-      <li><strong>Yellow Circle:</strong> Digit is in the code but in the wrong position.</li>
-      <li><strong>Gray Circle:</strong> Digit is not part of the secret code.</li>
-    </ul>
-  );
+  const currentQ = questions[currentIndex];
 
   return (
     <ChallengeGameShell
       gameId="code-breaker"
       gameName="Code Breaker"
-      gameIcon={<Lock size={20} />}
-      attemptText={`Guesses: ${attempts.length}`}
-      timerNode={<GameTimer isRunning={gameState === 'playing'} startTime={startTime} />}
-      rulesContent={rulesContent}
+      gameIcon={<Terminal className="w-5 h-5 text-emerald-400" />}
+      attemptText={isOfficial ? "Official Weekly Attempt" : "Practice Mode"}
       gameState={gameState}
+      timerNode={
+        gameState === 'playing' ? (
+          <GameTimer 
+            startTime={startTime} 
+            maxDurationMs={timeLimitMs} 
+            onExpire={handleSubmitGame} 
+          />
+        ) : null
+      }
+      rulesContent={
+        <div className="space-y-4 text-sm text-gray-300">
+          <p>• Solve binary conversions, hexadecimal arithmetic, bitwise masks, and Big-O algorithm complexity.</p>
+          <p>• Pick the exact numerical or algorithmic answer from the 4 options.</p>
+          <p>• Fast answers with zero errors yield max score and Top 5 leaderboard placement.</p>
+          <p>• Step-by-step binary bit-shifting and complexity analysis available upon completion.</p>
+        </div>
+      }
     >
-      <div className="w-full flex flex-col lg:flex-row gap-8 items-stretch mt-2">
-        {/* Left Side: Guess Form Box */}
-        <div className="flex-1 glass-panel vision-glass p-8 rounded-3xl border border-purple-500/20 flex flex-col justify-between">
-          <div className="text-center space-y-6">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-1">Enter Your Guess</h3>
-              <p className="text-xs text-gray-400">Enter a 4-digit code • digits 0–7 • no repeats</p>
-            </div>
+      {gameState === 'intro' && (
+        <div className="max-w-xl mx-auto w-full glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-emerald-500/20 text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
+            <Terminal size={32} />
+          </div>
 
-            <div className="flex justify-center gap-6 py-6">
-              {currentGuess.map((digit, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-2">
-                  <input
-                    id={`cb-input-${idx}`}
-                    type="text"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleDigitChangeWithFocus(idx, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-20 h-24 bg-black/60 border-2 border-purple-500/30 rounded-2xl text-center text-4xl font-extrabold text-white focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/20 shadow-2xl transition-all"
-                    placeholder=""
-                  />
-                  {!digit && <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">0–7</span>}
-                </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Code Breaker Arena</h1>
+            <p className="text-gray-400 text-sm mt-2">
+              Crack binary, hexadecimal, bitwise logic, and algorithm complexity puzzles.
+            </p>
+          </div>
+
+          {/* Difficulty selector */}
+          <div className="space-y-2 text-left">
+            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
+              Choose Difficulty Level
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['novice', 'adept', 'master'] as const).map(lvl => (
+                <button
+                  key={lvl}
+                  onClick={() => setDifficulty(lvl)}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold capitalize transition-all cursor-pointer ${
+                    difficulty === lvl
+                      ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                  }`}
+                >
+                  {lvl}
+                  <span className="block text-[10px] font-normal text-gray-400 mt-0.5">
+                    {lvl === 'novice' ? '3m' : lvl === 'adept' ? '2.5m' : '2m'}
+                  </span>
+                </button>
               ))}
             </div>
-
-            {validationMsg && (
-              <p className="text-sm text-rose-400 font-medium text-center">{validationMsg}</p>
-            )}
           </div>
 
-          <div className="pt-6 mt-8 border-t border-white/5">
-            <button
-              onClick={handleGuessSubmit}
-              disabled={currentGuess.some(d => d === '')}
-              className="liquid-btn w-full py-4 text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Submit Guess #{attempts.length + 1}
-            </button>
-          </div>
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleStartGame}
+            className="liquid-btn w-full py-4 rounded-xl font-bold text-sm uppercase tracking-wider text-white transition-all bg-gradient-to-r from-emerald-600 to-teal-600 shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Zap size={16} /> Break The Code
+          </button>
         </div>
+      )}
 
-        {/* Right Side: Attempt History list */}
-        <div className="w-full lg:w-96 glass-panel vision-glass p-6 rounded-3xl border border-purple-500/20 flex flex-col">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-450 mb-4 pb-2 border-b border-white/5">Guess History</h3>
-          
-          <div className="flex-1 overflow-y-auto max-h-[50vh] lg:max-h-[350px] space-y-3 pr-1">
-            {attempts.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-center py-12 text-xs text-gray-500 italic">
-                No guesses submitted yet. Make your first guess!
-              </div>
-            ) : (
-              attempts.map((guess, idx) => {
-                const feedback = getFeedback(guess);
+      {gameState === 'loading' && (
+        <div className="max-w-md mx-auto py-20 text-center space-y-4">
+          <Loader2 className="w-10 h-10 text-emerald-400 animate-spin mx-auto" />
+          <p className="text-gray-300 font-semibold text-sm">Compiling cryptographic puzzles...</p>
+        </div>
+      )}
+
+      {gameState === 'submitting' && (
+        <div className="max-w-md mx-auto py-20 text-center space-y-4">
+          <Loader2 className="w-10 h-10 text-purple-400 animate-spin mx-auto" />
+          <p className="text-gray-300 font-semibold text-sm">Verifying binary math and updating leaderboard...</p>
+        </div>
+      )}
+
+      {gameState === 'playing' && currentQ && (
+        <div className="max-w-2xl mx-auto w-full space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
+            <span>Puzzle {currentIndex + 1} of {questions.length}</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              {currentQ.category}
+            </span>
+          </div>
+
+          <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-300"
+              style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+            />
+          </div>
+
+          {/* Question Card */}
+          <div className="glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-emerald-500/20 space-y-6">
+            <div className="p-4 rounded-2xl bg-black/60 border border-white/10 font-mono text-center">
+              <h2 className="text-base sm:text-lg font-bold text-emerald-300 whitespace-pre-line leading-relaxed">
+                {currentQ.question}
+              </h2>
+            </div>
+
+            {/* 4 Options Grid */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              {currentQ.options.map((opt, idx) => {
+                const isSelected = selectedOption === opt || userAnswers[currentQ.id] === opt;
                 return (
-                  <div key={idx} className="flex flex-col gap-2 p-3.5 bg-black/40 rounded-xl border border-white/5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-purple-300">Guess #{idx + 1}</span>
-                      
-                      <div className="flex gap-2">
-                        {guess.map((digit, dIdx) => (
-                          <span key={dIdx} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 text-white font-bold text-xs flex items-center justify-center">
-                            {digit}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex gap-1">
-                        {feedback.map((status, fIdx) => {
-                          let bg = "bg-gray-500";
-                          if (status === 'correct') bg = "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]";
-                          if (status === 'misplaced') bg = "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.7)]";
-                          return <span key={fIdx} className={`w-3 h-3 rounded-full ${bg}`}></span>;
-                        })}
-                      </div>
-                    </div>
-                    {feedback.every(s => s === 'correct') && (
-                      <div className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase text-right mt-1">
-                        ✓ CODE CRACKED
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    key={idx}
+                    onClick={() => handleSelectOption(opt)}
+                    className={`p-4 rounded-2xl border text-center font-mono text-sm sm:text-base font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] scale-[1.02]'
+                        : 'bg-white/[0.03] border-white/10 text-gray-300 hover:bg-white/[0.07] hover:text-white'
+                    }`}
+                  >
+                    {opt}
+                  </button>
                 );
-              })
-            )}
+              })}
+            </div>
+
+            {/* Next / Finish Button */}
+            <div className="pt-4 flex justify-end">
+              <button
+                onClick={handleNextQuestion}
+                disabled={!selectedOption && !userAnswers[currentQ.id]}
+                className="liquid-btn px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+              >
+                <span>{currentIndex === questions.length - 1 ? 'Finish & Review' : 'Next Puzzle'}</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </ChallengeGameShell>
   );
 }

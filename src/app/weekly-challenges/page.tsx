@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -8,27 +8,34 @@ import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/
 import { 
   Trophy, 
   Lock, 
-  Grid3X3, 
-  DoorOpen, 
-  Type as TypeIcon, 
   Clock, 
   AlertCircle, 
   Calendar,
-  ChevronRight,
-  Play,
-  CheckCircle2,
-  LockKeyhole,
-  Rocket,
-  Sparkles,
-  Gamepad2,
-  Target,
-  Brain,
-  Search,
-  Zap,
-  X,
-  User as UserIcon
+  ChevronRight, 
+  Play, 
+  CheckCircle2, 
+  LockKeyhole, 
+  Rocket, 
+  Sparkles, 
+  Gamepad2, 
+  Target, 
+  Brain, 
+  Search, 
+  Zap, 
+  X, 
+  User as UserIcon,
+  Bug,
+  Keyboard,
+  Cpu,
+  Flame,
+  Award,
+  Star,
+  Activity,
+  Terminal,
+  ShieldCheck
 } from "lucide-react";
 import { 
+  ARENA_GAME_IDS,
   GAME_IDS, 
   GAME_INFO, 
   getCurrentChallengeWeek, 
@@ -41,22 +48,87 @@ import {
 
 const DEFAULT_CONFIG = {
   enabled: true,
-  availableDays: [2, 4, 5],
-  activeGames: ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'],
+  availableDays: [0, 1, 2, 3, 4, 5, 6], // Available every day for Arena
+  activeGames: [
+    'bug-hunter',
+    'memory-rush',
+    'typing-blitz',
+    'number-detective',
+    'logic-master',
+    'code-breaker',
+    'circuit-master',
+  ],
   leaderboardEnabled: true,
   officialAttempts: 1,
   maintenanceMode: false
 };
 
-const ICONS = {
-  'code-breaker': Lock,
-  'memory-matrix': Grid3X3,
-  'impossible-room': DoorOpen,
-  'word-forge': TypeIcon,
-  'target-number': Target,
-  'memory-heist': Brain,
-  'the-impostor': Search,
-  'paradox': Zap,
+const ARENA_ICONS: Record<string, any> = {
+  'bug-hunter': Bug,
+  'memory-rush': Sparkles,
+  'typing-blitz': Keyboard,
+  'number-detective': Search,
+  'logic-master': Brain,
+  'code-breaker': Terminal,
+  'circuit-master': Cpu,
+};
+
+const ACCENT_COLORS: Record<string, {
+  border: string;
+  glow: string;
+  badge: string;
+  btn: string;
+  text: string;
+}> = {
+  'bug-hunter': {
+    border: 'border-rose-500/30',
+    glow: 'rgba(244,63,94,0.15)',
+    badge: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+    btn: 'from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500',
+    text: 'text-rose-400'
+  },
+  'memory-rush': {
+    border: 'border-amber-500/30',
+    glow: 'rgba(245,158,11,0.15)',
+    badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    btn: 'from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500',
+    text: 'text-amber-400'
+  },
+  'typing-blitz': {
+    border: 'border-cyan-500/30',
+    glow: 'rgba(6,182,212,0.15)',
+    badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+    btn: 'from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500',
+    text: 'text-cyan-400'
+  },
+  'number-detective': {
+    border: 'border-indigo-500/30',
+    glow: 'rgba(99,102,241,0.15)',
+    badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+    btn: 'from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500',
+    text: 'text-indigo-400'
+  },
+  'logic-master': {
+    border: 'border-purple-500/30',
+    glow: 'rgba(168,85,247,0.15)',
+    badge: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    btn: 'from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500',
+    text: 'text-purple-400'
+  },
+  'code-breaker': {
+    border: 'border-emerald-500/30',
+    glow: 'rgba(16,185,129,0.15)',
+    badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    btn: 'from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500',
+    text: 'text-emerald-400'
+  },
+  'circuit-master': {
+    border: 'border-fuchsia-500/30',
+    glow: 'rgba(217,70,239,0.15)',
+    badge: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40',
+    btn: 'from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500',
+    text: 'text-fuchsia-400'
+  },
 };
 
 function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
@@ -80,22 +152,12 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
     setErrorMsg(null);
     fetch('/api/weekly-leaderboard')
       .then(async res => {
-        if (!res.ok) {
-          throw new Error(`API error: ${res.status}`);
-        }
-        const text = await res.text();
-        try {
-          return JSON.parse(text);
-        } catch {
-          console.error("Invalid JSON response:", text.substring(0, 50) + "...");
-          throw new Error("Invalid API response format");
-        }
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        return res.json();
       })
       .then(d => {
         if (d && Array.isArray(d.leaderboard)) {
           setData(d.leaderboard);
-        } else if (d && d.error) {
-          throw new Error(d.error);
         } else {
           setData([]);
         }
@@ -118,8 +180,8 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-[#0a0515] border border-purple-500/20 rounded-3xl p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-[#0a0515] border border-purple-500/30 rounded-3xl p-6 shadow-[0_0_50px_rgba(168,85,247,0.25)]">
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
@@ -132,8 +194,8 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
             <Trophy size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Overall Top 5</h2>
-            <p className="text-xs text-purple-300">Current Weekly Challenge</p>
+            <h2 className="text-xl font-bold text-white">Overall Top 5 Leaderboard</h2>
+            <p className="text-xs text-purple-300">Weekly Challenge Arena Standings</p>
           </div>
         </div>
 
@@ -144,7 +206,6 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
         ) : errorMsg ? (
           <div className="py-12 text-center">
             <p className="text-rose-400 text-sm font-semibold">{errorMsg}</p>
-            <p className="text-gray-500 text-xs mt-2">Please try again later.</p>
             <button
               onClick={fetchLeaderboard}
               className="mt-4 px-4 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-xs font-medium border border-purple-500/30 transition-colors"
@@ -154,39 +215,43 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
           </div>
         ) : data.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-gray-400 text-sm">No official results yet this week.</p>
+            <p className="text-gray-400 text-sm">No official challenge completions recorded yet this week.</p>
+            <p className="text-gray-500 text-xs mt-1">Be the first to complete a game and claim #1!</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {data.map((user, idx) => (
+            {data.map((entry, idx) => (
               <div 
                 key={idx} 
-                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                  idx === 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-100 shadow-[0_0_15px_rgba(245,158,11,0.1)]' :
-                  idx === 1 ? 'bg-slate-300/10 border-slate-300/20 text-slate-200' :
-                  idx === 2 ? 'bg-orange-700/10 border-orange-700/20 text-orange-200' :
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                  idx === 0 ? 'bg-amber-500/10 border-amber-500/40 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]' :
+                  idx === 1 ? 'bg-slate-300/10 border-slate-300/30 text-slate-200' :
+                  idx === 2 ? 'bg-orange-700/10 border-orange-700/30 text-orange-200' :
                   'bg-white/[0.02] border-white/5 text-gray-300'
                 }`}
               >
-                <div className="flex items-center gap-4">
-                  <span className={`font-black text-lg ${
-                    idx === 0 ? 'text-amber-400' :
-                    idx === 1 ? 'text-slate-300' :
-                    idx === 2 ? 'text-orange-400' :
-                    'text-gray-500'
+                <div className="flex items-center gap-3">
+                  <span className={`w-7 h-7 flex items-center justify-center rounded-full font-black text-xs ${
+                    idx === 0 ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50' :
+                    idx === 1 ? 'bg-slate-400/30 text-slate-200 border border-slate-400/50' :
+                    idx === 2 ? 'bg-orange-700/30 text-orange-300 border border-orange-700/50' :
+                    'bg-white/5 text-gray-400 border border-white/5'
                   }`}>
-                    #{user.rank}
+                    #{entry.rank}
                   </span>
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-full bg-white/10">
-                      <UserIcon size={14} />
-                    </div>
-                    <span className="font-semibold">{user.displayName}</span>
+                    <span className="font-bold text-sm text-white truncate max-w-[140px]">
+                      {entry.displayName}
+                    </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-lg">{user.score}</span>
-                  <span className="text-[10px] text-gray-500 block -mt-1 uppercase tracking-wider">Pts</span>
+                  <span className="font-extrabold text-base text-purple-300 font-mono">
+                    {entry.score}
+                  </span>
+                  <span className="text-[10px] text-gray-500 block uppercase tracking-wider -mt-1">
+                    XP Pts
+                  </span>
                 </div>
               </div>
             ))}
@@ -203,12 +268,30 @@ export default function WeeklyChallengesPage() {
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [sessions, setSessions] = useState<Record<string, any>>({});
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [top5Preview, setTop5Preview] = useState<any[]>([]);
+
+  // Daily featured challenge selection based on day of week
+  const featuredGameId = useMemo(() => {
+    const day = new Date().getDay();
+    const map = [
+      'bug-hunter',
+      'memory-rush',
+      'typing-blitz',
+      'number-detective',
+      'logic-master',
+      'code-breaker',
+      'circuit-master',
+    ];
+    return map[day % map.length] || 'code-breaker';
+  }, []);
+
+  const featuredGameInfo = GAME_INFO[featuredGameId as keyof typeof GAME_INFO] || GAME_INFO['code-breaker'];
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        // Fetch config
+        // 1. Fetch admin config
         const configRef = doc(db, "settings", "weeklyChallenges");
         const configSnap = await getDoc(configRef);
         let currentConfig: any = DEFAULT_CONFIG;
@@ -218,17 +301,30 @@ export default function WeeklyChallengesPage() {
           setConfig(currentConfig);
         }
 
-        // Fetch user sessions
-        // Fetch user results for this active challengeId
+        // 2. Fetch user results
         if (user) {
           try {
             const activeChallengeWeek = currentConfig.currentWeek || getCurrentChallengeWeek();
             const sessionMap: Record<string, any> = {};
 
-            const games = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'];
+            const games = [
+              'bug-hunter',
+              'memory-rush',
+              'typing-blitz',
+              'number-detective',
+              'logic-master',
+              'code-breaker',
+              'circuit-master',
+              'memory-matrix',
+              'impossible-room',
+              'word-forge',
+              'target-number',
+              'memory-heist',
+              'the-impostor',
+              'paradox'
+            ];
 
             const targetChallengeIds: Record<string, string> = {};
-
             games.forEach((gId) => {
               let challengeId = `${gId}-${getChallengeDate()}`;
               if (currentConfig.challengeSessionId) {
@@ -246,13 +342,13 @@ export default function WeeklyChallengesPage() {
               resultsRef,
               where("userId", "==", user.uid),
               where("isOfficial", "==", true),
-              limit(10)
+              limit(15)
             );
             
             const resSnap = await getDocs(q);
             resSnap.forEach((docSnap) => {
               const data = docSnap.data();
-              const gId = targetChallengeIds[data.challengeId];
+              const gId = targetChallengeIds[data.challengeId] || data.gameId;
               if (gId) {
                 sessionMap[gId] = {
                   status: 'completed',
@@ -268,6 +364,17 @@ export default function WeeklyChallengesPage() {
             console.warn("Could not fetch user challenge results:", sessionErr);
           }
         }
+
+        // 3. Fetch top 5 preview for sidebar
+        fetch('/api/weekly-leaderboard')
+          .then(res => res.json())
+          .then(d => {
+            if (d && Array.isArray(d.leaderboard)) {
+              setTop5Preview(d.leaderboard);
+            }
+          })
+          .catch(() => {});
+
       } catch (error) {
         console.error("Error loading challenge data:", error);
       } finally {
@@ -278,12 +385,17 @@ export default function WeeklyChallengesPage() {
     loadData();
   }, [user]);
 
+  // Compute User Aggregate Stats
+  const completedEntries = Object.values(sessions).filter(s => s?.status === 'completed');
+  const totalWeeklyXp = completedEntries.reduce((acc, curr) => acc + (Number(curr.score || 0) * 10), 0);
+  const personalBestScore = completedEntries.reduce((acc, curr) => Math.max(acc, Number(curr.score || 0)), 0);
+
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] w-full flex-col items-center justify-center text-center">
+      <div className="flex min-h-[60vh] w-full flex-col items-center justify-center text-center">
         <div className="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-purple-500"></div>
-        <h2 className="text-xl font-semibold text-white">Loading Challenges...</h2>
-        <p className="mt-2 text-gray-400">Preparing your weekly puzzles</p>
+        <h2 className="text-xl font-bold text-white tracking-wide">Connecting to Challenge Arena...</h2>
+        <p className="mt-2 text-sm text-gray-400">Loading daily puzzles and live standings</p>
       </div>
     );
   }
@@ -294,611 +406,385 @@ export default function WeeklyChallengesPage() {
   if (isMaintenanceActive) {
     return (
       <div className="relative min-h-[70vh] flex flex-col items-center justify-center px-4 py-16 text-center">
-        {/* Ambient Glow backing */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
-
-        <div className="relative max-w-lg mx-auto p-8 sm:p-10 rounded-3xl border border-purple-500/20 bg-gradient-to-b from-purple-950/30 via-slate-900/60 to-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(139,92,246,0.15)]">
-          {/* Animated Icon Badge */}
+        <div className="relative max-w-lg mx-auto p-8 rounded-3xl border border-purple-500/20 bg-gradient-to-b from-purple-950/30 via-slate-900/60 to-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(139,92,246,0.15)]">
           <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-400/30 shadow-[0_0_25px_rgba(168,85,247,0.3)]">
             <Rocket className="h-10 w-10 text-purple-300 animate-bounce" />
             <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-cyan-400 animate-pulse" />
           </div>
-
-          <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            🚀 Challenges are getting ready!
-          </h1>
-
-          <p className="text-lg font-medium text-purple-200/90 mb-2">
-            We’re currently building and upgrading the weekly challenges.
-          </p>
-
+          <h1 className="mb-3 text-3xl font-extrabold text-white">🚀 Arena Maintenance in Progress</h1>
           <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-            New puzzles, improved gameplay & fresh challenges are on the way.
+            The Paperino Challenge Arena is receiving upgraded puzzle suites and performance enhancements. Please check back shortly.
           </p>
-
-          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-300 tracking-wide uppercase shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-            <Gamepad2 className="h-4 w-4 text-cyan-400" />
-            <span>Please check back soon!</span>
-          </div>
         </div>
       </div>
     );
   }
 
   const isTodayAvailable = isChallengeDay(config.availableDays) || isAdminBypass;
-  const nextDay = getNextChallengeDay(config.availableDays);
-  const nextDayName = DAY_NAMES[nextDay.getDay()];
-  const availableDaysString = config.availableDays.map(d => DAY_NAMES[d].substring(0, 3)).join(" · ");
 
   return (
     <>
       <LeaderboardModal isOpen={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
 
-      {/* ─── Decorative Arena Background ─── */}
-      <style>{`
-        @keyframes float-trophy {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-2px); }
-        }
-        @keyframes sweep-glow {
-          0% { transform: translateX(-100%); opacity: 0; }
-          50% { opacity: 1; }
-          100% { transform: translateX(100%); opacity: 0; }
-        }
-        @keyframes shimmer-text {
-          0% { background-position: 200% center; }
-          100% { background-position: -200% center; }
-        }
-        @keyframes sparkle-pulse {
-          0%, 100% { opacity: 0; transform: scale(0.3); }
-          50% { opacity: 1; transform: scale(1); }
-        }
-        .btn-sweep { animation: sweep-glow 4s ease-in-out infinite; }
-        .text-shimmer {
-          background-size: 200% auto;
-          animation: shimmer-text 5s linear infinite;
-        }
-
-        @keyframes wc-float-1 {
-          0%,100% { transform: translateY(0px) translateX(0px); opacity: 0.35; }
-          33%      { transform: translateY(-18px) translateX(6px);  opacity: 0.55; }
-          66%      { transform: translateY(8px)  translateX(-4px); opacity: 0.28; }
-        }
-        @keyframes wc-float-2 {
-          0%,100% { transform: translateY(0px)  translateX(0px); opacity: 0.25; }
-          40%      { transform: translateY(14px) translateX(-8px); opacity: 0.45; }
-          75%      { transform: translateY(-6px) translateX(5px);  opacity: 0.18; }
-        }
-        @keyframes wc-float-3 {
-          0%,100% { transform: translateY(0px)   translateX(0px);  opacity: 0.3; }
-          50%      { transform: translateY(-22px) translateX(-10px); opacity: 0.5; }
-        }
-        @keyframes wc-pulse-glow {
-          0%,100% { opacity: 0.12; }
-          50%      { opacity: 0.22; }
-        }
-        @keyframes wc-pulse-glow2 {
-          0%,100% { opacity: 0.07; }
-          50%      { opacity: 0.15; }
-        }
-        @keyframes wc-scan-line {
-          0%   { transform: translateY(-100%); opacity: 0; }
-          10%  { opacity: 0.06; }
-          90%  { opacity: 0.06; }
-          100% { transform: translateY(100vh); opacity: 0; }
-        }
-        @keyframes wc-twinkle {
-          0%,100% { opacity: 0; transform: scale(0.5); }
-          50%      { opacity: 1; transform: scale(1.1); }
-        }
-        @keyframes wc-grid-shift {
-          0%   { transform: translateX(0) translateY(0); }
-          100% { transform: translateX(40px) translateY(40px); }
-        }
-        @keyframes wc-rotate-slow {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes wc-rotate-rev {
-          from { transform: rotate(360deg); }
-          to   { transform: rotate(0deg); }
-        }
-        .wc-float-1 { animation: wc-float-1 9s ease-in-out infinite; }
-        .wc-float-2 { animation: wc-float-2 13s ease-in-out infinite; }
-        .wc-float-3 { animation: wc-float-3 7s ease-in-out infinite; }
-        .wc-pulse-glow  { animation: wc-pulse-glow  6s ease-in-out infinite; }
-        .wc-pulse-glow2 { animation: wc-pulse-glow2 9s ease-in-out infinite; }
-        .wc-scan  { animation: wc-scan-line 12s linear infinite; }
-        .wc-twinkle { animation: wc-twinkle var(--d,4s) ease-in-out infinite; }
-        .wc-rot   { animation: wc-rotate-slow var(--rd,30s) linear infinite; }
-        .wc-rot-r { animation: wc-rotate-rev  var(--rd,25s) linear infinite; }
-      `}</style>
-
-      {/* Fixed full-page background layer — pointer-events-none so nothing is blocked */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 overflow-hidden"
-        style={{ zIndex: 0 }}
-      >
-        {/* 1 ── Base radial gradient — deep purple/black to navy */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 120% 80% at 50% 0%, #0d0618 0%, #09091a 45%, #020208 100%)",
-          }}
-        />
-
-        {/* 2 ── Ambient left glow — purple */}
-        <div
-          className="wc-pulse-glow absolute"
-          style={{
-            left: "-10%", top: "15%",
-            width: "55vw", height: "55vw",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(139,92,246,0.18) 0%, rgba(109,40,217,0.08) 45%, transparent 72%)",
-            filter: "blur(60px)",
-          }}
-        />
-
-        {/* 3 ── Ambient right glow — cyan/teal */}
-        <div
-          className="wc-pulse-glow2 absolute"
-          style={{
-            right: "-8%", top: "25%",
-            width: "45vw", height: "45vw",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(34,211,238,0.12) 0%, rgba(6,182,212,0.05) 50%, transparent 72%)",
-            filter: "blur(55px)",
-            animationDelay: "2s",
-          }}
-        />
-
-        {/* 4 ── Bottom center glow — deep purple */}
-        <div
-          className="wc-pulse-glow absolute"
-          style={{
-            left: "25%", bottom: "-5%",
-            width: "50vw", height: "35vw",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(88,28,235,0.14) 0%, transparent 70%)",
-            filter: "blur(70px)",
-            animationDelay: "4s",
-          }}
-        />
-
-        {/* 5 ── Circuit-board dot grid */}
-        <div
-          className="absolute inset-0"
-          style={{
-            opacity: 0.06,
-            backgroundImage: `
-              radial-gradient(circle, rgba(168,85,247,0.9) 1px, transparent 1px),
-              radial-gradient(circle, rgba(34,211,238,0.5) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px, 120px 120px",
-            backgroundPosition: "0 0, 20px 20px",
-            animation: "wc-grid-shift 60s linear infinite",
-          }}
-        />
-
-        {/* 6 ── Fine diagonal circuit lines (SVG data-URI) */}
-        <div
-          className="absolute inset-0"
-          style={{
-            opacity: 0.045,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M0 40 L40 0 M40 80 L80 40 M-10 50 L50 -10 M30 90 L90 30' stroke='%238B5CF6' stroke-width='0.5' fill='none'/%3E%3Cpath d='M0 0 L80 80 M20 0 L80 60 M0 20 L60 80' stroke='%2306B6D4' stroke-width='0.3' fill='none'/%3E%3C/svg%3E")`,
-            backgroundSize: "80px 80px",
-          }}
-        />
-
-        {/* 7 ── HUD corner brackets */}
-        {[
-          { top: "6%",  left:  "3%",  rotate: "0deg"   },
-          { top: "6%",  right: "3%",  rotate: "90deg"  },
-          { bottom:"6%",left:  "3%",  rotate: "270deg" },
-          { bottom:"6%",right: "3%",  rotate: "180deg" },
-        ].map((pos, i) => (
-          <div key={i} className="absolute" style={{ ...pos, opacity: 0.12 }}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <path d="M2 18 L2 2 L18 2" stroke="#8B5CF6" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M2 2 L2 2" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </div>
-        ))}
-
-        {/* 8 ── Rotating geometric ring — top-right */}
-        <div
-          className="wc-rot absolute"
-          style={{
-            top: "8%", right: "7%",
-            width: 140, height: 140,
-            opacity: 0.07,
-            "--rd": "28s",
-          } as React.CSSProperties}
-        >
-          <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="70" cy="70" r="64" stroke="#8B5CF6" strokeWidth="0.8" strokeDasharray="8 4"/>
-            <circle cx="70" cy="70" r="48" stroke="#06B6D4" strokeWidth="0.5" strokeDasharray="4 8"/>
-            <polygon points="70,6 134,53 134,87 70,134 6,87 6,53" stroke="#A855F7" strokeWidth="0.6" fill="none" strokeDasharray="6 6"/>
-          </svg>
-        </div>
-
-        {/* 9 ── Rotating geometric ring — bottom-left */}
-        <div
-          className="wc-rot-r absolute"
-          style={{
-            bottom: "10%", left: "5%",
-            width: 110, height: 110,
-            opacity: 0.065,
-            "--rd": "22s",
-          } as React.CSSProperties}
-        >
-          <svg viewBox="0 0 110 110" fill="none">
-            <rect x="10" y="10" width="90" height="90" rx="4" stroke="#8B5CF6" strokeWidth="0.7" strokeDasharray="6 4" transform="rotate(45 55 55)"/>
-            <circle cx="55" cy="55" r="40" stroke="#22D3EE" strokeWidth="0.5" strokeDasharray="3 5"/>
-          </svg>
-        </div>
-
-        {/* 10 ── Abstract puzzle/circuit symbol — left mid */}
-        <div
-          className="wc-float-2 absolute"
-          style={{ left: "2%", top: "40%", opacity: 0.065 }}
-        >
-          <svg width="70" height="70" viewBox="0 0 70 70" fill="none">
-            <rect x="5"  y="5"  width="25" height="25" rx="3" stroke="#8B5CF6" strokeWidth="0.8"/>
-            <rect x="40" y="5"  width="25" height="25" rx="3" stroke="#06B6D4" strokeWidth="0.8"/>
-            <rect x="5"  y="40" width="25" height="25" rx="3" stroke="#06B6D4" strokeWidth="0.8"/>
-            <rect x="40" y="40" width="25" height="25" rx="3" stroke="#8B5CF6" strokeWidth="0.8"/>
-            <line x1="30" y1="17" x2="40" y2="17" stroke="#8B5CF6" strokeWidth="0.6"/>
-            <line x1="17" y1="30" x2="17" y2="40" stroke="#8B5CF6" strokeWidth="0.6"/>
-            <line x1="53" y1="30" x2="53" y2="40" stroke="#06B6D4" strokeWidth="0.6"/>
-            <line x1="30" y1="53" x2="40" y2="53" stroke="#06B6D4" strokeWidth="0.6"/>
-          </svg>
-        </div>
-
-        {/* 11 ── Abstract binary / data symbol — right mid */}
-        <div
-          className="wc-float-1 absolute"
-          style={{ right: "3%", top: "55%", opacity: 0.055 }}
-        >
-          <svg width="60" height="80" viewBox="0 0 60 80" fill="none">
-            {[0,10,20,30,40,50,60,70].map((y, i) => (
-              <g key={y}>
-                <text x={i % 2 === 0 ? 0 : 15} y={y+10} fontSize="8" fill="#8B5CF6" fontFamily="monospace" opacity="0.9">{i % 3 === 0 ? "01" : i % 3 === 1 ? "10" : "11"}</text>
-                <text x={i % 2 === 0 ? 35 : 20} y={y+10} fontSize="8" fill="#06B6D4" fontFamily="monospace" opacity="0.6">{i % 2 === 0 ? "10" : "01"}</text>
-              </g>
-            ))}
-          </svg>
-        </div>
-
-        {/* 12 ── Scan line sweep */}
-        <div
-          className="wc-scan absolute inset-x-0"
-          style={{
-            height: "2px",
-            background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.18), rgba(34,211,238,0.12), transparent)",
-            top: 0,
-          }}
-        />
-
-        {/* 13 ── Floating glow dots */}
-        {[
-          { left: "12%",  top: "22%",  size: 4, color: "#A855F7", d: "5s",  delay: "0s"   },
-          { left: "78%",  top: "18%",  size: 3, color: "#22D3EE", d: "7s",  delay: "1.5s" },
-          { left: "55%",  top: "72%",  size: 5, color: "#8B5CF6", d: "6s",  delay: "3s"   },
-          { left: "88%",  top: "62%",  size: 3, color: "#06B6D4", d: "9s",  delay: "0.5s" },
-          { left: "32%",  top: "85%",  size: 4, color: "#A855F7", d: "4s",  delay: "2s"   },
-          { left: "6%",   top: "68%",  size: 3, color: "#22D3EE", d: "8s",  delay: "4s"   },
-          { left: "67%",  top: "38%",  size: 2, color: "#8B5CF6", d: "5s",  delay: "1s"   },
-          { left: "42%",  top: "12%",  size: 3, color: "#06B6D4", d: "6.5s",delay: "2.5s" },
-          { left: "92%",  top: "30%",  size: 4, color: "#A855F7", d: "7.5s",delay: "3.5s" },
-          { left: "20%",  top: "48%",  size: 2, color: "#22D3EE", d: "4.5s",delay: "0.8s" },
-          { left: "75%",  top: "88%",  size: 3, color: "#8B5CF6", d: "5.5s",delay: "1.8s" },
-          { left: "48%",  top: "55%",  size: 2, color: "#06B6D4", d: "8.5s",delay: "3.2s" },
-        ].map((dot, i) => (
-          <div
-            key={i}
-            className="wc-twinkle absolute rounded-full"
-            style={{
-              left: dot.left, top: dot.top,
-              width: dot.size, height: dot.size,
-              background: dot.color,
-              boxShadow: `0 0 ${dot.size * 3}px ${dot.color}`,
-              "--d": dot.d,
-              animationDelay: dot.delay,
-            } as React.CSSProperties}
-          />
-        ))}
-
-        {/* 14 ── Thin horizontal HUD lines */}
-        {["18%", "50%", "80%"].map((top, i) => (
-          <div
-            key={i}
-            className="absolute inset-x-0"
-            style={{
-              top,
-              height: "1px",
-              background: i === 1
-                ? "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.08) 20%, rgba(34,211,238,0.06) 50%, rgba(139,92,246,0.08) 80%, transparent 100%)"
-                : "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.05) 30%, transparent 70%)",
-              opacity: 0.7,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* ─── Page content — sits on top of background layer ─── */}
-      <div className="relative" style={{ zIndex: 1 }}>
-        <div className="container mx-auto max-w-5xl px-4 py-12">
-          {/* Header Section */}
-          <div className="mb-12 text-center md:flex md:items-end md:justify-between md:text-left">
-            <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
-                <Trophy className="h-4 w-4" />
-                <span>SOLVE</span>
+      <div className="relative min-h-screen pb-16 pt-6 px-4 md:px-8 text-gray-200">
+        <div className="container mx-auto max-w-6xl space-y-10 relative z-10">
+          
+          {/* ─── 1. ARENA HERO HEADER ─── */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 border-b border-purple-500/20 pb-8">
+            <div className="text-center lg:text-left space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-purple-500/10 px-4 py-1.5 text-xs font-bold text-purple-400 ring-1 ring-inset ring-purple-500/30 uppercase tracking-widest shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                <Sparkles className="h-3.5 w-3.5 text-fuchsia-400" />
+                <span>Paperino Challenge Arena</span>
               </div>
-              <h1 className="mb-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">Weekly Challenges</h1>
-              <p className="text-lg text-gray-400">Test your skills with premium brain challenges</p>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-purple-400 tracking-tight">
+                Paperino Challenge Arena
+              </h1>
+              <p className="text-sm sm:text-base text-gray-400 max-w-xl">
+                Master 7 solo engineering games. Solve code bugs, logic circuits, typing sprints, and algorithmic puzzles to climb the Weekly Top 5 Leaderboard.
+              </p>
             </div>
-            
-            <div className="mt-6 flex flex-col items-center gap-3 md:flex-row md:mt-0">
+
+            {/* Quick Action Top Button */}
+            <div className="flex items-center gap-3 flex-shrink-0">
               <button 
                 onClick={() => setShowLeaderboard(true)}
-                className="group relative overflow-hidden rounded-xl border border-purple-500/30 bg-purple-500/10 px-5 py-3 glass-panel hover:bg-purple-500/20 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)] active:scale-95 active:shadow-none transition-all duration-300 flex items-center justify-center gap-3 cursor-pointer"
+                className="liquid-btn group relative overflow-hidden rounded-2xl border border-purple-500/30 bg-purple-500/10 px-5 py-3.5 glass-panel hover:bg-purple-500/20 hover:shadow-[0_0_25px_rgba(168,85,247,0.3)] transition-all flex items-center gap-3 cursor-pointer"
               >
-                <div className="btn-sweep absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-purple-400/20 to-transparent pointer-events-none"></div>
-
-                <div className="relative pointer-events-none">
-                  <div className="absolute -inset-1 bg-purple-300/40 rounded-full blur-[3px]" style={{ animation: 'sparkle-pulse 4s infinite' }}></div>
-                  <div className="absolute inset-0 bg-purple-400 blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-                  <Trophy className="relative h-5 w-5 text-purple-400 group-hover:scale-110 group-hover:text-purple-300 transition-all duration-300" style={{ animation: 'float-trophy 3s ease-in-out infinite' }} />
-                </div>
-                <div className="text-left relative pointer-events-none">
-                  <p className="text-xs font-semibold tracking-wider text-purple-300 uppercase group-hover:text-purple-200 transition-colors">Overall Rank</p>
-                  <p className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-white text-shimmer group-hover:from-purple-100 group-hover:to-white transition-all">Leaderboard</p>
+                <Trophy className="h-5 w-5 text-amber-400 group-hover:scale-110 transition-transform" />
+                <div className="text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Weekly Standings</p>
+                  <p className="text-xs font-black text-white">Top 5 Leaderboard</p>
                 </div>
               </button>
-              
-              <div className="rounded-xl border border-white/5 bg-white/[0.02] px-5 py-3 glass-panel">
-                <div className="flex items-center justify-center gap-3 md:justify-start">
-                  <Calendar className="h-5 w-5 text-gray-400" />
-                  <div className="text-left">
-                    <p className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Available Days</p>
-                    <p className="text-sm font-medium text-white">{availableDaysString}</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
-          {!user ? (
-            <div className="mb-12 rounded-3xl border border-white/5 bg-white/[0.02] p-12 text-center glass-panel">
-              <LockKeyhole className="mx-auto mb-4 h-12 w-12 text-gray-500" />
-              <h2 className="mb-2 text-2xl font-bold text-white">Login Required</h2>
-              <p className="mb-6 text-gray-400">You need to be logged in to participate in Weekly Challenges.</p>
-              <Link href="/login" className="liquid-btn inline-flex items-center justify-center rounded-xl bg-purple-600 px-6 py-3 font-semibold text-white transition-all hover:bg-purple-700">
+          {/* ─── 2. USER PROFILE & WEEKLY STATS BAR ─── */}
+          {user ? (
+            <div className="glass-panel vision-glass rounded-3xl p-5 sm:p-6 border border-purple-500/20 shadow-[0_0_30px_rgba(168,85,247,0.1)] flex flex-col md:flex-row items-center justify-between gap-6">
+              {/* User Avatar & Name */}
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-fuchsia-600 p-0.5 shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+                    <div className="w-full h-full bg-[#0a0515] rounded-[calc(1rem-2px)] flex items-center justify-center font-bold text-white text-lg">
+                      {user.displayName ? user.displayName.substring(0, 2).toUpperCase() : <UserIcon size={24} />}
+                    </div>
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#0a0515] flex items-center justify-center">
+                    <CheckCircle2 size={12} className="text-white" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-bold text-white truncate max-w-[180px]">
+                      {user.displayName || user.email?.split('@')[0] || "Challenger"}
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/30">
+                      Solo Challenger
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">{user.email}</p>
+                </div>
+              </div>
+
+              {/* 3 Metric Pills */}
+              <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 text-center min-w-[90px]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 flex items-center justify-center gap-1 mb-0.5">
+                    <Zap size={11} className="text-purple-400" /> Weekly XP
+                  </span>
+                  <span className="text-base sm:text-lg font-black text-white font-mono">
+                    {totalWeeklyXp}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 text-center min-w-[90px]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 flex items-center justify-center gap-1 mb-0.5">
+                    <Award size={11} className="text-amber-400" /> Best Score
+                  </span>
+                  <span className="text-base sm:text-lg font-black text-amber-300 font-mono">
+                    {personalBestScore}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 text-center min-w-[90px]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 flex items-center justify-center gap-1 mb-0.5">
+                    <Flame size={11} className="text-cyan-400" /> Completed
+                  </span>
+                  <span className="text-base sm:text-lg font-black text-cyan-300 font-mono">
+                    {completedEntries.length}/7
+                  </span>
+                </div>
+              </div>
+
+              {/* Badges preview */}
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold flex items-center gap-1.5" title="Precision Master">
+                  <span>🎯 Precision</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-semibold flex items-center gap-1.5" title="Speed Demon">
+                  <span>⚡ Speed</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-white/10 text-center space-y-4">
+              <LockKeyhole className="mx-auto h-10 w-10 text-purple-400" />
+              <h2 className="text-xl font-bold text-white">Sign In to Enter the Challenge Arena</h2>
+              <p className="text-sm text-gray-400 max-w-md mx-auto">
+                Track your weekly XP, unlock answer reviews, and compete on the official Weekly Top 5 Leaderboard.
+              </p>
+              <Link
+                href="/login"
+                className="liquid-btn inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:scale-105 transition-all"
+              >
                 Sign In to Play
               </Link>
             </div>
-          ) : !isTodayAvailable ? (
-            <div className="relative mb-12 overflow-hidden rounded-3xl border border-white/5 bg-white/[0.02] p-8 text-center glass-panel">
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent"></div>
-              <Clock className="mx-auto mb-4 h-12 w-12 text-purple-400/50" />
-              <h2 className="mb-2 text-2xl font-bold text-white">Challenges are currently closed</h2>
-              <p className="text-gray-400">
-                Come back on <span className="font-semibold text-white">{nextDayName}</span> to play the next set of challenges.
-              </p>
+          )}
+
+          {/* ─── 3. DAILY FEATURED CHALLENGE BANNER ─── */}
+          <div className="relative overflow-hidden rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-950/40 via-[#0d0720] to-[#0a0515] p-6 sm:p-8 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                  <Star size={13} className="text-amber-400 fill-amber-400" />
+                  <span>Daily Featured Challenge</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                  {featuredGameInfo.name}
+                </h2>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  {featuredGameInfo.description}. Earn bonus weekly XP and unlock solution explanations upon completion.
+                </p>
+
+                <div className="flex items-center gap-4 text-xs text-gray-400 pt-1">
+                  <span className="flex items-center gap-1.5"><Clock size={14} className="text-purple-400" /> ~2-3 Minutes</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1.5"><Zap size={14} className="text-amber-400" /> Up to 1000 XP</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1.5"><Target size={14} className="text-cyan-400" /> Solution Review Included</span>
+                </div>
+              </div>
+
+              <Link
+                href={`/weekly-challenges/${featuredGameId}`}
+                className="liquid-btn px-7 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider text-white transition-all bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 shadow-[0_0_25px_rgba(168,85,247,0.35)] hover:scale-105 flex items-center gap-2.5 flex-shrink-0 cursor-pointer"
+              >
+                <Play size={16} className="fill-white" />
+                <span>Play Featured Game</span>
+              </Link>
             </div>
-          ) : null}
+          </div>
 
-          {/* Grid of Games */}
-          <div className="grid gap-6 md:grid-cols-2">
-            {GAME_IDS.map(gameId => {
-              if (!config.activeGames.includes(gameId)) return null;
+          {/* ─── 4. SEVEN PLAYABLE GAME CARDS GRID ─── */}
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  7 Arena Challenge Games
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Choose any challenge to test your engineering skills
+                </p>
+              </div>
 
-              const game = GAME_INFO[gameId];
-              const IconComponent = ICONS[gameId as keyof typeof ICONS] || Trophy;
-              const session = sessions[gameId];
-              const isCompleted = session?.status === 'completed';
-              const isInProgress = session?.status === 'in-progress';
-              const isLocked = !user || !isTodayAvailable;
+              <span className="text-xs font-semibold text-purple-300 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+                Solo Mode Only
+              </span>
+            </div>
 
-              // Per-game accent colour tokens (raw values for inline styles)
-              const accentMap: Record<string, { glow: string; border: string; icon: string; btn: string; btnHover: string }> = {
-                'code-breaker':   { glow: 'rgba(74,222,128,0.12)',  border: 'rgba(74,222,128,0.25)',  icon: 'rgba(74,222,128,0.15)',  btn: 'linear-gradient(135deg,#16a34a,#14532d)', btnHover: 'rgba(74,222,128,0.15)' },
-                'memory-matrix':  { glow: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.25)',  icon: 'rgba(96,165,250,0.15)',  btn: 'linear-gradient(135deg,#2563eb,#1e3a8a)', btnHover: 'rgba(96,165,250,0.15)' },
-                'impossible-room':{ glow: 'rgba(192,132,252,0.13)', border: 'rgba(192,132,252,0.28)', icon: 'rgba(192,132,252,0.15)', btn: 'linear-gradient(135deg,#7c3aed,#4c1d95)', btnHover: 'rgba(192,132,252,0.15)' },
-                'word-forge':     { glow: 'rgba(251,146,60,0.11)',  border: 'rgba(251,146,60,0.24)',  icon: 'rgba(251,146,60,0.14)',  btn: 'linear-gradient(135deg,#c2410c,#7c2d12)', btnHover: 'rgba(251,146,60,0.14)' },
-                'target-number':  { glow: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.25)', icon: 'rgba(248,113,113,0.15)', btn: 'linear-gradient(135deg,#dc2626,#7f1d1d)', btnHover: 'rgba(248,113,113,0.15)' },
-                'memory-heist':   { glow: 'rgba(34,211,238,0.12)',  border: 'rgba(34,211,238,0.25)',  icon: 'rgba(34,211,238,0.15)',  btn: 'linear-gradient(135deg,#0891b2,#164e63)', btnHover: 'rgba(34,211,238,0.15)' },
-                'the-impostor':   { glow: 'rgba(250,204,21,0.11)',  border: 'rgba(250,204,21,0.24)',  icon: 'rgba(250,204,21,0.14)',  btn: 'linear-gradient(135deg,#ca8a04,#713f12)', btnHover: 'rgba(250,204,21,0.14)' },
-                'paradox':        { glow: 'rgba(244,114,182,0.12)', border: 'rgba(244,114,182,0.25)', icon: 'rgba(244,114,182,0.15)', btn: 'linear-gradient(135deg,#be185d,#831843)', btnHover: 'rgba(244,114,182,0.15)' },
-              };
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {ARENA_GAME_IDS.map((gameId) => {
+                const info = GAME_INFO[gameId];
+                const IconComponent = ARENA_ICONS[gameId] || Trophy;
+                const accent = ACCENT_COLORS[gameId] || ACCENT_COLORS['logic-master'];
+                const session = sessions[gameId];
+                const isCompleted = session?.status === 'completed';
+                const isLocked = !user;
 
-              const ac = accentMap[gameId] ?? accentMap['impossible-room'];
-
-              return (
-                <div
-                  key={gameId}
-                  className="wc-card group relative flex flex-col overflow-hidden rounded-3xl p-px transition-all duration-500"
-                  style={{
-                    background: isLocked
-                      ? 'rgba(255,255,255,0.04)'
-                      : `linear-gradient(135deg, ${ac.border} 0%, rgba(255,255,255,0.06) 40%, rgba(34,211,238,0.1) 100%)`,
-                    boxShadow: isLocked
-                      ? 'none'
-                      : `0 0 0 0px ${ac.glow}, 0 8px 32px rgba(0,0,0,0.45)`,
-                    opacity: isLocked ? 0.55 : 1,
-                    filter: isLocked ? 'grayscale(0.4)' : 'none',
-                  }}
-                >
-                  {/* ── Hover glow ring (expands on hover via CSS) ── */}
-                  <style>{`
-                    .wc-card:not(.locked):hover {
-                      transform: translateY(-4px) scale(1.005);
-                      box-shadow: 0 0 0 1px ${ac.border}, 0 20px 50px rgba(0,0,0,0.55), 0 0 40px ${ac.glow} !important;
-                    }
-                    .wc-card:not(.locked):hover .wc-sweep {
-                      transform: translateX(100%) skewX(-12deg);
-                      opacity: 1;
-                    }
-                    .wc-card:not(.locked):hover .wc-icon-ring {
-                      box-shadow: 0 0 0 2px ${ac.border}, 0 0 20px ${ac.glow} !important;
-                    }
-                    .wc-start-btn {
-                      position: relative;
-                      overflow: hidden;
-                    }
-                    .wc-start-btn::before {
-                      content: '';
-                      position: absolute;
-                      inset: 0;
-                      background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 60%);
-                      border-radius: inherit;
-                      pointer-events: none;
-                    }
-                    .wc-start-btn:hover {
-                      filter: brightness(1.15);
-                      box-shadow: 0 0 20px ${ac.glow}, 0 4px 16px rgba(0,0,0,0.4) !important;
-                      transform: translateY(-1px);
-                    }
-                    .wc-dot-pulse {
-                      animation: wc-dot-blink 2s ease-in-out infinite;
-                    }
-                    @keyframes wc-dot-blink {
-                      0%,100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
-                      50%      { opacity: 0.6; box-shadow: 0 0 0 3px transparent; }
-                    }
-                  `}</style>
-
-                  {/* ── Inner card surface ── */}
+                return (
                   <div
-                    className="relative flex flex-grow flex-col rounded-[calc(1.5rem-1px)] p-6"
-                    style={{
-                      background: 'linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(10,6,25,0.85) 35%, rgba(5,3,15,0.92) 100%)',
-                      backdropFilter: 'blur(18px)',
-                    }}
+                    key={gameId}
+                    className={`relative rounded-3xl p-6 border transition-all duration-300 flex flex-col justify-between group overflow-hidden ${accent.border} bg-[#0b0618]/70 backdrop-blur-xl hover:shadow-[0_0_35px_rgba(168,85,247,0.18)] hover:-translate-y-1`}
                   >
-                    {/* Inner top-edge highlight */}
-                    <div
-                      className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[calc(1.5rem-1px)]"
-                      style={{ background: `linear-gradient(90deg, transparent, ${ac.border}, rgba(255,255,255,0.12), ${ac.border}, transparent)` }}
+                    {/* Top Glow Layer */}
+                    <div 
+                      className="absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none opacity-20 group-hover:opacity-40 transition-opacity"
+                      style={{ background: accent.glow, filter: 'blur(30px)' }}
                     />
 
-                    {/* Ambient corner glow */}
-                    <div
-                      className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full"
-                      style={{ background: `radial-gradient(circle, ${ac.glow} 0%, transparent 70%)`, filter: 'blur(16px)' }}
-                    />
+                    <div>
+                      {/* Card Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`p-3 rounded-2xl bg-white/[0.04] border border-white/10 ${accent.text} group-hover:scale-110 transition-transform`}>
+                          <IconComponent size={24} />
+                        </div>
 
-                    {/* Light sweep on hover */}
-                    <div
-                      className="wc-sweep pointer-events-none absolute inset-y-0 -left-full w-1/2 skew-x-[-12deg] opacity-0 transition-all duration-700"
-                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent)' }}
-                    />
-
-                    {/* ── Header row: icon + badge ── */}
-                    <div className="mb-6 flex items-start justify-between">
-                      {/* Glassy icon container */}
-                      <div
-                        className="wc-icon-ring relative flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-500"
-                        style={{
-                          background: `linear-gradient(145deg, ${ac.icon}, rgba(255,255,255,0.03))`,
-                          boxShadow: `0 0 0 1px ${ac.border}, 0 4px 16px rgba(0,0,0,0.35)`,
-                        }}
-                      >
-                        {/* Icon gloss sheen */}
-                        <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-2xl" style={{ background: 'linear-gradient(180deg,rgba(255,255,255,0.12),transparent)' }} />
-                        <IconComponent className={`h-7 w-7 ${game.color} relative z-10`} />
-                      </div>
-
-                      {/* Status Badge */}
-                      <div className="flex">
-                        {isLocked ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400 ring-1 ring-inset ring-red-500/20">
-                            <Lock className="h-3 w-3" /> Locked
+                        {/* Status Badge */}
+                        {isCompleted ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
+                            <CheckCircle2 size={13} /> Completed ({session.score} pts)
                           </span>
-                        ) : isCompleted ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
-                            <CheckCircle2 className="h-3 w-3" /> Completed
-                          </span>
-                        ) : isInProgress ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">
-                            <Play className="h-3 w-3" /> In Progress
+                        ) : isLocked ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10 text-xs font-medium">
+                            <Lock size={12} /> Sign In
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
-                            <span className="wc-dot-pulse h-1.5 w-1.5 rounded-full bg-green-400" />
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
                             Available
                           </span>
                         )}
                       </div>
+
+                      {/* Category Pill */}
+                      {info.badge && (
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 border ${accent.badge}`}>
+                          {info.badge}
+                        </span>
+                      )}
+
+                      {/* Title & Description */}
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-purple-200 transition-colors">
+                        {info.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 leading-relaxed mb-6">
+                        {info.description}
+                      </p>
                     </div>
 
-                    {/* ── Body ── */}
-                    <div className="flex-grow">
-                      <h3 className="mb-2 text-xl font-bold tracking-tight text-white">{game.name}</h3>
-                      <p className="mb-6 text-sm leading-relaxed text-gray-400">{game.description}</p>
+                    {/* Card Action Button */}
+                    <div className="pt-2">
+                      <Link
+                        href={`/weekly-challenges/${gameId}`}
+                        className={`w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all flex items-center justify-between group/btn cursor-pointer ${
+                          isCompleted
+                            ? 'bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white'
+                            : `bg-gradient-to-r ${accent.btn} shadow-[0_0_15px_${accent.glow}] hover:brightness-110`
+                        }`}
+                      >
+                        <span>{isCompleted ? 'Review Answers & Standings' : 'Enter Arena'}</span>
+                        <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-                      {isCompleted && session && (
-                        <div className="mb-6">
-                          <div
-                            className="grid grid-cols-2 gap-4 rounded-xl p-4"
-                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
-                          >
-                            <div>
-                              <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Score</p>
-                              <p className="text-lg font-bold text-white">{session.score}</p>
-                            </div>
-                            <div>
-                              <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Time</p>
-                              <p className="text-lg font-bold text-white">{formatDuration(session.duration || 0)}</p>
-                            </div>
-                          </div>
-                          <p className="mt-2 text-[10px] text-gray-500 text-center leading-relaxed">
-                            Official attempt completed · Next attempt available when a new challenge session opens
-                          </p>
-                        </div>
+          {/* ─── 5. WEEKLY TOP 5 STANDINGS PREVIEW PANEL ─── */}
+          <div className="glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-purple-500/20 shadow-[0_0_30px_rgba(168,85,247,0.1)] space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Trophy size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                    Overall Weekly Top 5 Leaderboard
+                  </h3>
+                  <p className="text-xs text-gray-400">
+                    Highest aggregate verified scores across all 7 Arena games this week
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowLeaderboard(true)}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-purple-300 hover:text-white border border-purple-500/20 transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+              >
+                <span>Full Standings</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+
+            {/* Standings List */}
+            <div className="space-y-3">
+              {top5Preview && top5Preview.length > 0 ? (
+                top5Preview.map((entry, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                      idx === 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-100 shadow-[0_0_15px_rgba(245,158,11,0.1)]' :
+                      idx === 1 ? 'bg-slate-300/10 border-slate-300/20 text-slate-200' :
+                      idx === 2 ? 'bg-orange-700/10 border-orange-700/20 text-orange-200' :
+                      'bg-white/[0.02] border-white/5 text-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <span className={`w-7 h-7 flex items-center justify-center rounded-full font-black text-xs ${
+                        idx === 0 ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50' :
+                        idx === 1 ? 'bg-slate-400/30 text-slate-200 border border-slate-400/50' :
+                        idx === 2 ? 'bg-orange-700/30 text-orange-300 border border-orange-700/50' :
+                        'bg-white/5 text-gray-400 border border-white/5'
+                      }`}>
+                        #{entry.rank}
+                      </span>
+                      <span className="font-bold text-sm text-white truncate max-w-[150px] sm:max-w-none">
+                        {entry.displayName}
+                      </span>
+                    </div>
+
+                    <div className="text-right font-mono">
+                      <span className="text-sm sm:text-base font-extrabold text-purple-300">
+                        {entry.score} XP
+                      </span>
+                      {entry.durationMs && (
+                        <span className="text-[10px] text-gray-500 block">
+                          {(entry.durationMs / 1000).toFixed(1)}s total
+                        </span>
                       )}
                     </div>
-
-                    {/* ── Action button ── */}
-                    {!isLocked && (
-                      <div className="mt-auto">
-                        {isCompleted ? (
-                          <Link
-                            href={`/weekly-challenges/${gameId}`}
-                            className="group/btn flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-white/80 transition-all duration-300 hover:text-white"
-                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-                          >
-                            View Results
-                            <ChevronRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/weekly-challenges/${gameId}`}
-                            className="wc-start-btn group/btn flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-white transition-all duration-300"
-                            style={{
-                              background: ac.btn,
-                              boxShadow: `0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)`,
-                            }}
-                          >
-                            {isInProgress ? 'Resume Challenge' : 'Start Challenge'}
-                            <ChevronRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                          </Link>
-                        )}
-                      </div>
-                    )}
                   </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-sm text-gray-400 italic">
+                  No official results recorded yet this cycle. Play any game to establish the weekly benchmark!
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
+
+          {/* ─── 6. STREAKS & BADGES SHOWCASE ─── */}
+          <div className="glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-white/10 space-y-4">
+            <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <Award className="text-purple-400" size={18} />
+              Arena Achievements & Masteries
+            </h3>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-1">
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-1">
+                <span className="text-2xl block">🎯</span>
+                <h4 className="text-xs font-bold text-white">Precision Master</h4>
+                <p className="text-[10px] text-gray-400">Score 90%+ accuracy on any puzzle</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-1">
+                <span className="text-2xl block">⚡</span>
+                <h4 className="text-xs font-bold text-white">Speed Demon</h4>
+                <p className="text-[10px] text-gray-400">Finish any challenge in under 60 seconds</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-1">
+                <span className="text-2xl block">🐛</span>
+                <h4 className="text-xs font-bold text-white">Bug Buster</h4>
+                <p className="text-[10px] text-gray-400">Identify all code bugs without mistakes</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-1">
+                <span className="text-2xl block">🏆</span>
+                <h4 className="text-xs font-bold text-white">Arena Legend</h4>
+                <p className="text-[10px] text-gray-400">Rank in the Overall Weekly Top 5</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </>

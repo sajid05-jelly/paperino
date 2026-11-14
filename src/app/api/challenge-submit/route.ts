@@ -2,8 +2,34 @@ import { NextResponse } from 'next/server';
 import { verifyServerAuth } from '@/lib/auth-verify';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
+import { 
+  BUG_HUNTER_POOL, 
+  NUMBER_DETECTIVE_POOL, 
+  LOGIC_MASTER_POOL, 
+  CODE_BREAKER_POOL, 
+  CIRCUIT_CHALLENGES, 
+  MEMORY_RUSH_CARDS, 
+  TYPING_BLITZ_SNIPPETS, 
+  pickSeededQuestions,
+  ReviewItem
+} from '@/lib/arenaPuzzles';
 
-const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'];
+const VALID_GAMES = [
+  'bug-hunter',
+  'memory-rush',
+  'typing-blitz',
+  'number-detective',
+  'logic-master',
+  'code-breaker',
+  'circuit-master',
+  'memory-matrix',
+  'impossible-room',
+  'word-forge',
+  'target-number',
+  'memory-heist',
+  'the-impostor',
+  'paradox'
+];
 
 
 const WORD_LIST = [
@@ -203,8 +229,148 @@ export async function POST(request: Request) {
     const seedNum = getSeed(challengeId);
     let rand = mulberry32(seedNum);
     let correctnessRatio = 1.0; // 100% correct by default (existing games)
+    const reviewItems: ReviewItem[] = [];
+    let correctCount = 0;
+    let totalQuestions = 0;
 
-    if (gameId === 'target-number') {
+    if (gameId === 'bug-hunter') {
+      const questions = pickSeededQuestions(BUG_HUNTER_POOL, 5, seedNum);
+      totalQuestions = questions.length;
+      const userAnswers = gameData?.userAnswers || {};
+      questions.forEach((q, idx) => {
+        const userAns = userAnswers[q.id] || userAnswers[idx];
+        const isCorrect = userAns === q.correctAnswer;
+        if (isCorrect) correctCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: q.question + (q.codeSnippet ? `\n\n\`\`\`\n${q.codeSnippet}\n\`\`\`` : ''),
+          userAnswer: userAns || 'Not Answered',
+          correctAnswer: q.correctAnswer,
+          isCorrect,
+          explanation: q.explanation,
+          options: q.options,
+          category: q.category
+        });
+      });
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+    } else if (gameId === 'number-detective') {
+      const questions = pickSeededQuestions(NUMBER_DETECTIVE_POOL, 5, seedNum);
+      totalQuestions = questions.length;
+      const userAnswers = gameData?.userAnswers || {};
+      questions.forEach((q, idx) => {
+        const userAns = userAnswers[q.id] || userAnswers[idx];
+        const isCorrect = userAns === q.correctAnswer;
+        if (isCorrect) correctCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: q.question,
+          userAnswer: userAns || 'Not Answered',
+          correctAnswer: q.correctAnswer,
+          isCorrect,
+          explanation: q.explanation,
+          options: q.options,
+          category: q.category
+        });
+      });
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+    } else if (gameId === 'logic-master') {
+      const questions = pickSeededQuestions(LOGIC_MASTER_POOL, 5, seedNum);
+      totalQuestions = questions.length;
+      const userAnswers = gameData?.userAnswers || {};
+      questions.forEach((q, idx) => {
+        const userAns = userAnswers[q.id] || userAnswers[idx];
+        const isCorrect = userAns === q.correctAnswer;
+        if (isCorrect) correctCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: q.question,
+          userAnswer: userAns || 'Not Answered',
+          correctAnswer: q.correctAnswer,
+          isCorrect,
+          explanation: q.explanation,
+          options: q.options,
+          category: q.category
+        });
+      });
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+    } else if (gameId === 'code-breaker' && gameData?.userAnswers) {
+      const questions = pickSeededQuestions(CODE_BREAKER_POOL, 5, seedNum);
+      totalQuestions = questions.length;
+      const userAnswers = gameData.userAnswers;
+      questions.forEach((q, idx) => {
+        const userAns = userAnswers[q.id] || userAnswers[idx];
+        const isCorrect = userAns === q.correctAnswer;
+        if (isCorrect) correctCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: q.question,
+          userAnswer: userAns || 'Not Answered',
+          correctAnswer: q.correctAnswer,
+          isCorrect,
+          explanation: q.explanation,
+          options: q.options,
+          category: q.category
+        });
+      });
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+    } else if (gameId === 'circuit-master') {
+      const circuitInputs = gameData?.circuitInputs || {};
+      totalQuestions = CIRCUIT_CHALLENGES.length;
+      CIRCUIT_CHALLENGES.forEach((c, idx) => {
+        const inputs = circuitInputs[c.id] || { A: 0, B: 0, C: 0 };
+        const res = c.validate(inputs);
+        if (res.isCorrect) correctCount++;
+        const inputSummary = Object.entries(inputs).map(([k, v]) => `${k}=${v}`).join(', ');
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: `${c.title} — Circuit: ${c.expression} (Target Output: ${c.targetOutput})`,
+          userAnswer: `Switches: [${inputSummary}] -> Output: ${res.output}`,
+          correctAnswer: `Target Output: ${c.targetOutput}`,
+          isCorrect: res.isCorrect,
+          explanation: c.explanation,
+          category: 'Digital Logic'
+        });
+      });
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+    } else if (gameId === 'memory-rush') {
+      const totalMoves = Number(gameData?.totalMoves) || 16;
+      const matchedCount = Number(gameData?.matchedPairsCount) || 8;
+      totalQuestions = 8;
+      correctCount = matchedCount;
+      correctnessRatio = Math.min(1.0, Math.max(0.4, (8 / Math.max(8, totalMoves))));
+      MEMORY_RUSH_CARDS.forEach((card, idx) => {
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: `Memory Card: ${card.name} (${card.symbol})`,
+          userAnswer: `Matched successfully in ${totalMoves} total moves`,
+          correctAnswer: `${card.name} — ${card.symbol}`,
+          isCorrect: true,
+          explanation: card.concept,
+          category: 'Tech Stack Recall'
+        });
+      });
+    } else if (gameId === 'typing-blitz') {
+      const snippets = Array.isArray(gameData?.snippetsTyped) ? gameData.snippetsTyped : [];
+      totalQuestions = TYPING_BLITZ_SNIPPETS.length;
+      TYPING_BLITZ_SNIPPETS.forEach((s, idx) => {
+        const userItem = snippets.find((item: any) => item.id === s.id) || snippets[idx];
+        const userTyped = userItem?.typed || '';
+        const acc = Number(userItem?.accuracy) || 0;
+        const wpm = Number(userItem?.wpm) || 0;
+        const isCorrect = acc >= 75;
+        if (isCorrect) correctCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: `Code Snippet: ${s.title} (${s.language})\nPrompt: "${s.code}"`,
+          userAnswer: userTyped ? `Typed: "${userTyped}" (${acc}% accuracy, ${wpm} WPM)` : 'Not Answered',
+          correctAnswer: s.code,
+          isCorrect,
+          explanation: `${s.explanation} (Speed: ${wpm} WPM, Accuracy: ${acc}%)`,
+          category: s.language
+        });
+      });
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+    } else if (gameId === 'target-number') {
       const OPERAND_POOL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25];
       const pickFromPool = (pool: number[]) => pool[Math.floor(rand() * pool.length)];
 
@@ -347,8 +513,10 @@ export async function POST(request: Request) {
     // Scoring: 50 completion points + 0-50 speed bonus = 50-100
     let maxAllowedTimeMs = 180000; // 3 minutes default
 
-    if (gameId === 'code-breaker') {
+    if (gameId === 'code-breaker' || gameId === 'bug-hunter' || gameId === 'number-detective' || gameId === 'logic-master' || gameId === 'circuit-master' || gameId === 'memory-rush') {
       maxAllowedTimeMs = 180000; // 3 minutes
+    } else if (gameId === 'typing-blitz') {
+      maxAllowedTimeMs = 120000; // 2 minutes
     } else if (gameId === 'memory-matrix') {
       maxAllowedTimeMs = 180000; // 3 minutes
     } else if (gameId === 'impossible-room') {
@@ -460,9 +628,17 @@ export async function POST(request: Request) {
       rank: 1
     }] : []);
 
+    const accuracyPercent = Math.round(correctnessRatio * 100);
+    const xpEarned = Math.max(50, score * 10);
+
     return NextResponse.json({
       success: true,
       score,
+      xp: xpEarned,
+      accuracy: accuracyPercent,
+      correctCount: correctCount || (correctnessRatio === 1 ? (totalQuestions || 5) : Math.round(correctnessRatio * (totalQuestions || 5))),
+      totalQuestions: totalQuestions || 5,
+      reviewItems,
       durationMs,
       completedAt: completedAt.toISOString(),
       rank: isOfficial ? finalRank : null,

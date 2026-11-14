@@ -229,7 +229,13 @@ export async function getOverallWeeklyLeaderboard(
 
     const candidateSuffixes = Array.from(new Set([configSuffix, currentWeek, challengeDate].filter(Boolean))) as string[];
     const activeGames = [
+      "bug-hunter",
+      "memory-rush",
+      "typing-blitz",
+      "number-detective",
+      "logic-master",
       "code-breaker",
+      "circuit-master",
       "memory-matrix",
       "impossible-room",
       "word-forge",

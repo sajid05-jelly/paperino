@@ -4,8 +4,33 @@ import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import crypto from 'crypto';
 import { getCanonicalChallengeId } from '@/lib/challengeResolver';
+import { 
+  BUG_HUNTER_POOL, 
+  NUMBER_DETECTIVE_POOL, 
+  LOGIC_MASTER_POOL, 
+  CODE_BREAKER_POOL, 
+  CIRCUIT_CHALLENGES, 
+  MEMORY_RUSH_CARDS, 
+  TYPING_BLITZ_SNIPPETS, 
+  pickSeededQuestions 
+} from '@/lib/arenaPuzzles';
 
-const VALID_GAMES = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'];
+const VALID_GAMES = [
+  'bug-hunter',
+  'memory-rush',
+  'typing-blitz',
+  'number-detective',
+  'logic-master',
+  'code-breaker',
+  'circuit-master',
+  'memory-matrix',
+  'impossible-room',
+  'word-forge',
+  'target-number',
+  'memory-heist',
+  'the-impostor',
+  'paradox'
+];
 
 
 const WORD_LIST = [
@@ -217,8 +242,64 @@ export async function POST(request: Request) {
 
     let puzzleData: any = {};
 
-    if (gameId === 'code-breaker') {
-      puzzleData = { numDigits: 4, range: [0, 7] };
+    if (gameId === 'bug-hunter') {
+      const questions = pickSeededQuestions(BUG_HUNTER_POOL, 5, seedNum).map(q => ({
+        id: q.id,
+        category: q.category,
+        question: q.question,
+        codeSnippet: q.codeSnippet,
+        options: q.options
+      }));
+      puzzleData = { questions };
+    } else if (gameId === 'number-detective') {
+      const questions = pickSeededQuestions(NUMBER_DETECTIVE_POOL, 5, seedNum).map(q => ({
+        id: q.id,
+        category: q.category,
+        question: q.question,
+        options: q.options
+      }));
+      puzzleData = { questions };
+    } else if (gameId === 'logic-master') {
+      const questions = pickSeededQuestions(LOGIC_MASTER_POOL, 5, seedNum).map(q => ({
+        id: q.id,
+        category: q.category,
+        question: q.question,
+        options: q.options
+      }));
+      puzzleData = { questions };
+    } else if (gameId === 'code-breaker') {
+      const questions = pickSeededQuestions(CODE_BREAKER_POOL, 5, seedNum).map(q => ({
+        id: q.id,
+        category: q.category,
+        question: q.question,
+        options: q.options
+      }));
+      puzzleData = { questions, numDigits: 4, range: [0, 7] };
+    } else if (gameId === 'circuit-master') {
+      const circuits = CIRCUIT_CHALLENGES.map(c => ({
+        id: c.id,
+        title: c.title,
+        expression: c.expression,
+        inputs: c.inputs,
+        targetOutput: c.targetOutput
+      }));
+      puzzleData = { circuits };
+    } else if (gameId === 'memory-rush') {
+      const pairs = MEMORY_RUSH_CARDS.map(c => ({ ...c }));
+      const deck = [...pairs, ...pairs].map((c, idx) => ({
+        uid: `card-${idx}-${c.id}`,
+        cardId: c.id,
+        symbol: c.symbol,
+        name: c.name,
+        concept: c.concept
+      }));
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      puzzleData = { deck };
+    } else if (gameId === 'typing-blitz') {
+      puzzleData = { snippets: TYPING_BLITZ_SNIPPETS };
     } else if (gameId === 'memory-matrix') {
       const rounds = [];
       for (let r = 0; r < 5; r++) {

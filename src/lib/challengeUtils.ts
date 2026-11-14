@@ -1,13 +1,79 @@
-export const GAME_IDS = ['code-breaker', 'memory-matrix', 'impossible-room', 'word-forge', 'target-number', 'memory-heist', 'the-impostor', 'paradox'] as const;
+export const ARENA_GAME_IDS = [
+  'bug-hunter',
+  'memory-rush',
+  'typing-blitz',
+  'number-detective',
+  'logic-master',
+  'code-breaker',
+  'circuit-master',
+] as const;
+
+export const LEGACY_GAME_IDS = [
+  'memory-matrix',
+  'impossible-room',
+  'word-forge',
+  'target-number',
+  'memory-heist',
+  'the-impostor',
+  'paradox',
+] as const;
+
+export const GAME_IDS = [
+  ...ARENA_GAME_IDS,
+  ...LEGACY_GAME_IDS,
+] as const;
 
 export type GameId = typeof GAME_IDS[number];
 
-export const GAME_INFO: Record<GameId, { name: string; description: string; icon: string; color: string }> = {
+export const GAME_INFO: Record<GameId, { name: string; description: string; icon: string; color: string; badge?: string }> = {
+  'bug-hunter': {
+    name: 'Bug Hunter',
+    description: 'Find and fix syntax, logic, and runtime code bugs',
+    icon: 'Bug',
+    color: 'text-rose-400',
+    badge: 'Code Debugging',
+  },
+  'memory-rush': {
+    name: 'Memory Rush',
+    description: 'Match hidden tech stack and concept card pairs against the clock',
+    icon: 'Sparkles',
+    color: 'text-amber-400',
+    badge: 'Visual Memory',
+  },
+  'typing-blitz': {
+    name: 'Typing Blitz',
+    description: 'Test your programming typing speed, rhythm, and accuracy',
+    icon: 'Keyboard',
+    color: 'text-cyan-400',
+    badge: 'Speed & Accuracy',
+  },
+  'number-detective': {
+    name: 'Number Detective',
+    description: 'Crack algorithmic number sequences, patterns, and series',
+    icon: 'Search',
+    color: 'text-indigo-400',
+    badge: 'Pattern Recognition',
+  },
+  'logic-master': {
+    name: 'Logic Master',
+    description: 'Solve visual reasoning, deduction, and algorithmic puzzles',
+    icon: 'Brain',
+    color: 'text-purple-400',
+    badge: 'Spatial & Logic',
+  },
   'code-breaker': {
     name: 'Code Breaker',
-    description: 'Crack the hidden code',
+    description: 'Decode binary, hexadecimal, and programming logic puzzles',
     icon: 'Terminal',
-    color: 'text-green-400',
+    color: 'text-emerald-400',
+    badge: 'Binary & Cryptography',
+  },
+  'circuit-master': {
+    name: 'Circuit Master',
+    description: 'Toggle logic gate inputs (AND, OR, NOT, XOR) to reach target outputs',
+    icon: 'Cpu',
+    color: 'text-fuchsia-400',
+    badge: 'Digital Logic',
   },
   'memory-matrix': {
     name: 'Memory Matrix',

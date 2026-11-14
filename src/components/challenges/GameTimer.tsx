@@ -1,31 +1,40 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Timer } from "lucide-react";
 
 interface GameTimerProps {
-  isRunning: boolean;
+  isRunning?: boolean;
   startTime: number | null; // Date.now() when game started
+  maxDurationMs?: number;
+  onExpire?: () => void;
   className?: string;
 }
 
 export default function GameTimer({
-  isRunning,
+  isRunning = true,
   startTime,
+  maxDurationMs,
+  onExpire,
   className = "",
 }: GameTimerProps) {
   const [elapsed, setElapsed] = useState<number>(0);
+  const hasExpiredRef = useRef(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    hasExpiredRef.current = false;
 
     if (isRunning && startTime) {
       interval = setInterval(() => {
-        setElapsed(Date.now() - startTime);
+        const diff = Date.now() - startTime;
+        setElapsed(diff);
+
+        if (maxDurationMs && diff >= maxDurationMs && !hasExpiredRef.current) {
+          hasExpiredRef.current = true;
+          onExpire?.();
+        }
       }, 100);
-    } else if (!isRunning && startTime) {
-      // Keep showing the final frozen elapsed time since startTime instead of resetting or calculating current time
-      // No-op to preserve elapsed state
     } else {
       setElapsed(0);
     }
@@ -33,24 +42,31 @@ export default function GameTimer({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, startTime]);
+  }, [isRunning, startTime, maxDurationMs, onExpire]);
 
-  // Format time MM:SS.d
-  const minutes = Math.floor(elapsed / 60000);
-  const seconds = Math.floor((elapsed % 60000) / 1000);
-  const tenths = Math.floor((elapsed % 1000) / 100);
+  // Format display time
+  const displayMs = maxDurationMs ? Math.max(0, maxDurationMs - elapsed) : elapsed;
+  const minutes = Math.floor(displayMs / 60000);
+  const seconds = Math.floor((displayMs % 60000) / 1000);
+  const tenths = Math.floor((displayMs % 1000) / 100);
 
   const formattedMinutes = minutes.toString().padStart(2, "0");
   const formattedSeconds = seconds.toString().padStart(2, "0");
 
+  const isLowTime = maxDurationMs ? displayMs < 30000 : false;
+
   return (
     <div
-      className={`glass-panel vision-glass inline-flex items-center gap-3 px-4 py-2 rounded-full border border-purple-500/20 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] bg-purple-950/20 ${className}`}
+      className={`glass-panel vision-glass inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border transition-colors ${
+        isLowTime 
+          ? 'border-rose-500/50 bg-rose-950/30 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]' 
+          : 'border-purple-500/20 bg-purple-950/20 text-purple-100 shadow-[0_0_15px_rgba(168,85,247,0.1)]'
+      } ${className}`}
     >
-      <Timer className="w-5 h-5 text-purple-400" />
-      <span className="font-mono text-xl font-bold tracking-wider text-purple-100">
+      <Timer className={`w-4 h-4 ${isLowTime ? 'text-rose-400 animate-pulse' : 'text-purple-400'}`} />
+      <span className="font-mono text-sm sm:text-base font-bold tracking-wider">
         {formattedMinutes}:{formattedSeconds}.
-        <span className="text-purple-400 text-lg">{tenths}</span>
+        <span className={isLowTime ? 'text-rose-400 text-xs' : 'text-purple-400 text-xs'}>{tenths}</span>
       </span>
     </div>
   );
