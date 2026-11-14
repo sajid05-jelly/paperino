@@ -77,45 +77,52 @@ export const GAME_INFO: Record<GameId, { name: string; description: string; icon
   },
   'memory-matrix': {
     name: 'Memory Matrix',
-    description: 'Remember the pattern',
+    description: 'Memorize flashing cell tiles and reconstruct the pattern without errors',
     icon: 'Grid',
     color: 'text-blue-400',
+    badge: 'Spatial Memory',
   },
   'impossible-room': {
     name: 'Impossible Room',
-    description: 'Escape if you can',
+    description: 'Decode cryptic room clues and riddle constraints before time expires',
     icon: 'DoorOpen',
     color: 'text-purple-400',
+    badge: 'Escape Reasoning',
   },
   'word-forge': {
     name: 'Word Forge',
-    description: 'Create words from letters',
+    description: 'Forge technical words and vocabulary from anagram letter combinations',
     icon: 'Type',
     color: 'text-orange-400',
+    badge: 'Lexical Speed',
   },
   'target-number': {
     name: 'Target Number',
-    description: 'Reach the target using math',
+    description: 'Combine arithmetic operations to hit the exact target number',
     icon: 'Target',
     color: 'text-red-400',
+    badge: 'Mental Arithmetic',
   },
   'memory-heist': {
     name: 'Memory Heist',
-    description: 'Memorize and recall the scene',
+    description: 'Memorize the security keypad sequence and bypass the high-tech vault',
     icon: 'Brain',
     color: 'text-cyan-400',
+    badge: 'Memory Sequence',
   },
   'the-impostor': {
     name: 'The Impostor',
-    description: 'Find the impostor using clues',
+    description: 'Examine suspicious code anomalies and isolate the impostor data item',
     icon: 'Search',
     color: 'text-yellow-400',
+    badge: 'Deductive Logic',
   },
   'paradox': {
     name: 'Paradox',
-    description: 'Follow the shifting instructions',
+    description: 'Adapt instantly to contradictory rule shifts and rapid-fire visual logic',
     icon: 'Zap',
     color: 'text-pink-400',
+    badge: 'Cognitive Agility',
   },
 };
 
@@ -149,8 +156,20 @@ export function getChallengeDate(): string {
 }
 
 export function isChallengeDay(availableDays: number[]): boolean {
+  if (!Array.isArray(availableDays) || availableDays.length === 0) return true;
   const today = new Date().getDay();
   return availableDays.includes(today);
+}
+
+export function isChallengeHour(openTime?: string, closeTime?: string): boolean {
+  if (!openTime || !closeTime) return true;
+  const now = new Date();
+  const currentMins = now.getHours() * 60 + now.getMinutes();
+  const [oh, om] = openTime.split(':').map(Number);
+  const [ch, cm] = closeTime.split(':').map(Number);
+  const openMins = (oh || 0) * 60 + (om || 0);
+  const closeMins = (ch || 0) * 60 + (cm || 0);
+  return currentMins >= openMins && currentMins <= closeMins;
 }
 
 export function getNextChallengeDay(availableDays: number[]): Date {

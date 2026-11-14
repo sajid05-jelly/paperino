@@ -4,7 +4,16 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
+import { 
+  doc, 
+  getDoc, 
+  onSnapshot,
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  limit 
+} from "firebase/firestore";
 import { 
   Trophy, 
   Lock, 
@@ -32,15 +41,21 @@ import {
   Star,
   Activity,
   Terminal,
-  ShieldCheck
+  ShieldCheck,
+  Grid3X3,
+  DoorOpen,
+  Type as TypeIcon,
+  ShieldAlert
 } from "lucide-react";
 import { 
   ARENA_GAME_IDS,
   GAME_IDS, 
   GAME_INFO, 
+  GameId,
   getCurrentChallengeWeek, 
   getChallengeDate, 
   isChallengeDay, 
+  isChallengeHour,
   getNextChallengeDay,
   formatDuration,
   DAY_NAMES
@@ -48,7 +63,7 @@ import {
 
 const DEFAULT_CONFIG = {
   enabled: true,
-  availableDays: [0, 1, 2, 3, 4, 5, 6], // Available every day for Arena
+  availableDays: [0, 1, 2, 3, 4, 5, 6],
   activeGames: [
     'bug-hunter',
     'memory-rush',
@@ -57,13 +72,23 @@ const DEFAULT_CONFIG = {
     'logic-master',
     'code-breaker',
     'circuit-master',
+    'memory-matrix',
+    'impossible-room',
+    'word-forge',
+    'target-number',
+    'memory-heist',
+    'the-impostor',
+    'paradox'
   ],
+  openTime: "00:00",
+  closeTime: "23:59",
   leaderboardEnabled: true,
   officialAttempts: 1,
-  maintenanceMode: false
+  maintenanceMode: false,
+  adminTestMode: false,
 };
 
-const ARENA_ICONS: Record<string, any> = {
+const ALL_GAME_ICONS: Record<string, any> = {
   'bug-hunter': Bug,
   'memory-rush': Sparkles,
   'typing-blitz': Keyboard,
@@ -71,6 +96,13 @@ const ARENA_ICONS: Record<string, any> = {
   'logic-master': Brain,
   'code-breaker': Terminal,
   'circuit-master': Cpu,
+  'memory-matrix': Grid3X3,
+  'impossible-room': DoorOpen,
+  'word-forge': TypeIcon,
+  'target-number': Target,
+  'memory-heist': Brain,
+  'the-impostor': Search,
+  'paradox': Zap,
 };
 
 const ACCENT_COLORS: Record<string, {
@@ -129,6 +161,55 @@ const ACCENT_COLORS: Record<string, {
     btn: 'from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500',
     text: 'text-fuchsia-400'
   },
+  'memory-matrix': {
+    border: 'border-blue-500/30',
+    glow: 'rgba(59,130,246,0.15)',
+    badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    btn: 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500',
+    text: 'text-blue-400'
+  },
+  'impossible-room': {
+    border: 'border-violet-500/30',
+    glow: 'rgba(139,92,246,0.15)',
+    badge: 'bg-violet-500/20 text-violet-300 border-violet-500/40',
+    btn: 'from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500',
+    text: 'text-violet-400'
+  },
+  'word-forge': {
+    border: 'border-orange-500/30',
+    glow: 'rgba(249,115,22,0.15)',
+    badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+    btn: 'from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500',
+    text: 'text-orange-400'
+  },
+  'target-number': {
+    border: 'border-red-500/30',
+    glow: 'rgba(239,68,68,0.15)',
+    badge: 'bg-red-500/20 text-red-300 border-red-500/40',
+    btn: 'from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500',
+    text: 'text-red-400'
+  },
+  'memory-heist': {
+    border: 'border-pink-500/30',
+    glow: 'rgba(236,72,153,0.15)',
+    badge: 'bg-pink-500/20 text-pink-300 border-pink-500/40',
+    btn: 'from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500',
+    text: 'text-pink-400'
+  },
+  'the-impostor': {
+    border: 'border-yellow-500/30',
+    glow: 'rgba(234,179,8,0.15)',
+    badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
+    btn: 'from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500',
+    text: 'text-yellow-400'
+  },
+  'paradox': {
+    border: 'border-teal-500/30',
+    glow: 'rgba(20,184,166,0.15)',
+    badge: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+    btn: 'from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500',
+    text: 'text-teal-400'
+  },
 };
 
 function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
@@ -184,7 +265,7 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
       <div className="relative w-full max-w-md bg-[#0a0515] border border-purple-500/30 rounded-3xl p-6 shadow-[0_0_50px_rgba(168,85,247,0.25)]">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
         >
           <X size={20} />
         </button>
@@ -208,7 +289,7 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
             <p className="text-rose-400 text-sm font-semibold">{errorMsg}</p>
             <button
               onClick={fetchLeaderboard}
-              className="mt-4 px-4 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-xs font-medium border border-purple-500/30 transition-colors"
+              className="mt-4 px-4 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-xs font-medium border border-purple-500/30 transition-colors cursor-pointer"
             >
               Try Again
             </button>
@@ -270,123 +351,136 @@ export default function WeeklyChallengesPage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [top5Preview, setTop5Preview] = useState<any[]>([]);
 
-  // Daily featured challenge selection based on day of week
-  const featuredGameId = useMemo(() => {
-    const day = new Date().getDay();
-    const map = [
-      'bug-hunter',
-      'memory-rush',
-      'typing-blitz',
-      'number-detective',
-      'logic-master',
-      'code-breaker',
-      'circuit-master',
-    ];
-    return map[day % map.length] || 'code-breaker';
+  // 1. Subscribe to Live Firestore Config (instant updates when Admin saves)
+  useEffect(() => {
+    const configRef = doc(db, "settings", "weeklyChallenges");
+    const unsubscribe = onSnapshot(configRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setConfig(prev => ({ ...prev, ...data }));
+      }
+      setLoading(false);
+    }, (error) => {
+      console.warn("Realtime config sync warning, falling back:", error);
+      getDoc(configRef).then(snap => {
+        if (snap.exists()) setConfig(prev => ({ ...prev, ...snap.data() }));
+      }).finally(() => setLoading(false));
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const featuredGameInfo = GAME_INFO[featuredGameId as keyof typeof GAME_INFO] || GAME_INFO['code-breaker'];
+  // 2. Compute Active Games List directly from Admin Config
+  const activeGamesList = useMemo(() => {
+    const list = (Array.isArray(config.activeGames) && config.activeGames.length > 0)
+      ? config.activeGames
+      : GAME_IDS;
+    // Keep only valid registered games
+    return list.filter((id): id is GameId => GAME_IDS.includes(id as any));
+  }, [config.activeGames]);
 
+  // 3. Featured game dynamically picked from currently active games
+  const featuredGameId = useMemo(() => {
+    if (activeGamesList.length === 0) return 'bug-hunter';
+    const day = new Date().getDay();
+    return activeGamesList[day % activeGamesList.length] || activeGamesList[0];
+  }, [activeGamesList]);
+
+  const featuredGameInfo = GAME_INFO[featuredGameId as keyof typeof GAME_INFO] || GAME_INFO['bug-hunter'];
+
+  // 4. Fetch User Results for Active Games
   useEffect(() => {
-    async function loadData() {
+    async function loadUserResults() {
+      if (!user) {
+        setSessions({});
+        return;
+      }
       try {
-        setLoading(true);
-        // 1. Fetch admin config
-        const configRef = doc(db, "settings", "weeklyChallenges");
-        const configSnap = await getDoc(configRef);
-        let currentConfig: any = DEFAULT_CONFIG;
-        
-        if (configSnap.exists()) {
-          currentConfig = { ...DEFAULT_CONFIG, ...configSnap.data() } as any;
-          setConfig(currentConfig);
-        }
+        const activeChallengeWeek = (config as any).currentWeek || getCurrentChallengeWeek();
+        const sessionMap: Record<string, any> = {};
 
-        // 2. Fetch user results
-        if (user) {
-          try {
-            const activeChallengeWeek = currentConfig.currentWeek || getCurrentChallengeWeek();
-            const sessionMap: Record<string, any> = {};
-
-            const games = [
-              'bug-hunter',
-              'memory-rush',
-              'typing-blitz',
-              'number-detective',
-              'logic-master',
-              'code-breaker',
-              'circuit-master',
-              'memory-matrix',
-              'impossible-room',
-              'word-forge',
-              'target-number',
-              'memory-heist',
-              'the-impostor',
-              'paradox'
-            ];
-
-            const targetChallengeIds: Record<string, string> = {};
-            games.forEach((gId) => {
-              let challengeId = `${gId}-${getChallengeDate()}`;
-              if (currentConfig.challengeSessionId) {
-                challengeId = `${gId}-${currentConfig.challengeSessionId}`;
-              } else if (currentConfig.currentChallengeId) {
-                challengeId = `${gId}-${currentConfig.currentChallengeId}`;
-              } else if (activeChallengeWeek) {
-                challengeId = `${gId}-${activeChallengeWeek}`;
-              }
-              targetChallengeIds[challengeId] = gId;
-            });
-
-            const resultsRef = collection(db, "challenge_results");
-            const q = query(
-              resultsRef,
-              where("userId", "==", user.uid),
-              where("isOfficial", "==", true),
-              limit(15)
-            );
-            
-            const resSnap = await getDocs(q);
-            resSnap.forEach((docSnap) => {
-              const data = docSnap.data();
-              const gId = targetChallengeIds[data.challengeId] || data.gameId;
-              if (gId) {
-                sessionMap[gId] = {
-                  status: 'completed',
-                  score: data.score,
-                  duration: data.durationMs,
-                  challengeId: data.challengeId
-                };
-              }
-            });
-
-            setSessions(sessionMap);
-          } catch (sessionErr) {
-            console.warn("Could not fetch user challenge results:", sessionErr);
+        const games = GAME_IDS;
+        const targetChallengeIds: Record<string, string> = {};
+        games.forEach((gId) => {
+          let challengeId = `${gId}-${getChallengeDate()}`;
+          if ((config as any).challengeSessionId) {
+            challengeId = `${gId}-${(config as any).challengeSessionId}`;
+          } else if ((config as any).currentChallengeId) {
+            challengeId = `${gId}-${(config as any).currentChallengeId}`;
+          } else if (activeChallengeWeek) {
+            challengeId = `${gId}-${activeChallengeWeek}`;
           }
-        }
+          targetChallengeIds[challengeId] = gId;
+        });
 
-        // 3. Fetch top 5 preview for sidebar
-        fetch('/api/weekly-leaderboard')
-          .then(res => res.json())
-          .then(d => {
-            if (d && Array.isArray(d.leaderboard)) {
-              setTop5Preview(d.leaderboard);
-            }
-          })
-          .catch(() => {});
+        const resultsRef = collection(db, "challenge_results");
+        const q = query(
+          resultsRef,
+          where("userId", "==", user.uid),
+          where("isOfficial", "==", true),
+          limit(25)
+        );
+        
+        const resSnap = await getDocs(q);
+        resSnap.forEach((docSnap) => {
+          const data = docSnap.data();
+          const gId = targetChallengeIds[data.challengeId] || data.gameId;
+          if (gId) {
+            sessionMap[gId] = {
+              status: 'completed',
+              score: data.score,
+              duration: data.durationMs,
+              challengeId: data.challengeId
+            };
+          }
+        });
 
-      } catch (error) {
-        console.error("Error loading challenge data:", error);
-      } finally {
-        setLoading(false);
+        setSessions(sessionMap);
+      } catch (sessionErr) {
+        console.warn("Could not fetch user challenge results:", sessionErr);
       }
     }
 
-    loadData();
-  }, [user]);
+    loadUserResults();
+  }, [user, (config as any).challengeSessionId, (config as any).currentWeek]);
 
-  // Compute User Aggregate Stats
-  const completedEntries = Object.values(sessions).filter(s => s?.status === 'completed');
+  // 5. Fetch Top 5 Preview
+  useEffect(() => {
+    fetch('/api/weekly-leaderboard')
+      .then(res => res.json())
+      .then(d => {
+        if (d && Array.isArray(d.leaderboard)) {
+          setTop5Preview(d.leaderboard);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Compute Schedule Availability & Admin Status
+  const isUserAdmin = Boolean(
+    isAdmin ||
+    user?.email?.toLowerCase() === "mohamedsajid.sa@gmail.com"
+  );
+  const isAdminBypass = Boolean(isUserAdmin && (config as any).adminTestMode);
+  const hasAdminAccess = isUserAdmin;
+
+  const isDayAvailable = isChallengeDay(config.availableDays || [0, 1, 2, 3, 4, 5, 6]);
+  const isHourAvailable = isChallengeHour(config.openTime, config.closeTime);
+  const isTimeAvailable = isDayAvailable && isHourAvailable;
+
+  const nextDate = getNextChallengeDay(config.availableDays || [0, 1, 2, 3, 4, 5, 6]);
+  const nextDayName = DAY_NAMES[nextDate.getDay()] || 'next active day';
+
+  const availableDaysNames = useMemo(() => {
+    const days = config.availableDays || [0, 1, 2, 3, 4, 5, 6];
+    if (days.length === 7) return "Every day";
+    return days.map(d => DAY_NAMES[d]).join(", ");
+  }, [config.availableDays]);
+
+  // Compute User Aggregate Stats scoped to active games
+  const completedEntries = Object.entries(sessions)
+    .filter(([gId, s]) => s?.status === 'completed' && activeGamesList.includes(gId as GameId))
+    .map(([_, s]) => s);
   const totalWeeklyXp = completedEntries.reduce((acc, curr) => acc + (Number(curr.score || 0) * 10), 0);
   const personalBestScore = completedEntries.reduce((acc, curr) => Math.max(acc, Number(curr.score || 0)), 0);
 
@@ -400,8 +494,7 @@ export default function WeeklyChallengesPage() {
     );
   }
 
-  const isAdminBypass = Boolean(isAdmin && (config as any).adminTestMode);
-  const isMaintenanceActive = (config.maintenanceMode || !config.enabled) && !isAdminBypass;
+  const isMaintenanceActive = (config.maintenanceMode || !config.enabled) && !hasAdminAccess;
 
   if (isMaintenanceActive) {
     return (
@@ -420,7 +513,7 @@ export default function WeeklyChallengesPage() {
     );
   }
 
-  const isTodayAvailable = isChallengeDay(config.availableDays) || isAdminBypass;
+  const isCompletedFeatured = sessions[featuredGameId]?.status === 'completed';
 
   return (
     <>
@@ -440,24 +533,77 @@ export default function WeeklyChallengesPage() {
                 Paperino Challenge Arena
               </h1>
               <p className="text-sm sm:text-base text-gray-400 max-w-xl">
-                Master 7 solo engineering games. Solve code bugs, logic circuits, typing sprints, and algorithmic puzzles to climb the Weekly Top 5 Leaderboard.
+                Master solo engineering games. Solve code bugs, logic circuits, typing sprints, and algorithmic puzzles to climb the Weekly Top 5 Leaderboard.
               </p>
             </div>
 
             {/* Quick Action Top Button */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <button 
-                onClick={() => setShowLeaderboard(true)}
-                className="liquid-btn group relative overflow-hidden rounded-2xl border border-purple-500/30 bg-purple-500/10 px-5 py-3.5 glass-panel hover:bg-purple-500/20 hover:shadow-[0_0_25px_rgba(168,85,247,0.3)] transition-all flex items-center gap-3 cursor-pointer"
-              >
-                <Trophy className="h-5 w-5 text-amber-400 group-hover:scale-110 transition-transform" />
-                <div className="text-left">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Weekly Standings</p>
-                  <p className="text-xs font-black text-white">Top 5 Leaderboard</p>
-                </div>
-              </button>
-            </div>
+            {config.leaderboardEnabled !== false && (
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button 
+                  onClick={() => setShowLeaderboard(true)}
+                  className="liquid-btn group relative overflow-hidden rounded-2xl border border-purple-500/30 bg-purple-500/10 px-5 py-3.5 glass-panel hover:bg-purple-500/20 hover:shadow-[0_0_25px_rgba(168,85,247,0.3)] transition-all flex items-center gap-3 cursor-pointer"
+                >
+                  <Trophy className="h-5 w-5 text-amber-400 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-300">Weekly Standings</p>
+                    <p className="text-xs font-black text-white">Top 5 Leaderboard</p>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* ─── SCHEDULE NOTICE / ADMIN STATUS BANNER ─── */}
+          {!isTimeAvailable && (
+            hasAdminAccess ? (
+              <div className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-purple-950/40 p-4 sm:p-5 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex-shrink-0">
+                    <ShieldCheck size={22} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white">👑 Admin Access Active</h3>
+                      <span className="text-[10px] bg-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/40">
+                        {config.adminTestMode ? "TEST MODE ACTIVE" : "ADMIN PREVIEW"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Students are currently locked out because today ({DAY_NAMES[new Date().getDay()]}) is outside the active schedule: <strong className="text-purple-300">{availableDaysNames} ({config.openTime || "00:00"} – {config.closeTime || "23:59"})</strong>. As Administrator, you have full preview access to test all {activeGamesList.length} active challenges.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/admin/system/challenges"
+                  className="px-4 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-xs font-bold text-purple-200 border border-purple-500/30 transition-all flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap cursor-pointer hover:text-white"
+                >
+                  <span>Admin Settings</span>
+                  <ChevronRight size={14} />
+                </Link>
+              </div>
+            ) : (
+              <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-amber-950/25 p-4 sm:p-5 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_30px_rgba(245,158,11,0.12)]">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex-shrink-0">
+                    <Calendar size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-200">
+                      Arena Challenges Closed Today
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Weekly Challenges are active on <strong className="text-amber-300">{availableDaysNames}</strong> from <strong className="text-amber-300">{config.openTime || "00:00"} to {config.closeTime || "23:59"}</strong>. Next official challenge opens on <strong className="text-white">{nextDayName}</strong>.
+                    </p>
+                  </div>
+                </div>
+                <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 flex-shrink-0">
+                  <Clock size={13} />
+                  <span>Opens {nextDayName}</span>
+                </div>
+              </div>
+            )
+          )}
 
           {/* ─── 2. USER PROFILE & WEEKLY STATS BAR ─── */}
           {user ? (
@@ -481,7 +627,7 @@ export default function WeeklyChallengesPage() {
                       {user.displayName || user.email?.split('@')[0] || "Challenger"}
                     </h2>
                     <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/30">
-                      Solo Challenger
+                      {hasAdminAccess ? "Administrator" : "Solo Challenger"}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">{user.email}</p>
@@ -513,7 +659,7 @@ export default function WeeklyChallengesPage() {
                     <Flame size={11} className="text-cyan-400" /> Completed
                   </span>
                   <span className="text-base sm:text-lg font-black text-cyan-300 font-mono">
-                    {completedEntries.length}/7
+                    {completedEntries.length}/{activeGamesList.length}
                   </span>
                 </div>
               </div>
@@ -545,51 +691,73 @@ export default function WeeklyChallengesPage() {
           )}
 
           {/* ─── 3. DAILY FEATURED CHALLENGE BANNER ─── */}
-          <div className="relative overflow-hidden rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-950/40 via-[#0d0720] to-[#0a0515] p-6 sm:p-8 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none" />
-            
-            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="space-y-3 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
-                  <Star size={13} className="text-amber-400 fill-amber-400" />
-                  <span>Daily Featured Challenge</span>
+          {activeGamesList.length > 0 && featuredGameInfo && (
+            <div className="relative overflow-hidden rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-950/40 via-[#0d0720] to-[#0a0515] p-6 sm:p-8 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none" />
+              
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="space-y-3 max-w-2xl">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                    <Star size={13} className="text-amber-400 fill-amber-400" />
+                    <span>Daily Featured Challenge</span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                    {featuredGameInfo.name}
+                  </h2>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    {featuredGameInfo.description}. Earn bonus weekly XP and unlock solution explanations upon completion.
+                  </p>
+
+                  <div className="flex items-center gap-4 text-xs text-gray-400 pt-1">
+                    <span className="flex items-center gap-1.5"><Clock size={14} className="text-purple-400" /> ~2-3 Minutes</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1.5"><Zap size={14} className="text-amber-400" /> Up to 1000 XP</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1.5"><Target size={14} className="text-cyan-400" /> Solution Review Included</span>
+                  </div>
                 </div>
 
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-                  {featuredGameInfo.name}
-                </h2>
-                <p className="text-sm text-gray-300 leading-relaxed">
-                  {featuredGameInfo.description}. Earn bonus weekly XP and unlock solution explanations upon completion.
-                </p>
-
-                <div className="flex items-center gap-4 text-xs text-gray-400 pt-1">
-                  <span className="flex items-center gap-1.5"><Clock size={14} className="text-purple-400" /> ~2-3 Minutes</span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5"><Zap size={14} className="text-amber-400" /> Up to 1000 XP</span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5"><Target size={14} className="text-cyan-400" /> Solution Review Included</span>
-                </div>
+                {isCompletedFeatured ? (
+                  <Link
+                    href={`/weekly-challenges/${featuredGameId}`}
+                    className="liquid-btn px-7 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider text-gray-200 transition-all bg-white/10 hover:bg-white/15 border border-white/20 flex items-center gap-2.5 flex-shrink-0 cursor-pointer"
+                  >
+                    <span>Review Featured Answers</span>
+                    <ChevronRight size={16} />
+                  </Link>
+                ) : !isTimeAvailable && !hasAdminAccess ? (
+                  <button
+                    disabled
+                    className="px-7 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider text-gray-400 bg-white/5 border border-white/10 flex items-center gap-2.5 flex-shrink-0 opacity-60 cursor-not-allowed"
+                  >
+                    <Lock size={16} />
+                    <span>Locked until {nextDayName}</span>
+                  </button>
+                ) : (
+                  <Link
+                    href={`/weekly-challenges/${featuredGameId}`}
+                    className="liquid-btn px-7 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider text-white transition-all bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 shadow-[0_0_25px_rgba(168,85,247,0.35)] hover:scale-105 flex items-center gap-2.5 flex-shrink-0 cursor-pointer"
+                  >
+                    <Play size={16} className="fill-white" />
+                    <span>Play Featured Game</span>
+                  </Link>
+                )}
               </div>
-
-              <Link
-                href={`/weekly-challenges/${featuredGameId}`}
-                className="liquid-btn px-7 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider text-white transition-all bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 shadow-[0_0_25px_rgba(168,85,247,0.35)] hover:scale-105 flex items-center gap-2.5 flex-shrink-0 cursor-pointer"
-              >
-                <Play size={16} className="fill-white" />
-                <span>Play Featured Game</span>
-              </Link>
             </div>
-          </div>
+          )}
 
-          {/* ─── 4. SEVEN PLAYABLE GAME CARDS GRID ─── */}
+          {/* ─── 4. DYNAMIC PLAYABLE GAME CARDS GRID (SYNCED TO ADMIN CONFIG) ─── */}
           <div>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  7 Arena Challenge Games
+                  {activeGamesList.length} Active Arena Challenges
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Choose any challenge to test your engineering skills
+                  {activeGamesList.length > 0 
+                    ? `Live active challenges configured in Admin • Choose any game to test your skills`
+                    : 'No challenge games currently active in Admin settings'}
                 </p>
               </div>
 
@@ -599,13 +767,13 @@ export default function WeeklyChallengesPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ARENA_GAME_IDS.map((gameId) => {
+              {activeGamesList.map((gameId) => {
                 const info = GAME_INFO[gameId];
-                const IconComponent = ARENA_ICONS[gameId] || Trophy;
+                if (!info) return null;
+                const IconComponent = ALL_GAME_ICONS[gameId] || Trophy;
                 const accent = ACCENT_COLORS[gameId] || ACCENT_COLORS['logic-master'];
                 const session = sessions[gameId];
                 const isCompleted = session?.status === 'completed';
-                const isLocked = !user;
 
                 return (
                   <div
@@ -630,14 +798,18 @@ export default function WeeklyChallengesPage() {
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
                             <CheckCircle2 size={13} /> Completed ({session.score} pts)
                           </span>
-                        ) : isLocked ? (
+                        ) : !user ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10 text-xs font-medium">
                             <Lock size={12} /> Sign In
+                          </span>
+                        ) : !isTimeAvailable && !hasAdminAccess ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold">
+                            <Lock size={12} /> Closed (Opens {nextDayName})
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
-                            Available
+                            Available {!isTimeAvailable && hasAdminAccess && "(Admin)"}
                           </span>
                         )}
                       </div>
@@ -660,17 +832,41 @@ export default function WeeklyChallengesPage() {
 
                     {/* Card Action Button */}
                     <div className="pt-2">
-                      <Link
-                        href={`/weekly-challenges/${gameId}`}
-                        className={`w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all flex items-center justify-between group/btn cursor-pointer ${
-                          isCompleted
-                            ? 'bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white'
-                            : `bg-gradient-to-r ${accent.btn} shadow-[0_0_15px_${accent.glow}] hover:brightness-110`
-                        }`}
-                      >
-                        <span>{isCompleted ? 'Review Answers & Standings' : 'Enter Arena'}</span>
-                        <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                      </Link>
+                      {isCompleted ? (
+                        <Link
+                          href={`/weekly-challenges/${gameId}`}
+                          className="w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-gray-300 hover:text-white transition-all flex items-center justify-between group/btn cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10"
+                        >
+                          <span>Review Answers & Standings</span>
+                          <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                        </Link>
+                      ) : !user ? (
+                        <Link
+                          href="/login"
+                          className="w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all flex items-center justify-between group/btn cursor-pointer bg-white/10 hover:bg-white/15 border border-white/20"
+                        >
+                          <span>Sign In to Play</span>
+                          <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                        </Link>
+                      ) : !isTimeAvailable && !hasAdminAccess ? (
+                        <button
+                          disabled
+                          className="w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-gray-400 bg-white/5 border border-white/10 flex items-center justify-between opacity-60 cursor-not-allowed"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <Lock size={12} /> Locked until {nextDayName}
+                          </span>
+                          <Lock size={12} />
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/weekly-challenges/${gameId}`}
+                          className={`w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all flex items-center justify-between group/btn cursor-pointer bg-gradient-to-r ${accent.btn} shadow-[0_0_15px_${accent.glow}] hover:brightness-110`}
+                        >
+                          <span>Enter Arena</span>
+                          <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                        </Link>
+                      )}
                     </div>
                   </div>
                 );
@@ -679,77 +875,79 @@ export default function WeeklyChallengesPage() {
           </div>
 
           {/* ─── 5. WEEKLY TOP 5 STANDINGS PREVIEW PANEL ─── */}
-          <div className="glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-purple-500/20 shadow-[0_0_30px_rgba(168,85,247,0.1)] space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <Trophy size={22} />
+          {config.leaderboardEnabled !== false && (
+            <div className="glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-purple-500/20 shadow-[0_0_30px_rgba(168,85,247,0.1)] space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <Trophy size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-white">
+                      Overall Weekly Top 5 Leaderboard
+                    </h3>
+                    <p className="text-xs text-gray-400">
+                      Highest aggregate verified scores across all active Arena games this cycle
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">
-                    Overall Weekly Top 5 Leaderboard
-                  </h3>
-                  <p className="text-xs text-gray-400">
-                    Highest aggregate verified scores across all 7 Arena games this week
-                  </p>
-                </div>
+
+                <button
+                  onClick={() => setShowLeaderboard(true)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-purple-300 hover:text-white border border-purple-500/20 transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                >
+                  <span>Full Standings</span>
+                  <ChevronRight size={14} />
+                </button>
               </div>
 
-              <button
-                onClick={() => setShowLeaderboard(true)}
-                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-purple-300 hover:text-white border border-purple-500/20 transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-              >
-                <span>Full Standings</span>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-
-            {/* Standings List */}
-            <div className="space-y-3">
-              {top5Preview && top5Preview.length > 0 ? (
-                top5Preview.map((entry, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-                      idx === 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-100 shadow-[0_0_15px_rgba(245,158,11,0.1)]' :
-                      idx === 1 ? 'bg-slate-300/10 border-slate-300/20 text-slate-200' :
-                      idx === 2 ? 'bg-orange-700/10 border-orange-700/20 text-orange-200' :
-                      'bg-white/[0.02] border-white/5 text-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <span className={`w-7 h-7 flex items-center justify-center rounded-full font-black text-xs ${
-                        idx === 0 ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50' :
-                        idx === 1 ? 'bg-slate-400/30 text-slate-200 border border-slate-400/50' :
-                        idx === 2 ? 'bg-orange-700/30 text-orange-300 border border-orange-700/50' :
-                        'bg-white/5 text-gray-400 border border-white/5'
-                      }`}>
-                        #{entry.rank}
-                      </span>
-                      <span className="font-bold text-sm text-white truncate max-w-[150px] sm:max-w-none">
-                        {entry.displayName}
-                      </span>
-                    </div>
-
-                    <div className="text-right font-mono">
-                      <span className="text-sm sm:text-base font-extrabold text-purple-300">
-                        {entry.score} XP
-                      </span>
-                      {entry.durationMs && (
-                        <span className="text-[10px] text-gray-500 block">
-                          {(entry.durationMs / 1000).toFixed(1)}s total
+              {/* Standings List */}
+              <div className="space-y-3">
+                {top5Preview && top5Preview.length > 0 ? (
+                  top5Preview.map((entry, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                        idx === 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-100 shadow-[0_0_15px_rgba(245,158,11,0.1)]' :
+                        idx === 1 ? 'bg-slate-300/10 border-slate-300/20 text-slate-200' :
+                        idx === 2 ? 'bg-orange-700/10 border-orange-700/20 text-orange-200' :
+                        'bg-white/[0.02] border-white/5 text-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <span className={`w-7 h-7 flex items-center justify-center rounded-full font-black text-xs ${
+                          idx === 0 ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50' :
+                          idx === 1 ? 'bg-slate-400/30 text-slate-200 border border-slate-400/50' :
+                          idx === 2 ? 'bg-orange-700/30 text-orange-300 border border-orange-700/50' :
+                          'bg-white/5 text-gray-400 border border-white/5'
+                        }`}>
+                          #{entry.rank}
                         </span>
-                      )}
+                        <span className="font-bold text-sm text-white truncate max-w-[150px] sm:max-w-none">
+                          {entry.displayName}
+                        </span>
+                      </div>
+
+                      <div className="text-right font-mono">
+                        <span className="text-sm sm:text-base font-extrabold text-purple-300">
+                          {entry.score} XP
+                        </span>
+                        {entry.durationMs && (
+                          <span className="text-[10px] text-gray-500 block">
+                            {(entry.durationMs / 1000).toFixed(1)}s total
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-gray-400 italic">
+                    No official results recorded yet this cycle. Play any game to establish the weekly benchmark!
                   </div>
-                ))
-              ) : (
-                <div className="py-8 text-center text-sm text-gray-400 italic">
-                  No official results recorded yet this cycle. Play any game to establish the weekly benchmark!
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ─── 6. STREAKS & BADGES SHOWCASE ─── */}
           <div className="glass-panel vision-glass rounded-3xl p-6 sm:p-8 border border-white/10 space-y-4">

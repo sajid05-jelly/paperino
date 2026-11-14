@@ -198,4 +198,37 @@ describe("Paperino Challenge Arena — 7 Interactive Games & Answer Review Verif
     });
   });
 
+  describe("10. Admin Configuration & Schedule Control Verification", () => {
+    test("GAME_IDS includes both 7 new Arena games and legacy games (14 total)", async () => {
+      const { GAME_IDS, LEGACY_GAME_IDS, ARENA_GAME_IDS } = await import("../src/lib/challengeUtils.ts");
+      assert.equal(ARENA_GAME_IDS.length, 7);
+      assert.equal(LEGACY_GAME_IDS.length, 7);
+      assert.equal(GAME_IDS.length, 14);
+    });
+
+    test("isChallengeDay correctly matches availableDays array", async () => {
+      const { isChallengeDay } = await import("../src/lib/challengeUtils.ts");
+      const today = new Date().getDay();
+      assert.equal(isChallengeDay([today]), true);
+      const otherDay = (today + 1) % 7;
+      assert.equal(isChallengeDay([otherDay]), false);
+      // Empty or all days returns true
+      assert.equal(isChallengeDay([]), true);
+    });
+
+    test("isChallengeHour correctly validates openTime and closeTime", async () => {
+      const { isChallengeHour } = await import("../src/lib/challengeUtils.ts");
+      assert.equal(isChallengeHour("00:00", "23:59"), true);
+      assert.equal(isChallengeHour(undefined, undefined), true);
+    });
+
+    test("Dynamic activeGames filtering reflects admin selections", async () => {
+      const { GAME_IDS } = await import("../src/lib/challengeUtils.ts");
+      const adminSelection = ["bug-hunter", "memory-matrix", "circuit-master"];
+      const filtered = adminSelection.filter(id => GAME_IDS.includes(id));
+      assert.deepEqual(filtered, ["bug-hunter", "memory-matrix", "circuit-master"]);
+      assert.equal(filtered.length, 3);
+    });
+  });
+
 });
