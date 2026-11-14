@@ -15,15 +15,15 @@ import {
   getOfferRemainingTime
 } from '../src/lib/premiumOffer.ts';
 
-describe('Paperino – 48-Hour Premium Special Offer', () => {
+describe('Paperino – Premium Special Offer (Extended by 9 Hours)', () => {
   const START_MS = 1794486660000;  // 2026-11-12T18:01:00+05:30
-  const EXPIRY_MS = 1794659460000; // 2026-11-14T18:01:00+05:30
-  const EXACT_48_HOURS_MS = 48 * 60 * 60 * 1000; // 172,800,000 ms
+  const EXPIRY_MS = 1794691860000; // 2026-11-15T03:01:00+05:30 (+9 hours)
+  const EXACT_DURATION_MS = 57 * 60 * 60 * 1000; // 57 hours
 
   describe('1. Offer Details & Fixed Timestamps', () => {
-    test('Offer duration is exactly 48 hours', () => {
-      assert.equal(PREMIUM_OFFER.EXPIRY_TIMESTAMP - PREMIUM_OFFER.START_TIMESTAMP, EXACT_48_HOURS_MS);
-      assert.equal(PREMIUM_OFFER.DURATION_HOURS, 48);
+    test('Offer duration is exactly 57 hours (48h + 9h extension)', () => {
+      assert.equal(PREMIUM_OFFER.EXPIRY_TIMESTAMP - PREMIUM_OFFER.START_TIMESTAMP, EXACT_DURATION_MS);
+      assert.equal(PREMIUM_OFFER.DURATION_HOURS, 57);
     });
 
     test('Start timestamp corresponds to November 12, 2026, 6:01 PM IST', () => {
@@ -33,11 +33,11 @@ describe('Paperino – 48-Hour Premium Special Offer', () => {
       assert.equal(startDate.toISOString(), '2026-11-12T12:31:00.000Z');
     });
 
-    test('Expiry timestamp corresponds to November 14, 2026, 6:01 PM IST', () => {
+    test('Expiry timestamp corresponds to November 15, 2026, 3:01 AM IST (+9 hours)', () => {
       const expiryDate = new Date(PREMIUM_OFFER.EXPIRY_TIMESTAMP);
       assert.equal(PREMIUM_OFFER.EXPIRY_TIMESTAMP, EXPIRY_MS);
-      // In IST (UTC+5:30): UTC time is 12:31:00Z
-      assert.equal(expiryDate.toISOString(), '2026-11-14T12:31:00.000Z');
+      // In IST (UTC+5:30): UTC time is 21:31:00Z
+      assert.equal(expiryDate.toISOString(), '2026-11-14T21:31:00.000Z');
     });
 
     test('Pricing matches requirements: ₹99 original, ₹79 offer, ₹20 discount', () => {
@@ -126,7 +126,7 @@ describe('Paperino – 48-Hour Premium Special Offer', () => {
       const r1 = getOfferRemainingTime(t);
       const r2 = getOfferRemainingTime(t);
       assert.deepEqual(r1, r2);
-      assert.equal(r1.hours, 36);
+      assert.equal(r1.hours, 45); // 57 - 12 = 45 hours
     });
   });
 
