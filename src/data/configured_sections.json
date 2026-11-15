@@ -1142,5 +1142,57 @@
     "approvedByAdminId": "admin",
     "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
     "createdAt": "2026-11-15T12:25:58.171Z"
+  },
+  {
+    "id": "me-structural-engineering_sem3_research-methodology-and-intellectual-property-rights_questions",
+    "subjectId": "research-methodology-and-intellectual-property-rights",
+    "subjectName": "Research Methodology and Intellectual Property Rights",
+    "subjectCode": "BA3371",
+    "departmentId": "me-structural-engineering",
+    "departmentName": "M.E Structural Engineering",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-15T12:43:03.147Z"
+  },
+  {
+    "id": "me-structural-engineering_sem3_design-of-bridges_questions",
+    "subjectId": "design-of-bridges",
+    "subjectName": "Design of Bridges",
+    "subjectCode": "PST503",
+    "departmentId": "me-structural-engineering",
+    "departmentName": "M.E Structural Engineering",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-15T12:43:09.017Z"
+  },
+  {
+    "id": "me-structural-engineering_sem3_design-of-sub-structures_questions",
+    "subjectId": "design-of-sub-structures",
+    "subjectName": "Design of Sub Structures",
+    "subjectCode": "PST603",
+    "departmentId": "me-structural-engineering",
+    "departmentName": "M.E Structural Engineering",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-15T12:43:15.357Z"
+  },
+  {
+    "id": "me-structural-engineering_sem3_advanced-concrete-technology_questions",
+    "subjectId": "advanced-concrete-technology",
+    "subjectName": "Advanced Concrete Technology",
+    "subjectCode": "1917302",
+    "departmentId": "me-structural-engineering",
+    "departmentName": "M.E Structural Engineering",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-15T12:43:19.432Z"
   }
 ]
