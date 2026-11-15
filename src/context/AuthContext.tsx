@@ -333,7 +333,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const tokenResult = await currentUser.getIdTokenResult();
               const claimSubStatus = ((tokenResult.claims?.razorpaySubscriptionStatus as string) || "").toLowerCase();
               const isClaimCancelled = ["cancelled", "canceled", "halted", "completed", "expired", "inactive"].includes(claimSubStatus);
-              if (!isClaimCancelled && tokenResult.claims && tokenResult.claims.plan && tokenResult.claims.plan !== "free") {
+              const claimExpiryMs = typeof tokenResult.claims?.premiumEndDateMs === 'number' ? (tokenResult.claims.premiumEndDateMs as number) : null;
+              const isClaimExpired = claimExpiryMs !== null && Date.now() > claimExpiryMs;
+              if (!isClaimCancelled && !isClaimExpired && tokenResult.claims && tokenResult.claims.plan && tokenResult.claims.plan !== "free") {
                 const claimPlan = tokenResult.claims.plan as PlanType;
                 console.log("Server Claims override plan to:", claimPlan);
                 setPlan(claimPlan);

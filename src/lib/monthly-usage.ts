@@ -46,7 +46,9 @@ export async function checkMonthlyUsage(uid: string, feature: MonthlyFeature, re
           if (adminAuth) {
             const uRec = await adminAuth.getUser(uid);
             const claimPlan = uRec.customClaims?.plan as PlanType;
-            if (claimPlan && ["plus", "pro", "premium"].includes(claimPlan)) {
+            const claimExpiryMs = typeof uRec.customClaims?.premiumEndDateMs === 'number' ? uRec.customClaims.premiumEndDateMs : null;
+            const isClaimExpired = claimExpiryMs !== null && Date.now() > claimExpiryMs;
+            if (!isClaimExpired && claimPlan && ["plus", "pro", "premium"].includes(claimPlan)) {
               plan = claimPlan;
             }
           }
@@ -201,7 +203,9 @@ export async function checkAndConsumeMonthlyUsage(uid: string, feature: MonthlyF
           if (adminAuth) {
             const uRec = await adminAuth.getUser(uid);
             const claimPlan = uRec.customClaims?.plan as PlanType;
-            if (claimPlan && ["plus", "pro", "premium"].includes(claimPlan)) {
+            const claimExpiryMs = typeof uRec.customClaims?.premiumEndDateMs === 'number' ? uRec.customClaims.premiumEndDateMs : null;
+            const isClaimExpired = claimExpiryMs !== null && Date.now() > claimExpiryMs;
+            if (!isClaimExpired && claimPlan && ["plus", "pro", "premium"].includes(claimPlan)) {
               plan = claimPlan;
             }
           }

@@ -40,6 +40,8 @@ export async function verifyFeatureAccess(
     const planClaim = (decodedToken.plan as PlanType) || null;
     const claimSubStatus = ((decodedToken.razorpaySubscriptionStatus as string) || "").toLowerCase();
     const isClaimCancelled = ["cancelled", "canceled", "halted", "completed", "expired", "inactive", "failed", "unpaid"].includes(claimSubStatus);
+    const claimExpiryMs = typeof decodedToken.premiumEndDateMs === 'number' ? decodedToken.premiumEndDateMs : null;
+    const isClaimExpired = claimExpiryMs !== null && Date.now() > claimExpiryMs;
 
     // Fast-path 1: Immediate admin bypass
     if (roleClaim === 'admin') {
@@ -48,7 +50,7 @@ export async function verifyFeatureAccess(
 
     // Fast-path 2: If custom claims explicitly certify an active Premium subscriber, grant immediate unlimited access
     // This provides 100% resilience against Firestore Spark read quota exhaustion
-    if (!isClaimCancelled && planClaim === "premium") {
+    if (!isClaimCancelled && !isClaimExpired && planClaim === "premium") {
       return { status: "ALLOWED", uid, role: roleClaim || 'student', plan: "premium", used: 0, limit: Infinity };
     }
 
@@ -66,7 +68,7 @@ export async function verifyFeatureAccess(
     const userDbSubStatus = ((userData?.razorpaySubscriptionStatus as string) || (userData?.subscriptionStatus as string) || "").toLowerCase();
     const isDbCancelled = ["cancelled", "canceled", "halted", "completed", "expired", "inactive", "failed", "unpaid"].includes(userDbSubStatus);
 
-    if (!isClaimCancelled && !isDbCancelled && planClaim && planClaim !== "free") {
+    if (!isClaimCancelled && !isClaimExpired && !isDbCancelled && planClaim && planClaim !== "free") {
       effectivePlanObj.plan = planClaim;
     }
 
