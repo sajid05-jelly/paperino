@@ -1389,5 +1389,44 @@
     "approvedByAdminId": "admin",
     "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
     "createdAt": "2026-11-15T13:00:33.934Z"
+  },
+  {
+    "id": "me-computer-science-engineering_sem3_soft-computing_questions",
+    "subjectId": "soft-computing",
+    "subjectName": "Soft Computing",
+    "subjectCode": "PCP503",
+    "departmentId": "me-computer-science-engineering",
+    "departmentName": "M.E Computer Science and Engineering",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-15T13:08:54.287Z"
+  },
+  {
+    "id": "me-computer-science-engineering_sem3_cyber-security_questions",
+    "subjectId": "cyber-security",
+    "subjectName": "Cyber Security",
+    "subjectCode": "PCP401",
+    "departmentId": "me-computer-science-engineering",
+    "departmentName": "M.E Computer Science and Engineering",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-15T13:09:00.276Z"
+  },
+  {
+    "id": "me-computer-science-engineering_sem3_research-methodology-and-intellectual-property-rights_questions",
+    "subjectId": "research-methodology-and-intellectual-property-rights",
+    "subjectName": "Research Methodology and Intellectual Property Rights",
+    "subjectCode": "BA3371",
+    "departmentId": "me-computer-science-engineering",
+    "departmentName": "M.E Computer Science and Engineering",
+    "semesterId": "3",
+    "sectionType": "questions",
+    "approvedByAdminId": "admin",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-15T13:09:05.141Z"
   }
 ]
