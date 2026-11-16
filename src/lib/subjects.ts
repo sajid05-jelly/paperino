@@ -19,7 +19,6 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "acca", name: "Advanced Calculus And Complex Analysis" },
     { id: "eee", name: "Electrical And Electronics Engineering" },
     { id: "spcm", name: "Semiconductor Physics And Computational Methods" },
-    { id: "pm", name: "Physics-Mechanics" },
     { id: "oodp", name: "Object Oriented Design And Programming" },
     { id: "ce", name: "Communicative English" },
     { id: "ep", name: "Electromagnetic Physics" },
@@ -65,7 +64,6 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "sigp", name: "Signal Processing" },
     { id: "cga", name: "CGA" },
     { id: "pft", name: "Programming for Financial Technologies [Honours]" },
-    { id: "qc", name: "Quantum Computing [Honours]" },
     { id: "bdtt", name: "Big Data Tools And Techniques" }
   ],
   "5": [
@@ -75,7 +73,6 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "ml5", name: "Machine Learning" },
     { id: "fswd", name: "Full Stack Web Development" },
     { id: "wtwtw", name: "Waste To Wealth To Wheels" },
-    { id: "iaf", name: "Indian Art Form" },
     { id: "cc5", name: "Community Connect" }
   ],
   "6": [
@@ -84,9 +81,7 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "ds6", name: "Data Science" },
     { id: "nlp", name: "Natural Language Processing" },
     { id: "cc6", name: "Cloud Computing" },
-    { id: "proj6", name: "Project" },
     { id: "tqmre", name: "TQM And Reliability Engineering" },
-    { id: "itk", name: "Indian Traditional Knowledge" },
     { id: "pb", name: "Plant Biotechnology" },
     { id: "ab", name: "Animal Biotechnology" },
     { id: "mt", name: "Marine Technology" }
@@ -94,7 +89,5 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
   "7": [
   ],
   "8": [
-    { id: "proj", name: "Major Project" },
-    { id: "intern", name: "Internship" }
   ]
 };
