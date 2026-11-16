@@ -171,10 +171,10 @@ export default function GameResult({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 relative z-10">
           <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center">
             <span className="text-gray-400 text-[10px] uppercase tracking-wider mb-1 flex items-center gap-1 font-semibold">
-              <Zap size={12} className="text-purple-400" /> Weekly XP
+              <Trophy size={12} className="text-purple-400" /> Challenge Score
             </span>
             <span className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-fuchsia-400">
-              +{xpEarned} XP
+              {score} / 100
             </span>
           </div>
 

@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, limit, query } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { 
   Trophy, Save, AlertCircle, Calendar, Gamepad2, 
-  Loader2, CheckCircle2, ShieldAlert, Clock, Rocket,
-  ExternalLink, Eye, RotateCcw, Sparkles
+  Loader2, CheckCircle2, Clock, ExternalLink, ShieldAlert
 } from "lucide-react";
 
 function getIsoWeek() {
@@ -40,7 +39,6 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function ChallengesControlPage() {
   const [wcEnabled, setWcEnabled] = useState(true);
-  const [wcAdminTestMode, setWcAdminTestMode] = useState(false);
   const [wcMaintenanceMode, setWcMaintenanceMode] = useState(false);
   const [wcLeaderboardEnabled, setWcLeaderboardEnabled] = useState(true);
   const [wcOpenTime, setWcOpenTime] = useState("00:00");
@@ -50,13 +48,9 @@ export default function ChallengesControlPage() {
   const [wcActiveGames, setWcActiveGames] = useState<string[]>([
     "bug-hunter", "memory-rush", "typing-blitz", "number-detective", "logic-master", "code-breaker", "circuit-master"
   ]);
-  const [wcHasResults, setWcHasResults] = useState(false);
-  const [wcChallengeSessionId, setWcChallengeSessionId] = useState<string>("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [startingSession, setStartingSession] = useState(false);
-  const [sessionSuccess, setSessionSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +61,6 @@ export default function ChallengesControlPage() {
         if (snap.exists()) {
           const data = snap.data();
           setWcEnabled(data.enabled ?? true);
-          setWcAdminTestMode(data.adminTestMode ?? false);
           setWcMaintenanceMode(data.maintenanceMode ?? false);
           setWcLeaderboardEnabled(data.leaderboardEnabled ?? true);
           setWcOpenTime(data.openTime || "00:00");
@@ -79,14 +72,6 @@ export default function ChallengesControlPage() {
           if (Array.isArray(data.activeGames)) {
             setWcActiveGames(data.activeGames);
           }
-          setWcChallengeSessionId(data.challengeSessionId || "");
-        }
-
-        try {
-          const resultsSnap = await getDocs(query(collection(db, "challenge_results"), limit(1)));
-          setWcHasResults(!resultsSnap.empty);
-        } catch {
-          setWcHasResults(false);
         }
       } catch (err: any) {
         console.error("Failed to load weeklyChallenges config:", err);
@@ -98,43 +83,6 @@ export default function ChallengesControlPage() {
     fetchWcConfig();
   }, []);
 
-  const handleStartNewSession = async () => {
-    setStartingSession(true);
-    setSessionSuccess(false);
-    setError(null);
-    const newId = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    setWcChallengeSessionId(newId);
-
-    try {
-      await setDoc(doc(db, "settings", "weeklyChallenges"), {
-        enabled: wcEnabled,
-        adminTestMode: wcAdminTestMode,
-        maintenanceMode: wcMaintenanceMode,
-        leaderboardEnabled: wcLeaderboardEnabled,
-        openTime: wcOpenTime,
-        closeTime: wcCloseTime,
-        officialAttempts: wcOfficialAttempts,
-        availableDays: wcAvailableDays,
-        activeGames: wcActiveGames,
-        currentWeek: getIsoWeek(),
-        challengeSessionId: newId,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      setSessionSuccess(true);
-      setSuccess(true);
-      setTimeout(() => {
-        setSessionSuccess(false);
-        setSuccess(false);
-      }, 4000);
-    } catch (err) {
-      console.error("Failed to start new challenge session:", err);
-      setError("Failed to start new session. Make sure you are authenticated as an admin.");
-    } finally {
-      setStartingSession(false);
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     setSuccess(false);
@@ -143,7 +91,6 @@ export default function ChallengesControlPage() {
     try {
       await setDoc(doc(db, "settings", "weeklyChallenges"), {
         enabled: wcEnabled,
-        adminTestMode: wcAdminTestMode,
         maintenanceMode: wcMaintenanceMode,
         leaderboardEnabled: wcLeaderboardEnabled,
         openTime: wcOpenTime,
@@ -152,9 +99,9 @@ export default function ChallengesControlPage() {
         availableDays: wcAvailableDays,
         activeGames: wcActiveGames,
         currentWeek: getIsoWeek(),
-        challengeSessionId: wcChallengeSessionId,
+        adminTestMode: false,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      });
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -196,15 +143,33 @@ export default function ChallengesControlPage() {
           </p>
         </div>
 
-        {/* Live Arena Link */}
-        <Link
-          href="/weekly-challenges"
-          target="_blank"
-          className="liquid-btn px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold uppercase tracking-wider border border-white/20 transition-all flex items-center gap-2 self-start md:self-auto cursor-pointer"
-        >
-          <span>Open Live Arena</span>
-          <ExternalLink size={14} />
-        </Link>
+        {/* Live Arena Link & Realtime Status */}
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          {wcMaintenanceMode ? (
+            <span className="px-3.5 py-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping inline-block" />
+              Maintenance ON
+            </span>
+          ) : !wcEnabled ? (
+            <span className="px-3.5 py-2 rounded-xl bg-gray-500/20 border border-gray-500/40 text-gray-300 text-xs font-bold">
+              Disabled Globally
+            </span>
+          ) : (
+            <span className="px-3.5 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+              Arena Active
+            </span>
+          )}
+
+          <Link
+            href="/weekly-challenges"
+            target="_blank"
+            className="liquid-btn px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold uppercase tracking-wider border border-white/20 transition-all flex items-center gap-2 cursor-pointer"
+          >
+            <span>Open Live Arena</span>
+            <ExternalLink size={14} />
+          </Link>
+        </div>
       </div>
 
       {/* Main Form Panel */}
@@ -236,26 +201,12 @@ export default function ChallengesControlPage() {
               </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-purple-500/20 bg-purple-500/5">
-              <div>
-                <h3 className="text-sm font-semibold text-purple-200 flex items-center gap-2">
-                  Admin Test Mode
-                  {wcAdminTestMode && <span className="text-[10px] bg-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/40">TEST MODE ACTIVE</span>}
-                </h3>
-                <p className="text-xs text-gray-400">Allows administrators to bypass day restrictions and test games anytime without student restrictions.</p>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setWcAdminTestMode(!wcAdminTestMode)} 
-                className={`relative inline-flex h-8 w-[58px] items-center rounded-full transition-colors cursor-pointer shrink-0 ${wcAdminTestMode ? 'bg-purple-600' : 'bg-white/10'}`}
-              >
-                <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${wcAdminTestMode ? 'translate-x-[28px]' : 'translate-x-[4px]'}`} />
-              </button>
-            </div>
-
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-white/5">
               <div>
-                <h3 className="text-sm font-semibold text-white">Maintenance Mode</h3>
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  Maintenance Mode
+                  {wcMaintenanceMode && <span className="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-full border border-rose-500/30">ACTIVE</span>}
+                </h3>
                 <p className="text-xs text-gray-500">Locks challenges specifically without affecting the rest of the site.</p>
               </div>
               <button 
@@ -413,7 +364,7 @@ export default function ChallengesControlPage() {
               </div>
 
               {/* Checkboxes List */}
-              <div className="flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1">
+              <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-1">
                 {ALL_GAMES.map(game => (
                   <label key={game.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
                     <input 
@@ -431,49 +382,6 @@ export default function ChallengesControlPage() {
               </div>
             </div>
 
-            {/* Session Metadata */}
-            <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-violet-300 uppercase">Current Challenge Week</span>
-                <span className="text-sm font-bold text-white bg-black/40 px-2.5 py-1 rounded-lg border border-white/10">{getIsoWeek()}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-violet-300 uppercase">Data Status</span>
-                <span className="text-xs font-medium text-gray-300">{wcHasResults ? '🟢 Results recorded' : '⚪ No results yet'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-violet-300 uppercase">Challenge Session</span>
-                <span className="text-xs font-mono font-medium text-gray-300 truncate max-w-[140px]" title={wcChallengeSessionId || 'Not set'}>
-                  {wcChallengeSessionId ? wcChallengeSessionId.slice(0, 12) + '…' : '⚪ Not set'}
-                </span>
-              </div>
-            </div>
-
-            {/* Start New Session Button */}
-            <button
-              type="button"
-              disabled={startingSession || saving}
-              onClick={handleStartNewSession}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg ${
-                sessionSuccess 
-                  ? "bg-emerald-500 shadow-emerald-500/40" 
-                  : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30"
-              }`}
-            >
-              {startingSession ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" /> Starting Session...
-                </>
-              ) : sessionSuccess ? (
-                <>
-                  <CheckCircle2 size={14} /> New Session Started!
-                </>
-              ) : (
-                <>
-                  <Rocket size={14} /> Start New Challenge Session
-                </>
-              )}
-            </button>
           </div>
         </div>
 

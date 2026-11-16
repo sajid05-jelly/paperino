@@ -120,15 +120,8 @@ export async function POST(request: Request) {
     const { uid } = authUser;
 
     // Process config
-    let isOfficial = true;
-    let isAdminBypass = false;
-    let isUserAdmin = false;
-    // Determine admin bypass flag if config exists
-    if (configSnap && configSnap.exists) {
-      const cfg = configSnap.data() || {};
-      isUserAdmin = authUser.email?.toLowerCase() === "mohamedsajid.sa@gmail.com" || authUser.role === "admin" || (authUser as any).admin === true;
-      isAdminBypass = Boolean(isUserAdmin || cfg.adminTestMode === true);
-    }
+    const isOfficial = true;
+    
     // Resolve canonical challengeId using admin config (or fallback)
     const challengeId = await getCanonicalChallengeId(gameId, authUser);
 
@@ -153,9 +146,7 @@ export async function POST(request: Request) {
     let sessionId: string = crypto.randomUUID();
     const deterministicResultDocId = `${challengeId}-${uid}-res`;
 
-    if (isAdminBypass) {
-      isOfficial = false;
-    } else if (adminDb) {
+    if (adminDb) {
       try {
         // Enforce ONE ATTEMPT per challengeId + userId
         // Step 1: Check deterministic doc directly (fastest, requires zero query index)

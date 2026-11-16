@@ -380,15 +380,10 @@ export default function WeeklyChallengesPage() {
         const games = GAME_IDS;
         const targetChallengeIds: Record<string, string> = {};
         games.forEach((gId) => {
-          let challengeId = `${gId}-${getChallengeDate()}`;
-          if ((config as any).challengeSessionId) {
-            challengeId = `${gId}-${(config as any).challengeSessionId}`;
-          } else if ((config as any).currentChallengeId) {
-            challengeId = `${gId}-${(config as any).currentChallengeId}`;
-          } else if (activeChallengeWeek) {
-            challengeId = `${gId}-${activeChallengeWeek}`;
-          }
-          targetChallengeIds[challengeId] = gId;
+          const weekChallengeId = `${gId}-${activeChallengeWeek}`;
+          const dateChallengeId = `${gId}-${getChallengeDate()}`;
+          targetChallengeIds[weekChallengeId] = gId;
+          targetChallengeIds[dateChallengeId] = gId;
         });
 
         const resultsRef = collection(db, "challenge_results");
@@ -420,7 +415,7 @@ export default function WeeklyChallengesPage() {
     }
 
     loadUserSessions();
-  }, [user, (config as any).challengeSessionId, (config as any).currentWeek]);
+  }, [user, (config as any).currentWeek]);
 
   // Schedule availability checks
   const isDayAvailable = isChallengeDay(config.availableDays);

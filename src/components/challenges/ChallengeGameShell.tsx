@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeft, HelpCircle, X, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, HelpCircle, X, AlertTriangle, Rocket } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface ChallengeGameShellProps {
   gameId: string;
@@ -31,6 +33,32 @@ export default function ChallengeGameShell({
   const router = useRouter();
   const [showRulesModal, setShowRulesModal] = useState(showRulesFirst && gameState === "playing");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [isLockedByAdmin, setIsLockedByAdmin] = useState(false);
+  const [lockReason, setLockReason] = useState<string | null>(null);
+
+  // Realtime guard: If Maintenance Mode or Disabled is toggled in Admin, immediately lock game
+  useEffect(() => {
+    const configRef = doc(db, "settings", "weeklyChallenges");
+    const unsubscribe = onSnapshot(configRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.maintenanceMode === true) {
+          setIsLockedByAdmin(true);
+          setLockReason("The Paperino Challenge Arena is currently under maintenance. Please check back shortly.");
+        } else if (data.enabled === false) {
+          setIsLockedByAdmin(true);
+          setLockReason("Weekly challenges are currently paused by the administrator.");
+        } else {
+          setIsLockedByAdmin(false);
+          setLockReason(null);
+        }
+      }
+    }, () => {
+      // Ignore fallback errors
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const isGameActive = ["playing", "memorizing", "recalling", "round_feedback"].includes(gameState);
 
@@ -46,6 +74,26 @@ export default function ChallengeGameShell({
       router.push("/weekly-challenges");
     }
   };
+
+  if (isLockedByAdmin) {
+    return (
+      <div className="min-h-screen w-full py-16 px-4 flex flex-col items-center justify-center text-center bg-[var(--background)]">
+        <div className="max-w-md w-full p-8 rounded-3xl border border-purple-500/20 bg-gradient-to-b from-purple-950/40 via-slate-900/60 to-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(168,85,247,0.2)] space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center mx-auto text-purple-300">
+            <Rocket className="h-8 w-8 animate-bounce" />
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight">Challenges Unavailable</h2>
+          <p className="text-xs text-gray-400 leading-relaxed">{lockReason}</p>
+          <button
+            onClick={() => router.push("/weekly-challenges")}
+            className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+          >
+            Return to Challenges
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full py-6 px-4 md:px-8 text-gray-200 bg-[var(--background)] flex flex-col justify-start items-center">
