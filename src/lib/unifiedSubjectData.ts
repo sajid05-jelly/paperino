@@ -85,7 +85,7 @@ export const getAllUnifiedData = cache(async (
     id: "btech",
     name: "Bachelor of Technology",
     code: "B.Tech",
-    totalSemesters: 8,
+    totalSemesters: 6,
     status: "approved",
   });
 

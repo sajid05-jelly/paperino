@@ -198,7 +198,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           id: "btech",
           name: "Bachelor of Technology",
           code: "B.Tech",
-          totalSemesters: 8,
+          totalSemesters: 6,
           createdBy: "system",
           status: "approved"
         };

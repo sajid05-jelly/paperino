@@ -85,9 +85,5 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "pb", name: "Plant Biotechnology" },
     { id: "ab", name: "Animal Biotechnology" },
     { id: "mt", name: "Marine Technology" }
-  ],
-  "7": [
-  ],
-  "8": [
   ]
 };
