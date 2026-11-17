@@ -132,7 +132,7 @@ export default function Home() {
                     SRM University
                   </h3>
                   <p className="text-gray-400 text-xs md:text-sm mt-1 max-w-xl font-light leading-relaxed">
-                    Access B.Tech, MCA, MBA &amp; all departmental courses across SRM campuses (KTR, Ramapuram, Vadapalani, Trichy, NCR).
+                    Access notes, question papers &amp; study materials across all SRM University campuses throughout India.
                   </p>
                 </div>
               </div>
