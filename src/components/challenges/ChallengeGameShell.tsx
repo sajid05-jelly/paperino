@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, HelpCircle, X, AlertTriangle, Rocket } from "lucide-react";
+import { ArrowLeft, HelpCircle, X, AlertTriangle, Rocket, Wrench, Sparkles, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -77,19 +77,44 @@ export default function ChallengeGameShell({
 
   if (isLockedByAdmin) {
     return (
-      <div className="min-h-screen w-full py-16 px-4 flex flex-col items-center justify-center text-center bg-[var(--background)]">
-        <div className="max-w-md w-full p-8 rounded-3xl border border-purple-500/20 bg-gradient-to-b from-purple-950/40 via-slate-900/60 to-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(168,85,247,0.2)] space-y-5">
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center mx-auto text-purple-300">
-            <Rocket className="h-8 w-8 animate-bounce" />
+      <div className="min-h-screen w-full py-16 px-4 flex flex-col items-center justify-center text-center bg-[var(--background)] select-none">
+        <div className="max-w-md w-full p-8 sm:p-10 rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-[#140e2b]/95 via-[#0c0818]/95 to-[#07050d]/98 backdrop-blur-2xl shadow-[0_0_60px_rgba(139,92,246,0.2)] space-y-6 text-center">
+          
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/25 shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <span className="tracking-wide">Arena Maintenance Active</span>
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Challenges Unavailable</h2>
-          <p className="text-xs text-gray-400 leading-relaxed">{lockReason}</p>
-          <button
-            onClick={() => router.push("/weekly-challenges")}
-            className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_20px_rgba(147,51,234,0.3)]"
-          >
-            Return to Challenges
-          </button>
+
+          <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-500/20 via-purple-600/10 to-amber-500/10 border border-purple-400/30 shadow-[0_0_35px_rgba(168,85,247,0.25)]">
+            <Wrench className="h-9 w-9 text-purple-300 animate-pulse" />
+            <Sparkles className="absolute -top-1.5 -right-1.5 h-5 w-5 text-amber-300" />
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-extrabold text-white tracking-tight mb-2">Arena Calibrations in Progress</h2>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto font-light">
+              {lockReason || "The Challenge Arena is currently under scheduled maintenance. Your progress and history remain fully protected."}
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={() => router.push("/weekly-challenges")}
+              className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_25px_rgba(168,85,247,0.35)] hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Return to Challenges Home
+            </button>
+            <button
+              onClick={() => router.push("/courses")}
+              className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-semibold text-xs transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <BookOpen size={14} />
+              <span>Explore Study Materials</span>
+            </button>
+          </div>
         </div>
       </div>
     );
