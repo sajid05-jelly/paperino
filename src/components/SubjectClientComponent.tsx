@@ -120,6 +120,39 @@ export default function SubjectClientComponent({
   const [downloadedId, setDownloadedId] = useState<string | null>(null);
   const [showDeleteSubjectModal, setShowDeleteSubjectModal] = useState(false);
   const [isDeletingSubject, setIsDeletingSubject] = useState(false);
+  const [backUrl, setBackUrl] = useState("/courses");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refSearch = urlParams.get("refSearch");
+      const savedSearch = sessionStorage.getItem("paperino_courses_search");
+      const activeSearch = refSearch || savedSearch;
+      if (activeSearch && activeSearch.trim()) {
+        setBackUrl(`/courses?q=${encodeURIComponent(activeSearch.trim())}`);
+      }
+    }
+  }, []);
+
+  const handleBackToMaterials = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refSearch = urlParams.get("refSearch");
+      const savedSearch = sessionStorage.getItem("paperino_courses_search");
+      const activeSearch = refSearch || savedSearch;
+
+      if (activeSearch && activeSearch.trim()) {
+        router.push(`/courses?q=${encodeURIComponent(activeSearch.trim())}`);
+        return;
+      }
+      if (window.history.length > 1) {
+        router.back();
+        return;
+      }
+    }
+    router.push("/courses");
+  };
 
   const handleDeleteSubject = async () => {
     setIsDeletingSubject(true);
@@ -431,8 +464,9 @@ export default function SubjectClientComponent({
         {/* Top Navigation & Admin Actions */}
         <div className="flex items-center justify-between gap-4 mb-8">
           <Link 
-            href="/courses"
-            className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] hover:-translate-x-0.5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)]"
+            href={backUrl}
+            onClick={handleBackToMaterials}
+            className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] hover:-translate-x-0.5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)] cursor-pointer"
           >
             <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
             <span>Back to Materials</span>

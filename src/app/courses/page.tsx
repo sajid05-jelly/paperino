@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { 
   Search, 
@@ -22,6 +22,44 @@ export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { allSubjectsList, loading } = useSubjects();
+
+  // Restore previous search query from URL or sessionStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlQuery = urlParams.get("q");
+      const storedQuery = sessionStorage.getItem("paperino_courses_search");
+      const initialQuery = urlQuery !== null ? urlQuery : (storedQuery || "");
+      if (initialQuery) {
+        setSearchQuery(initialQuery);
+        // Ensure sessionStorage stays synced
+        sessionStorage.setItem("paperino_courses_search", initialQuery);
+      }
+    }
+  }, []);
+
+  // Update search query, sessionStorage, and browser URL seamlessly
+  const handleSearchChange = useCallback((val: string) => {
+    setSearchQuery(val);
+    if (typeof window !== "undefined") {
+      if (val.trim()) {
+        sessionStorage.setItem("paperino_courses_search", val);
+        const newUrl = `${window.location.pathname}?q=${encodeURIComponent(val.trim())}`;
+        window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, "", newUrl);
+      } else {
+        sessionStorage.removeItem("paperino_courses_search");
+        window.history.replaceState({ ...window.history.state, as: window.location.pathname, url: window.location.pathname }, "", window.location.pathname);
+      }
+    }
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("paperino_courses_search");
+      window.history.replaceState({ ...window.history.state, as: window.location.pathname, url: window.location.pathname }, "", window.location.pathname);
+    }
+  }, []);
 
   // Case-insensitive real-time search across subject name, code, and id
   const filteredSubjects = useMemo(() => {
@@ -67,14 +105,14 @@ export default function CoursesPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search any subject by name or code (e.g. Python, Maths, 21CSE354T)..."
               className="w-full pl-12 pr-11 py-3.5 rounded-2xl bg-[#120924]/80 border border-purple-500/30 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-500/40 text-sm md:text-base backdrop-blur-md transition-all shadow-[0_0_30px_rgba(139,92,246,0.15)]"
             />
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={handleClearSearch}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
                 aria-label="Clear search"
               >
@@ -137,7 +175,10 @@ export default function CoursesPage() {
           /* Subjects Cards Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 w-full">
             {filteredSubjects.map((sub, index) => {
-              const href = getSubjectSeoPath(sub);
+              const rawHref = getSubjectSeoPath(sub);
+              const href = searchQuery.trim()
+                ? `${rawHref}${rawHref.includes("?") ? "&" : "?"}refSearch=${encodeURIComponent(searchQuery.trim())}`
+                : rawHref;
 
               return (
                 <Link key={`${sub.departmentId}_${sub.semesterId}_${sub.id}_${index}`} href={href} className="flex">
