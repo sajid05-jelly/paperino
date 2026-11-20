@@ -5,11 +5,10 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-  Upload, Activity, Bot, FileText, Layers,
+  Upload, Activity, Bot, FileText,
   ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, 
   BrainCircuit, Wrench, ChevronDown, Sparkles, Gamepad2, FlaskConical
 } from "lucide-react";
-import CreateCourseModal from "@/components/CreateCourseModal";
 import { useBadges } from "@/context/BadgeContext";
 
 const LEAD_ADMIN_EMAIL = "mohamedsajid.sa@gmail.com";
@@ -18,12 +17,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isAdmin, loading } = useAuth();
   const { 
     adminSubjectRequestsCount, 
-    adminPendingReviewsCount, 
-    adminPendingCoursesCount 
+    adminPendingReviewsCount 
   } = useBadges();
   const router = useRouter();
   const pathname = usePathname();
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const isLeadAdmin = user?.email?.toLowerCase() === LEAD_ADMIN_EMAIL.toLowerCase();
 
@@ -98,35 +95,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <div className="h-px w-full bg-white/10 my-2"></div>
             
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors w-full text-left">
-              <Plus size={20} className="text-fuchsia-400" />
-              Create New Course
-            </button>
-
             <Link href="/admin/materials" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <FileText size={20} />
               Manage Materials
-            </Link>
-
-            <Link href="/admin/sections" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              pathname === "/admin/sections"
-                ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30"
-                : "text-gray-300 hover:text-white hover:bg-white/10"
-            }`}>
-              <Layers size={20} className="text-purple-400" />
-              <span>Section Management</span>
-            </Link>
-
-            <Link href="/admin/courses" className="flex items-center justify-between px-4 py-3 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors font-medium border border-blue-500/20">
-              <span className="flex items-center gap-3">
-                <BookOpen size={20} />
-                <span>Pending Course Requests</span>
-              </span>
-              {adminPendingCoursesCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-1.5 text-[10px] font-black text-white shadow-[0_0_10px_rgba(59,130,246,0.7)]">
-                  {adminPendingCoursesCount >= 10 ? "10+" : adminPendingCoursesCount}
-                </span>
-              )}
             </Link>
 
             <Link href="/admin/reviews" className="flex items-center justify-between px-4 py-3 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors font-medium border border-rose-500/20">
@@ -254,8 +225,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 min-w-0 w-full max-w-full">
         {children}
       </div>
-
-      <CreateCourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

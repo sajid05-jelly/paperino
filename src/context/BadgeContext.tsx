@@ -258,14 +258,11 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     return adminPendingReviewsRaw.filter((r) => r.createdAt > baseline).length;
   }, [adminPendingReviewsRaw, lastSeenAdminSections.reviews]);
 
-  const adminPendingCoursesCount = useMemo(() => {
-    const baseline = lastSeenAdminSections.courses;
-    return adminPendingCoursesRaw.filter((r) => r.createdAt > baseline).length;
-  }, [adminPendingCoursesRaw, lastSeenAdminSections.courses]);
+  const adminPendingCoursesCount = 0;
 
   const adminTotalUnreadCount = useMemo(() => {
-    return adminSubjectRequestsCount + adminPendingReviewsCount + adminPendingCoursesCount;
-  }, [adminSubjectRequestsCount, adminPendingReviewsCount, adminPendingCoursesCount]);
+    return adminSubjectRequestsCount + adminPendingReviewsCount;
+  }, [adminSubjectRequestsCount, adminPendingReviewsCount]);
 
   const refreshAdminBadges = useCallback(async () => {
     await fetchAdminBadges(true);
