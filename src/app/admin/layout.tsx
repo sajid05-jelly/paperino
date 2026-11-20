@@ -95,7 +95,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <div className="h-px w-full bg-white/10 my-2"></div>
             
-            <Link href="/admin/materials" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
+            <Link 
+              href="/admin/subjects" 
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                pathname === "/admin/subjects" 
+                  ? "bg-purple-600/20 text-purple-300 font-semibold border border-purple-500/30" 
+                  : "text-gray-300 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <BookOpen size={20} />
+              Manage Subjects
+            </Link>
+
+            <Link 
+              href="/admin/materials" 
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                pathname === "/admin/materials" 
+                  ? "bg-purple-600/20 text-purple-300 font-semibold border border-purple-500/30" 
+                  : "text-gray-300 hover:text-white hover:bg-white/10"
+              }`}
+            >
               <FileText size={20} />
               Manage Materials
             </Link>

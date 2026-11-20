@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
-import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, onSnapshot, getDoc } from "firebase/firestore";
+import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, onSnapshot, getDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
@@ -54,6 +54,8 @@ interface SubjectsContextType {
     contributorName?: string,
     sections?: string[]
   ) => Promise<string>;
+  deleteSubject: (subjectId: string, deptId?: string, semId?: string) => Promise<void>;
+  editSubject: (subjectId: string, name: string, code: string, deptId?: string, semId?: string) => Promise<void>;
   refreshSubjects: (forceRefresh?: boolean) => Promise<void>;
   lazyLoadSubjects: (deptId: string, semId: string, force?: boolean) => Promise<void>;
   listenToDeptsWithMaterials: () => () => void;
@@ -87,6 +89,8 @@ const SubjectsContext = createContext<SubjectsContextType>({
   loading: true,
   createDepartment: async () => "",
   createSubject: async () => "",
+  deleteSubject: async () => {},
+  editSubject: async () => {},
   refreshSubjects: async () => {},
   lazyLoadSubjects: async () => {},
   listenToDeptsWithMaterials: () => () => {}
@@ -271,17 +275,45 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         }
       }
 
+      // Fetch deleted subjects blacklist to permanently exclude deleted subjects
+      let deletedIds: string[] = [];
+      if (!forceRefresh && typeof window !== "undefined") {
+        const cachedDel = sessionStorage.getItem("paperino_deleted_subjects");
+        if (cachedDel) {
+          try {
+            deletedIds = JSON.parse(cachedDel);
+          } catch (e) {}
+        }
+      }
+      if (deletedIds.length === 0) {
+        try {
+          const delSnap = await getDoc(doc(db, "platform_settings", "deleted_subjects"));
+          if (delSnap.exists()) {
+            deletedIds = delSnap.data().deletedIds || [];
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("paperino_deleted_subjects", JSON.stringify(deletedIds));
+            }
+          }
+        } catch (delErr) {}
+      }
+
+      const deletedSet = new Set(deletedIds.map((id) => String(id).toLowerCase().trim()));
+
       const staticBTech = getStaticBTechSubjects();
       const combinedMap = new Map<string, Subject>();
 
       staticBTech.forEach((s) => {
-        const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
-        combinedMap.set(key, s);
+        if (!deletedSet.has(s.id.toLowerCase().trim())) {
+          const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
+          combinedMap.set(key, s);
+        }
       });
 
       dynamicSubs.forEach((s) => {
-        const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
-        combinedMap.set(key, s);
+        if (!deletedSet.has(s.id.toLowerCase().trim())) {
+          const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
+          combinedMap.set(key, s);
+        }
       });
 
       const fullSubjectsList = Array.from(combinedMap.values());
@@ -545,6 +577,108 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     return generatedId;
   };
 
+  const deleteSubject = async (
+    subjectId: string,
+    deptId: string = "btech",
+    semId: string = "1"
+  ): Promise<void> => {
+    let apiSuccess = false;
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const token = await currentUser.getIdToken();
+        const res = await fetch("/api/admin/delete-subject", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            subjectId,
+            departmentId: deptId,
+            semesterId: semId
+          })
+        });
+
+        if (res.ok) {
+          apiSuccess = true;
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to delete subject via server API.");
+        }
+      } catch (apiErr: any) {
+        console.warn("API delete subject error, checking client fallback:", apiErr);
+        if (apiErr.message && !apiErr.message.includes("Failed to fetch")) {
+          throw apiErr;
+        }
+      }
+    }
+
+    if (!apiSuccess) {
+      const cleanSubjectId = String(subjectId).toLowerCase().trim();
+      const constructedDocId = `${deptId}_sem${semId}_${cleanSubjectId}`;
+      try {
+        await deleteDoc(doc(db, "dynamic_subjects", constructedDocId));
+      } catch (e) {}
+      try {
+        await deleteDoc(doc(db, "dynamic_subjects", cleanSubjectId));
+      } catch (e) {}
+    }
+
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("paperino_cached_dynamic_subs_v1");
+      sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v1");
+      sessionStorage.removeItem("paperino_deleted_subjects");
+    }
+    await refreshSubjects(true);
+  };
+
+  const editSubject = async (
+    subjectId: string,
+    name: string,
+    code: string,
+    deptId: string = "btech",
+    semId: string = "1"
+  ): Promise<void> => {
+    let apiSuccess = false;
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        const token = await currentUser.getIdToken();
+        const res = await fetch("/api/admin/edit-subject", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            subjectId,
+            name,
+            code,
+            departmentId: deptId,
+            semesterId: semId
+          })
+        });
+
+        if (res.ok) {
+          apiSuccess = true;
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to edit subject.");
+        }
+      } catch (apiErr: any) {
+        console.warn("API edit subject error:", apiErr);
+        throw apiErr;
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("paperino_cached_dynamic_subs_v1");
+      sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v1");
+    }
+    await refreshSubjects(true);
+  };
+
   return (
     <SubjectsContext.Provider
       value={{
@@ -555,6 +689,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         loading,
         createDepartment,
         createSubject,
+        deleteSubject,
+        editSubject,
         refreshSubjects,
         lazyLoadSubjects,
         listenToDeptsWithMaterials

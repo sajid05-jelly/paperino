@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
@@ -82,12 +83,13 @@ export default function SubjectClientComponent({
   serverOverview?: ServerOverview;
   initialMaterials?: any[];
 }) {
+  const router = useRouter();
   const resolvedParams = use(params);
   const { deptId, semId, subjectId } = resolvedParams;
   const { user, isAdmin, isContributor, loading: authLoading, canAccess } = useAuth();
   const { showPlanGate } = usePlanGate();
   const { showToast, dismissToast } = useToast();
-  const { subjects: dynamicSubjects, lazyLoadSubjects } = useSubjects();
+  const { subjects: dynamicSubjects, lazyLoadSubjects, deleteSubject } = useSubjects();
 
   useEffect(() => {
     if (deptId && semId && lazyLoadSubjects) {
@@ -116,6 +118,25 @@ export default function SubjectClientComponent({
   const [previewMat, setPreviewMat] = useState<any | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadedId, setDownloadedId] = useState<string | null>(null);
+  const [showDeleteSubjectModal, setShowDeleteSubjectModal] = useState(false);
+  const [isDeletingSubject, setIsDeletingSubject] = useState(false);
+
+  const handleDeleteSubject = async () => {
+    setIsDeletingSubject(true);
+    try {
+      if (deleteSubject) {
+        await deleteSubject(subjectId, deptId, semId);
+      }
+      showToast(`Subject and all its materials have been deleted.`, "success");
+      setShowDeleteSubjectModal(false);
+      router.replace("/courses");
+    } catch (err: any) {
+      console.error("Failed to delete subject:", err);
+      showToast(err.message || "Failed to delete subject.", "error");
+    } finally {
+      setIsDeletingSubject(false);
+    }
+  };
 
   const handlePreviewClick = (mat: any) => {
     if (!canAccess("pdfPreview")) {
@@ -407,14 +428,27 @@ export default function SubjectClientComponent({
 
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         
-        {/* Back Button - Always returns to All Subjects & Materials Hub */}
-        <Link 
-          href="/courses"
-          className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] mb-8 hover:-translate-x-0.5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)]"
-        >
-          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-          <span>Back to Materials</span>
-        </Link>
+        {/* Top Navigation & Admin Actions */}
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <Link 
+            href="/courses"
+            className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] hover:-translate-x-0.5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)]"
+          >
+            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to Materials</span>
+          </Link>
+
+          {isAdmin && (
+            <button
+              onClick={() => setShowDeleteSubjectModal(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold transition-all cursor-pointer shadow-sm hover:border-rose-500/50"
+              title="Admin: Delete this entire subject and all its materials"
+            >
+              <Trash2 size={13} />
+              <span>Delete Entire Subject</span>
+            </button>
+          )}
+        </div>
 
         {/* Header with Premium Glow */}
         <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500 relative">
@@ -610,10 +644,10 @@ export default function SubjectClientComponent({
             {isAdmin && (
               <div className="pt-4 border-t border-white/5">
                 <Link
-                  href="/admin/sections"
+                  href="/admin/subjects"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
                 >
-                  Manage All Sections in Admin
+                  Manage All Subjects in Admin
                 </Link>
               </div>
             )}
@@ -940,6 +974,62 @@ export default function SubjectClientComponent({
           subjectId={subjectId}
           category={uploadCategory}
         />
+      )}
+
+      {/* Admin Subject Delete Confirmation Modal */}
+      {showDeleteSubjectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#120d1d] border border-rose-500/30 p-6 rounded-3xl max-w-md w-full shadow-[0_0_50px_rgba(244,63,94,0.2)] animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4">
+              <Trash2 size={24} />
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-2">Delete Entire Subject?</h3>
+            
+            <p className="text-sm text-gray-300 mb-4 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-white">"{subjectName}"</strong>?
+            </p>
+
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3.5 mb-6 text-xs text-rose-300 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5">
+                ⚠️ Permanent Subject Deletion
+              </p>
+              <p className="text-rose-300/80">
+                This will delete the subject from the platform and remove all study materials associated with it. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteSubjectModal(false)}
+                disabled={isDeletingSubject}
+                className="px-4 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteSubject}
+                disabled={isDeletingSubject}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-sm font-bold shadow-[0_0_20px_rgba(225,29,72,0.4)] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingSubject ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    <span>Yes, Delete Subject</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
