@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit, where } from "firebase/firestore";
+import { useState, useEffect, useMemo } from "react";
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { logFirestoreRead } from "@/lib/firestoreDiagnostics";
-import { FileText, Loader2, Download, Edit2, Search, X, Check, CheckCircle2, Trash2 } from "lucide-react";
+import { FileText, Loader2, Download, Edit2, Search, X, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useToast } from "@/components/Toast";
@@ -22,6 +22,7 @@ interface Material {
   status: string;
   uploaderName?: string;
   uploaderId?: string;
+  createdAt?: any;
 }
 
 export default function ManageMaterialsPage() {
@@ -29,35 +30,23 @@ export default function ManageMaterialsPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Filters
+  // Filters: Long search term + optional Category filter
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterDept, setFilterDept] = useState(""); // Default: show ALL departments
-  const [filterSem, setFilterSem] = useState("");
-  const [filterSub, setFilterSub] = useState("");
   const [filterCat, setFilterCat] = useState("");
 
   // Modals
   const [editingMat, setEditingMat] = useState<Material | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   
-  const { departments, subjects: dynamicSubjects } = useSubjects();
+  const { allSubjectsList } = useSubjects();
   const { showToast, dismissToast } = useToast();
 
-  // Fetch materials from Firestore — use targeted where() when dept is selected
-  // to avoid blind limit() missing non-btech materials.
-  const fetchMaterials = async (dept?: string) => {
+  // Fetch all materials across all subjects directly (no department or semester gating)
+  const fetchMaterials = async () => {
     setLoading(true);
     try {
-      const activeDept = dept !== undefined ? dept : filterDept;
-      let q;
-      if (activeDept) {
-        logFirestoreRead("materials", `Admin fetch: where departmentId == ${activeDept}`);
-        q = query(collection(db, "materials"), where("departmentId", "==", activeDept), limit(200));
-      } else {
-        logFirestoreRead("materials", "Admin fetch: all departments limit(200)");
-        q = query(collection(db, "materials"), limit(200));
-      }
+      logFirestoreRead("materials", "Admin fetch: all materials limit(1000)");
+      const q = query(collection(db, "materials"), limit(1000));
       const snap = await getDocs(q);
       const mats: Material[] = [];
       snap.forEach(d => {
@@ -75,8 +64,8 @@ export default function ManageMaterialsPage() {
   };
 
   useEffect(() => {
-    fetchMaterials(filterDept);
-  }, [filterDept]);
+    fetchMaterials();
+  }, []);
 
   const handleDeleteMaterial = async (id: string) => {
     if (!confirm("Are you sure you want to delete this study material?")) return;
@@ -98,9 +87,7 @@ export default function ManageMaterialsPage() {
       await updateDoc(doc(db, "materials", editingMat.id), {
         title: editingMat.title.trim(),
         category: editingMat.category,
-        semesterId: editingMat.semesterId,
         subjectId: editingMat.subjectId,
-        departmentId: editingMat.departmentId || "btech"
       });
       
       setMaterials(prev => prev.map(m => m.id === editingMat.id ? editingMat : m));
@@ -114,27 +101,33 @@ export default function ManageMaterialsPage() {
     }
   };
 
-  // Filter logic
-  const filteredMaterials = materials.filter(m => {
-    const matchesSearch = m.title?.toLowerCase().includes(searchTerm.toLowerCase()) || m.fileName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = filterDept ? (m.departmentId || "btech") === filterDept : true;
-    const matchesSem = filterSem ? m.semesterId === filterSem : true;
-    const matchesSub = filterSub ? m.subjectId === filterSub : true;
-    const matchesCat = filterCat ? m.category === filterCat : true;
-    return matchesSearch && matchesDept && matchesSem && matchesSub && matchesCat;
-  });
+  // Real-time filter across subject name, code, title, and filename
+  const filteredMaterials = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase().trim();
+    return materials.filter(m => {
+      const subjectObj = allSubjectsList.find(s => 
+        s.id === m.subjectId || 
+        s.id.toLowerCase() === (m.subjectId || "").toLowerCase()
+      );
+      const subjectName = (subjectObj?.name || "").toLowerCase();
+      const subjectCode = (subjectObj?.code || "").toLowerCase();
+      const subjectId = (m.subjectId || "").toLowerCase();
+      const title = (m.title || "").toLowerCase();
+      const fileName = (m.fileName || "").toLowerCase();
 
-  // Calculate semester counts for active filterDept
-  const activeDeptObj = departments.find(d => d.id === filterDept);
-  const semCount = activeDeptObj?.totalSemesters || 8;
-  const semList = Array.from({ length: semCount }, (_, i) => (i + 1).toString());
+      const matchesSearch = !searchLower || (
+        subjectName.includes(searchLower) ||
+        subjectCode.includes(searchLower) ||
+        subjectId.includes(searchLower) ||
+        title.includes(searchLower) ||
+        fileName.includes(searchLower)
+      );
 
-  // Subjects lookup
-  const filterSubjects = (filterDept && filterSem) ? dynamicSubjects[filterDept]?.[filterSem] || [] : [];
-  const editSubjects = editingMat?.semesterId ? dynamicSubjects[editingMat.departmentId || "btech"]?.[editingMat.semesterId] || [] : [];
-  const editDeptObj = departments.find(d => d.id === (editingMat?.departmentId || "btech"));
-  const editSemCount = editDeptObj?.totalSemesters || 8;
-  const editSemList = Array.from({ length: editSemCount }, (_, i) => (i + 1).toString());
+      const matchesCat = filterCat ? m.category === filterCat : true;
+
+      return matchesSearch && matchesCat;
+    });
+  }, [materials, searchTerm, filterCat, allSubjectsList]);
 
   return (
     <div className="w-full">
@@ -143,49 +136,51 @@ export default function ManageMaterialsPage() {
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
             <FileText className="text-purple-400" /> Manage Study Materials
           </h1>
-          <p className="text-gray-400">View and edit details of uploaded study materials on Google Drive.</p>
+          <p className="text-gray-400 text-sm">
+            Search, view, download, or edit study materials across all subjects.
+          </p>
+        </div>
+        <div className="text-xs text-purple-300 font-semibold bg-purple-500/10 border border-purple-500/20 px-4 py-1.5 rounded-full shrink-0">
+          {filteredMaterials.length} of {materials.length} Materials
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="glass-panel p-4 rounded-2xl mb-8 flex flex-col lg:flex-row gap-4 border border-white/5 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+      {/* Long Elongated Search Bar + Optional Category Filter */}
+      <div className="glass-panel p-3.5 rounded-2xl mb-8 flex flex-col sm:flex-row items-center gap-3 border border-white/5 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+        {/* Full-Width Search Input */}
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" size={18} />
           <input 
             type="text" 
-            placeholder="Search by title or filename..." 
+            placeholder="Search by subject name, code, title, or filename (e.g. Python, Maths, CLA 1)..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all"
+            className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-10 py-3 text-sm text-white placeholder-gray-400 outline-none focus:border-purple-500/60 focus:bg-white/5 focus:ring-1 focus:ring-purple-500/30 transition-all"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
-        
-        <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setFilterSem(""); setFilterSub(""); }} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-300 outline-none focus:border-purple-500/50 cursor-pointer">
-          {departments.filter(d => d.status === "approved").map(d => (
-            <option key={d.id} value={d.id} className="bg-[#0a0714] text-white">{d.name}</option>
-          ))}
-        </select>
 
-        <select value={filterSem} onChange={(e) => { setFilterSem(e.target.value); setFilterSub(""); }} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-300 outline-none focus:border-purple-500/50 cursor-pointer">
-          <option value="" className="bg-[#0a0714] text-white">All Semesters</option>
-          {semList.map(sem => (
-            <option key={sem} value={sem} className="bg-[#0a0714] text-white">Semester {sem}</option>
-          ))}
-        </select>
-
-        <select value={filterSub} onChange={(e) => setFilterSub(e.target.value)} disabled={!filterSem} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-300 outline-none focus:border-purple-500/50 disabled:opacity-50 cursor-pointer">
-          <option value="" className="bg-[#0a0714] text-white">All Subjects</option>
-          {filterSubjects.map((sub: any) => (
-            <option key={sub.id} value={sub.id} className="bg-[#0a0714] text-white">{sub.name}</option>
-          ))}
-        </select>
-
-        <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-300 outline-none focus:border-purple-500/50 cursor-pointer">
-          <option value="" className="bg-[#0a0714] text-white">All Categories</option>
-          <option value="pyq" className="bg-[#0a0714] text-white">PYQ</option>
-          <option value="notes" className="bg-[#0a0714] text-white">Notes</option>
-          <option value="questions" className="bg-[#0a0714] text-white">Important Questions</option>
-        </select>
+        {/* Category Dropdown */}
+        <div className="w-full sm:w-auto shrink-0">
+          <select 
+            value={filterCat} 
+            onChange={(e) => setFilterCat(e.target.value)} 
+            className="w-full sm:w-auto bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 outline-none focus:border-purple-500/50 cursor-pointer"
+          >
+            <option value="" className="bg-[#0a0714] text-white">All Categories</option>
+            <option value="pyq" className="bg-[#0a0714] text-white">PYQ</option>
+            <option value="notes" className="bg-[#0a0714] text-white">Notes</option>
+            <option value="questions" className="bg-[#0a0714] text-white">Important Questions</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -196,43 +191,62 @@ export default function ManageMaterialsPage() {
         <div className="glass-panel p-12 text-center rounded-[2rem] border border-white/5 flex flex-col items-center">
           <FileText size={48} className="text-gray-600 mb-4" />
           <h3 className="text-xl font-medium text-white mb-2">No materials found</h3>
-          <p className="text-gray-400">Try adjusting your filters or search terms.</p>
+          <p className="text-gray-400 text-sm">
+            {searchTerm ? `No materials matching "${searchTerm}". Try another search query.` : "No study materials available."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {filteredMaterials.map(mat => (
-            <div key={mat.id} className="vision-glass p-5 rounded-2xl border border-white/5 hover:border-purple-500/20 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-white mb-1.5 truncate" title={mat.title}>{mat.title}</h3>
-                <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-                  <span className="bg-white/5 px-2 py-0.5 rounded uppercase tracking-wider text-[10px] text-gray-400 font-bold border border-white/5">
-                    {mat.departmentId || "btech"}
-                  </span>
-                  <span className="bg-white/5 px-2 py-0.5 rounded tracking-wider text-[10px] text-gray-400 font-bold border border-white/5">
-                    SEM {mat.semesterId}
-                  </span>
-                  <span className="bg-white/5 px-2 py-0.5 rounded tracking-wider text-[10px] text-gray-400 font-bold border border-white/5">
-                    {mat.category.toUpperCase()}
-                  </span>
-                  <span className="truncate max-w-xs">{mat.fileName}</span>
+          {filteredMaterials.map(mat => {
+            const subjectObj = allSubjectsList.find(s => 
+              s.id === mat.subjectId || 
+              s.id.toLowerCase() === (mat.subjectId || "").toLowerCase()
+            );
+
+            return (
+              <div key={mat.id} className="vision-glass p-5 rounded-2xl border border-white/5 hover:border-purple-500/20 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-white mb-1.5 truncate" title={mat.title}>{mat.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                    {subjectObj ? (
+                      <span className="bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2.5 py-0.5 rounded font-semibold text-[11px]">
+                        {subjectObj.name}
+                      </span>
+                    ) : mat.subjectId ? (
+                      <span className="bg-purple-500/10 border border-purple-500/20 text-purple-300 px-2.5 py-0.5 rounded font-semibold text-[11px]">
+                        {mat.subjectId}
+                      </span>
+                    ) : null}
+
+                    {subjectObj?.code && (
+                      <span className="bg-white/5 border border-white/10 text-gray-300 px-2 py-0.5 rounded text-[10px] font-mono">
+                        {subjectObj.code}
+                      </span>
+                    )}
+
+                    <span className="bg-white/5 px-2 py-0.5 rounded tracking-wider text-[10px] text-gray-400 font-bold border border-white/5">
+                      {mat.category.toUpperCase()}
+                    </span>
+                    <span className="truncate max-w-xs text-gray-400">{mat.fileName}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Download">
+                    <Download size={16} />
+                  </button>
+                  <button onClick={() => setEditingMat(mat)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Edit">
+                    <Edit2 size={16} />
+                  </button>
+                  {user?.email === "mohamedsajid.sa@gmail.com" && (
+                    <button onClick={() => handleDeleteMaterial(mat.id)} className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 cursor-pointer" title="Delete">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
-
-              <div className="flex items-center gap-3">
-                <button onClick={() => triggerSecureDownload(mat, showToast, dismissToast)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Download">
-                  <Download size={16} />
-                </button>
-                <button onClick={() => setEditingMat(mat)} className="p-2 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 cursor-pointer" title="Edit">
-                  <Edit2 size={16} />
-                </button>
-                {user?.email === "mohamedsajid.sa@gmail.com" && (
-                  <button onClick={() => handleDeleteMaterial(mat.id)} className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 cursor-pointer" title="Delete">
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -255,24 +269,23 @@ export default function ManageMaterialsPage() {
                 <label className="block text-xs font-medium text-gray-400 mb-1">Title</label>
                 <input required type="text" value={editingMat.title} onChange={e => setEditingMat({...editingMat, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-purple-500/50" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Semester</label>
-                  <select required value={editingMat.semesterId} onChange={e => setEditingMat({...editingMat, semesterId: e.target.value, subjectId: dynamicSubjects[editingMat.departmentId || "btech"]?.[e.target.value]?.[0]?.id || ""})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer">
-                    {editSemList.map(sem => (
-                      <option key={sem} value={sem} className="bg-[#0a0714] text-white">Semester {sem}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Subject</label>
-                  <select required value={editingMat.subjectId} onChange={e => setEditingMat({...editingMat, subjectId: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer">
-                    {editSubjects.map((sub: any) => (
-                      <option key={sub.id} value={sub.id} className="bg-[#0a0714] text-white">{sub.name}</option>
-                    ))}
-                  </select>
-                </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Subject</label>
+                <select 
+                  required 
+                  value={editingMat.subjectId} 
+                  onChange={e => setEditingMat({...editingMat, subjectId: e.target.value})} 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer"
+                >
+                  {allSubjectsList.map((sub: any) => (
+                    <option key={`${sub.id}_${sub.name}`} value={sub.id} className="bg-[#0a0714] text-white">
+                      {sub.name} {sub.code ? `(${sub.code})` : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
+
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1">Category</label>
                 <select required value={editingMat.category} onChange={e => setEditingMat({...editingMat, category: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white outline-none focus:border-purple-500/50 cursor-pointer">
