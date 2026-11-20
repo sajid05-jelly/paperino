@@ -4,8 +4,7 @@ import { useState, useEffect, use } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
-import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus } from "lucide-react";
-import SafeBackButton from "@/components/SafeBackButton";
+import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus, ArrowLeft } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
@@ -408,18 +407,19 @@ export default function SubjectClientComponent({
 
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         
-        {/* Back Button */}
-        <SafeBackButton 
-          fallbackUrl={`/courses/${deptId}/semesters/${semId}`} 
-          label="Back to Semester"
+        {/* Back Button - Always returns to All Subjects & Materials Hub */}
+        <Link 
+          href="/courses"
           className="group inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-all bg-white/[0.04] backdrop-blur-md px-4.5 py-2 rounded-full border border-white/[0.08] mb-8 hover:-translate-x-0.5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)]"
-          size={14}
-        />
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+          <span>Back to Materials</span>
+        </Link>
 
         {/* Header with Premium Glow */}
         <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500 relative">
           <div className="absolute -top-8 -left-8 w-[300px] h-[200px] bg-[radial-gradient(ellipse,rgba(var(--primary-rgb),0.20)_0%,transparent_70%)] filter blur-[60px] pointer-events-none" />
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1 relative z-10">SRM Hub • B.Tech • Semester {semId}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1 relative z-10">Study Materials • {serverOverview ? (serverOverview.deptCode || serverOverview.deptName || deptId).toUpperCase() : deptId.toUpperCase()}</p>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-2 relative z-10 drop-shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)]">{subjectName}</h1>
           <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed relative z-10">
             Access {subjectName} notes, syllabus, previous year question papers (PYQs), important questions and study materials for SRM Institute of Science and Technology students on Paperino.

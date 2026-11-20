@@ -171,8 +171,8 @@ export default function CoursesPage() {
 
                     {/* Bottom Row */}
                     <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-gray-400 group-hover:text-gray-300 transition-colors relative z-10">
-                      <span className="text-gray-400 font-medium">
-                        Semester {sub.semesterId}
+                      <span className="text-gray-400 font-light text-[11px] tracking-wide">
+                        PYQs &amp; Notes
                       </span>
                       <span className="inline-flex items-center gap-1 font-semibold text-purple-400 group-hover:text-purple-300 group-hover:translate-x-1 transition-all">
                         <span>View Materials</span>
