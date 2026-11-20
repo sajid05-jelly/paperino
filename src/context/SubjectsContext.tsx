@@ -153,6 +153,8 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       if (forceRefresh && typeof window !== "undefined") {
         sessionStorage.removeItem("paperino_cached_depts_v2");
         sessionStorage.removeItem("paperino_cached_depts_ts_v2");
+        sessionStorage.removeItem("paperino_cached_dynamic_subs_v1");
+        sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v1");
         loadedSemestersRef.current = {};
       }
 
@@ -221,12 +223,74 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       deptList.sort((a, b) => a.code.localeCompare(b.code));
       setDepartments(deptList);
 
-      // 2. Pre-populate B.Tech subjects from static definition so they load instantly
+      // 2. Pre-populate all subjects (static B.Tech + dynamic subjects)
+      let dynamicSubs: Subject[] = [];
+      const SUB_CACHE_TTL_MS = 15 * 60 * 1000;
+      let cachedSubsFound = false;
+
+      if (!forceRefresh && typeof window !== "undefined") {
+        const cachedSubs = sessionStorage.getItem("paperino_cached_dynamic_subs_v1");
+        const cacheTs = sessionStorage.getItem("paperino_cached_dynamic_subs_ts_v1");
+        if (cachedSubs && cacheTs && (Date.now() - parseInt(cacheTs)) < SUB_CACHE_TTL_MS) {
+          try {
+            dynamicSubs = JSON.parse(cachedSubs);
+            cachedSubsFound = true;
+          } catch (e) {}
+        }
+      }
+
+      if (!cachedSubsFound) {
+        try {
+          const dynSnapshot = await getDocs(collection(db, "dynamic_subjects"));
+          dynSnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.status === "approved" || !data.status) {
+              const dDept = (data.departmentId || "btech").toLowerCase().trim();
+              const dSem = String(data.semesterId || "1").trim();
+              dynamicSubs.push({
+                id: data.subjectId || docSnap.id,
+                name: data.name,
+                code: data.code || "",
+                departmentId: dDept,
+                semesterId: dSem,
+                sections: Array.isArray(data.sections) ? data.sections : undefined,
+                status: data.status || "approved",
+                contributorId: data.contributorId || null,
+                contributorName: data.contributorName || null,
+                createdAt: data.createdAt
+              });
+            }
+          });
+
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("paperino_cached_dynamic_subs_v1", JSON.stringify(dynamicSubs));
+            sessionStorage.setItem("paperino_cached_dynamic_subs_ts_v1", Date.now().toString());
+          }
+        } catch (dynErr) {
+          console.warn("[SubjectsContext] Error fetching dynamic_subjects:", dynErr);
+        }
+      }
+
       const staticBTech = getStaticBTechSubjects();
-      setAllSubjectsList(staticBTech);
+      const combinedMap = new Map<string, Subject>();
+
+      staticBTech.forEach((s) => {
+        const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
+        combinedMap.set(key, s);
+      });
+
+      dynamicSubs.forEach((s) => {
+        const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
+        combinedMap.set(key, s);
+      });
+
+      const fullSubjectsList = Array.from(combinedMap.values());
+      fullSubjectsList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+      setAllSubjectsList(fullSubjectsList);
 
       const grouped: Record<string, Record<string, Subject[]>> = {};
-      staticBTech.forEach((sub) => {
+      fullSubjectsList.forEach((sub) => {
         if (!grouped[sub.departmentId]) {
           grouped[sub.departmentId] = {};
         }
@@ -473,10 +537,10 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       // for that section category, ensuring empty sections never appear publicly.
     }
 
-    // Reset local cache so it gets refetched
+    // Reset local cache and refresh all subjects so newly created subject appears everywhere immediately
     const cacheKey = `${deptId}_${semId}`;
     delete loadedSemestersRef.current[cacheKey];
-    await lazyLoadSubjects(deptId, semId);
+    await refreshSubjects(true);
 
     return generatedId;
   };

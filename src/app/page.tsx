@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { usePlanGate } from "@/context/PlanGateContext";
-import { BookOpen, Layers, Zap, Sparkles, FileText, Calculator, FileSearch, Download, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot, Building2, ChevronRight } from "lucide-react";
+import { BookOpen, Zap, Sparkles, FileText, Calculator, FileSearch, Download, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot, Building2, ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
 import { sortDepartments } from "@/lib/courseSorting";
@@ -17,7 +17,6 @@ export default function Home() {
   const router = useRouter();
   const { plan } = useAuth();
   const { showPlanGate } = usePlanGate();
-  const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
   const { departments, deptMaterialCounts, listenToDeptsWithMaterials, loading } = useSubjects();
   
   useEffect(() => {
@@ -26,7 +25,6 @@ export default function Home() {
   }, [listenToDeptsWithMaterials]);
 
   const approvedDepts = departments.filter(d => d.status === "approved" && !d.parentCourse);
-  const sortedDepts = sortDepartments(approvedDepts, deptMaterialCounts);
 
   return (
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">
@@ -87,114 +85,60 @@ export default function Home() {
 
         {/* SRM University College Card */}
         <div className="w-full max-w-3xl mx-auto mb-10">
-          <div 
-            onClick={() => setSelectedCollege(selectedCollege === "srm" ? null : "srm")}
-            className={`vision-glass p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] cursor-pointer relative overflow-hidden transition-all duration-500 border ${
-              selectedCollege === "srm" 
-                ? "border-purple-500/60 bg-[#120924]/80 shadow-[0_0_50px_rgba(139,92,246,0.3)] ring-2 ring-purple-500/40" 
-                : "border-white/10 bg-[#0f0a1a]/50 hover:border-purple-500/30 hover:bg-[#120924]/60"
-            }`}
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
-            
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
-                <div className="flex items-center gap-4 sm:block">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
-                    <Building2 size={24} className="sm:hidden" />
-                    <Building2 size={32} className="hidden sm:block" />
+          <Link href="/courses" className="block">
+            <div className="vision-glass p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] cursor-pointer relative overflow-hidden transition-all duration-500 border border-purple-500/30 bg-[#0f0a1a]/60 hover:border-purple-500/60 hover:bg-[#120924]/80 shadow-[0_0_30px_rgba(139,92,246,0.15)] hover:shadow-[0_0_50px_rgba(139,92,246,0.3)] group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-full blur-[80px] opacity-20 pointer-events-none group-hover:opacity-30 transition-opacity"></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
+                  <div className="flex items-center gap-4 sm:block">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0 shadow-[0_0_20px_rgba(139,92,246,0.2)] group-hover:scale-105 transition-transform">
+                      <Building2 size={24} className="sm:hidden" />
+                      <Building2 size={32} className="hidden sm:block" />
+                    </div>
+                    <div className="sm:hidden">
+                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
+                          SRM IST
+                        </span>
+                        <span className="text-[9px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                          ● Active
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-extrabold text-white tracking-tight group-hover:text-purple-300 transition-colors">
+                        SRM University
+                      </h3>
+                    </div>
                   </div>
-                  <div className="sm:hidden">
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
+
+                  <div className="w-full">
+                    <div className="hidden sm:flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full">
                         SRM IST
                       </span>
-                      <span className="text-[9px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                        ● Active
+                      <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                        ● Active Campus
                       </span>
                     </div>
-                    <h3 className="text-xl font-extrabold text-white tracking-tight">
+                    <h3 className="hidden sm:block text-2xl md:text-3xl font-extrabold text-white tracking-tight group-hover:text-purple-300 transition-colors">
                       SRM University
                     </h3>
+                    <p className="text-gray-400 text-xs md:text-sm mt-1 max-w-xl font-light leading-relaxed">
+                      Access notes, question papers &amp; study materials across all SRM University campuses throughout India.
+                    </p>
                   </div>
                 </div>
 
-                <div className="w-full">
-                  <div className="hidden sm:flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full">
-                      SRM IST
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      ● Active Campus
-                    </span>
-                  </div>
-                  <h3 className="hidden sm:block text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                    SRM University
-                  </h3>
-                  <p className="text-gray-400 text-xs md:text-sm mt-1 max-w-xl font-light leading-relaxed">
-                    Access notes, question papers &amp; study materials across all SRM University campuses throughout India.
-                  </p>
+                <div className="flex items-center justify-between sm:justify-end gap-2 pt-3 sm:pt-0 border-t border-white/5 sm:border-t-0 shrink-0 w-full sm:w-auto">
+                  <span className="text-xs font-bold text-purple-300 uppercase tracking-wider group-hover:text-white transition-colors">
+                    Access Materials
+                  </span>
+                  <ChevronRight size={18} className="text-purple-400 group-hover:translate-x-1 transition-transform duration-300" />
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between sm:justify-end gap-2 pt-3 sm:pt-0 border-t border-white/5 sm:border-t-0 shrink-0 w-full sm:w-auto">
-                <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">
-                  {selectedCollege === "srm" ? "Hide Courses" : "Explore Courses"}
-                </span>
-                <ChevronRight size={18} className={`text-purple-400 transition-transform duration-300 ${selectedCollege === "srm" ? "rotate-90" : ""}`} />
               </div>
             </div>
-          </div>
+          </Link>
         </div>
-
-        {/* SRM Courses List Section */}
-        {selectedCollege === "srm" && (
-          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-400">
-            <div className="flex items-center justify-between border-b border-purple-500/20 pb-4 px-2">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Layers className="text-purple-400" size={20} />
-                SRM University Courses
-              </h3>
-              <span className="text-xs text-purple-300 font-semibold bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
-                {sortedDepts.length} Approved Courses
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full place-items-stretch">
-              {loading ? (
-                <div className="flex justify-center items-center py-16 col-span-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
-                </div>
-              ) : sortedDepts.length === 0 ? (
-                <div className="text-gray-400 py-16 text-center col-span-full">
-                  No approved courses available yet for SRM University.
-                </div>
-              ) : (
-                sortedDepts.map(dept => (
-                  <Link href={`/courses/${dept.id}`} key={dept.id} className="w-full flex">
-                    <div className="vision-glass p-8 w-full group cursor-pointer relative overflow-hidden vision-hover flex flex-col justify-between rounded-[2rem] border border-white/5 bg-[#0f0a1a]/40 backdrop-blur-xl">
-                      <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-violet-500 to-fuchsia-400 rounded-full blur-[60px] opacity-10 group-hover:opacity-30 transition-opacity duration-700"></div>
-                      <div className="relative z-10 flex flex-col h-full justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-8">
-                            <div className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-xs tracking-widest group-hover:bg-purple-500/20 group-hover:border-purple-500/30 transition-all shadow-md uppercase">
-                              {(dept.code || dept.id || "").toUpperCase()}
-                            </div>
-                            <BookOpen size={28} className="text-gray-500 group-hover:text-purple-400 transition-colors" aria-hidden="true" />
-                          </div>
-                          <h3 className="text-2xl font-bold text-white mb-3 tracking-tight group-hover:text-purple-300 transition-colors uppercase">{(dept.name || "").toUpperCase()}</h3>
-                          <p className="text-gray-400 text-sm font-light leading-relaxed">
-                            Access all {dept.totalSemesters} semesters of carefully curated question papers, notes, and lab manuals.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Smart Tools Section */}
