@@ -51,7 +51,12 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
   // PDF.js rendering states
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.2);
+  const [scale, setScale] = useState<number>(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      return 0.85; // Fit mobile screen width cleanly
+    }
+    return 1.2;
+  });
   const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
@@ -171,8 +176,9 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
 
         const loadingTask = pdfjs.getDocument({
           data,
-          cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/cmaps/`,
+          cMapUrl: `/cmaps/`,
           cMapPacked: true,
+          standardFontDataUrl: `/standard_fonts/`,
         });
 
         const loadedPdf = await loadingTask.promise;
@@ -221,10 +227,13 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
       canvas.style.width = "100%";
       canvas.style.maxWidth = `${Math.floor(viewport.width)}px`;
 
+      // Fill canvas with solid white background to guarantee dark text is 100% visible
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
       const renderContext = {
         canvasContext: context,
         viewport: viewport,
-        canvas: canvas,
       };
 
       const renderTask = page.render(renderContext as any);
