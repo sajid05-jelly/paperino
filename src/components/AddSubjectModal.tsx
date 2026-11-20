@@ -17,13 +17,11 @@ export default function AddSubjectModal({
   onClose,
   initialSubjectName = ""
 }: AddSubjectModalProps) {
-  const { departments, createSubject } = useSubjects();
+  const { createSubject } = useSubjects();
   const { user, isContributor, isAdmin } = useAuth();
 
   const [subjectName, setSubjectName] = useState(initialSubjectName);
   const [subjectCode, setSubjectCode] = useState("");
-  const [selectedDeptId, setSelectedDeptId] = useState("btech");
-  const [selectedSemester, setSelectedSemester] = useState("1");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -40,9 +38,6 @@ export default function AddSubjectModal({
 
   if (!isOpen) return null;
 
-  // Filter approved departments
-  const availableDepts = departments.filter(d => d.status === "approved" || !d.status);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectName.trim()) {
@@ -55,8 +50,8 @@ export default function AddSubjectModal({
 
     try {
       const generatedId = await createSubject(
-        selectedDeptId,
-        selectedSemester,
+        "btech",
+        "1",
         subjectName.trim(),
         subjectCode.trim(),
         isContributor,
@@ -70,7 +65,7 @@ export default function AddSubjectModal({
         await notifyAdmins(
           null,
           "New Subject Added",
-          `${user?.displayName || "A student"} added "${subjectName.trim()}" to ${selectedDeptId.toUpperCase()} Semester ${selectedSemester}.`,
+          `${user?.displayName || "A student"} added "${subjectName.trim()}" to Paperino Library.`,
           "subject_suggested"
         );
       }
@@ -165,48 +160,6 @@ export default function AddSubjectModal({
                 />
               </div>
 
-              {/* Department & Semester Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5 uppercase tracking-wider">
-                    Degree / Course
-                  </label>
-                  <select
-                    value={selectedDeptId}
-                    onChange={(e) => setSelectedDeptId(e.target.value)}
-                    disabled={loading}
-                    className="w-full bg-[#120a24] border border-white/10 focus:border-purple-500 rounded-xl p-3 text-xs text-white outline-none transition-colors cursor-pointer"
-                  >
-                    {availableDepts.length === 0 ? (
-                      <option value="btech">B.Tech / Engineering</option>
-                    ) : (
-                      availableDepts.map(d => (
-                        <option key={d.id} value={d.id}>
-                          {d.code ? `[${d.code.toUpperCase()}] ` : ""}{d.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5 uppercase tracking-wider">
-                    Semester
-                  </label>
-                  <select
-                    value={selectedSemester}
-                    onChange={(e) => setSelectedSemester(e.target.value)}
-                    disabled={loading}
-                    className="w-full bg-[#120a24] border border-white/10 focus:border-purple-500 rounded-xl p-3 text-xs text-white outline-none transition-colors cursor-pointer"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                      <option key={s} value={String(s)}>
-                        Semester {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
 
               {/* Submit Button */}
               <div className="pt-2">
