@@ -419,7 +419,7 @@ export default function SubjectClientComponent({
         {/* Header with Premium Glow */}
         <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500 relative">
           <div className="absolute -top-8 -left-8 w-[300px] h-[200px] bg-[radial-gradient(ellipse,rgba(var(--primary-rgb),0.20)_0%,transparent_70%)] filter blur-[60px] pointer-events-none" />
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1 relative z-10">Study Materials • {serverOverview ? (serverOverview.deptCode || serverOverview.deptName || deptId).toUpperCase() : deptId.toUpperCase()}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1 relative z-10">SRM University • Study Materials</p>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-2 relative z-10 drop-shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)]">{subjectName}</h1>
           <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed relative z-10">
             Access {subjectName} notes, syllabus, previous year question papers (PYQs), important questions and study materials for SRM Institute of Science and Technology students on Paperino.
@@ -436,18 +436,12 @@ export default function SubjectClientComponent({
                       {serverOverview.subjectCode}
                     </span>
                   )}
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
-                    {(serverOverview.deptName || "").toUpperCase()} ({(serverOverview.deptCode || "").toUpperCase()})
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
-                    Semester {serverOverview.semId}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full">
                     {serverOverview.universityName}
                   </span>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  {serverOverview.subjectName} is offered under {serverOverview.deptName} ({serverOverview.deptCode}) in Semester {serverOverview.semId} at {serverOverview.universityName}.
+                  Study materials, lecture notes, and previous year question papers for {serverOverview.subjectName} at {serverOverview.universityName}.
                   {serverOverview.materialsCount > 0
                     ? ` This subject currently has ${serverOverview.materialsCount} verified study ${serverOverview.materialsCount === 1 ? 'resource' : 'resources'} available on Paperino, including ${serverOverview.notesCount > 0 ? `${serverOverview.notesCount} set${serverOverview.notesCount === 1 ? '' : 's'} of notes` : ''}${serverOverview.notesCount > 0 && serverOverview.pyqsCount > 0 ? ', ' : ''}${serverOverview.pyqsCount > 0 ? `${serverOverview.pyqsCount} previous year question paper${serverOverview.pyqsCount === 1 ? '' : 's'}` : ''}${(serverOverview.notesCount > 0 || serverOverview.pyqsCount > 0) && serverOverview.questionsCount > 0 ? ', and ' : ''}${serverOverview.questionsCount > 0 ? `${serverOverview.questionsCount} question bank${serverOverview.questionsCount === 1 ? '' : 's'}` : ''}.`
                     : ' Study materials, notes, and question papers for this subject are being collected and will be available soon.'

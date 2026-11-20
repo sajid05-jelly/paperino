@@ -138,7 +138,6 @@ export default function CoursesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 w-full">
             {filteredSubjects.map((sub, index) => {
               const href = getSubjectSeoPath(sub);
-              const deptBadge = (sub.departmentId || "btech").toUpperCase();
 
               return (
                 <Link key={`${sub.departmentId}_${sub.semesterId}_${sub.id}_${index}`} href={href} className="flex">
@@ -151,16 +150,11 @@ export default function CoursesPage() {
                         <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 group-hover:scale-110 transition-all">
                           <FileText size={18} />
                         </div>
-                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full">
-                            {deptBadge}
+                        {sub.code && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full">
+                            {sub.code}
                           </span>
-                          {sub.code && (
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                              {sub.code}
-                            </span>
-                          )}
-                        </div>
+                        )}
                       </div>
 
                       {/* Subject Name */}
