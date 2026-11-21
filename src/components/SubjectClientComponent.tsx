@@ -202,22 +202,6 @@ export default function SubjectClientComponent({
   const subject = foundSubject || semesterSubjects.find(s => s.id === subjectId);
   const subjectName = subject?.name || subjectId.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
 
-  // Private Workspace Security Gate
-  if (subject && subject.status === "pending") {
-    const isOwner = isContributor && user?.uid === subject.contributorId;
-    if (!isAdmin && !isOwner) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 animate-in fade-in zoom-in duration-500">
-          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
-            <Clock size={40} className="text-amber-400" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-4">Course Pending Approval</h1>
-          <p className="text-gray-400 max-w-md mx-auto">This course has been suggested by a contributor and is currently waiting for admin approval before it becomes public.</p>
-        </div>
-      );
-    }
-  }
-
   const fetchMaterials = async (forceRefetch = false) => {
     const cacheKey = `paperino_subject_v3_cache_${deptId}_${semId}_${realSubjectId}`;
     
@@ -345,6 +329,22 @@ export default function SubjectClientComponent({
       }
     }
   }, [subjectId, subjectName]);
+
+  // Private Workspace Security Gate
+  if (subject && subject.status === "pending") {
+    const isOwner = isContributor && user?.uid === subject.contributorId;
+    if (!isAdmin && !isOwner) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
+            <Clock size={40} className="text-amber-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-4">Course Pending Approval</h1>
+          <p className="text-gray-400 max-w-md mx-auto">This course has been suggested by a contributor and is currently waiting for admin approval before it becomes public.</p>
+        </div>
+      );
+    }
+  }
 
   // Filter materials: only approved materials are publicly visible to other students.
   // Admins and the material uploader can see pending materials.

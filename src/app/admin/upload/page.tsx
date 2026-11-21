@@ -129,15 +129,6 @@ export default function AdminUploadPage() {
     setLoading(false);
   };
 
-  if (contextLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] w-full">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
-        <p className="text-gray-400">Syncing course options...</p>
-      </div>
-    );
-  }
-
   const selectedDeptObj = approvedDepts.find(d => d.id === formData.department);
   const semCount = selectedDeptObj?.totalSemesters || 8;
   const currentSubjects = (dynamicSubjects[formData.department]?.[formData.semester] || []).filter(
@@ -158,6 +149,15 @@ export default function AdminUploadPage() {
       }
     }
   }, [currentSubjects, formData.subject, loadingSubjects]);
+
+  if (contextLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] w-full">
+        <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
+        <p className="text-gray-400">Syncing course options...</p>
+      </div>
+    );
+  }
 
   const selectedSubject = currentSubjects.find(s => s.id === formData.subject);
   const allowedCategories: string[] = (selectedSubject?.sections && selectedSubject.sections.length > 0)
