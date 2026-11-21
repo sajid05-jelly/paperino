@@ -42,7 +42,7 @@ export default function BecomeContributorPage() {
             <Sparkles size={28} className="text-violet-400 animate-pulse" />
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight leading-tight">
-            🚀 Become a <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Contributor</span>
+            Become a <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Contributor</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-300 font-medium">
             Help students, share knowledge, earn rewards, and unlock premium benefits.

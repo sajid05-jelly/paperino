@@ -101,7 +101,7 @@ export default function PlanUpgradeModal() {
             <>
               <div className="mb-2">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r ${limitGradient} text-white text-xs font-bold uppercase tracking-wider shadow-sm`}>
-                  🔒 {displayPlanName} PLAN LIMIT REACHED
+                  {displayPlanName} PLAN LIMIT REACHED
                 </span>
               </div>
               <h3 className="text-lg font-bold text-white mt-3 mb-2">

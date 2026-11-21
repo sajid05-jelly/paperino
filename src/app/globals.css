@@ -147,7 +147,12 @@ a, button, input, select, textarea, [role="button"] {
   }
 }
 
-/* ── Custom Scrollbar ───────────────────────────────────────── */
+/* ── Custom Scrollbar (Cross-Browser: Chrome, Safari, Edge, Firefox) ───────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--primary-rgb), 0.35) rgba(0, 0, 0, 0.2);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -844,6 +849,19 @@ html, body {
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
 
+  /* Clamp utility backdrop blurs on mobile devices to prevent GPU compositing lag */
+  [class*="backdrop-blur-xl"],
+  [class*="backdrop-blur-2xl"],
+  [class*="backdrop-blur-3xl"] {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+  [class*="backdrop-blur-lg"],
+  [class*="backdrop-blur-md"] {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+
   /* Disable expensive mask composites on mobile */
   .vision-glass::before,
   .liquid-glass::before,
@@ -867,11 +885,28 @@ html, body {
     transform: translateZ(0) !important;
   }
 
+  /* Disable continuous floating animations on mobile */
+  .animate-float {
+    animation: none !important;
+  }
+
   /* Turn off gamification continuous background frame/glow loops */
   .active-anim .avatar-frame-glow,
   .active-anim .gold-sparkle-shine {
     animation: none !important;
   }
+}
+
+/* CSS Containment for ultra-smooth list scrolling (Chrome, Safari 18+, Firefox 125+, Edge) */
+.subject-card-contain {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 170px;
+}
+
+/* Dynamic Viewport Height Helper (Prevents iOS Safari & Chrome URL bar layout shifts) */
+.min-h-screen-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* iOS Safari Hardware Compositor & Momentum Acceleration */

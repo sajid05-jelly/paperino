@@ -100,7 +100,7 @@ export default function ContributorUploadPage() {
       // Notify admins
       await notifyAdmins(
         db,
-        "New Material Uploaded 📤",
+        "New Material Uploaded",
         `New material uploaded by ${user.displayName || user.email || "a contributor"} and is waiting for review.`,
         "material_uploaded"
       );
@@ -244,7 +244,7 @@ export default function ContributorUploadPage() {
             <div className="absolute -top-12 -right-12 w-24 h-24 bg-fuchsia-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
             
             <h3 className="text-lg font-extrabold text-white flex items-center gap-2 tracking-tight">
-              🚀 Help Expand Paperino
+              Help Expand Paperino
             </h3>
             <p className="text-xs text-gray-300 leading-relaxed font-light">
               Can't find your department or subject? Add it and help thousands of students access better study materials.
@@ -262,7 +262,7 @@ export default function ContributorUploadPage() {
                 <div className="w-5 h-5 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
                   <Sparkles size={12} />
                 </div>
-                Unlock Free Plus Plan 🎁
+                Unlock Free Plus Plan
               </div>
               <div className="flex items-center gap-2.5 text-xs font-semibold text-cyan-300">
                 <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">

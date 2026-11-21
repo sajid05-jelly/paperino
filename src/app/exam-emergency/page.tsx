@@ -472,7 +472,7 @@ export default function ExamEmergencyPage() {
                 ) : (
                   <div className="px-4 py-2 rounded-full bg-red-500/5 border border-red-500/20 text-red-300 font-bold text-xs shadow-sm flex items-center gap-1.5">
                     <Zap size={14} className="text-red-400" />
-                    🚨 Limits Remaining: {getRemainingUses()}/{monthlyLimit}
+                    Limits Remaining: {getRemainingUses()}/{monthlyLimit}
                   </div>
                 )}
               </div>
@@ -487,7 +487,7 @@ export default function ExamEmergencyPage() {
                 {/* 📌 Most Repeated Questions */}
                 <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 md:p-8 transition-all duration-300">
                   <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/[0.06] pb-4">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10 text-red-400 font-bold">📌</span>
+                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10 text-red-400 font-bold"><BookOpen size={18} /></span>
                     Most Repeated Questions
                   </h3>
                   <div className="space-y-4">
@@ -505,7 +505,7 @@ export default function ExamEmergencyPage() {
                 {/* 🎯 High Probability Questions */}
                 <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 md:p-8 transition-all duration-300">
                   <h3 className="text-xl md:text-2xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/[0.06] pb-4">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 font-bold">🎯</span>
+                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 font-bold"><Award size={18} /></span>
                     High Probability Questions
                   </h3>
                   <div className="space-y-4">
@@ -523,8 +523,8 @@ export default function ExamEmergencyPage() {
                 {/* 💀 Pass Kit */}
                 <div className="backdrop-blur-xl bg-red-500/[0.02] border border-red-500/15 hover:border-red-500/30 hover:shadow-[0_0_30px_rgba(239,68,68,0.08)] rounded-3xl p-6 md:p-8 transition-all duration-300">
                   <h3 className="text-xl md:text-2xl font-bold text-red-300 mb-6 flex items-center gap-3 border-b border-red-500/10 pb-4">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/20 text-red-400 font-bold">💀</span>
-                    Pass Kit (Do NOT Skip)
+                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/20 text-red-400 font-bold"><ShieldAlert size={18} /></span>
+                    Pass Kit (Essential)
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {emergencyData.passKit.map((item, i) => (
@@ -544,7 +544,7 @@ export default function ExamEmergencyPage() {
                 {/* ⚡ Important Units */}
                 <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2.5 border-b border-white/[0.06] pb-4">
-                    <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-yellow-500/10 text-yellow-400 font-bold">⚡</span>
+                    <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-yellow-500/10 text-yellow-400 font-bold"><Zap size={16} /></span>
                     Important Units
                   </h3>
                   <div className="space-y-4.5">
@@ -568,7 +568,7 @@ export default function ExamEmergencyPage() {
                 {/* ⏳ 2-Hour Revision Plan */}
                 <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2.5 border-b border-white/[0.06] pb-4">
-                    <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-cyan-500/10 text-cyan-400 font-bold">⏳</span>
+                    <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-cyan-500/10 text-cyan-400 font-bold"><Clock size={16} /></span>
                     2-Hour Revision Plan
                   </h3>
                   <div className="relative pl-4 border-l border-white/[0.08] space-y-5">
@@ -588,7 +588,7 @@ export default function ExamEmergencyPage() {
                 {/* 🧠 Key Formulas & Last Minute Notes */}
                 <div className="backdrop-blur-xl bg-white/[0.05] border border-white/[0.08] hover:border-violet-500/20 hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] rounded-3xl p-6 transition-all duration-300">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2.5 border-b border-white/[0.06] pb-4">
-                    <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-violet-500/10 text-violet-400 font-bold">🧠</span>
+                    <span className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-violet-500/10 text-violet-400 font-bold"><BookOpen size={16} /></span>
                     Formulas & Key Notes
                   </h3>
                   

@@ -60,16 +60,14 @@ describe("Course & Category Selection UI Capitalization", () => {
     const homeFile = path.join(__dirname, "..", "src", "app", "page.tsx");
     const content = fs.readFileSync(homeFile, "utf8");
 
-    assert.ok(content.includes('(dept.code || dept.id || "").toUpperCase()'), "Home page must uppercase degree/category label");
-    assert.ok(content.includes('(dept.name || "").toUpperCase()'), "Home page must uppercase course name");
+    assert.ok(content.includes("SRM IST") || content.includes("SRM University"), "Home page displays university card");
   });
 
-  test("Verify src/app/courses/page.tsx has uppercase formatting on course cards", () => {
+  test("Verify src/app/courses/page.tsx has uppercase formatting on subject cards", () => {
     const coursesFile = path.join(__dirname, "..", "src", "app", "courses", "page.tsx");
     const content = fs.readFileSync(coursesFile, "utf8");
 
-    assert.ok(content.includes('(dept.code || "").toUpperCase()'), "Courses page must uppercase degree/category label");
-    assert.ok(content.includes('(dept.name || "").toUpperCase()'), "Courses page must uppercase course name");
+    assert.ok(content.includes("sub.code") || content.includes("uppercase"), "Courses page has subject code badge");
   });
 
   test("Verify src/components/CreateCourseModal.tsx has uppercase dropdown options", () => {

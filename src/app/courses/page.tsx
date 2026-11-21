@@ -181,7 +181,7 @@ export default function CoursesPage() {
                 : rawHref;
 
               return (
-                <Link key={`${sub.departmentId}_${sub.semesterId}_${sub.id}_${index}`} href={href} className="flex">
+                <Link key={`${sub.departmentId}_${sub.semesterId}_${sub.id}_${index}`} href={href} className="flex subject-card-contain">
                   <div className="vision-glass p-6 rounded-[2rem] w-full border border-white/10 hover:border-purple-500/40 bg-[#0f0a1a]/60 hover:bg-[#150d28]/90 transition-all duration-300 group cursor-pointer relative overflow-hidden flex flex-col justify-between shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.2)] hover:-translate-y-1">
                     <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-violet-600/10 to-fuchsia-600/10 rounded-full blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 

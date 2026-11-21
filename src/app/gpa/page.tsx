@@ -436,7 +436,7 @@ export default function GPACalculatorPage() {
               </Link>
             </div>
             <p className="text-[11px] text-gray-500 pt-1">
-              🎁 Free for contributors with 10+ approved materials!
+              Free for contributors with 10+ approved materials!
             </p>
           </div>
         ) : (

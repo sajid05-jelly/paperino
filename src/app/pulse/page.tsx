@@ -125,13 +125,13 @@ export default function PulsePage() {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "Internships": return "💼";
-      case "Hackathons": return "🚀";
-      case "Workshops": return "🛠️";
-      case "Placements": return "🎓";
-      case "Events": return "🎪";
-      case "Out of Date": return "⌛";
-      default: return "📢";
+      case "Internships": return "";
+      case "Hackathons": return "";
+      case "Workshops": return "";
+      case "Placements": return "";
+      case "Events": return "";
+      case "Out of Date": return "";
+      default: return "";
     }
   };
 
@@ -285,7 +285,7 @@ export default function PulsePage() {
             return (
               <span key={src} className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
                 style={badgeStyle("rgba(245,158,11,0.14)", "rgba(245,158,11,0.38)", "#fbbf24", "0 0 10px rgba(245,158,11,0.2)")}>
-                <span>📍</span>
+                
                 <span>PAPERINO</span>
               </span>
             );
@@ -294,7 +294,7 @@ export default function PulsePage() {
             return (
               <span key={src} className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
                 style={badgeStyle("rgba(37,99,235,0.14)", "rgba(59,130,246,0.38)", "#60a5fa", "0 0 10px rgba(59,130,246,0.2)")}>
-                <span>🎯</span>
+                
                 <span>UNSTOP</span>
               </span>
             );
@@ -302,7 +302,7 @@ export default function PulsePage() {
           return (
             <span key={src} className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
               style={badgeStyle("rgba(139,92,246,0.14)", "rgba(139,92,246,0.38)", "#c4b5fd")}>
-              <span>⚡</span>
+              
               <span>{src.toUpperCase()}</span>
             </span>
           );
@@ -310,7 +310,6 @@ export default function PulsePage() {
 
         <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1"
           style={badgeStyle("rgba(109,40,217,0.14)", "rgba(139,92,246,0.32)", "#c4b5fd", "0 0 10px rgba(109,40,217,0.18)")}>
-          <span>{getCategoryIcon(update.category)}</span>
           <span>{update.category}</span>
         </span>
         {update.mode && (

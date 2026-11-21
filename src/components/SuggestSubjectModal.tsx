@@ -235,14 +235,14 @@ export default function SuggestSubjectModal({
       // 4. Notify all admins in real-time
       await notifyAdmins(
         db,
-        "📚 New Subject & Material Submitted",
+        "New Subject & Material Submitted",
         `${user.displayName || user.email || "A student"} submitted new subject "${subjectName.trim()}" with ${getCategoryLabel(selectedCategory)} ("${materialTitle.trim()}"). Awaiting approval in Reviews.`,
         "subject_suggested"
       );
 
       setSuccess(true);
       showToast(
-        "✅ Subject & study material submitted! Our team will review and publish it soon.",
+        "Subject & study material submitted! Our team will review and publish it soon.",
         "success"
       );
 
@@ -346,7 +346,7 @@ export default function SuggestSubjectModal({
                 />
                 {isDuplicate && (
                   <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-1.5 px-0.5">
-                    <span>✓ This subject already exists in {(departmentName || "").toUpperCase()} – Semester {semesterId}.</span>
+                    <CheckCircle2 size={13} className="text-emerald-400 shrink-0" /> <span>This subject already exists in {(departmentName || "").toUpperCase()} – Semester {semesterId}.</span>
                   </p>
                 )}
               </div>

@@ -251,7 +251,7 @@ export default function AddSubjectModal({
       if (!isAdmin) {
         await notifyAdmins(
           db,
-          "📚 New Subject & Material Submitted",
+          "New Subject & Material Submitted",
           `${user.displayName || user.email || "A student"} submitted new subject "${subjectName.trim()}" with ${getCategoryLabel(selectedCategory)} ("${materialTitle.trim()}"). Awaiting approval in Reviews.`,
           "subject_suggested"
         );
@@ -260,8 +260,8 @@ export default function AddSubjectModal({
       setSuccess(true);
       showToast(
         isAdmin
-          ? "✅ Subject and study material created and published live!"
-          : "✅ Subject and study material submitted for admin review!",
+          ? "Subject and study material created and published live!"
+          : "Subject and study material submitted for admin review!",
         "success"
       );
 
@@ -345,7 +345,7 @@ export default function AddSubjectModal({
               />
               {isDuplicate && (
                 <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-1.5 px-0.5">
-                  <span>✓ This subject already exists in Paperino.</span>
+                  <CheckCircle2 size={13} className="text-emerald-400 shrink-0" /> <span>This subject already exists in Paperino.</span>
                 </p>
               )}
             </div>

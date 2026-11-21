@@ -76,7 +76,7 @@ export default function AttendanceShieldPage() {
           color: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5",
           ringColor: "stroke-emerald-400",
           shadow: "shadow-[0_0_20px_rgba(16,185,129,0.2)]",
-          label: "Safe 😎",
+          label: "Safe",
           message: "You are comfortably above target. You can take a breather!"
         };
       case "Warning":
@@ -84,7 +84,7 @@ export default function AttendanceShieldPage() {
           color: "text-amber-400 border-emerald-500/20 bg-amber-500/5",
           ringColor: "stroke-amber-400",
           shadow: "shadow-[0_0_20px_rgba(245,158,11,0.2)]",
-          label: "Warning ⚠️",
+          label: "Warning",
           message: "You are close to the target limit. Be careful with skips."
         };
       case "Critical":
@@ -92,7 +92,7 @@ export default function AttendanceShieldPage() {
           color: "text-red-400 border-red-500/20 bg-red-500/5",
           ringColor: "stroke-red-500",
           shadow: "shadow-[0_0_20px_rgba(239,68,68,0.2)]",
-          label: "Critical 💀",
+          label: "Critical",
           message: "You are below the required attendance. Immediate attendance required."
         };
     }
@@ -248,7 +248,7 @@ export default function AttendanceShieldPage() {
               
               {/* Safe Skips */}
               <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-6 flex items-center gap-4 hover:border-emerald-500/30 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] transition-all">
-                <span className="text-3xl flex items-center justify-center w-12 h-12 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400">😎</span>
+                <span className="flex items-center justify-center w-12 h-12 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400"><CheckCircle2 size={26} /></span>
                 <div>
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Classes You Can Skip</span>
                   <p className="text-2xl font-black text-emerald-400">{classesToSkip}</p>
@@ -257,7 +257,7 @@ export default function AttendanceShieldPage() {
 
               {/* Required Attendance */}
               <div className="backdrop-blur-3xl bg-white/[0.05] border border-violet-500/20 rounded-3xl p-6 flex items-center gap-4 hover:border-red-500/30 shadow-[0_0_30px_rgba(var(--primary-rgb),0.08)] transition-all">
-                <span className="text-3xl flex items-center justify-center w-12 h-12 bg-red-500/10 rounded-2xl border border-red-500/20 text-red-400">💀</span>
+                <span className="flex items-center justify-center w-12 h-12 bg-red-500/10 rounded-2xl border border-red-500/20 text-red-400"><AlertTriangle size={26} /></span>
                 <div>
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Must Attend Consecutively</span>
                   <p className="text-2xl font-black text-red-400">{classesToAttend}</p>

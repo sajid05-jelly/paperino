@@ -514,7 +514,7 @@ export default function CareerDnaPage() {
           </div>
           <div className="space-y-2">
             <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400">
-              🚀 Career DNA 2.0
+              Career DNA 2.0
             </h2>
             <p className="text-sm font-semibold text-purple-300">
               We're building a smarter AI-powered career platform for students.
@@ -526,13 +526,13 @@ export default function CareerDnaPage() {
               Career DNA is currently under active development. We're improving:
             </p>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-300">
-              <li className="flex items-center gap-2">🟢 AI Resume Analysis</li>
-              <li className="flex items-center gap-2">🟢 Internship Recommendations</li>
-              <li className="flex items-center gap-2">🟢 Career Readiness Scoring</li>
-              <li className="flex items-center gap-2">🟢 Skill Gap Detection</li>
-              <li className="flex items-center gap-2">🟢 Career Roadmaps</li>
-              <li className="flex items-center gap-2">🟢 AI Performance</li>
-              <li className="flex items-center gap-2">🟢 Recommendation Accuracy</li>
+              <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span> AI Resume Analysis</li>
+              <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span> Internship Recommendations</li>
+              <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span> Career Readiness Scoring</li>
+              <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span> Skill Gap Detection</li>
+              <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span> Career Roadmaps</li>
+              <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span> AI Performance</li>
+              <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span> Recommendation Accuracy</li>
             </ul>
             <p className="text-xs text-gray-500 pt-1">
               Please check back soon.
@@ -754,7 +754,7 @@ export default function CareerDnaPage() {
               <div className="space-y-6">
                 {activeStep === 1 && (
                   <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">👤 Personal & Basic Details</h3>
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Personal & Basic Details</h3>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1.5 font-medium">Full Name</label>
                       <input
@@ -825,7 +825,7 @@ export default function CareerDnaPage() {
 
                 {activeStep === 2 && (
                   <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">🎯 Career Goals</h3>
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Career Goals</h3>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1.5 font-medium">Dream Role</label>
                       <input
@@ -858,7 +858,7 @@ export default function CareerDnaPage() {
 
                 {activeStep === 3 && (
                   <div className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">📚 Academic Profile</h3>
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Academic Profile</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <div className="flex justify-between items-center mb-1.5">
@@ -938,7 +938,7 @@ export default function CareerDnaPage() {
 
                 {activeStep === 4 && (
                   <div id="skillsSection" className="space-y-4 animate-in fade-in duration-200">
-                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">💻 Technical Profile & Links</h3>
+                    <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Technical Profile & Links</h3>
                     
                     {/* Resume Upload parsing section */}
                     <div className="p-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.02]">
@@ -1715,17 +1715,17 @@ export default function CareerDnaPage() {
                                 </span>
                                  {opp.stipend && !opp.stipend.toLowerCase().includes("unstop") && (
                                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-300 font-bold">
-                                     💰 {opp.stipend}
+                                     {opp.stipend}
                                    </span>
                                  )}
                                 {opp.duration && (
                                   <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 font-bold">
-                                    ⏱️ {opp.duration}
+                                    {opp.duration}
                                   </span>
                                 )}
                                 {opp.workType && (
                                   <span className="px-2 py-0.5 rounded bg-fuchsia-500/10 border border-fuchsia-500/20 text-[10px] text-fuchsia-300 font-bold">
-                                    🌐 {opp.workType}
+                                    {opp.workType}
                                   </span>
                                 )}
                               </div>
@@ -1735,12 +1735,12 @@ export default function CareerDnaPage() {
                                 {opp.verified !== false && <span className="text-emerald-400 text-xs" title="Verified Opportunity">✓</span>}
                               </h4>
                               <p className="text-xs text-gray-400">
-                                🏢 <strong className="text-gray-200 font-semibold">{opp.company}</strong> · 📍 {opp.location}
+                                <strong className="text-gray-200 font-semibold">{opp.company}</strong> · {opp.location}
                               </p>
 
                               {opp.deadline && (
                                 <p className="text-[11px] text-amber-300 font-semibold flex items-center gap-1">
-                                  ⏳ Registration Deadline: {new Date(opp.deadline).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                                  Registration Deadline: {new Date(opp.deadline).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
                                 </p>
                               )}
                             </div>
@@ -1964,13 +1964,13 @@ export default function CareerDnaPage() {
                 <span className="block text-[10px] text-gray-500 uppercase tracking-widest font-bold">Requirement checks:</span>
                 {selectedEligibleMat.eligibilityBreakdown?.reasons?.map((r, idx) => (
                   <div key={idx} className="flex gap-2 text-xs text-rose-300 items-start">
-                    <span className="text-rose-500">❌</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 mt-1.5"></span>
                     <span>{r}</span>
                   </div>
                 ))}
                 {(!selectedEligibleMat.eligibilityBreakdown?.reasons || selectedEligibleMat.eligibilityBreakdown.reasons.length === 0) && (
                   <div className="flex gap-2 text-xs text-emerald-300 items-center">
-                    <span>✔</span> You meet all minimum criteria.
+                    <span className="text-emerald-400 font-bold">✓</span> You meet all minimum criteria.
                   </div>
                 )}
               </div>
@@ -2182,7 +2182,7 @@ export default function CareerDnaPage() {
                     <div>
                       <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Resume</span>
                       {profile.resumeText ? (
-                        <span className="text-emerald-400 font-semibold flex items-center gap-0.5">✔ Integrated</span>
+                        <span className="text-emerald-400 font-semibold flex items-center gap-0.5">✓ Integrated</span>
                       ) : (
                         <span className="text-gray-600 italic block">Missing</span>
                       )}

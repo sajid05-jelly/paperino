@@ -169,7 +169,7 @@ export default function CreateCourseModal({
         if (isSuggestion) {
           await notifyAdmins(
             db,
-            "New Department Suggested 🏢",
+            "New Department Suggested",
             `${user?.displayName || "A contributor"} suggested a new department: ${newDeptName}.`,
             "department_suggested"
           );
@@ -205,7 +205,7 @@ export default function CreateCourseModal({
       if (isSuggestion) {
         await notifyAdmins(
           db,
-          "New Subject Suggested 📚",
+          "New Subject Suggested",
           `${user?.displayName || "A contributor"} suggested a new subject: ${subjectName} under ${finalDeptId}.`,
           "subject_suggested"
         );
@@ -371,7 +371,7 @@ export default function CreateCourseModal({
                     />
                     {isDuplicate && (
                       <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-2 px-0.5 animate-in fade-in duration-200">
-                        <span>✓ This subject already exists in {deptDisplayName} – Semester {semester}.</span>
+                        <CheckCircle2 size={13} className="text-emerald-400 shrink-0" /> <span>This subject already exists in {deptDisplayName} – Semester {semester}.</span>
                       </p>
                     )}
                   </div>

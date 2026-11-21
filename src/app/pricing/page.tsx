@@ -527,12 +527,12 @@ export default function PricingPage() {
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              A Personal Note from the Paperino Team ❤️
+              A Personal Note from the Paperino Team
             </h2>
 
             <div className="space-y-4 text-sm sm:text-base text-gray-300 leading-relaxed font-normal text-left sm:text-center">
               <p>
-                “Please don’t think of Paperino as just another paid platform ❤️
+                “Please don’t think of Paperino as just another paid platform.
               </p>
               <p>
                 We work day and night to build and maintain Paperino for you. We constantly search for useful study materials, collect them, verify them, and organize them so that you can access the resources you need every day.
@@ -541,13 +541,13 @@ export default function PricingPage() {
                 Plus at just ₹29, Pro at ₹59, and Premium at ₹99 — we’ve kept our plans student-friendly so that you can unlock more powerful features without spending too much.
               </p>
               <p className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-200 font-semibold">
-                And for our contributors: Share 10+ genuine and approved materials with the Paperino community and get the Plus plan FREE 🎁
+                And for our contributors: Share 10+ genuine and approved materials with the Paperino community and get the Plus plan Free.
               </p>
               <p className="text-xs text-gray-400">
                 Fake or low-quality materials won’t count — only genuine, useful contributions will qualify.
               </p>
               <p className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 text-base sm:text-lg pt-2">
-                Study. Share. Grow. — Paperino ❤️”
+                Study. Share. Grow. — Paperino”
               </p>
             </div>
 

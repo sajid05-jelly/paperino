@@ -1026,7 +1026,7 @@ export default function SubjectClientComponent({
 
             <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3.5 mb-6 text-xs text-rose-300 space-y-1">
               <p className="font-semibold flex items-center gap-1.5">
-                ⚠️ Permanent Subject Deletion
+                Permanent Subject Deletion
               </p>
               <p className="text-rose-300/80">
                 This will delete the subject from the platform and remove all study materials associated with it. This action cannot be undone.

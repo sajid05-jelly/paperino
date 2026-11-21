@@ -260,7 +260,7 @@ export default function GitHubIntelligence({
             </div>
 
             <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
-              🚀 Want a complete AI-powered GitHub analysis?
+              Want a complete developer analysis?
             </h3>
 
             <p className="text-xs sm:text-sm text-gray-300 leading-relaxed font-light">

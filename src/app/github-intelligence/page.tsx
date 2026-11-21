@@ -811,7 +811,7 @@ export default function GitHubIntelligencePage() {
                           : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
                       }`}
                     >
-                      {badge.unlocked ? "✓ UNLOCKED" : "🔒 LOCKED"}
+                      {badge.unlocked ? "UNLOCKED" : "LOCKED"}
                     </span>
                   </div>
                 ))}
@@ -863,7 +863,7 @@ export default function GitHubIntelligencePage() {
                       <p className="text-gray-200 leading-relaxed font-medium">{selectedBadge.unlockReason}</p>
                       {selectedBadge.suggestion && (
                         <p className="text-cyan-300 pt-1 text-[11px] leading-normal font-semibold">
-                          💡 <strong>How to unlock:</strong> {selectedBadge.suggestion}
+                          <strong>How to unlock:</strong> {selectedBadge.suggestion}
                         </p>
                       )}
                     </div>
@@ -935,7 +935,7 @@ export default function GitHubIntelligencePage() {
                 {/* Startup Readiness */}
                 <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
                   <div className="flex justify-between items-center font-bold">
-                    <span className="text-gray-300">🚀 Startup Readiness</span>
+                    <span className="text-gray-300">Startup Readiness</span>
                     <span className="text-purple-300 font-mono">{analysis.developerPersonality?.readinessScores?.startupReadiness || 85}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -949,7 +949,7 @@ export default function GitHubIntelligencePage() {
                 {/* Enterprise Readiness */}
                 <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
                   <div className="flex justify-between items-center font-bold">
-                    <span className="text-gray-300">🏢 Enterprise Readiness</span>
+                    <span className="text-gray-300">Enterprise Readiness</span>
                     <span className="text-cyan-300 font-mono">{analysis.developerPersonality?.readinessScores?.enterpriseReadiness || 75}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -963,7 +963,7 @@ export default function GitHubIntelligencePage() {
                 {/* Freelancer Potential */}
                 <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
                   <div className="flex justify-between items-center font-bold">
-                    <span className="text-gray-300">💼 Freelancer Potential</span>
+                    <span className="text-gray-300">Freelancer Potential</span>
                     <span className="text-emerald-300 font-mono">{analysis.developerPersonality?.readinessScores?.freelancerPotential || 80}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -977,7 +977,7 @@ export default function GitHubIntelligencePage() {
                 {/* Leadership Potential */}
                 <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
                   <div className="flex justify-between items-center font-bold">
-                    <span className="text-gray-300">👑 Leadership Potential</span>
+                    <span className="text-gray-300">Leadership Potential</span>
                     <span className="text-amber-300 font-mono">{analysis.developerPersonality?.readinessScores?.leadershipPotential || 70}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -1054,7 +1054,7 @@ export default function GitHubIntelligencePage() {
                     <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5 space-y-1">
                       <span className="text-gray-400 font-medium block">Activity Trend</span>
                       <span className="font-bold text-sm text-emerald-400">
-                        {analysis.developerJourney?.growth?.activityTrend || "Consistent Project Growth 📈"}
+                        {analysis.developerJourney?.growth?.activityTrend || "Consistent Project Growth"}
                       </span>
                     </div>
 
@@ -1591,7 +1591,7 @@ export default function GitHubIntelligencePage() {
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-white group-hover:text-emerald-300 transition-colors">{p.name}</span>
-                            <span className="text-[10px] text-emerald-400 font-semibold opacity-75 group-hover:opacity-100">🔍 Click to Audit →</span>
+                            <span className="text-[10px] text-emerald-400 font-semibold opacity-75 group-hover:opacity-100">Audit Details →</span>
                           </div>
                           <span className="text-[10px] text-emerald-300 font-semibold block">{p.category}</span>
                         </div>

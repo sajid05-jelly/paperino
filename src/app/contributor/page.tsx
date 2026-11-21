@@ -135,10 +135,10 @@ export default function ContributorDashboardPage() {
   // Badge Level Selection
   const badgeLevel = approvedCount >= 20 ? "elite" : approvedCount >= 5 ? "active" : approvedCount >= 1 ? "contributor" : "normal";
   const badgeInfo = {
-    elite: { name: "Elite Contributor", icon: "🥇", color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.15)]" },
-    active: { name: "Active Contributor", icon: "🥈", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.15)]" },
-    contributor: { name: "Contributor", icon: "🥉", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
-    normal: { name: "Academic Explorer", icon: "📖", color: "text-gray-400 bg-gray-500/10 border-gray-500/20" }
+    elite: { name: "Elite Contributor", icon: <Award size={30} className="text-yellow-400" />, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.15)]" },
+    active: { name: "Active Contributor", icon: <Award size={30} className="text-cyan-400" />, color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.15)]" },
+    contributor: { name: "Contributor", icon: <Award size={30} className="text-amber-400" />, color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
+    normal: { name: "Academic Explorer", icon: <BookOpen size={30} className="text-gray-400" />, color: "text-gray-400 bg-gray-500/10 border-gray-500/20" }
   }[badgeLevel];
 
   const formattedExpiry = premiumEndDate
@@ -210,7 +210,7 @@ export default function ContributorDashboardPage() {
           <div className="flex justify-between items-center text-xs">
             <span className="text-gray-400 font-medium flex items-center gap-1.5">
               <Trophy size={14} className="text-yellow-400" />
-              Next reward: <strong className="text-white">Plus Plan FREE 🎁</strong>
+              Next reward: <strong className="text-white">Plus Plan Free</strong>
             </span>
             <span className="text-fuchsia-400 font-bold">{uploadsRemaining} Approved Materials Left</span>
           </div>
@@ -231,7 +231,7 @@ export default function ContributorDashboardPage() {
         <div className="vision-glass p-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 flex items-center gap-4">
           <Gift className="text-emerald-400 animate-bounce" size={24} />
           <div>
-            <h4 className="text-sm font-bold text-white">Free Plus Plan Active! 🎁</h4>
+            <h4 className="text-sm font-bold text-white">Free Plus Plan Active!</h4>
             <p className="text-xs text-gray-400">You have shared 10+ genuine approved materials with the community. Enjoy the Plus plan for free!</p>
           </div>
         </div>
@@ -318,7 +318,7 @@ export default function ContributorDashboardPage() {
                   <ul className="text-xs text-gray-400 space-y-2 list-none pl-1">
                     <li className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>10+ Approved Materials:</strong> Unlocks Paperino Plus Plan FREE 🎁</span>
+                      <span><strong>10+ Approved Materials:</strong> Unlocks Paperino Plus Plan Free</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
