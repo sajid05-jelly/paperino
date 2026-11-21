@@ -451,68 +451,37 @@ export default function WeeklyChallengesPage() {
   // 1. Maintenance Mode
   if (config.maintenanceMode === true) {
     return (
-      <div className="relative min-h-[82vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
-        {/* Ambient Glows */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none -z-10" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-500/10 rounded-full blur-[90px] pointer-events-none -z-10" />
-
-        <div className="relative max-w-xl w-full mx-auto p-8 sm:p-10 rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-[#140e2b]/90 via-[#0c0818]/90 to-[#07050d]/95 backdrop-blur-2xl shadow-[0_0_60px_rgba(139,92,246,0.18)] text-center">
+      <div className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
+        <div className="max-w-lg w-full mx-auto p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#0c0916]/95 text-center shadow-xl">
           
-          {/* Status Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/25 mb-6 shadow-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            <span className="tracking-wide">System Upgrade in Progress</span>
+          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-6">
+            Under Maintenance
           </div>
 
-          {/* Central Glowing Icon */}
-          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-500/20 via-purple-600/10 to-amber-500/10 border border-purple-400/30 shadow-[0_0_35px_rgba(168,85,247,0.25)]">
-            <Wrench className="h-9 w-9 text-purple-300 animate-pulse" />
-            <Sparkles className="absolute -top-1.5 -right-1.5 h-5 w-5 text-amber-300" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
+            <Wrench className="h-8 w-8" />
           </div>
 
-          {/* Clean Typography */}
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-3">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
             Arena Under Maintenance
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-8 font-light">
-            We are performing scheduled improvements and optimizations to the Paperino Challenge Arena. All game sessions, challenges, and leaderboards will resume shortly.
+          <p className="text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-8 font-normal">
+            Paperino Challenge Arena is temporarily offline for scheduled system updates. Game sessions, challenges, and leaderboards will resume shortly.
           </p>
 
-          {/* Info Trust Cards */}
-          <div className="grid grid-cols-2 gap-3 mb-8 text-left">
-            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-start gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-[11px] font-bold text-white">Scores Protected</p>
-                <p className="text-[10px] text-gray-400">Your ranks and history are safe</p>
-              </div>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-start gap-2.5">
-              <Activity className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-[11px] font-bold text-white">Live Realtime Sync</p>
-                <p className="text-[10px] text-gray-400">Auto-unlocks when complete</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Navigation Buttons */}
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/courses"
-              className="w-full sm:flex-1 py-3 px-5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(168,85,247,0.35)] cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
             >
-              <BookOpen size={15} />
+              <BookOpen size={16} />
               <span>Explore Materials</span>
             </Link>
             <Link
               href="/"
-              className="w-full sm:w-auto py-3 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-semibold text-xs transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium text-sm transition-colors border border-white/10 flex items-center justify-center gap-2"
             >
-              <ArrowLeft size={14} />
+              <ArrowLeft size={15} />
               <span>Back to Home</span>
             </Link>
           </div>
@@ -524,40 +493,38 @@ export default function WeeklyChallengesPage() {
   // 2. Feature Enabled / Disabled Globally
   if (config.enabled === false) {
     return (
-      <div className="relative min-h-[82vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-
-        <div className="relative max-w-xl w-full mx-auto p-8 sm:p-10 rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-[#140e2b]/90 via-[#0c0818]/90 to-[#07050d]/95 backdrop-blur-2xl shadow-[0_0_60px_rgba(139,92,246,0.15)] text-center">
+      <div className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
+        <div className="max-w-lg w-full mx-auto p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#0c0916]/95 text-center shadow-xl">
           
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white/5 text-gray-300 border border-white/10 mb-6 shadow-sm">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-300 border border-white/10 mb-6">
             <Lock className="w-3.5 h-3.5 text-gray-400" />
-            <span className="tracking-wide">Arena Paused</span>
+            <span>Temporarily Offline</span>
           </div>
 
-          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/5 border border-white/10 shadow-[0_0_35px_rgba(255,255,255,0.05)]">
-            <Lock className="h-9 w-9 text-gray-400" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-gray-400">
+            <Lock className="h-8 w-8" />
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-3">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
             Challenges Temporarily Offline
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-8 font-light">
+          <p className="text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-8 font-normal">
             Weekly challenges are currently paused by the platform administrator. The arena will be reactivated in the next scheduled cycle.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/courses"
-              className="w-full sm:flex-1 py-3 px-5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(168,85,247,0.35)] cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
             >
-              <BookOpen size={15} />
+              <BookOpen size={16} />
               <span>Browse Study Notes</span>
             </Link>
             <Link
               href="/"
-              className="w-full sm:w-auto py-3 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-semibold text-xs transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium text-sm transition-colors border border-white/10 flex items-center justify-center gap-2"
             >
-              <ArrowLeft size={14} />
+              <ArrowLeft size={15} />
               <span>Back to Home</span>
             </Link>
           </div>

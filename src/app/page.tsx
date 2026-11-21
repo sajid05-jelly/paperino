@@ -145,8 +145,8 @@ export default function Home() {
       <section className="w-full max-w-5xl mx-auto mb-32 mt-20 px-4 md:px-0">
         <div className="flex flex-col items-center justify-center text-center mb-12 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]">
-            <Sparkles size={14} className="text-violet-400" aria-hidden="true" />
-            <span>AI Features</span>
+            <BrainCircuit size={14} className="text-violet-400" aria-hidden="true" />
+            <span>Smart Tools</span>
           </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight leading-tight">
             Premium AI-powered <br className="hidden md:block" />
@@ -263,7 +263,7 @@ export default function Home() {
           <div className="relative p-6 md:p-10 lg:p-16 flex flex-col items-center text-center z-10">
             {/* Tag */}
             <div className="inline-flex items-center justify-center gap-2 px-4 py-1 md:px-5 md:py-1.5 rounded-full bg-violet-500/[0.05] border border-violet-500/[0.15] backdrop-blur-3xl mb-6 md:mb-8 shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]">
-              <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-violet-400" aria-hidden="true" />
+              <BookOpen className="w-3 h-3 md:w-3.5 md:h-3.5 text-violet-400" aria-hidden="true" />
               <span className="text-[10px] md:text-xs font-light text-violet-100 uppercase tracking-[0.2em] pt-0.5">
                 About The Platform
               </span>

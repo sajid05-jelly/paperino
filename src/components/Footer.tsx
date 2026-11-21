@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, Mail, Heart } from "lucide-react";
+import { BookOpen, Mail, Heart } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -15,7 +15,7 @@ export default function Footer() {
         {/* Left Side: Brand & Motto */}
         <div className="flex flex-col items-center md:items-start gap-4">
           <div className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-violet-400" aria-hidden="true" /> Paperino
+            <BookOpen className="w-5 h-5 text-violet-400" aria-hidden="true" /> Paperino
           </div>
           
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/5 border border-violet-500/10 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]">

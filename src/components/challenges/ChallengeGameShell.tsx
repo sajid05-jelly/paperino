@@ -78,40 +78,35 @@ export default function ChallengeGameShell({
   if (isLockedByAdmin) {
     return (
       <div className="min-h-screen w-full py-16 px-4 flex flex-col items-center justify-center text-center bg-[var(--background)] select-none">
-        <div className="max-w-md w-full p-8 sm:p-10 rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-[#140e2b]/95 via-[#0c0818]/95 to-[#07050d]/98 backdrop-blur-2xl shadow-[0_0_60px_rgba(139,92,246,0.2)] space-y-6 text-center">
+        <div className="max-w-md w-full p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#0c0916]/95 text-center shadow-xl space-y-6">
           
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/25 shadow-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            <span className="tracking-wide">Arena Maintenance Active</span>
+          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+            Under Maintenance
           </div>
 
-          <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-500/20 via-purple-600/10 to-amber-500/10 border border-purple-400/30 shadow-[0_0_35px_rgba(168,85,247,0.25)]">
-            <Wrench className="h-9 w-9 text-purple-300 animate-pulse" />
-            <Sparkles className="absolute -top-1.5 -right-1.5 h-5 w-5 text-amber-300" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
+            <Wrench className="h-8 w-8" />
           </div>
 
           <div>
-            <h2 className="text-2xl font-extrabold text-white tracking-tight mb-2">Arena Calibrations in Progress</h2>
-            <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto font-light">
-              {lockReason || "The Challenge Arena is currently under scheduled maintenance. Your progress and history remain fully protected."}
+            <h2 className="text-2xl font-bold text-white tracking-tight mb-2">Arena Under Maintenance</h2>
+            <p className="text-sm text-gray-400 leading-relaxed max-w-xs mx-auto">
+              {lockReason || "The Challenge Arena is currently under scheduled maintenance. Challenges will resume shortly."}
             </p>
           </div>
 
           <div className="space-y-3 pt-2">
             <button
               onClick={() => router.push("/weekly-challenges")}
-              className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_25px_rgba(168,85,247,0.35)] hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-colors cursor-pointer"
             >
-              Return to Challenges Home
+              Return to Challenges
             </button>
             <button
               onClick={() => router.push("/courses")}
-              className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-semibold text-xs transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium text-sm transition-colors border border-white/10 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <BookOpen size={14} />
+              <BookOpen size={15} />
               <span>Explore Study Materials</span>
             </button>
           </div>

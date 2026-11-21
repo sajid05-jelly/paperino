@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { X, Sparkles } from "lucide-react";
+import { X, CheckCircle2, Sparkles } from "lucide-react";
 import PaperinoLoader from "@/components/PaperinoLoader";
 
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
@@ -148,7 +148,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     <>
       {children}
 
-      {/* 🎉 Welcome Back Popup Modal */}
+      {/* Welcome Back Popup Modal */}
       {showWelcomeModal && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-300">
           <div className="relative w-full max-w-md rounded-3xl border border-white/10 p-8 shadow-[0_20px_50px_rgba(139,92,246,0.15)] overflow-hidden" style={{ background: "rgba(12,8,24,0.98)", backdropFilter: "blur(20px)" }}>
@@ -163,11 +163,11 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
 
             <div className="flex flex-col items-center text-center space-y-5">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(139,92,246,0.2)]">
-                🎉
+                <CheckCircle2 size={30} className="text-purple-400" />
               </div>
               <div className="space-y-2">
                 <h3 className="text-2xl font-bold text-white tracking-tight flex items-center justify-center gap-2">
-                  Welcome Back! <Sparkles size={18} className="text-yellow-400 animate-pulse" />
+                  Welcome Back!
                 </h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
                   Paperino has been successfully upgraded with new performance enhancements and features. Explore the latest updates below!
