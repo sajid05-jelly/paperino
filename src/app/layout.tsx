@@ -20,7 +20,7 @@ import dynamic from "next/dynamic";
 
 const FloatingFeedback = dynamic(() => import("@/components/FloatingFeedback"));
 const ThemeSelector = dynamic(() => import("@/components/ThemeSelector"));
-const AvatarProvider = dynamic(() => import("@/components/AvatarProvider"));
+
 const BackToTop = dynamic(() => import("@/components/BackToTop"));
 const PlanUpgradeModal = dynamic(() => import("@/components/PlanUpgradeModal"));
 
@@ -150,7 +150,7 @@ export default function RootLayout({
                       {/* Floating global elements */}
                       <FloatingFeedback />
                       <ThemeSelector />
-                      <AvatarProvider />
+
                       <BackToTop />
                     </MaintenanceGuard>
 

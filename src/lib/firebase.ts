@@ -31,8 +31,9 @@ let appCheck: any = null;
 const recaptchaKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_KEY;
 if (typeof window !== "undefined" && app && recaptchaKey) {
   try {
-    if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN) {
-      (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
+    const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    if (isLocalhost || process.env.NODE_ENV === "development") {
+      (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN || true;
     }
     // Registered under Fraud Defense (reCAPTCHA Enterprise) in Firebase Console
     const isV3 = process.env.NEXT_PUBLIC_USE_RECAPTCHA_V3 === "true";

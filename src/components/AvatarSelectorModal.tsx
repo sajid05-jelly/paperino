@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { AVATARS } from './UserAvatar';
-import { Sparkles, Check, ChevronRight } from 'lucide-react';
+import { Sparkles, Check, ChevronRight, X } from 'lucide-react';
 
 interface AvatarSelectorModalProps {
   onSelect: (avatarId: string) => void;
   isOpen: boolean;
   isFirstLogin?: boolean;
+  onClose?: () => void;
 }
 
-export default function AvatarSelectorModal({ onSelect, isOpen, isFirstLogin = true }: AvatarSelectorModalProps) {
+export default function AvatarSelectorModal({ onSelect, isOpen, isFirstLogin = true, onClose }: AvatarSelectorModalProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -26,20 +27,39 @@ if (!isOpen) return null;
   const handleSave = async () => {
     if (!selected) return;
     setSaving(true);
-    await onSelect(selected);
-    setSaving(false);
+    try {
+      await onSelect(selected);
+      onClose?.();
+    } catch (err) {
+      console.error("Save avatar error:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4">
-      {/* Blurred Backdrop */}
-      <div className="absolute inset-0 bg-[#05030a]/90 backdrop-blur-xl" />
+      {/* Blurred Backdrop - click to dismiss */}
+      <div 
+        className="absolute inset-0 bg-[#05030a]/90 backdrop-blur-xl cursor-pointer" 
+        onClick={() => onClose?.()}
+      />
 
       {/* Modal Shell — full responsive container */}
       <div
         className="relative w-full max-w-4xl flex flex-col bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_0_80px_rgba(var(--primary-rgb),0.15)] animate-in fade-in zoom-in-95 duration-500"
         style={{ maxHeight: '90vh' }}
       >
+        {/* Optional Close Button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 sm:top-6 sm:right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all z-20"
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
+        )}
         {/* Background Gradients (decorative, pointer-events-none) */}
         <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/[0.05] to-transparent rounded-[2rem] sm:rounded-[2.5rem] pointer-events-none" />
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.2)_0%,transparent_70%)] rounded-full blur-[80px] pointer-events-none" />

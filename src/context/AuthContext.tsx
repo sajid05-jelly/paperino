@@ -271,7 +271,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           if (finalUserData) {
             const data = finalUserData;
-            setPaperinoAvatarState(data.paperinoAvatar || null);
+            const cachedAvatar = typeof window !== "undefined" && user?.uid ? localStorage.getItem(`paperino_avatar_${user.uid}`) : null;
+            setPaperinoAvatarState(data.paperinoAvatar || cachedAvatar || null);
             setAvatarFrame(data.avatarFrame || null);
             setAvatarCompanion(data.avatarCompanion || null);
             setLastPulseReadAt(data.lastPulseReadAt || new Date(0));
@@ -509,6 +510,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const savePaperinoAvatar = async (avatarId: string) => {
     if (!user) return;
+    // Optimistic update: set state and localStorage immediately so UI is responsive and never hangs
+    setPaperinoAvatarState(avatarId);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`paperino_avatar_${user.uid}`, avatarId);
+      } catch {}
+    }
     try {
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, {
@@ -517,9 +525,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         lastLogin: serverTimestamp()
       }, { merge: true });
-      setPaperinoAvatarState(avatarId);
     } catch (error) {
-      console.error("Error saving avatar:", error);
+      console.error("Error saving avatar to Firestore:", error);
     }
   };
 

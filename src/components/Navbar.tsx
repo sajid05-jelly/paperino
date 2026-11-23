@@ -859,6 +859,7 @@ export default function Navbar() {
 
       <AvatarSelectorModal 
         isOpen={isChangingAvatar} 
+        onClose={() => setIsChangingAvatar(false)}
         onSelect={async (id) => {
           await setPaperinoAvatar(id);
           setIsChangingAvatar(false);
