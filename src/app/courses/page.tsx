@@ -11,7 +11,8 @@ import {
   ChevronRight, 
   Loader2, 
   Sparkles,
-  FileText
+  FileText,
+  Building2
 } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
@@ -21,7 +22,26 @@ import { getSubjectSeoPath } from "@/lib/seoUtils";
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const { allSubjectsList, loading } = useSubjects();
+  const { allSubjectsList, departments, loading } = useSubjects();
+
+  // Fast department name lookup map
+  const deptMap = useMemo(() => {
+    const map: Record<string, string> = {
+      btech: "B.Tech",
+      mca: "MCA",
+      mba: "MBA",
+      "me-cse": "M.E CSE",
+      "me-se": "M.E Structural Engg",
+    };
+    if (Array.isArray(departments)) {
+      departments.forEach((d) => {
+        if (d && d.id && d.name) {
+          map[d.id] = d.name;
+        }
+      });
+    }
+    return map;
+  }, [departments]);
 
   // Restore previous search query from URL or sessionStorage on mount
   useEffect(() => {
@@ -180,6 +200,8 @@ export default function CoursesPage() {
                 ? `${rawHref}${rawHref.includes("?") ? "&" : "?"}refSearch=${encodeURIComponent(searchQuery.trim())}`
                 : rawHref;
 
+              const deptName = deptMap[sub.departmentId] || (sub.departmentId === "btech" ? "B.Tech" : (sub.departmentId || "").toUpperCase());
+
               return (
                 <Link key={`${sub.departmentId}_${sub.semesterId}_${sub.id}_${index}`} href={href} className="flex subject-card-contain">
                   <div className="vision-glass p-6 rounded-[2rem] w-full border border-white/10 hover:border-purple-500/40 bg-[#0f0a1a]/60 hover:bg-[#150d28]/90 transition-all duration-300 group cursor-pointer relative overflow-hidden flex flex-col justify-between shadow-[0_0_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.2)] hover:-translate-y-1">
@@ -187,7 +209,7 @@ export default function CoursesPage() {
 
                     <div>
                       {/* Top Badges Row */}
-                      <div className="flex items-center justify-between gap-2 mb-4 relative z-10">
+                      <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
                         <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 group-hover:scale-110 transition-all">
                           <FileText size={18} />
                         </div>
@@ -196,6 +218,17 @@ export default function CoursesPage() {
                             {sub.code}
                           </span>
                         )}
+                      </div>
+
+                      {/* Department & Semester on Top */}
+                      <div className="flex items-center gap-1.5 flex-wrap mb-2.5 relative z-10">
+                        <span className="inline-flex items-center gap-1 text-[10px] md:text-[11px] font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                          <Building2 size={11} className="text-purple-400 shrink-0" />
+                          <span className="truncate max-w-[170px]">{deptName}</span>
+                        </span>
+                        <span className="text-[10px] md:text-[11px] font-medium text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                          Sem {sub.semesterId}
+                        </span>
                       </div>
 
                       {/* Subject Name */}

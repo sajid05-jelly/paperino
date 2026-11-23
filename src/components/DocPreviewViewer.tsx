@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw, Lock, Sparkles, ChevronLeft, ChevronRight, Maximize, Minimize } from "lucide-react";
 import Link from "next/link";
-import { triggerSecureDownload } from "@/lib/driveUtils";
+import { triggerSecureDownload, extractDriveFileId, getDriveViewUrl } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
@@ -47,6 +47,22 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
   const [docxHtml, setDocxHtml] = useState<string>("");
   const [txtContent, setTxtContent] = useState<string>("");
   const [imageBlobUrl, setImageBlobUrl] = useState<string | null>(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [serverFileId, setServerFileId] = useState<string>("");
+
+  // Clean up object URLs on unmount to prevent mobile browser memory leaks
+  useEffect(() => {
+    return () => {
+      if (imageBlobUrl) URL.revokeObjectURL(imageBlobUrl);
+      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [imageBlobUrl, pdfBlobUrl]);
+
+  // Resolve active Google Drive file ID & official view URL
+  const effectiveFileId = mat.fileId
+    ? extractDriveFileId(mat.fileId)
+    : (mat.fileUrl ? extractDriveFileId(mat.fileUrl) : (serverFileId || ""));
+  const driveViewUrl = effectiveFileId ? getDriveViewUrl(effectiveFileId) : null;
 
   // PDF.js rendering states
   const [numPages, setNumPages] = useState<number>(0);
@@ -163,15 +179,34 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
     // 4. PDF PREVIEW VIA PDF.JS
     if (isMounted) {
       setViewType("pdfjs");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       try {
-        const res = await fetch(targetUrl, { headers });
+        const res = await fetch(targetUrl, { headers, signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        // Resolve Drive File ID from server header if not already known
+        const headerFileId = res.headers.get("X-Drive-File-Id");
+        if (headerFileId && isMounted) {
+          setServerFileId(headerFileId);
+        }
+
         if (!res.ok) {
           if (res.status === 403) {
-            throw new Error("PDF Preview Restricted. Please upgrade your plan.");
+            throw new Error("PDF Preview Restricted. Please upgrade your plan or download the file.");
           }
           throw new Error(`HTTP ${res.status}`);
         }
         const arrayBuffer = await res.arrayBuffer();
+        
+        // Cache blob URL for memory cleanup and fallback viewing
+        const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+        const objUrl = URL.createObjectURL(blob);
+        if (isMounted) {
+          setPdfBlobUrl(objUrl);
+        }
+
         const data = new Uint8Array(arrayBuffer);
 
         const loadingTask = pdfjs.getDocument({
@@ -188,9 +223,14 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
         setNumPages(loadedPdf.numPages);
         setLoading(false);
       } catch (err: any) {
+        clearTimeout(timeoutId);
         if (isMounted) {
           console.error("PDF Preview Error:", err);
-          setError(err.message || "The preview could not be loaded. Please try again or download the file.");
+          const isTimeout = err?.name === "AbortError";
+          const friendlyMsg = isTimeout
+            ? "Preview loading timed out. Please open in Google Drive or download the file directly."
+            : (err.message || "The preview could not be loaded. Please open in Google Drive or download the file.");
+          setError(friendlyMsg);
           setLoading(false);
         }
       }
@@ -242,6 +282,7 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
     } catch (err: any) {
       if (err?.name !== "RenderingCancelledException") {
         console.error("Error rendering page:", err);
+        setError("Document page rendering failed on this browser. You can open it in Google Drive or download the file.");
       }
     }
   }, [pdfDoc, currentPage, scale, viewType]);
@@ -336,6 +377,18 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
               <RotateCw size={14} />
             </button>
             <div className="w-px h-5 bg-white/10 mx-1"></div>
+            {driveViewUrl && (
+              <a
+                href={driveViewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-purple-300 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                title="Open in Google Drive"
+              >
+                <ExternalLink size={14} />
+                <span className="hidden sm:inline">Drive</span>
+              </a>
+            )}
             <button
               onClick={toggleFullscreen}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer ml-1"
@@ -362,24 +415,28 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
 
       {/* Error & Fallback UI */}
       {!loading && (error || viewType === "unsupported") && (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#07050d] space-y-4">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-[#07050d] space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-[0_0_40px_rgba(168,85,247,0.15)] mb-2">
             <FileText size={32} />
           </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-bold text-white">Unable to preview this PDF</h3>
-            <p className="text-xs text-gray-400 max-w-sm mx-auto">
-              {error || "The preview could not be loaded. Please try again or download the file."}
+          <div className="space-y-2 max-w-md">
+            <h3 className="text-lg font-bold text-white">Document Preview Unavailable</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              {error || "The in-browser preview could not be displayed on this browser. You can open the file in Google Drive or download it directly."}
             </p>
           </div>
-          <div className="flex items-center gap-3 mt-2">
-            <button
-              onClick={() => setRetryCount(prev => prev + 1)}
-              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all cursor-pointer flex items-center gap-2"
-            >
-              <RefreshCw size={14} />
-              <span>Retry</span>
-            </button>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-3">
+            {driveViewUrl && (
+              <a
+                href={driveViewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <ExternalLink size={14} />
+                <span>Open in Google Drive</span>
+              </a>
+            )}
             <button
               onClick={handleDownload}
               disabled={downloading}
@@ -397,6 +454,13 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
                 <Download size={14} />
               )}
               <span>{downloading ? "Downloading..." : downloaded ? "Downloaded" : "Download File"}</span>
+            </button>
+            <button
+              onClick={() => setRetryCount(prev => prev + 1)}
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white font-semibold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <RefreshCw size={14} />
+              <span>Retry</span>
             </button>
           </div>
         </div>

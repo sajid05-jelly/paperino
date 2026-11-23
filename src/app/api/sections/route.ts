@@ -5,12 +5,21 @@ import { getStoredSections, setStoredSections } from "@/lib/sections-store";
 export const dynamic = "force-dynamic";
 
 let quotaExhaustedUntil = 0;
+const sectionsCache = new Map<string, { data: any[]; timestamp: number }>();
+const SECTIONS_CACHE_TTL = 10 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const departmentId = searchParams.get("departmentId");
     const subjectId = searchParams.get("subjectId");
+
+    const cacheKey = `${departmentId || "all"}_${subjectId || "all"}`;
+    const now = Date.now();
+    const cached = sectionsCache.get(cacheKey);
+    if (cached && (now - cached.timestamp < SECTIONS_CACHE_TTL)) {
+      return NextResponse.json({ success: true, sections: cached.data });
+    }
 
     let allSections: any[] = [];
 
@@ -84,6 +93,7 @@ export async function GET(req: NextRequest) {
     }
 
     result.sort((a, b) => (a.subjectName || "").localeCompare(b.subjectName || ""));
+    sectionsCache.set(cacheKey, { data: result, timestamp: now });
     return NextResponse.json({ success: true, sections: result });
   } catch (error: any) {
     console.error("Error in /api/sections GET:", error);

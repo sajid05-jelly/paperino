@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
-import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus, ArrowLeft } from "lucide-react";
+import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus, ArrowLeft, ExternalLink } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
@@ -21,7 +21,7 @@ const DocPreviewViewer = dynamic(() => import("@/components/DocPreviewViewer"), 
   ),
   ssr: false
 });
-import { getDownloadHref, getDrivePreviewUrl, triggerSecureDownload } from "@/lib/driveUtils";
+import { getDownloadHref, getDrivePreviewUrl, getDriveViewUrl, extractDriveFileId, triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { usePlanGate } from "@/context/PlanGateContext";
 import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
@@ -89,7 +89,8 @@ export default function SubjectClientComponent({
   const { user, isAdmin, isContributor, loading: authLoading, canAccess } = useAuth();
   const { showPlanGate } = usePlanGate();
   const { showToast, dismissToast } = useToast();
-  const { subjects: dynamicSubjects, lazyLoadSubjects, deleteSubject } = useSubjects();
+  const { subjects: dynamicSubjects, lazyLoadSubjects, deleteSubject, departments } = useSubjects();
+  const currentDeptName = serverOverview?.deptName || departments.find(d => d.id === deptId)?.name || (deptId === "btech" ? "B.Tech" : (deptId || "").toUpperCase());
 
   useEffect(() => {
     if (deptId && semId && lazyLoadSubjects) {
@@ -487,7 +488,7 @@ export default function SubjectClientComponent({
         {/* Header with Premium Glow */}
         <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500 relative">
           <div className="absolute -top-8 -left-8 w-[300px] h-[200px] bg-[radial-gradient(ellipse,rgba(var(--primary-rgb),0.20)_0%,transparent_70%)] filter blur-[60px] pointer-events-none" />
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1 relative z-10">SRM University • Study Materials</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--primary-400)] mb-1 relative z-10">SRM University • {currentDeptName} • Semester {semId}</p>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-2 relative z-10 drop-shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)]">{subjectName}</h1>
           <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed relative z-10">
             Access {subjectName} notes, syllabus, previous year question papers (PYQs), important questions and study materials for SRM Institute of Science and Technology students on Paperino.
@@ -943,7 +944,24 @@ export default function SubjectClientComponent({
                 <h3 className="text-sm font-bold text-white truncate" title={previewMat.title}>{previewMat.title}</h3>
                 <p className="text-[11px] text-purple-300/70 font-mono truncate mt-0.5">{previewMat.fileName}</p>
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0 relative z-30">
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 relative z-30">
+                {(() => {
+                  const driveId = extractDriveFileId(previewMat.fileId || previewMat.fileUrl || "");
+                  const driveUrl = driveId ? getDriveViewUrl(driveId) : null;
+                  if (!driveUrl) return null;
+                  return (
+                    <a
+                      href={driveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-purple-300 transition-all border border-white/5 flex items-center gap-1.5 text-xs font-semibold"
+                      title="Open in Google Drive"
+                    >
+                      <ExternalLink size={16} />
+                      <span className="hidden sm:inline">Drive</span>
+                    </a>
+                  );
+                })()}
                 <button 
                   disabled={downloadingId === previewMat.id}
                   onClick={() => handleDownloadMaterial(previewMat)} 

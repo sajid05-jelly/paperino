@@ -59,17 +59,18 @@ export default function GlobalSubjectSearch({
                         </div>
                       </div>
                       <div className="relative z-10">
+                        {/* Department & Semester on Top */}
+                        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                          <span className="inline-flex items-center text-xs font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            <Building2 size={12} className="mr-1 text-purple-400 shrink-0" /> {(deptName || sub.departmentId || "").toUpperCase()}
+                          </span>
+                          <span className="inline-flex items-center text-xs text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                            <Calendar size={12} className="mr-1 text-fuchsia-400 shrink-0" /> Sem {sub.semesterId}
+                          </span>
+                        </div>
                         <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-purple-300 transition-colors">
                           {sub.name}
                         </h3>
-                        <div className="flex flex-col gap-1.5 mt-4">
-                          <div className="flex items-center text-xs text-gray-400 bg-white/5 w-fit px-2 py-1 rounded uppercase">
-                            <Building2 size={12} className="mr-1.5 text-purple-400" /> {(deptName || "").toUpperCase()}
-                          </div>
-                          <div className="flex items-center text-xs text-gray-400 bg-white/5 w-fit px-2 py-1 rounded">
-                            <Calendar size={12} className="mr-1.5 text-fuchsia-400" /> Semester {sub.semesterId}
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </Link>

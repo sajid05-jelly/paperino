@@ -14,8 +14,9 @@ interface SemesterSubjectGridProps {
 }
 
 export default function SemesterSubjectGrid({ initialData, deptId, semId }: SemesterSubjectGridProps) {
-  const { subjects: clientSubjectsState, lazyLoadSubjects } = useSubjects();
+  const { subjects: clientSubjectsState, lazyLoadSubjects, departments } = useSubjects();
   const [clientLoaded, setClientLoaded] = React.useState(false);
+  const currentDeptName = departments.find(d => d.id === deptId)?.name || (deptId === "btech" ? "B.Tech" : (deptId || "").toUpperCase());
 
   // Trigger client-side synchronization on mount so newly added, renamed, or deleted subjects reflect immediately
   React.useEffect(() => {
@@ -78,6 +79,15 @@ export default function SemesterSubjectGrid({ initialData, deptId, semId }: Seme
                 <Book size={24} />
               </div>
               <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
+            </div>
+            {/* Department & Semester on Top */}
+            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+              <span className="text-[10px] md:text-[11px] font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                {currentDeptName}
+              </span>
+              <span className="text-[10px] md:text-[11px] font-medium text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                Sem {semId}
+              </span>
             </div>
             <h2 className="text-xl font-semibold text-white mb-2">{sub.name}</h2>
             {sub.code && (

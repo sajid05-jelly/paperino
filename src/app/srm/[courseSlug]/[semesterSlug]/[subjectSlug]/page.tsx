@@ -7,6 +7,7 @@ import SubjectClientComponent from "@/components/SubjectClientComponent";
 import { adminDb } from "@/lib/firebase-admin";
 
 export const dynamicParams = true;
+export const revalidate = 86400; // Cache pages for 24 hours (ISR) to protect Firestore read quota from crawler traffic
 
 /**
  * Generate static params for all subjects during SSG build

@@ -39,7 +39,19 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
       {
-        userAgent: ['GPTBot', 'Bytespider', 'CCBot', 'ClaudeBot', 'AnthropicAI'],
+        userAgent: [
+          'GPTBot',
+          'Bytespider',
+          'CCBot',
+          'ClaudeBot',
+          'AnthropicAI',
+          'AhrefsBot',
+          'SemrushBot',
+          'DotBot',
+          'MJ12bot',
+          'PetalBot',
+          'DataForSeoBot'
+        ],
         disallow: ['/'],
       },
     ],

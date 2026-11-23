@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -25,10 +26,33 @@ if (typeof window !== "undefined" && db) {
   });
 }
 
+// 🛡️ Firebase App Check: Protects Firestore from unauthorized scripts/console scrapers
+let appCheck: any = null;
+const recaptchaKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_KEY;
+if (typeof window !== "undefined" && app && recaptchaKey) {
+  try {
+    if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN) {
+      (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
+    }
+    // Registered under Fraud Defense (reCAPTCHA Enterprise) in Firebase Console
+    const isV3 = process.env.NEXT_PUBLIC_USE_RECAPTCHA_V3 === "true";
+    const provider = isV3
+      ? new ReCaptchaV3Provider(recaptchaKey)
+      : new ReCaptchaEnterpriseProvider(recaptchaKey);
+
+    appCheck = initializeAppCheck(app, {
+      provider,
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn("[App Check] Initialization note:", err);
+  }
+}
+
 const storage = app ? getStorage(app) : (null as any);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
   prompt: "select_account"
 });
 
-export { app, auth, db, storage, googleProvider };
+export { app, auth, db, storage, googleProvider, appCheck };

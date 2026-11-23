@@ -7,7 +7,7 @@
  * logs downloads with `watermarkApplied: true` in Firestore, and blocks any unwatermarked file downloads.
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import * as admin from "firebase-admin";
 import { google } from "googleapis";
@@ -275,7 +275,8 @@ export async function GET(req: NextRequest) {
   const responseHeaders: Record<string, string> = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, Range",
+    "Access-Control-Expose-Headers": "Content-Disposition, Content-Length, Content-Range, Accept-Ranges, X-Drive-File-Id",
   };
 
   // Generate unique download tracking IDs
@@ -293,6 +294,10 @@ export async function GET(req: NextRequest) {
   try {
     const drive = getDriveClient();
     if (!drive) {
+      if (!isInline && finalFileId) {
+        console.warn("[Download Route] Drive client not initialized, redirecting directly to Drive download for:", finalFileId);
+        return NextResponse.redirect(`https://drive.google.com/uc?export=download&id=${finalFileId}&confirm=t`);
+      }
       return new Response(JSON.stringify({ error: "Storage credentials not configured" }), {
         status: 500,
         headers: { "Content-Type": "application/json" }
@@ -325,8 +330,21 @@ export async function GET(req: NextRequest) {
     
     console.log(`[Download API Stage 3 Complete] Binary stream received. Size: ${fileBuffer.length} bytes, Mime: ${mimeType}, Partial: ${isPartial}`);
 
+    // Non-blocking background sync: Ensure public reader permission on Drive so direct "Open in Google Drive" works seamlessly
+    drive.permissions.create({
+      fileId: finalFileId,
+      requestBody: { role: "reader", type: "anyone" }
+    }).catch((permErr: any) => {
+      // Ignored non-fatal: permissions may already exist
+      console.warn("[Download Route] Drive permission background sync note:", permErr?.message);
+    });
+
   } catch (err: any) {
     console.error("[Download API Stage 3 Error] Drive streaming failed:", err);
+    if (!isInline && finalFileId) {
+      console.log("[Download Route] Fallback redirecting directly to Drive download for:", finalFileId);
+      return NextResponse.redirect(`https://drive.google.com/uc?export=download&id=${finalFileId}&confirm=t`);
+    }
     return new Response(JSON.stringify({ error: "Failed to fetch document stream from storage service: " + err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
@@ -337,6 +355,15 @@ export async function GET(req: NextRequest) {
   let watermarkApplied = false;
   const isPdf = mimeType.includes("pdf") || matName.toLowerCase().endsWith(".pdf");
   const isImage = mimeType.startsWith("image/") || ["png", "jpg", "jpeg"].some(ext => matName.toLowerCase().endsWith(ext));
+
+  // Magic bytes check: Ensure the buffer is genuinely a PDF before attempting parsing
+  const isActualPdf = fileBuffer && fileBuffer.length >= 4 && fileBuffer.toString("ascii", 0, 4) === "%PDF";
+
+  // If the file is expected to be a PDF, but Drive returned HTML or text (e.g. virus scan warning or login redirect):
+  if (isPdf && !isActualPdf && !isInline && finalFileId) {
+    console.warn("[Download Route] Drive returned non-PDF stream (possible HTML scan confirmation). Redirecting directly to Drive download.");
+    return NextResponse.redirect(`https://drive.google.com/uc?export=download&id=${finalFileId}&confirm=t`);
+  }
 
   if (!isInline) {
     console.log(`[Download API Stage 4] Starting Paperino security download pipeline for: ${matName}`);
@@ -352,8 +379,8 @@ export async function GET(req: NextRequest) {
     ];
 
     try {
-      if (isPdf) {
-        const pdfDoc = await PDFDocument.load(fileBuffer);
+      if (isPdf && isActualPdf) {
+        const pdfDoc = await PDFDocument.load(fileBuffer, { ignoreEncryption: true });
         const pages = pdfDoc.getPages();
         const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const watermarkColor = rgb(0.545, 0.361, 0.965); // #8B5CF6 Paperino Purple
@@ -389,8 +416,11 @@ export async function GET(req: NextRequest) {
             });
           });
         }
-        const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
-        fileBuffer = Buffer.from(pdfBytes);
+        const pdfBytes = await pdfDoc.save();
+        // Rigorous validation: Only replace fileBuffer if pdfDoc generated valid non-empty PDF bytes
+        if (pdfBytes && pdfBytes.length > 100 && Buffer.from(pdfBytes.slice(0, 4)).toString("ascii") === "%PDF") {
+          fileBuffer = Buffer.from(pdfBytes);
+        }
         mimeType = "application/pdf";
         watermarkApplied = true;
       } else if (isImage) {
@@ -437,10 +467,12 @@ export async function GET(req: NextRequest) {
           });
         });
 
-        matName = `${matName.split('.')[0]}_watermarked.pdf`;
-        mimeType = "application/pdf";
         const pdfBytes = await pdfDoc.save();
-        fileBuffer = Buffer.from(pdfBytes);
+        if (pdfBytes && pdfBytes.length > 100 && Buffer.from(pdfBytes.slice(0, 4)).toString("ascii") === "%PDF") {
+          fileBuffer = Buffer.from(pdfBytes);
+          matName = `${matName.split('.')[0]}_watermarked.pdf`;
+          mimeType = "application/pdf";
+        }
         watermarkApplied = true;
       } else {
         // Native Office Files (PPTX, DOCX, XLSX, ZIP, etc.)
@@ -509,10 +541,11 @@ export async function GET(req: NextRequest) {
 
   // 5. Return raw Response with binary buffer preserving exact file MIME
   const finalMime = (isPdf && !isInline) ? "application/pdf" : mimeType;
+  const safeAsciiName = matName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
   const encodedMatName = encodeURIComponent(matName);
   const dispositionType = isInline 
-    ? "inline" 
-    : `attachment; filename="${matName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodedMatName}`;
+    ? `inline; filename="${safeAsciiName}"; filename*=UTF-8''${encodedMatName}` 
+    : `attachment; filename="${safeAsciiName}"; filename*=UTF-8''${encodedMatName}`;
 
   console.log(`[Download API Stage 5 Complete] Serving binary response (${fileBuffer.length} bytes, Content-Type="${finalMime}", Content-Disposition="${dispositionType}")`);
 
@@ -522,6 +555,7 @@ export async function GET(req: NextRequest) {
     "Content-Length": isPartial ? contentLength : fileBuffer.length.toString(),
     "Content-Disposition": dispositionType,
     "Accept-Ranges": "bytes",
+    "X-Drive-File-Id": finalFileId,
     "Cache-Control": isInline 
       ? "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" 
       : "no-store, no-cache, must-revalidate",
