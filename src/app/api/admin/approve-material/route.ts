@@ -72,7 +72,14 @@ export async function POST(req: NextRequest) {
     const creatorName = uploaderName || "Contributor";
     const creatorEmail = uploaderEmail || "";
 
-    // 1. Ensure Google Drive public view permission if fileId is present
+    // 1. Immediately update material status to approved so status change is 100% guaranteed!
+    await adminDb.collection("materials").doc(materialId).set({
+      status: "approved",
+      approvedAt: Date.now(),
+      approvedBy: verifiedUser.email || verifiedUser.uid
+    }, { merge: true });
+
+    // 2. Non-blocking Google Drive public view permission with strict timeout
     if (fileId) {
       try {
         const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -87,17 +94,21 @@ export async function POST(req: NextRequest) {
           );
           oauth2Client.setCredentials({ refresh_token: refreshToken });
           const drive = google.drive({ version: "v3", auth: oauth2Client });
-          await drive.permissions.create({
-            fileId: fileId,
-            requestBody: { role: "reader", type: "anyone" }
-          });
+          
+          await Promise.race([
+            drive.permissions.create({
+              fileId: fileId,
+              requestBody: { role: "reader", type: "anyone" }
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Drive permission timeout")), 2500))
+          ]).catch(e => console.warn("[Approve Material API] Drive permission notice:", e?.message));
         }
       } catch (driveErr: any) {
         console.warn("[Approve Material API] Drive permission patch skipped:", driveErr?.message);
       }
     }
 
-    // 2. If new subject request, establish in dynamic_subjects (0 reads)
+    // 3. If new subject request, establish in dynamic_subjects
     const subDocId = `${deptId}_sem${semId}_${subId}`;
     if (isNewSubjectRequest) {
       await adminDb.collection("dynamic_subjects").doc(subDocId).set({
@@ -115,7 +126,7 @@ export async function POST(req: NextRequest) {
       }, { merge: true });
     }
 
-    // 3. Register section in subject_sections (0 reads)
+    // 4. Register section in subject_sections
     const secDocId = `${deptId}_sem${semId}_${subId}_${sectionType}`;
     await adminDb.collection("subject_sections").doc(secDocId).set({
       id: secDocId,
@@ -134,7 +145,7 @@ export async function POST(req: NextRequest) {
       createdAt: FieldValue.serverTimestamp()
     }, { merge: true });
 
-    // Also link section in dynamic_subjects (0 reads)
+    // Also link section in dynamic_subjects
     await adminDb.collection("dynamic_subjects").doc(subDocId).set({
       subjectId: subId,
       name: cleanSubName,
@@ -162,13 +173,6 @@ export async function POST(req: NextRequest) {
       approvedByAdminEmail: verifiedUser.email,
       createdAt: new Date().toISOString()
     });
-
-    // 4. Update material status to approved (0 reads)
-    await adminDb.collection("materials").doc(materialId).set({
-      status: "approved",
-      approvedAt: Date.now(),
-      approvedBy: verifiedUser.email || verifiedUser.uid
-    }, { merge: true });
 
     // 5. Update uploader stats (0 reads)
     if (uploaderId && !ALLOWED_ADMINS.includes(creatorEmail.toLowerCase())) {
