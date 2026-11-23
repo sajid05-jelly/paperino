@@ -11,8 +11,6 @@ import {
 } from "lucide-react";
 import { useBadges } from "@/context/BadgeContext";
 
-const LEAD_ADMIN_EMAIL = "mohamedsajid.sa@gmail.com";
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
   const { 
@@ -22,11 +20,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
 
-  const isLeadAdmin = user?.email?.toLowerCase() === LEAD_ADMIN_EMAIL.toLowerCase();
+  // All authorized admins have full access to System Control (Maintenance, Challenges, etc.)
+  const isLeadAdmin = isAdmin;
 
-  // System Control Sub-menu Expand State
+  // System Control Sub-menu Expand State — open by default so all controls are visible
   const isSystemPath = ["/admin/system", "/admin/analytics", "/admin/header-message", "/admin/ats", "/admin/career-dna"].some(path => pathname?.startsWith(path));
-  const [isSystemControlOpen, setIsSystemControlOpen] = useState(isSystemPath);
+  const [isSystemControlOpen, setIsSystemControlOpen] = useState(true);
 
   // Protected Lead-Admin-Only Routes
   const LEAD_ADMIN_ONLY_PATHS = [
