@@ -202,30 +202,28 @@ export async function triggerSecureDownload(
     const downloadUrl = `/api/download?${identifierQuery}&token=${encodeURIComponent(downloadToken)}`;
 
     // Cross-browser & Mobile download trigger handling:
-    // On iOS Safari, Chrome iOS, and modern mobile browsers, synthetic clicks on detached <a> tags
-    // can be blocked or cause broken downloads after async network calls.
-    // Navigating via window.location.assign directly triggers the native mobile browser download sheet
-    // and seamlessly follows server-side redirects (e.g. Google Drive stream fallbacks) without navigating away.
+    // Using target="_blank" and download attribute initiates download without unloading the current page,
+    // completely eliminating the black/blank screen issue on mobile (iOS Safari & Chrome Android).
     const isMobile = typeof navigator !== "undefined" && (
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
     );
 
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.setAttribute("download", mat.fileName || mat.title || "material.pdf");
     if (isMobile) {
-      window.location.assign(downloadUrl);
-    } else {
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.setAttribute("download", mat.fileName || mat.title || "material.pdf");
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        try {
-          document.body.removeChild(link);
-        } catch {}
-      }, 200);
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
     }
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      try {
+        document.body.removeChild(link);
+      } catch {}
+    }, 500);
 
     setTimeout(() => {
       if (typeof window !== "undefined") {

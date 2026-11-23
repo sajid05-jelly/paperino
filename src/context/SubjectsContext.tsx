@@ -100,8 +100,16 @@ export const useSubjects = () => useContext(SubjectsContext);
 
 export const SubjectsProvider = ({ children }: { children: React.ReactNode }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [subjects, setSubjects] = useState<Record<string, Record<string, Subject[]>>>({});
-  const [allSubjectsList, setAllSubjectsList] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<Record<string, Record<string, Subject[]>>>(() => {
+    const staticList = getStaticBTechSubjects();
+    const grouped: Record<string, Record<string, Subject[]>> = { btech: {} };
+    staticList.forEach((sub) => {
+      if (!grouped.btech[sub.semesterId]) grouped.btech[sub.semesterId] = [];
+      grouped.btech[sub.semesterId].push(sub);
+    });
+    return grouped;
+  });
+  const [allSubjectsList, setAllSubjectsList] = useState<Subject[]>(() => getStaticBTechSubjects());
   const [deptsWithMaterials, setDeptsWithMaterials] = useState<Set<string>>(new Set()); // Kept for backwards compatibility if needed, but not populated
   const [deptMaterialCounts, setDeptMaterialCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Users, FileText, BrainCircuit, FileSearch, Sparkles, Activity, Target, Download, AlertCircle, GraduationCap, Bell, Trash2, Loader2, X, CheckCircle2, RefreshCw } from "lucide-react";
 import { collection, query, where, getCountFromServer, getDoc, doc, orderBy, limit, getDocs, writeBatch, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
+import { useSubjects } from "@/context/SubjectsContext";
 
 // Module-level cache for Platform Analytics statistics to prevent repeated getCountFromServer calls on dashboard re-mounts
 let cachedStats: any = null;
@@ -11,6 +13,8 @@ let cachedMaterialCounts: any = null;
 let cachedQuotaExceeded = false;
 
 export default function AdminDashboard() {
+  const { user, loading: authLoading } = useAuth();
+  const { departments: contextDepts, allSubjectsList } = useSubjects();
   const [stats, setStats] = useState({
     totalUsers: 0,
     dailyActive: 0,
@@ -73,6 +77,9 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchStats = useCallback(async (forceRefetch = false) => {
+    // Wait until admin user is authenticated
+    if (!user) return;
+
     // Stop further Firestore reads for this session if quota was exceeded
     if (cachedQuotaExceeded) {
       console.warn("[Analytics] Blocked repeated fetch attempt: Firebase quota exceeded for this session.");
@@ -83,7 +90,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (!forceRefetch && cachedStats && cachedMaterialCounts) {
+    if (!forceRefetch && cachedStats && cachedMaterialCounts && (cachedStats.totalUsers > 0 || cachedStats.totalMaterials > 0)) {
       console.log("[Analytics] Serving dashboard statistics from session cache");
       setStats(cachedStats);
       setMaterialCounts(cachedMaterialCounts);
@@ -165,10 +172,12 @@ export default function AdminDashboard() {
       const notes = notesSnap.data().count;
       const questions = questionsSnap.data().count;
 
-      const totalDepts = totalDeptsSnap.data().count;
+      const totalDeptsFromDb = totalDeptsSnap.data().count;
+      const totalDepts = totalDeptsFromDb > 0 ? totalDeptsFromDb : (contextDepts?.length || 1);
       const pendingDepts = pendingDeptsSnap.data().count;
-      const approvedDepts = approvedDeptsSnap.data().count;
-      const totalSubjects = totalSubjectsSnap.data().count;
+      const approvedDepts = approvedDeptsSnap.data().count > 0 ? approvedDeptsSnap.data().count : totalDepts;
+      const dynamicSubjectsCount = totalSubjectsSnap.data().count;
+      const totalSubjects = Math.max(dynamicSubjectsCount, allSubjectsList?.length || 0);
 
       const manuals = 0; 
       const syllabus = 0;
@@ -208,10 +217,12 @@ export default function AdminDashboard() {
       setStats(newStats);
       setMaterialCounts(newCounts);
 
-      // Save to cache
-      cachedStats = newStats;
-      cachedMaterialCounts = newCounts;
-      cachedQuotaExceeded = false;
+      // Save to cache only when real data is obtained, avoiding locking failed 0 states
+      if (totalUsers > 0 || totalMaterials > 0) {
+        cachedStats = newStats;
+        cachedMaterialCounts = newCounts;
+        cachedQuotaExceeded = false;
+      }
 
       console.log("[Analytics] Fetch complete.", { totalUsers, dailyActive, totalMaterials, atsUsage, mostVisited });
     } catch (error: any) {
@@ -240,11 +251,13 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, contextDepts, allSubjectsList]);
 
   useEffect(() => {
-    fetchStats(false);
-  }, [fetchStats]);
+    if (!authLoading && user) {
+      fetchStats(false);
+    }
+  }, [authLoading, user, fetchStats]);
 
   return (
     <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">

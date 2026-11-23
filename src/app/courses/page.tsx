@@ -43,31 +43,25 @@ export default function CoursesPage() {
     return map;
   }, [departments]);
 
-  // Restore previous search query from URL or sessionStorage on mount
+  // Restore search query from URL if present
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const urlQuery = urlParams.get("q");
-      const storedQuery = sessionStorage.getItem("paperino_courses_search");
-      const initialQuery = urlQuery !== null ? urlQuery : (storedQuery || "");
-      if (initialQuery) {
-        setSearchQuery(initialQuery);
-        // Ensure sessionStorage stays synced
-        sessionStorage.setItem("paperino_courses_search", initialQuery);
+      if (urlQuery) {
+        setSearchQuery(urlQuery);
       }
     }
   }, []);
 
-  // Update search query, sessionStorage, and browser URL seamlessly
+  // Update search query and browser URL seamlessly without sticky session lock
   const handleSearchChange = useCallback((val: string) => {
     setSearchQuery(val);
     if (typeof window !== "undefined") {
       if (val.trim()) {
-        sessionStorage.setItem("paperino_courses_search", val);
         const newUrl = `${window.location.pathname}?q=${encodeURIComponent(val.trim())}`;
         window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, "", newUrl);
       } else {
-        sessionStorage.removeItem("paperino_courses_search");
         window.history.replaceState({ ...window.history.state, as: window.location.pathname, url: window.location.pathname }, "", window.location.pathname);
       }
     }
@@ -76,7 +70,6 @@ export default function CoursesPage() {
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem("paperino_courses_search");
       window.history.replaceState({ ...window.history.state, as: window.location.pathname, url: window.location.pathname }, "", window.location.pathname);
     }
   }, []);
