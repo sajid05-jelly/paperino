@@ -178,6 +178,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profileCacheKey = `paperino_user_profile_${currentUser.uid}`;
         const USER_PROFILE_TTL_MS = 15 * 60 * 1000;
 
+        // Daily Active User touch: ensure every active visitor marks lastLogin once per day
+        if (typeof window !== "undefined") {
+          try {
+            const todayStr = new Date().toISOString().split("T")[0];
+            const activeTouchKey = `paperino_active_touch_${currentUser.uid}_${todayStr}`;
+            if (!sessionStorage.getItem(activeTouchKey)) {
+              setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true })
+                .then(() => sessionStorage.setItem(activeTouchKey, "1"))
+                .catch(() => {});
+            }
+          } catch {}
+        }
+
         // Check sessionStorage cache first (15m TTL to avoid getDoc on every refresh/tab)
         if (typeof window !== "undefined") {
           try {

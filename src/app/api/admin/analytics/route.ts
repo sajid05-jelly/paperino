@@ -53,11 +53,19 @@ export async function GET(req: NextRequest) {
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
 
+    // Keep the requesting admin marked active in the database
+    if (verifiedUser.uid) {
+      adminDb.collection("users").doc(verifiedUser.uid).set({
+        lastLogin: new Date()
+      }, { merge: true }).catch(() => {});
+    }
+
     const [
       materialsCountSnap,
       usersCountSnap,
       dailyUsersSnap24h,
-      dailyUsersSnapToday,
+      recentDownloadsSnap,
+      recentChallengesSnap,
       pyqsSnap,
       notesSnap,
       questionsSnap,
@@ -71,8 +79,9 @@ export async function GET(req: NextRequest) {
     ] = await Promise.allSettled([
       adminDb.collection("materials").count().get(),
       adminDb.collection("users").count().get(),
-      adminDb.collection("users").where("lastLogin", ">=", twentyFourHoursAgo).count().get(),
-      adminDb.collection("users").where("lastLogin", ">=", startOfToday).count().get(),
+      adminDb.collection("users").where("lastLogin", ">=", twentyFourHoursAgo).select("lastLogin").get(),
+      adminDb.collection("download_logs").where("downloadTime", ">=", twentyFourHoursAgo).select("userId").get(),
+      adminDb.collection("challenge_sessions").where("startedAt", ">=", twentyFourHoursAgo).select("userId").get(),
       adminDb.collection("materials").where("category", "==", "pyq").count().get(),
       adminDb.collection("materials").where("category", "==", "notes").count().get(),
       adminDb.collection("materials").where("category", "==", "questions").count().get(),
@@ -94,10 +103,32 @@ export async function GET(req: NextRequest) {
 
     const totalMaterials = getCount(materialsCountSnap, 0);
     const totalUsers = getCount(usersCountSnap, 0);
-    // Use maximum of 24h window or today count, with minimum of 1 if an admin is currently requesting
-    const count24h = getCount(dailyUsersSnap24h, 0);
-    const countToday = getCount(dailyUsersSnapToday, 0);
-    const dailyActive = Math.max(count24h, countToday, 1);
+
+    // Aggregate true unique Daily Active Users across active logins, downloads, and challenge sessions in the last 24h
+    const activeUserSet = new Set<string>();
+    if (verifiedUser.uid) activeUserSet.add(verifiedUser.uid);
+
+    if (dailyUsersSnap24h.status === "fulfilled" && dailyUsersSnap24h.value?.docs) {
+      dailyUsersSnap24h.value.docs.forEach((d: any) => {
+        if (d.id) activeUserSet.add(d.id);
+      });
+    }
+
+    if (recentDownloadsSnap.status === "fulfilled" && recentDownloadsSnap.value?.docs) {
+      recentDownloadsSnap.value.docs.forEach((d: any) => {
+        const uid = d.data()?.userId;
+        if (uid && uid !== "GUEST") activeUserSet.add(uid);
+      });
+    }
+
+    if (recentChallengesSnap.status === "fulfilled" && recentChallengesSnap.value?.docs) {
+      recentChallengesSnap.value.docs.forEach((d: any) => {
+        const uid = d.data()?.userId;
+        if (uid && uid !== "GUEST") activeUserSet.add(uid);
+      });
+    }
+
+    const dailyActive = Math.max(activeUserSet.size, 1);
     const pyqs = getCount(pyqsSnap, 0);
     const notes = getCount(notesSnap, 0);
     const questions = getCount(questionsSnap, 0);

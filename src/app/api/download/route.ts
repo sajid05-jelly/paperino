@@ -531,6 +531,12 @@ export async function GET(req: NextRequest) {
         }).catch(e => console.warn("[Material Download Count Notice]:", e));
       }
 
+      if (uid && uid !== "GUEST") {
+        adminDb.collection("users").doc(uid).set({
+          lastLogin: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(e => console.warn("[User LastActive Update Notice]:", e));
+      }
+
       if (!isInline && uid && uid !== "GUEST" && !isAdmin) {
         incrementMonthlyUsage(uid, "downloads").catch(e => console.warn("[Monthly Usage Increment Error]:", e));
       }
