@@ -6,7 +6,7 @@
  */
 
 export const SITE_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://paperino-eta.vercel.app',
+  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://www.paperino.site',
   siteName: 'Paperino',
   universityName: 'SRM Institute of Science and Technology',
   universityShortName: 'SRM University',

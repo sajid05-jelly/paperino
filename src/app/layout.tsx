@@ -60,14 +60,14 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'S. Mohamed Sajid' }],
   creator: 'Paperino Team',
-  metadataBase: new URL('https://paperino-eta.vercel.app'),
+  metadataBase: new URL('https://www.paperino.site'),
   verification: {
     google: 'google4d1ef317bb669c0f',
   },
   openGraph: {
     type: 'website',
     locale: 'en_IN',
-    url: 'https://paperino-eta.vercel.app',
+    url: 'https://www.paperino.site',
     title: 'Paperino – SRM Study Hub',
     description:
       'Access semester-wise study materials, PYQ predictor, ATS analyzer, GPA calculator and more. Built for SRM students.',
