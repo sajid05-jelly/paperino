@@ -41,10 +41,33 @@ export default function ManageMaterialsPage() {
   const { allSubjectsList } = useSubjects();
   const { showToast, dismissToast } = useToast();
 
-  // Fetch all materials across all subjects directly (no department or semester gating)
+  // Fetch all materials across all subjects directly (via robust Server Admin API with client fallback)
   const fetchMaterials = async () => {
     setLoading(true);
     try {
+      // 1. Try robust Server Admin API with Firebase Admin SDK
+      const token = user ? await user.getIdToken().catch(() => null) : null;
+      if (token) {
+        try {
+          const res = await fetch("/api/admin/materials", {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.materials)) {
+              setMaterials(data.materials);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (apiErr) {
+          console.warn("[Admin Materials] Server API fetch notice, falling back:", apiErr);
+        }
+      }
+
+      // 2. Client fallback
       logFirestoreRead("materials", "Admin fetch: all materials limit(1000)");
       const q = query(collection(db, "materials"), limit(1000));
       const snap = await getDocs(q);
@@ -65,12 +88,27 @@ export default function ManageMaterialsPage() {
 
   useEffect(() => {
     fetchMaterials();
-  }, []);
+  }, [user]);
 
   const handleDeleteMaterial = async (id: string) => {
     if (!confirm("Are you sure you want to delete this study material?")) return;
     try {
-      await deleteDoc(doc(db, "materials", id));
+      const token = user ? await user.getIdToken().catch(() => null) : null;
+      let apiSuccess = false;
+      if (token) {
+        try {
+          const res = await fetch(`/api/admin/materials?id=${id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) apiSuccess = true;
+        } catch {}
+      }
+
+      if (!apiSuccess) {
+        await deleteDoc(doc(db, "materials", id));
+      }
+
       setMaterials(prev => prev.filter(m => m.id !== id));
       showToast("Material deleted successfully.", "success");
     } catch (err) {
@@ -84,11 +122,34 @@ export default function ManageMaterialsPage() {
     if (!editingMat) return;
     setActionLoading(true);
     try {
-      await updateDoc(doc(db, "materials", editingMat.id), {
-        title: editingMat.title.trim(),
-        category: editingMat.category,
-        subjectId: editingMat.subjectId,
-      });
+      const token = user ? await user.getIdToken().catch(() => null) : null;
+      let apiSuccess = false;
+      if (token) {
+        try {
+          const res = await fetch("/api/admin/materials", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              id: editingMat.id,
+              title: editingMat.title.trim(),
+              category: editingMat.category,
+              subjectId: editingMat.subjectId,
+            })
+          });
+          if (res.ok) apiSuccess = true;
+        } catch {}
+      }
+
+      if (!apiSuccess) {
+        await updateDoc(doc(db, "materials", editingMat.id), {
+          title: editingMat.title.trim(),
+          category: editingMat.category,
+          subjectId: editingMat.subjectId,
+        });
+      }
       
       setMaterials(prev => prev.map(m => m.id === editingMat.id ? editingMat : m));
       showToast("Material updated successfully.", "success");
