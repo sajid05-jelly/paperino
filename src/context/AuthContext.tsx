@@ -147,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const allowedAdmins = [
         "mohamedsajid.sa@gmail.com",
+        "mohamedsajid.sa@gamil.com",
         "sudharajsekar2005@gmail.com",
         "admin.paperinoirfan27@gmail.com",
         "admin.paperinosam14@gmail.com",
@@ -160,9 +161,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const envAdmins = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",") || [];
       const allAdmins = [...allowedAdmins, ...envAdmins].map(email => email.trim().toLowerCase());
 
-      let currentIsAdmin = !!currentUser && !!currentUser.email && allAdmins.includes(currentUser.email.toLowerCase());
+      const userEmailClean = (currentUser?.email || "").trim().toLowerCase();
+      let currentIsAdmin = !!currentUser && !!userEmailClean && allAdmins.includes(userEmailClean);
       
       if (currentUser) {
+        // Guaranteed immediate lead admin elevation independent of Firestore latency/rules
+        if (currentIsAdmin) {
+          setIsAdmin(true);
+          setRole("admin");
+          setPlan("premium");
+          setIsPremiumActive(true);
+        }
         const userRef = doc(db, "users", currentUser.uid);
         let finalUserData: any = null;
 
@@ -240,19 +249,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.error("Error checking/creating user profile:", error);
-          // Fallback to custom claims if DB is down/quota exceeded
-          try {
-            const tokenResult = await currentUser.getIdTokenResult();
-            if (tokenResult.claims && tokenResult.claims.plan) {
-              console.log("Using fallback claims for plan:", tokenResult.claims.plan);
-              finalUserData = {
-                role: "student",
-                plan: tokenResult.claims.plan,
-                razorpaySubscriptionId: tokenResult.claims.razorpaySubscriptionId,
-                razorpaySubscriptionStatus: tokenResult.claims.razorpaySubscriptionStatus
-              };
-            }
-          } catch (claimErr) {}
+          if (currentIsAdmin) {
+            finalUserData = {
+              displayName: toProperCase(currentUser.displayName || "Admin"),
+              email: (currentUser.email || "").toLowerCase(),
+              role: "admin",
+              plan: "premium",
+              status: "active"
+            };
+          } else {
+            // Fallback to custom claims if DB is down/quota exceeded
+            try {
+              const tokenResult = await currentUser.getIdTokenResult();
+              if (tokenResult.claims && tokenResult.claims.plan) {
+                console.log("Using fallback claims for plan:", tokenResult.claims.plan);
+                finalUserData = {
+                  role: "student",
+                  plan: tokenResult.claims.plan,
+                  razorpaySubscriptionId: tokenResult.claims.razorpaySubscriptionId,
+                  razorpaySubscriptionStatus: tokenResult.claims.razorpaySubscriptionStatus
+                };
+              }
+            } catch (claimErr) {}
+          }
           clearTimeout(safetyTimeout);
         }
 
