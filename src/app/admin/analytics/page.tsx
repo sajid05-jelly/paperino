@@ -101,8 +101,38 @@ export default function AdminDashboard() {
 
     setLoading(true);
     try {
-      console.log("[Analytics] Starting statistics database fetch...");
+      console.log("[Analytics] Starting statistics fetch...");
       setError(null);
+
+      // 1. Try server Admin SDK API first (100% bypasses client firestore rules, permissions and quota restrictions)
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/admin/analytics", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.stats) {
+            setStats(json.stats);
+            if (json.materialCounts) {
+              setMaterialCounts(json.materialCounts);
+            }
+            cachedStats = json.stats;
+            cachedMaterialCounts = json.materialCounts;
+            cachedQuotaExceeded = false;
+            setIsQuotaExceeded(false);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (apiErr) {
+        console.warn("[Analytics] Admin API route failed, falling back to client fetch:", apiErr);
+      }
+
+      // 2. Fallback to client Firestore fetch
       const matsColl = collection(db, "materials");
       const usersColl = collection(db, "users");
 
