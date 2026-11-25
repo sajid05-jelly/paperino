@@ -12,7 +12,8 @@ import {
   FileText, 
   Trash2, 
   Plus, 
-  Sparkles 
+  Sparkles,
+  Building2
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -38,8 +39,10 @@ export default function AddSubjectModal({
 }: AddSubjectModalProps) {
   const { user, isAdmin } = useAuth();
   const { showToast } = useToast();
-  const { allSubjectsList, createSubject } = useSubjects();
+  const { allSubjectsList, departments, createSubject } = useSubjects();
 
+  const [selectedDeptId, setSelectedDeptId] = useState("btech");
+  const [customDeptName, setCustomDeptName] = useState("");
   const [subjectName, setSubjectName] = useState(initialSubjectName);
   const [subjectCode, setSubjectCode] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<MaterialCategory>("notes");
@@ -55,6 +58,8 @@ export default function AddSubjectModal({
 
   useEffect(() => {
     if (isOpen) {
+      setSelectedDeptId(departments[0]?.id || "btech");
+      setCustomDeptName("");
       setSubjectName(initialSubjectName);
       setSubjectCode("");
       setSelectedCategory("notes");
@@ -65,7 +70,7 @@ export default function AddSubjectModal({
       setSuccess(false);
       setLoading(false);
     }
-  }, [isOpen, initialSubjectName]);
+  }, [isOpen, initialSubjectName, departments]);
 
   useEffect(() => {
     if (isOpen) document.body.style.overflow = "hidden";
@@ -163,6 +168,11 @@ export default function AddSubjectModal({
       return;
     }
 
+    if (selectedDeptId === "new" && !customDeptName.trim()) {
+      setError("Please specify the Department name.");
+      return;
+    }
+
     if (!file) {
       setError("Study material file is strictly required. Please attach a PDF or document.");
       return;
@@ -194,6 +204,24 @@ export default function AddSubjectModal({
     setUploadStatus("Uploading study material to Google Drive...");
 
     try {
+      // Resolve department info
+      let targetDeptId = selectedDeptId;
+      let targetDeptName = "Bachelor of Technology";
+
+      if (selectedDeptId === "new") {
+        targetDeptName = customDeptName.trim();
+        targetDeptId = targetDeptName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      } else {
+        const foundDept = departments.find((d) => d.id === selectedDeptId);
+        if (foundDept) {
+          targetDeptName = foundDept.name;
+        } else if (selectedDeptId === "btech") {
+          targetDeptName = "Bachelor of Technology";
+        } else {
+          targetDeptName = selectedDeptId.toUpperCase();
+        }
+      }
+
       // 1. Generate clean subjectId
       const generatedSubId = subjectCode.trim()
         ? subjectCode.toLowerCase().trim().replace(/[^a-z0-9]/g, "")
@@ -206,8 +234,8 @@ export default function AddSubjectModal({
 
       // 3. Save new material record in 'materials' with pending status and isNewSubjectRequest flag
       const newMaterialRecord = {
-        departmentId: "btech",
-        departmentName: "Bachelor of Technology",
+        departmentId: targetDeptId,
+        departmentName: targetDeptName,
         semesterId: "1",
         subjectId: generatedSubId,
         subjectName: subjectName.trim(),
@@ -225,7 +253,7 @@ export default function AddSubjectModal({
         newSubjectData: {
           name: subjectName.trim(),
           code: subjectCode.trim(),
-          departmentId: "btech",
+          departmentId: targetDeptId,
           semesterId: "1",
         },
         createdAt: Date.now(),
@@ -236,7 +264,7 @@ export default function AddSubjectModal({
       // If user is admin, immediately create subject in dynamic_subjects
       if (isAdmin) {
         await createSubject(
-          "btech",
+          targetDeptId,
           "1",
           subjectName.trim(),
           subjectCode.trim(),
@@ -347,6 +375,47 @@ export default function AddSubjectModal({
                 <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-1.5 px-0.5">
                   <CheckCircle2 size={13} className="text-emerald-400 shrink-0" /> <span>This subject already exists in Paperino.</span>
                 </p>
+              )}
+            </div>
+
+            {/* Department Selection */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+                Department <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={selectedDeptId}
+                onChange={(e) => setSelectedDeptId(e.target.value)}
+                disabled={loading}
+                className="w-full bg-[#18112c] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/50 transition-colors cursor-pointer"
+              >
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id} className="bg-[#18112c] text-white">
+                    {dept.name} ({dept.code || dept.id.toUpperCase()})
+                  </option>
+                ))}
+                {!departments.some(d => d.id === "btech") && (
+                  <option value="btech" className="bg-[#18112c] text-white">
+                    Bachelor of Technology (B.Tech)
+                  </option>
+                )}
+                <option value="new" className="bg-[#18112c] text-purple-300 font-medium">
+                  + Add / Specify New Department
+                </option>
+              </select>
+
+              {selectedDeptId === "new" && (
+                <div className="mt-2.5 animate-in fade-in duration-200">
+                  <input
+                    type="text"
+                    placeholder="Enter Department Name (e.g. Master of Computer Applications / MCA)"
+                    value={customDeptName}
+                    onChange={(e) => setCustomDeptName(e.target.value)}
+                    required={selectedDeptId === "new"}
+                    disabled={loading}
+                    className="w-full bg-white/5 border border-purple-500/40 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 transition-colors"
+                  />
+                </div>
               )}
             </div>
 

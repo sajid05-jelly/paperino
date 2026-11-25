@@ -80,13 +80,10 @@ export default function SemesterSubjectGrid({ initialData, deptId, semId }: Seme
               </div>
               <ChevronRight size={20} className="text-gray-600 group-hover:text-purple-400 transition-colors" />
             </div>
-            {/* Department & Semester on Top */}
+            {/* Department on Top */}
             <div className="flex items-center gap-1.5 flex-wrap mb-2">
               <span className="text-[10px] md:text-[11px] font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md uppercase tracking-wider">
                 {currentDeptName}
-              </span>
-              <span className="text-[10px] md:text-[11px] font-medium text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
-                Sem {semId}
               </span>
             </div>
             <h2 className="text-xl font-semibold text-white mb-2">{sub.name}</h2>

@@ -213,14 +213,11 @@ export default function CoursesPage() {
                         )}
                       </div>
 
-                      {/* Department & Semester on Top */}
+                      {/* Department on Top */}
                       <div className="flex items-center gap-1.5 flex-wrap mb-2.5 relative z-10">
                         <span className="inline-flex items-center gap-1 text-[10px] md:text-[11px] font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                           <Building2 size={11} className="text-purple-400 shrink-0" />
                           <span className="truncate max-w-[170px]">{deptName}</span>
-                        </span>
-                        <span className="text-[10px] md:text-[11px] font-medium text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
-                          Sem {sub.semesterId}
                         </span>
                       </div>
 
