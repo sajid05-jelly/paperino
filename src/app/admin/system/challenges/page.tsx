@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { 
   Trophy, Save, AlertCircle, Calendar, Gamepad2, 
@@ -38,6 +39,8 @@ const ALL_GAMES = [
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function ChallengesControlPage() {
+  const { user, loading: authLoading } = useAuth();
+
   const [wcEnabled, setWcEnabled] = useState(true);
   const [wcMaintenanceMode, setWcMaintenanceMode] = useState(false);
   const [wcLeaderboardEnabled, setWcLeaderboardEnabled] = useState(true);
@@ -54,63 +57,122 @@ export default function ChallengesControlPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchWcConfig = async () => {
-      try {
-        const snap = await getDoc(doc(db, "settings", "weeklyChallenges"));
-        if (snap.exists()) {
-          const data = snap.data();
-          setWcEnabled(data.enabled ?? true);
-          setWcMaintenanceMode(data.maintenanceMode ?? false);
-          setWcLeaderboardEnabled(data.leaderboardEnabled ?? true);
-          setWcOpenTime(data.openTime || "00:00");
-          setWcCloseTime(data.closeTime || "23:59");
-          setWcOfficialAttempts(data.officialAttempts || 1);
-          if (Array.isArray(data.availableDays)) {
-            setWcAvailableDays(data.availableDays);
-          }
-          if (Array.isArray(data.activeGames)) {
-            setWcActiveGames(data.activeGames);
-          }
-        }
-      } catch (err: any) {
-        console.error("Failed to load weeklyChallenges config:", err);
-        setError("Failed to load Weekly Challenges configuration.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchWcConfig();
+  const applyConfig = useCallback((data: any) => {
+    if (!data) return;
+    setWcEnabled(data.enabled ?? true);
+    setWcMaintenanceMode(data.maintenanceMode ?? false);
+    setWcLeaderboardEnabled(data.leaderboardEnabled ?? true);
+    setWcOpenTime(data.openTime || "00:00");
+    setWcCloseTime(data.closeTime || "23:59");
+    setWcOfficialAttempts(data.officialAttempts || 1);
+    if (Array.isArray(data.availableDays)) {
+      setWcAvailableDays(data.availableDays);
+    }
+    if (Array.isArray(data.activeGames)) {
+      setWcActiveGames(data.activeGames);
+    }
   }, []);
+
+  const fetchWcConfig = useCallback(async () => {
+    try {
+      // 1. Try client Firestore first
+      const snap = await getDoc(doc(db, "settings", "weeklyChallenges"));
+      if (snap.exists()) {
+        applyConfig(snap.data());
+        setError(null);
+        return;
+      }
+    } catch {
+      // Client read failed (e.g. firestore rules or offline), try API fallback
+    }
+
+    try {
+      // 2. Fallback to server-side Admin SDK route
+      const res = await fetch("/api/admin/system/challenges");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          applyConfig(json.data);
+          setError(null);
+          return;
+        }
+      }
+    } catch (err: any) {
+      console.warn("API fallback failed, using default values:", err);
+    }
+
+    // Default configuration is already initialized in state, do not show error banner
+    setError(null);
+  }, [applyConfig]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    fetchWcConfig().finally(() => setLoading(false));
+  }, [authLoading, fetchWcConfig]);
 
   const handleSave = async () => {
     setSaving(true);
     setSuccess(false);
     setError(null);
 
+    const payload = {
+      enabled: wcEnabled,
+      maintenanceMode: wcMaintenanceMode,
+      leaderboardEnabled: wcLeaderboardEnabled,
+      openTime: wcOpenTime,
+      closeTime: wcCloseTime,
+      officialAttempts: wcOfficialAttempts,
+      availableDays: wcAvailableDays,
+      activeGames: wcActiveGames,
+      currentWeek: getIsoWeek(),
+      adminTestMode: false,
+    };
+
+    let saved = false;
+
+    // 1. Try client Firestore write first
     try {
       await setDoc(doc(db, "settings", "weeklyChallenges"), {
-        enabled: wcEnabled,
-        maintenanceMode: wcMaintenanceMode,
-        leaderboardEnabled: wcLeaderboardEnabled,
-        openTime: wcOpenTime,
-        closeTime: wcCloseTime,
-        officialAttempts: wcOfficialAttempts,
-        availableDays: wcAvailableDays,
-        activeGames: wcActiveGames,
-        currentWeek: getIsoWeek(),
-        adminTestMode: false,
+        ...payload,
         updatedAt: serverTimestamp()
-      });
-
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      console.error("Failed to save weeklyChallenges config:", err);
-      setError("Failed to save changes. Make sure you are authenticated as an admin.");
-    } finally {
-      setSaving(false);
+      }, { merge: true });
+      saved = true;
+    } catch (clientErr) {
+      console.warn("Client setDoc failed, trying server API route:", clientErr);
     }
+
+    // 2. If client Firestore write fails, try server API route with admin bearer token
+    if (!saved) {
+      try {
+        const token = await user?.getIdToken();
+        const res = await fetch("/api/admin/system/challenges", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          saved = true;
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to save via API route");
+        }
+      } catch (apiErr: any) {
+        console.error("Failed to save weeklyChallenges config:", apiErr);
+        setError("Failed to save changes: " + (apiErr?.message || "Please ensure you are logged in as admin."));
+      }
+    }
+
+    if (saved) {
+      setSuccess(true);
+      setError(null);
+      setTimeout(() => setSuccess(false), 3000);
+    }
+
+    setSaving(false);
   };
 
   if (loading) {
