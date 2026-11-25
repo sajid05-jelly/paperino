@@ -13,6 +13,7 @@ interface CourseRequest {
   name: string;
   code: string;
   semesterId: string;
+  departmentId?: string;
   status: string;
   createdAt: any;
 }
@@ -71,7 +72,7 @@ export default function ContributorCoursesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {requests.map(req => (
-            <Link key={req.id} href={`/btech/semesters/${req.semesterId}/subjects/${req.subjectId || req.id}`}>
+            <Link key={req.id} href={`/courses/${req.departmentId || "btech"}/${req.semesterId}/${req.subjectId || req.id}`}>
               <div className="glass-card p-5 rounded-xl border border-white/10 hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.1)] transition-all flex flex-col md:flex-row justify-between items-center gap-4 group cursor-pointer relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
                 
