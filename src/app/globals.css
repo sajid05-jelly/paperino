@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: dark;
   --background: #05030a;
   --foreground: #e2e8f0;
   --glass-bg: rgba(255, 255, 255, 0.05);
@@ -110,6 +111,9 @@
 }
 
 html {
+  color-scheme: dark;
+  background-color: #05030a !important;
+  color: #e2e8f0;
   overflow-x: hidden;
   max-width: 100%;
   width: 100%;
@@ -117,6 +121,8 @@ html {
 }
 
 body {
+  color-scheme: dark;
+  background-color: #05030a !important;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;

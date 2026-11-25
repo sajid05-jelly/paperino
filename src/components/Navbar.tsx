@@ -11,7 +11,7 @@ import { usePlanGate } from "@/context/PlanGateContext";
 import { useRouter } from "next/navigation";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
-import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown, MonitorPlay } from "lucide-react";
+import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown, MonitorPlay, User, LogIn } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -487,7 +487,10 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <Link href="/login" className="hidden md:block rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-gray-200">
+              <Link 
+                href="/login" 
+                className="rounded-full bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-black transition-all hover:bg-gray-200 active:scale-95 shadow-[0_0_12px_rgba(255,255,255,0.2)]"
+              >
                 Log In
               </Link>
             )}
@@ -530,6 +533,20 @@ export default function Navbar() {
                 <X size={18} />
               </button>
             </div>
+
+            {/* Mobile Fast Login Callout (visible at top of drawer when not logged in) */}
+            {!user && (
+              <div className="px-4 py-3 border-b border-white/[0.08] bg-white/[0.02]">
+                <Link
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  href="/login"
+                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 px-4 py-2.5 text-white text-sm font-bold shadow-[0_0_20px_rgba(139,92,246,0.35)] active:scale-[0.98] transition-all"
+                >
+                  <LogIn size={16} />
+                  <span>Log In / Sign In</span>
+                </Link>
+              </div>
+            )}
 
             {/* Scrollable Nav Links */}
             <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-4">

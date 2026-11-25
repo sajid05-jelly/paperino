@@ -38,7 +38,11 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: '#8b5cf6',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#05030a' },
+    { media: '(prefers-color-scheme: dark)', color: '#05030a' },
+  ],
+  colorScheme: 'dark',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -106,6 +110,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`} suppressHydrationWarning style={{ overflowX: 'clip', maxWidth: '100%', width: '100%' }}>
       <head>
+        <meta name="color-scheme" content="dark" />
+        <meta name="theme-color" content="#05030a" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7388792038614675"
@@ -114,6 +122,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             try {
+              document.documentElement.classList.add('dark');
               var theme = localStorage.getItem('paperino-theme') || 'cosmic-violet';
               if (theme && theme !== 'cosmic-violet') {
                 document.documentElement.setAttribute('data-theme', theme);
