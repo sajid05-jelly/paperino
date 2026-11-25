@@ -90,10 +90,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
     {
+      url: getAbsoluteUrl('/blog'),
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
       url: getAbsoluteUrl('/blog/paperino-srm-study-hub'),
       lastModified: new Date(),
       changeFrequency: 'monthly',
-      priority: 0.9,
+      priority: 0.85,
+    },
+    {
+      url: getAbsoluteUrl('/blog/how-to-score-9-cgpa-in-srm'),
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.85,
+    },
+    {
+      url: getAbsoluteUrl('/blog/engineering-exam-pyq-preparation-guide'),
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.85,
+    },
+    {
+      url: getAbsoluteUrl('/blog/mastering-ats-resumes-for-campus-placements'),
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.85,
     },
   ];
 

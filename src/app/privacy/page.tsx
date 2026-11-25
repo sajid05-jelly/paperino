@@ -81,13 +81,50 @@ export default function PrivacyPolicyPage() {
             <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Firebase</li>
             <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Secure AI Engine</li>
             <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Google Authentication</li>
+            <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-purple-500" /> Google AdSense & Analytics</li>
           </ul>
         </div>
       )
     },
     {
+      id: "cookies-and-advertising",
+      title: "8. Cookies & Google Advertising",
+      icon: <Eye className="text-amber-400" size={24} />,
+      content: (
+        <div className="mt-4 text-amber-200/70 leading-relaxed space-y-3">
+          <p>
+            Paperino uses cookies and similar storage technologies to maintain sessions, remember your preferences, and support platform operations.
+          </p>
+          <p>
+            Third-party vendors, including <strong>Google AdSense</strong>, use cookies to serve ads based on your prior visits to Paperino or other websites on the internet. Google&apos;s use of advertising cookies (such as DoubleClick cookies) enables it and its partners to serve personalized ads based on your browsing patterns.
+          </p>
+          <p>
+            You may opt out of personalized advertising at any time by visiting{" "}
+            <a 
+              href="https://adssettings.google.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-amber-400 hover:text-amber-300 underline underline-offset-2"
+            >
+              Google Ads Settings
+            </a>{" "}
+            or by visiting{" "}
+            <a 
+              href="https://www.aboutads.info" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-amber-400 hover:text-amber-300 underline underline-offset-2"
+            >
+              aboutads.info
+            </a>
+            .
+          </p>
+        </div>
+      )
+    },
+    {
       id: "contact",
-      title: "8. Contact",
+      title: "9. Contact",
       icon: <Mail className="text-rose-400" size={24} />,
       content: (
         <div className="mt-4 text-rose-200/70 leading-relaxed">

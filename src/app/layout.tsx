@@ -23,6 +23,7 @@ const ThemeSelector = dynamic(() => import("@/components/ThemeSelector"));
 
 const BackToTop = dynamic(() => import("@/components/BackToTop"));
 const PlanUpgradeModal = dynamic(() => import("@/components/PlanUpgradeModal"));
+const CookieConsent = dynamic(() => import("@/components/CookieConsent"));
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -152,6 +153,7 @@ export default function RootLayout({
                       <ThemeSelector />
 
                       <BackToTop />
+                      <CookieConsent />
                     </MaintenanceGuard>
 
                     {/* Global Plan Upgrade Modal */}
