@@ -25,6 +25,8 @@ export default function robots(): MetadataRoute.Robots {
           '/terms',
           '/disclaimer',
           '/weekly-challenges',
+          '/blog',
+          '/blog/*',
         ],
         disallow: [
           '/admin',
