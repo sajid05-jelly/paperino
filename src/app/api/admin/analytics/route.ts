@@ -47,13 +47,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // 24 hours rolling window for Daily Active Users
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
 
     const [
       materialsCountSnap,
       usersCountSnap,
-      dailyUsersSnap,
+      dailyUsersSnap24h,
+      dailyUsersSnapToday,
       pyqsSnap,
       notesSnap,
       questionsSnap,
@@ -67,7 +71,8 @@ export async function GET(req: NextRequest) {
     ] = await Promise.allSettled([
       adminDb.collection("materials").count().get(),
       adminDb.collection("users").count().get(),
-      adminDb.collection("users").where("lastLogin", ">=", today).count().get(),
+      adminDb.collection("users").where("lastLogin", ">=", twentyFourHoursAgo).count().get(),
+      adminDb.collection("users").where("lastLogin", ">=", startOfToday).count().get(),
       adminDb.collection("materials").where("category", "==", "pyq").count().get(),
       adminDb.collection("materials").where("category", "==", "notes").count().get(),
       adminDb.collection("materials").where("category", "==", "questions").count().get(),
@@ -89,7 +94,10 @@ export async function GET(req: NextRequest) {
 
     const totalMaterials = getCount(materialsCountSnap, 0);
     const totalUsers = getCount(usersCountSnap, 0);
-    const dailyActive = getCount(dailyUsersSnap, 0);
+    // Use maximum of 24h window or today count, with minimum of 1 if an admin is currently requesting
+    const count24h = getCount(dailyUsersSnap24h, 0);
+    const countToday = getCount(dailyUsersSnapToday, 0);
+    const dailyActive = Math.max(count24h, countToday, 1);
     const pyqs = getCount(pyqsSnap, 0);
     const notes = getCount(notesSnap, 0);
     const questions = getCount(questionsSnap, 0);
