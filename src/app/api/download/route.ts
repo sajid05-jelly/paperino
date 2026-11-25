@@ -557,8 +557,8 @@ export async function GET(req: NextRequest) {
     "Accept-Ranges": "bytes",
     "X-Drive-File-Id": finalFileId,
     "Cache-Control": isInline 
-      ? "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" 
-      : "no-store, no-cache, must-revalidate",
+      ? "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800" 
+      : "private, max-age=3600, stale-while-revalidate=86400",
     "Pragma": isInline ? "cache" : "no-cache",
   };
   

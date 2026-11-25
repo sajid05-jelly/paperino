@@ -94,10 +94,24 @@ export async function GET(req: NextRequest) {
 
     result.sort((a, b) => (a.subjectName || "").localeCompare(b.subjectName || ""));
     sectionsCache.set(cacheKey, { data: result, timestamp: now });
-    return NextResponse.json({ success: true, sections: result });
+    return NextResponse.json(
+      { success: true, sections: result },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600"
+        }
+      }
+    );
   } catch (error: any) {
     console.error("Error in /api/sections GET:", error);
     const fallback = getStoredSections();
-    return NextResponse.json({ success: true, sections: fallback });
+    return NextResponse.json(
+      { success: true, sections: fallback },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300"
+        }
+      }
+    );
   }
 }

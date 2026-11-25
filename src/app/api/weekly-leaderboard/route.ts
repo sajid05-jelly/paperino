@@ -6,10 +6,26 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const leaderboard = await getOverallWeeklyLeaderboard();
-    return NextResponse.json({ leaderboard }, { status: 200 });
+    return NextResponse.json(
+      { leaderboard },
+      { 
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120"
+        }
+      }
+    );
   } catch (err: any) {
     console.error("[weekly-leaderboard] GET error:", err.message);
     // Return empty leaderboard gracefully instead of 500 error to keep UI functional
-    return NextResponse.json({ leaderboard: [] }, { status: 200 });
+    return NextResponse.json(
+      { leaderboard: [] },
+      { 
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60"
+        }
+      }
+    );
   }
 }
