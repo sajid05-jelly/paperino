@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, ExternalLink, RefreshCw, Lock, Sparkles, ChevronLeft, ChevronRight, Maximize, Minimize } from "lucide-react";
+import { FileText, Download, Check, Loader2, ZoomIn, ZoomOut, RotateCw, RefreshCw, Lock, Sparkles, ChevronLeft, ChevronRight, Maximize, Minimize } from "lucide-react";
 import Link from "next/link";
-import { triggerSecureDownload, extractDriveFileId, getDriveViewUrl } from "@/lib/driveUtils";
+import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
@@ -57,12 +57,6 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
       if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
     };
   }, [imageBlobUrl, pdfBlobUrl]);
-
-  // Resolve active Google Drive file ID & official view URL
-  const effectiveFileId = mat.fileId
-    ? extractDriveFileId(mat.fileId)
-    : (mat.fileUrl ? extractDriveFileId(mat.fileUrl) : (serverFileId || ""));
-  const driveViewUrl = effectiveFileId ? getDriveViewUrl(effectiveFileId) : null;
 
   // PDF.js rendering states
   const [numPages, setNumPages] = useState<number>(0);
@@ -376,19 +370,6 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
             >
               <RotateCw size={14} />
             </button>
-            <div className="w-px h-5 bg-white/10 mx-1"></div>
-            {driveViewUrl && (
-              <a
-                href={driveViewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-purple-300 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-                title="Open in Google Drive"
-              >
-                <ExternalLink size={14} />
-                <span className="hidden sm:inline">Drive</span>
-              </a>
-            )}
             <button
               onClick={toggleFullscreen}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer ml-1"
@@ -422,21 +403,10 @@ export default function DocPreviewViewer({ mat, onDownload, className = "" }: Do
           <div className="space-y-2 max-w-md">
             <h3 className="text-lg font-bold text-white">Document Preview Unavailable</h3>
             <p className="text-xs text-gray-400 leading-relaxed">
-              {error || "The in-browser preview could not be displayed on this browser. You can open the file in Google Drive or download it directly."}
+              {error || "The in-browser preview could not be displayed on this browser. You can download the file directly to view it."}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 mt-3">
-            {driveViewUrl && (
-              <a
-                href={driveViewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <ExternalLink size={14} />
-                <span>Open in Google Drive</span>
-              </a>
-            )}
             <button
               onClick={handleDownload}
               disabled={downloading}

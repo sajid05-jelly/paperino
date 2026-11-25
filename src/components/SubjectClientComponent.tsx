@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
-import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus, ArrowLeft, ExternalLink } from "lucide-react";
+import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus, ArrowLeft } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
@@ -21,7 +21,7 @@ const DocPreviewViewer = dynamic(() => import("@/components/DocPreviewViewer"), 
   ),
   ssr: false
 });
-import { getDownloadHref, getDrivePreviewUrl, getDriveViewUrl, extractDriveFileId, triggerSecureDownload } from "@/lib/driveUtils";
+import { triggerSecureDownload } from "@/lib/driveUtils";
 import { useToast } from "@/components/Toast";
 import { usePlanGate } from "@/context/PlanGateContext";
 import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
@@ -945,23 +945,6 @@ export default function SubjectClientComponent({
                 <p className="text-[11px] text-purple-300/70 font-mono truncate mt-0.5">{previewMat.fileName}</p>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 relative z-30">
-                {(() => {
-                  const driveId = extractDriveFileId(previewMat.fileId || previewMat.fileUrl || "");
-                  const driveUrl = driveId ? getDriveViewUrl(driveId) : null;
-                  if (!driveUrl) return null;
-                  return (
-                    <a
-                      href={driveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-purple-300 transition-all border border-white/5 flex items-center gap-1.5 text-xs font-semibold"
-                      title="Open in Google Drive"
-                    >
-                      <ExternalLink size={16} />
-                      <span className="hidden sm:inline">Drive</span>
-                    </a>
-                  );
-                })()}
                 <button 
                   disabled={downloadingId === previewMat.id}
                   onClick={() => handleDownloadMaterial(previewMat)} 
