@@ -183,11 +183,6 @@ export default function AddSubjectModal({
       return;
     }
 
-    if (isDuplicate) {
-      setError(`A subject with this name or code already exists in Paperino.`);
-      return;
-    }
-
     if (user && !user.emailVerified && user.providerData.some((p) => p.providerId === "password")) {
       setError("Please verify your email to submit study materials. We are resending a verification link.");
       try {
@@ -222,13 +217,25 @@ export default function AddSubjectModal({
         }
       }
 
-      // 1. Generate clean subjectId
-      const generatedSubId = subjectCode.trim()
+      // 1. Resolve subjectId (link to existing subject if present)
+      const existingSubject = (allSubjectsList || []).find((s) => {
+        const nameMatch = (s.name || "").trim().toLowerCase() === subjectName.trim().toLowerCase();
+        const codeMatch = Boolean(
+          subjectCode.trim() && s.code && s.code.trim().toLowerCase() === subjectCode.trim().toLowerCase()
+        );
+        return nameMatch || codeMatch;
+      });
+
+      const generatedSubId = existingSubject
+        ? existingSubject.id
+        : subjectCode.trim()
         ? subjectCode.toLowerCase().trim().replace(/[^a-z0-9]/g, "")
         : subjectName.toLowerCase().trim().replace(/[^a-z0-9]/g, "-");
 
+      const targetSemId = existingSubject?.semesterId || "1";
+
       // 2. Upload file directly to Google Drive
-      const uploadResult = await uploadToDriveDirect(file, "1", generatedSubId);
+      const uploadResult = await uploadToDriveDirect(file, targetSemId, generatedSubId);
 
       setUploadStatus(isAdmin ? "Publishing subject and material..." : "Submitting to admin review queue...");
 
@@ -236,7 +243,7 @@ export default function AddSubjectModal({
       const newMaterialRecord = {
         departmentId: targetDeptId,
         departmentName: targetDeptName,
-        semesterId: "1",
+        semesterId: targetSemId,
         subjectId: generatedSubId,
         subjectName: subjectName.trim(),
         subjectCode: subjectCode.trim(),
