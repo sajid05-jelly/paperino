@@ -8,7 +8,7 @@ import Link from "next/link";
 import { 
   Trophy, FileText, Edit2, Download, Copy, CheckCircle2, 
   Loader2, BookOpen, Award, Target, Star, Calendar, Sparkles, 
-  Bell, Trash2, Info, Plus, Upload, Gift 
+  Bell, Trash2, Info, Plus, Upload, Gift, Zap 
 } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
 import { getDownloadHref, triggerSecureDownload } from "@/lib/driveUtils";
@@ -150,7 +150,7 @@ export default function ContributorDashboardPage() {
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">My Dashboard</h1>
-          <p className="text-gray-400">View your contributions, reward points, and system updates.</p>
+          <p className="text-gray-400">Upload study materials, track review status, and unlock your Free Plus plan.</p>
         </div>
         <div className="flex gap-3">
           <a href="/contributor/upload" className="bg-gradient-to-r from-fuchsia-600 to-rose-600 hover:from-fuchsia-500 hover:to-rose-500 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(232,121,249,0.3)] flex items-center gap-2 text-sm">
@@ -204,60 +204,95 @@ export default function ContributorDashboardPage() {
         </div>
       </div>
 
-      {/* Rewards Milestones Progress */}
-      {uploadsRemaining > 0 ? (
-        <div className="vision-glass p-6 rounded-3xl border border-white/5 space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-gray-400 font-medium flex items-center gap-1.5">
-              <Trophy size={14} className="text-yellow-400" />
-              Next reward: <strong className="text-white">Plus Plan Free</strong>
-            </span>
-            <span className="text-fuchsia-400 font-bold">{uploadsRemaining} Approved Materials Left</span>
+      {/* 10+ Approved Materials = Free Plus Plan (Featured Hero Card) */}
+      <div className="relative overflow-hidden rounded-3xl border border-purple-500/30 bg-gradient-to-br from-violet-950/40 via-purple-950/30 to-fuchsia-950/40 p-6 md:p-8 shadow-[0_0_50px_rgba(168,85,247,0.12)]">
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br from-fuchsia-500/20 to-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="space-y-2.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-fuchsia-500/20 border border-purple-400/30 text-purple-200 text-xs font-bold tracking-wide shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+              <Gift size={14} className="text-fuchsia-400 animate-pulse" />
+              <span>SPECIAL CONTRIBUTOR PERK</span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+              Upload <span className="bg-gradient-to-r from-fuchsia-400 via-pink-400 to-purple-300 bg-clip-text text-transparent">10+ Study Materials</span> = Plus Plan FREE!
+            </h2>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              Share 10 genuine SRM question papers, lecture notes, or study materials. Once 10 uploads are verified & approved by admin, your account automatically unlocks the <strong className="text-white">Paperino Plus Plan (Worth ₹29/mo) 100% FREE!</strong>
+            </p>
           </div>
-          
-          <div className="w-full bg-black/50 border border-white/5 h-2.5 rounded-full overflow-hidden p-0.5">
+
+          <div className="w-full lg:w-auto flex-shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <Link
+              href="/contributor/upload"
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(217,70,239,0.35)] active:scale-95 text-sm"
+            >
+              <Upload size={16} /> Contribute Notes
+            </Link>
+          </div>
+        </div>
+
+        {/* Milestone Tracker Inside Hero */}
+        <div className="relative z-10 mt-6 pt-6 border-t border-white/10 space-y-3">
+          <div className="flex flex-wrap justify-between items-center text-xs font-semibold gap-2">
+            <span className="text-gray-300 flex items-center gap-2">
+              <Trophy size={16} className="text-yellow-400" />
+              <span>Target: <strong className="text-white">10 Approved Materials for Free Plus</strong></span>
+            </span>
+            {uploadsRemaining > 0 ? (
+              <span className="text-fuchsia-300 bg-fuchsia-500/15 border border-fuchsia-500/30 px-3 py-1 rounded-full font-bold">
+                {uploadsRemaining} more approved material{uploadsRemaining > 1 ? "s" : ""} left to unlock
+              </span>
+            ) : (
+              <span className="text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full font-bold flex items-center gap-1.5">
+                <CheckCircle2 size={14} /> Free Plus Plan Unlocked & Active!
+              </span>
+            )}
+          </div>
+
+          <div className="w-full bg-black/60 border border-white/10 h-3 rounded-full overflow-hidden p-0.5 shadow-inner">
             <div 
-              className="bg-gradient-to-r from-fuchsia-500 to-rose-500 h-full rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 h-full rounded-full transition-all duration-700 shadow-[0_0_12px_rgba(217,70,239,0.6)]"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          
-          <div className="flex justify-between text-[10px] text-gray-500 font-bold">
-            <span>{approvedCount} Approved</span>
-            <span>10 Goal for Free Plus</span>
+
+          <div className="flex justify-between text-xs text-gray-400 font-medium">
+            <span>{approvedCount} / 10 Approved Uploads</span>
+            <span>{progressPercent.toFixed(0)}% Completed</span>
           </div>
         </div>
-      ) : (
-        <div className="vision-glass p-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 flex items-center gap-4">
-          <Gift className="text-emerald-400 animate-bounce" size={24} />
-          <div>
-            <h4 className="text-sm font-bold text-white">Free Plus Plan Active!</h4>
-            <p className="text-xs text-gray-400">You have shared 10+ genuine approved materials with the community. Enjoy the Plus plan for free!</p>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="glass-panel p-5 rounded-2xl border border-white/5">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Approved</p>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-colors">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Approved</p>
           <p className="text-2xl font-bold text-emerald-400">{approvedCount}</p>
+          <span className="text-[10px] text-gray-500">Live on platform</span>
         </div>
-        <div className="glass-panel p-5 rounded-2xl border border-white/5">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Pending</p>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-colors">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Pending</p>
           <p className="text-2xl font-bold text-amber-400">{pendingCount}</p>
+          <span className="text-[10px] text-gray-500">Under review</span>
         </div>
-        <div className="glass-panel p-5 rounded-2xl border border-white/5">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Rejected</p>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-red-500/30 transition-colors">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Rejected</p>
           <p className="text-2xl font-bold text-red-400">{rejectedCount}</p>
+          <span className="text-[10px] text-gray-500">Quality check</span>
         </div>
-        <div className="glass-panel p-5 rounded-2xl border border-white/5">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Downloads</p>
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-cyan-500/30 transition-colors">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Downloads</p>
           <p className="text-2xl font-bold text-cyan-400">{Math.max(0, downloadsCount || 0)}</p>
+          <span className="text-[10px] text-gray-500">Student downloads</span>
         </div>
-        <div className="glass-panel p-5 rounded-2xl border border-white/5 col-span-2 md:col-span-1 bg-fuchsia-500/5 border-fuchsia-500/10">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Points</p>
-          <p className="text-2xl font-bold text-fuchsia-400">{Math.max(0, contributionPoints || 0)}</p>
+        <div className="glass-panel p-5 rounded-2xl border border-purple-500/20 col-span-2 md:col-span-1 bg-purple-500/5 hover:border-purple-500/40 transition-colors">
+          <p className="text-xs text-purple-300 font-medium uppercase tracking-wider mb-1">Plus Unlock</p>
+          <p className="text-lg font-bold text-purple-200 truncate">
+            {approvedCount >= 10 ? "Unlocked 🎁" : `${approvedCount} / 10`}
+          </p>
+          <span className="text-[10px] text-gray-400">
+            {approvedCount >= 10 ? "Free Plus Active" : `${uploadsRemaining} more needed`}
+          </span>
         </div>
       </div>
 
@@ -267,7 +302,7 @@ export default function ContributorDashboardPage() {
           onClick={() => handleSelectTab("overview")} 
           className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${dashboardTab === "overview" ? "text-fuchsia-400" : "text-gray-400 hover:text-white"}`}
         >
-          <Info size={16} /> Overview & Rewards
+          <Info size={16} /> Overview & Free Plus Reward
           {dashboardTab === "overview" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-fuchsia-500 rounded-t-full"></div>}
         </button>
         <button 
@@ -291,61 +326,84 @@ export default function ContributorDashboardPage() {
           {/* OVERVIEW & REWARDS TAB */}
           {dashboardTab === "overview" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Rewards Points & Levels */}
+              {/* How the 10+ Free Plus System Works */}
               <div className="space-y-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Award className="text-yellow-400" size={20} /> Reward System Points
+                  <Gift className="text-fuchsia-400" size={20} /> How Free Plus Plan Works
                 </h3>
-                <div className="space-y-3.5 text-sm text-gray-300">
-                  <div className="flex justify-between border-b border-white/5 pb-2">
-                    <span>Approved Note / File Upload</span>
-                    <span className="text-emerald-400 font-bold font-mono">+10 Points</span>
+                
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex gap-3.5">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold text-sm flex-shrink-0">
+                      1
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Upload 10+ Genuine Materials</h4>
+                      <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                        Share SRM semester notes, past university question papers (PYQs), lab manuals, or syllabus guides using the Contribute page.
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex justify-between border-b border-white/5 pb-2">
-                    <span>Approved Subject / Department Suggestion</span>
-                    <span className="text-emerald-400 font-bold font-mono">+15 Points</span>
-                  </div>
-                  <div className="flex justify-between border-b border-white/5 pb-2">
-                    <span>Every 100 Downloads of your uploads</span>
-                    <span className="text-emerald-400 font-bold font-mono">+5 Points</span>
-                  </div>
-                </div>
 
-                <div className="vision-glass p-5 rounded-2xl border border-white/5 space-y-3">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Gift className="text-emerald-400" size={16} /> Contributor Reward Policy
-                  </h4>
-                  <ul className="text-xs text-gray-400 space-y-2 list-none pl-1">
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>10+ Approved Materials:</strong> Unlocks Paperino Plus Plan Free</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>Genuine Quality:</strong> Fake, duplicate, or low-quality uploads will not qualify.</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>Plus Only:</strong> Contributor rewards strictly grant Plus. Paid Pro and Premium remain paid subscriptions.</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                      <span><strong>Community Sharing:</strong> Share knowledge, support fellow students, and unlock perks!</span>
-                    </li>
-                  </ul>
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex gap-3.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 font-bold text-sm flex-shrink-0">
+                      2
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Admin Verification</h4>
+                      <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                        Our admin team reviews uploaded files to ensure they are legible, helpful, and organized under the correct subject & semester.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex gap-3.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold text-sm flex-shrink-0">
+                      3
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Automatic Free Plus Activation</h4>
+                      <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                        As soon as your approved count reaches 10, your account is automatically upgraded to <strong className="text-emerald-400">Paperino Plus Plan</strong> 100% free!
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Suggestions, Premium Benefits, Journey */}
+              {/* What You Get with Free Plus */}
               <div className="space-y-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Star className="text-amber-400 animate-pulse" size={20} /> Plan Benefits & Safety
+                  <Sparkles className="text-yellow-400" size={20} /> Free Plus Plan Benefits
                 </h3>
                 
-                <div className="bg-gradient-to-r from-fuchsia-500/10 to-transparent p-5 rounded-2xl border border-fuchsia-500/20 space-y-3">
-                  <h4 className="text-sm font-bold text-white">Daily Limits Safe Guard</h4>
+                <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-fuchsia-500/5 to-transparent p-5 space-y-3.5">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-200"><strong>10 Monthly PDF Downloads</strong> (2x the free tier limit)</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-200"><strong>Personalized PDF Watermarks</strong> with your name & email</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-200"><strong>Full Access to SRM Study Materials</strong></span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-200"><strong>Exclusive Plus Contributor Badge</strong> on profile</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-200"><strong>₹0 Forever</strong> — No payments or renewal fees</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider">Quality Note</h4>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Active paid accounts receive elevated limits for ATS and PYQ Analyzer tools, with unlimited power on Premium.
+                    Only genuine, legible, and non-duplicate materials will be approved. Fake or spam submissions are rejected and will not count towards your 10-material goal.
                   </p>
                 </div>
               </div>

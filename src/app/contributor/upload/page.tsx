@@ -280,36 +280,40 @@ export default function ContributorUploadPage() {
             </button>
           </div>
 
-          {/* Reward System Highlights */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
+          {/* Special Contributor Reward Box */}
+          <div className="glass-panel p-6 rounded-3xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-fuchsia-500/5 to-transparent space-y-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Award className="text-yellow-400" size={18} /> Reward System
+              <Gift className="text-fuchsia-400" size={18} /> Free Plus Plan Offer
             </h3>
-            <div className="space-y-2 text-xs text-gray-400">
-              <div className="flex justify-between border-b border-white/5 pb-2">
-                <span>Approved Upload</span>
-                <span className="text-emerald-400 font-bold">+10 Points</span>
-              </div>
-              <div className="flex justify-between border-b border-white/5 pb-2">
-                <span>Approved Suggestion</span>
-                <span className="text-emerald-400 font-bold">+15 Points</span>
-              </div>
-              <div className="flex justify-between border-b border-white/5 pb-2">
-                <span>Every 100 Downloads</span>
-                <span className="text-emerald-400 font-bold">+5 Points</span>
-              </div>
-            </div>
             
-            <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-3.5 space-y-2">
-              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Gift size={12} /> Contributor Reward Policy
+            <div className="rounded-2xl bg-purple-500/15 border border-purple-500/30 p-3.5 space-y-2">
+              <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>🎁 Upload 10+ Materials = Plus Plan FREE!</span>
               </p>
-              <ul className="text-[10px] text-gray-400 space-y-1 list-disc list-inside">
-                <li>10+ Approved Materials = Plus Plan FREE 🎁</li>
-                <li>Fake or low-quality materials won’t count</li>
-                <li>Only genuine, useful contributions qualify</li>
-                <li>Rewards grant Plus only — Pro & Premium are paid</li>
-                <li>Higher recognition tiers: Active & Elite Contributor</li>
+              <p className="text-[11px] text-purple-200/80 leading-relaxed">
+                When 10 of your uploaded semester materials or PYQs are verified and approved by admin, your account automatically unlocks Paperino Plus Plan (Worth ₹29/mo) completely free!
+              </p>
+            </div>
+
+            <div className="space-y-2 text-xs text-gray-300">
+              <p className="font-semibold text-gray-200">Perks Included:</p>
+              <ul className="space-y-1.5 text-[11px] text-gray-400">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>10 Monthly PDF Downloads (2x free limit)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>Personalized PDF Watermarks</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>SRM Study Hub & PYQ Predictor Access</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>Exclusive Plus Badge on Profile</span>
+                </li>
               </ul>
             </div>
           </div>
