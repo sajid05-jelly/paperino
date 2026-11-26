@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
 import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown, MonitorPlay, User, LogIn } from "lucide-react";
+import DoomsdayToggle from "./DoomsdayToggle";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -397,10 +398,13 @@ export default function Navbar() {
             >
               <Palette size={15} className="drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" aria-hidden="true" />
             </button>
+
+            {/* Doomsday Edition Toggle */}
+            <DoomsdayToggle />
           </div>
 
           <div className="flex items-center justify-end gap-2 lg:gap-3 flex-shrink-0">
-            {/* Mobile Utility Controls - WhatsApp, Instagram, Sound, Theme */}
+            {/* Mobile Utility Controls - WhatsApp, Instagram, Sound, Theme, Doomsday */}
             <div className="flex sm:hidden items-center gap-1.5 bg-white/5 border border-white/10 rounded-full p-1 backdrop-blur-md mr-1">
               {/* WhatsApp */}
               <a
@@ -441,6 +445,9 @@ export default function Navbar() {
               >
                 <Palette size={14} className="drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" aria-hidden="true" />
               </button>
+
+              {/* Doomsday Toggle for Mobile Top Header */}
+              <DoomsdayToggle className="!w-7 !h-7 !p-1.5" />
             </div>
 
             <Link
@@ -547,6 +554,11 @@ export default function Navbar() {
                 </Link>
               </div>
             )}
+
+            {/* Doomsday Skin Toggle inside Mobile Drawer */}
+            <div className="px-3.5 py-2.5 border-b border-white/[0.06]">
+              <DoomsdayToggle variant="drawer" />
+            </div>
 
             {/* Scrollable Nav Links */}
             <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-4">

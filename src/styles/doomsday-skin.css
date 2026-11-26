@@ -1,0 +1,341 @@
+/* ==========================================================================
+   PAPERINO — DOOMSDAY EDITION (ARMORED SPECIAL THEME)
+   Exclusive Selector: html[data-skin="doomsday"]
+   Scope: Non-destructive, zero-backend, lightweight, high contrast
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design Tokens & Root Overrides
+   -------------------------------------------------------------------------- */
+html[data-skin="doomsday"] {
+  --doomsday-bg: #060908;
+  --doomsday-surface: #0d1411;
+  --doomsday-surface-2: #121c17;
+  --doomsday-surface-elevated: #16241d;
+  --doomsday-primary: #10e87a;
+  --doomsday-primary-dark: #00c462;
+  --doomsday-text: #d7e3dc;
+  --doomsday-text-muted: #8aa095;
+  --doomsday-border-emerald: rgba(16, 232, 122, 0.18);
+  --doomsday-border-metallic: rgba(215, 227, 220, 0.10);
+  --doomsday-border-strong: rgba(16, 232, 122, 0.35);
+  --doomsday-gradient-surface: linear-gradient(135deg, #0b1410, #10241a);
+  --doomsday-gradient-cta: linear-gradient(115deg, #16f283, #0cb35c);
+
+  /* Override Paperino theme CSS variables */
+  --background: #060908 !important;
+  --foreground: #d7e3dc !important;
+  --glass-bg: rgba(13, 20, 17, 0.75) !important;
+  --glass-border: rgba(16, 232, 122, 0.18) !important;
+
+  --primary-50: #e6fcf1 !important;
+  --primary-100: #c2f7db !important;
+  --primary-200: #8ef0bd !important;
+  --primary-300: #4ee399 !important;
+  --primary-400: #10e87a !important;
+  --primary-500: #00c462 !important;
+  --primary-600: #009e4d !important;
+
+  --primary-rgb: 16, 232, 122 !important;
+  --secondary-rgb: 0, 196, 98 !important;
+  --accent-rgb: 107, 255, 179 !important;
+
+  color-scheme: dark !important;
+  background-color: #060908 !important;
+  color: #d7e3dc !important;
+}
+
+html[data-skin="doomsday"] body {
+  background-color: #060908 !important;
+  color: #d7e3dc !important;
+  /* Cinematic vertical energy streaks + subtle architectural grid */
+  background-image: 
+    linear-gradient(rgba(16, 232, 122, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 232, 122, 0.04) 1px, transparent 1px),
+    repeating-linear-gradient(
+      180deg,
+      rgba(16, 232, 122, 0.015) 0px,
+      rgba(16, 232, 122, 0.015) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    radial-gradient(ellipse at 50% 0%, rgba(16, 232, 122, 0.12) 0%, transparent 65%),
+    radial-gradient(circle at 15% 45%, rgba(0, 196, 98, 0.08), transparent 45%),
+    radial-gradient(circle at 85% 65%, rgba(16, 232, 122, 0.06), transparent 50%) !important;
+  background-attachment: fixed !important;
+  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%, 100% 100% !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. Typography: Cinzel (Headings) & Chakra Petch (Tactical Stats / Badges)
+   -------------------------------------------------------------------------- */
+html[data-skin="doomsday"] h1,
+html[data-skin="doomsday"] h2,
+html[data-skin="doomsday"] .doomsday-heading {
+  font-family: var(--font-cinzel), serif, -apple-system, sans-serif !important;
+  letter-spacing: 0.02em !important;
+  font-weight: 700 !important;
+}
+
+html[data-skin="doomsday"] .doomsday-stat,
+html[data-skin="doomsday"] .doomsday-badge,
+html[data-skin="doomsday"] [class*="tracking-widest"],
+html[data-skin="doomsday"] [class*="tracking-[0.2em]"],
+html[data-skin="doomsday"] [class*="font-mono"] {
+  font-family: var(--font-chakra-petch), monospace, sans-serif !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. Armored Cards & Containers
+   -------------------------------------------------------------------------- */
+html[data-skin="doomsday"] .glass-panel,
+html[data-skin="doomsday"] .vision-glass,
+html[data-skin="doomsday"] .liquid-glass,
+html[data-skin="doomsday"] [class*="bg-black/"],
+html[data-skin="doomsday"] [class*="bg-white/"] {
+  background-color: #0d1411 !important;
+  border-color: rgba(16, 232, 122, 0.18) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(215, 227, 220, 0.08) !important;
+}
+
+html[data-skin="doomsday"] [class*="border-white/"] {
+  border-color: rgba(16, 232, 122, 0.14) !important;
+}
+
+/* Left-edge armored emerald accent on subject, feature, and college cards */
+html[data-skin="doomsday"] a[href^="/courses"] > div,
+html[data-skin="doomsday"] a[href^="/srm"] > div,
+html[data-skin="doomsday"] .liquid-glass,
+html[data-skin="doomsday"] .vision-glass {
+  border-left: 3px solid #10e87a !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-left-width 0.2s ease, box-shadow 0.25s ease !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-skin="doomsday"] a[href^="/courses"] > div:hover,
+  html[data-skin="doomsday"] a[href^="/srm"] > div:hover,
+  html[data-skin="doomsday"] .liquid-glass:hover,
+  html[data-skin="doomsday"] .vision-glass:hover {
+    border-left-width: 5px !important;
+    border-left-color: #16f283 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(16, 232, 122, 0.2) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Buttons & Primary CTA Overrides
+   -------------------------------------------------------------------------- */
+html[data-skin="doomsday"] button,
+html[data-skin="doomsday"] a[role="button"] {
+  border-radius: 6px !important;
+}
+
+/* Primary CTA Button (Doomsday Power Strike) */
+html[data-skin="doomsday"] .bg-gradient-to-r.from-violet-600,
+html[data-skin="doomsday"] .bg-gradient-to-r.from-purple-600,
+html[data-skin="doomsday"] .bg-gradient-to-r.from-fuchsia-600,
+html[data-skin="doomsday"] button.bg-gradient-to-r,
+html[data-skin="doomsday"] a.bg-gradient-to-r:not([href="/weekly-challenges"]) {
+  background: linear-gradient(115deg, #16f283, #0cb35c) !important;
+  color: #05120b !important;
+  font-weight: 700 !important;
+  border-top: 1px solid #6bffb3 !important;
+  border-bottom: 3px solid #07592e !important;
+  box-shadow: 0 0 18px rgba(16, 232, 122, 0.35) !important;
+  text-shadow: none !important;
+}
+
+html[data-skin="doomsday"] .bg-gradient-to-r.from-violet-600:hover,
+html[data-skin="doomsday"] .bg-gradient-to-r.from-purple-600:hover,
+html[data-skin="doomsday"] .bg-gradient-to-r.from-fuchsia-600:hover,
+html[data-skin="doomsday"] button.bg-gradient-to-r:hover {
+  background: linear-gradient(115deg, #1af788, #10c867) !important;
+  box-shadow: 0 0 26px rgba(16, 232, 122, 0.5) !important;
+}
+
+/* Outline & Secondary Buttons */
+html[data-skin="doomsday"] [class*="border-purple-"],
+html[data-skin="doomsday"] [class*="border-violet-"],
+html[data-skin="doomsday"] [class*="border-fuchsia-"] {
+  border-color: rgba(16, 232, 122, 0.22) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. Text & Contrast Protection (Fixes all white/slate patches)
+   -------------------------------------------------------------------------- */
+html[data-skin="doomsday"] [class*="text-purple-"],
+html[data-skin="doomsday"] [class*="text-violet-"],
+html[data-skin="doomsday"] [class*="text-fuchsia-"] {
+  color: #10e87a !important;
+}
+
+html[data-skin="doomsday"] [class*="text-gray-300"],
+html[data-skin="doomsday"] [class*="text-gray-400"],
+html[data-skin="doomsday"] [class*="text-slate-300"],
+html[data-skin="doomsday"] [class*="text-slate-400"] {
+  color: #8aa095 !important;
+}
+
+html[data-skin="doomsday"] [class*="text-gray-100"],
+html[data-skin="doomsday"] [class*="text-gray-200"],
+html[data-skin="doomsday"] [class*="text-slate-100"],
+html[data-skin="doomsday"] [class*="text-slate-200"] {
+  color: #d7e3dc !important;
+}
+
+/* Background Utility Overrides for Modals, Tables, Cards */
+html[data-skin="doomsday"] .bg-white,
+html[data-skin="doomsday"] .bg-gray-900,
+html[data-skin="doomsday"] .bg-slate-900,
+html[data-skin="doomsday"] .bg-zinc-900,
+html[data-skin="doomsday"] [class*="bg-[#05030a]"],
+html[data-skin="doomsday"] [class*="bg-[#07050e]"],
+html[data-skin="doomsday"] [class*="bg-[#0a0714]"],
+html[data-skin="doomsday"] [class*="bg-[#0f0a1a]"],
+html[data-skin="doomsday"] [class*="bg-[#120924]"] {
+  background-color: #0d1411 !important;
+  color: #d7e3dc !important;
+}
+
+/* Inputs, Textareas, Selects */
+html[data-skin="doomsday"] input,
+html[data-skin="doomsday"] select,
+html[data-skin="doomsday"] textarea {
+  background-color: #121c17 !important;
+  border-color: rgba(16, 232, 122, 0.25) !important;
+  color: #d7e3dc !important;
+}
+
+html[data-skin="doomsday"] input:focus,
+html[data-skin="doomsday"] select:focus,
+html[data-skin="doomsday"] textarea:focus {
+  border-color: #10e87a !important;
+  box-shadow: 0 0 10px rgba(16, 232, 122, 0.3) !important;
+}
+
+/* Dropdowns & Modals */
+html[data-skin="doomsday"] [role="dialog"],
+html[data-skin="doomsday"] .fixed.inset-0 > div:not(.bg-black\/60):not(.bg-black\/70) {
+  background-color: #0d1411 !important;
+  border-color: rgba(16, 232, 122, 0.3) !important;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), 0 0 20px rgba(16, 232, 122, 0.15) !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. Semantic Status Preservation (Warnings, Errors, Badges)
+   -------------------------------------------------------------------------- */
+html[data-skin="doomsday"] .text-red-400,
+html[data-skin="doomsday"] .text-rose-400,
+html[data-skin="doomsday"] .text-rose-300,
+html[data-skin="doomsday"] .border-red-500,
+html[data-skin="doomsday"] .bg-red-500\/10 {
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+html[data-skin="doomsday"] .text-amber-400,
+html[data-skin="doomsday"] .text-yellow-400,
+html[data-skin="doomsday"] .border-amber-500,
+html[data-skin="doomsday"] .bg-amber-500\/10 {
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. Hero Special Edition Identity Switching (Pure CSS Zero-Flicker)
+   -------------------------------------------------------------------------- */
+/* Default Hero copy is shown in default mode, hidden in Doomsday */
+.doomsday-hero-content {
+  display: none !important;
+}
+.default-hero-content {
+  display: block;
+}
+
+html[data-skin="doomsday"] .default-hero-content {
+  display: none !important;
+}
+
+html[data-skin="doomsday"] .doomsday-hero-content {
+  display: flex !important;
+}
+
+/* Doomsday Hero Badge & Headings */
+html[data-skin="doomsday"] .doomsday-hero-badge {
+  background: rgba(16, 232, 122, 0.12) !important;
+  border: 1px solid rgba(16, 232, 122, 0.35) !important;
+  color: #10e87a !important;
+  box-shadow: 0 0 20px rgba(16, 232, 122, 0.25) !important;
+}
+
+html[data-skin="doomsday"] .doomsday-hero-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(16, 232, 122, 0.4) !important;
+}
+
+html[data-skin="doomsday"] .doomsday-hero-gradient {
+  background: linear-gradient(135deg, #10e87a 0%, #a7f3d0 50%, #00c462 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* --------------------------------------------------------------------------
+   8. Strict Mobile Performance Optimizations
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  html[data-skin="doomsday"] *,
+  html[data-skin="doomsday"] *::before,
+  html[data-skin="doomsday"] *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  html[data-skin="doomsday"] body {
+    background-attachment: scroll !important;
+    background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%, 100% 100%, 100% 100% !important;
+  }
+
+  html[data-skin="doomsday"] [class*="shadow-[0_0_"],
+  html[data-skin="doomsday"] [class*="drop-shadow-"] {
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
+  html[data-skin="doomsday"] .doomsday-hero-title {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Reduced Motion & Print Styles
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="doomsday"] *,
+  html[data-skin="doomsday"] *::before,
+  html[data-skin="doomsday"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  html[data-skin="doomsday"],
+  html[data-skin="doomsday"] body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    background-image: none !important;
+  }
+
+  html[data-skin="doomsday"] .glass-panel,
+  html[data-skin="doomsday"] .vision-glass,
+  html[data-skin="doomsday"] .liquid-glass {
+    background: #ffffff !important;
+    border: 1px solid #cccccc !important;
+    box-shadow: none !important;
+    color: #000000 !important;
+  }
+}

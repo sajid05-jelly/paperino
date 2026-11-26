@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const BLOG_POSTS = [
+const BLOG_POSTS = [
   {
     slug: "paperino-srm-study-hub",
     title: "Paperino: Your All-in-One SRM Study Hub for Notes, PYQs, and Smarter Learning",
