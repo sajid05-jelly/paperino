@@ -18,6 +18,7 @@ import { useSubjects } from "@/context/SubjectsContext";
 import AmbientOrbs from "@/components/AmbientOrbs";
 import AddSubjectModal from "@/components/AddSubjectModal";
 import { getSubjectSeoPath } from "@/lib/seoUtils";
+import PartnerSlot from "@/components/ads/PartnerSlot";
 
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,9 +186,10 @@ export default function CoursesPage() {
             </button>
           </div>
         ) : (
-          /* Subjects Cards Grid */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 w-full">
-            {filteredSubjects.map((sub, index) => {
+          /* Subjects Cards Grid with Desktop Sidebar Placement */
+          <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 flex-1 w-full">
+              {filteredSubjects.map((sub, index) => {
               const rawHref = getSubjectSeoPath(sub);
               const href = searchQuery.trim()
                 ? `${rawHref}${rawHref.includes("?") ? "&" : "?"}refSearch=${encodeURIComponent(searchQuery.trim())}`
@@ -241,6 +243,10 @@ export default function CoursesPage() {
                 </Link>
               );
             })}
+            </div>
+
+            {/* AD 04: Desktop Sidebar Slot */}
+            <PartnerSlot placement="desktop_sidebar" className="w-72 shrink-0" />
           </div>
         )}
       </div>

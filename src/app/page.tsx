@@ -9,6 +9,7 @@ import { BookOpen, Zap, Sparkles, FileText, Calculator, FileSearch, Download, Gr
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
 import { sortDepartments } from "@/lib/courseSorting";
+import PartnerSlot from "@/components/ads/PartnerSlot";
 
 const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: false });
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
@@ -30,7 +31,10 @@ export default function Home() {
     <div className="flex flex-col items-center w-full overflow-x-hidden px-4 sm:px-6 py-12 md:py-24 relative">
       <AmbientOrbs />
       <div className="w-full max-w-7xl mx-auto relative z-10">
-      {/* Hero Section */}
+        {/* AD 01: Top Banner */}
+        <PartnerSlot placement="home_top" />
+
+        {/* Hero Section */}
       <section className="flex flex-col items-center text-center w-full max-w-4xl mx-auto mb-20">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-8 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-shadow animate-float">
           <Zap size={16} className="text-purple-400" aria-hidden="true" />
@@ -67,6 +71,9 @@ export default function Home() {
           );
         })()}
       </section>
+
+      {/* AD 02: Featured Brand Showcase */}
+      <PartnerSlot placement="home_featured" />
 
       {/* Colleges & Courses Section */}
       <section className="w-full max-w-6xl mx-auto mb-24">

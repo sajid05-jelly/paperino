@@ -260,6 +260,31 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // ── Paperino Ads System Collections ────────────────────────────────────
+    match /campaigns/{campaignId} {
+      // Admin read-only from client; ALL writes strictly restricted to server-side Admin SDK
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /campaign_analytics/{metricId} {
+      // Admin read-only from client; writes restricted to server-side Admin SDK
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /system_settings/active_ads_manifest {
+      // Public manifest read; writes strictly restricted to server-side Admin SDK
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /system_settings/ads_config {
+      // Public kill switch check; writes strictly restricted to server-side Admin SDK
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ── Deny all other paths by default ─────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

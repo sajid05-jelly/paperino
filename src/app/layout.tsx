@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { BadgeProvider } from "@/context/BadgeContext";
 import { SubjectsProvider } from "@/context/SubjectsContext";
+import { AdsProvider } from "@/context/AdsContext";
 import { PlanGateProvider } from "@/context/PlanGateContext";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import RouteTracker from "@/components/RouteTracker";
@@ -145,6 +146,7 @@ export default function RootLayout({
               <NotificationProvider>
                 <BadgeProvider>
                   <SubjectsProvider>
+                    <AdsProvider>
 
                     {/* Route change tracker */}
                     <Suspense fallback={null}>
@@ -172,6 +174,7 @@ export default function RootLayout({
                     {/* Global Plan Upgrade Modal */}
                     <PlanUpgradeModal />
 
+                    </AdsProvider>
                   </SubjectsProvider>
                 </BadgeProvider>
               </NotificationProvider>

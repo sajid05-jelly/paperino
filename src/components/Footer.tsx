@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Mail, Heart } from "lucide-react";
+import { BookOpen, Heart } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -33,6 +33,7 @@ export default function Footer() {
           {[
             { label: "About", href: "/about", external: false },
             { label: "Blog", href: "/blog/paperino-srm-study-hub", external: false },
+            { label: "Advertise", href: "/advertise", external: false },
             { label: "Contact", href: "/contact", external: false },
             { label: "Privacy Policy", href: "/privacy", external: false },
             { label: "Terms", href: "/terms", external: false },

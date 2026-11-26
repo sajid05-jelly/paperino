@@ -106,9 +106,10 @@ export async function generateMetadata({
 const serverMaterialsCache = new Map<string, { data: any[]; timestamp: number }>();
 const SERVER_MATS_CACHE_TTL = 15 * 60 * 1000;
 
-async function fetchServerMaterials(deptId: string, semId: string, subjectId: string) {
+async function fetchServerMaterials(deptId: string, semId: string, subjectId: string, subjectSlug?: string) {
   if (!adminDb) return [];
-  const cacheKey = `${deptId.toLowerCase()}_${semId}_${subjectId.toLowerCase()}`;
+  const cleanSemId = String(semId).replace(/^semester-/, "").trim();
+  const cacheKey = `${deptId.toLowerCase()}_${cleanSemId}_${subjectId.toLowerCase()}`;
   const now = Date.now();
   const cached = serverMaterialsCache.get(cacheKey);
   if (cached && (now - cached.timestamp < SERVER_MATS_CACHE_TTL)) {
@@ -116,28 +117,64 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
   }
 
   try {
-    const fetchPromise = adminDb
-      .collection("materials")
-      .where("semesterId", "==", semId)
-      .where("subjectId", "==", subjectId)
-      .get();
+    const numericSemId = parseInt(cleanSemId, 10);
+    const candidateIds = new Set<string>();
+    if (subjectId) candidateIds.add(subjectId);
+    if (subjectSlug) candidateIds.add(subjectSlug);
 
-    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 1500));
-    const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
+    const queries: Promise<any>[] = [];
+    candidateIds.forEach((sId) => {
+      queries.push(
+        adminDb!
+          .collection("materials")
+          .where("semesterId", "==", cleanSemId)
+          .where("subjectId", "==", sId)
+          .get()
+      );
+      if (!isNaN(numericSemId)) {
+        queries.push(
+          adminDb!
+            .collection("materials")
+            .where("semesterId", "==", numericSemId)
+            .where("subjectId", "==", sId)
+            .get()
+        );
+      }
+    });
 
-    if (!snap || !snap.docs) return cached ? cached.data : [];
+    const fetchPromise = Promise.all(queries);
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 6000));
+    const snaps: any = await Promise.race([fetchPromise, timeoutPromise]);
 
-    const materials = snap.docs
-      .map((d: any) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || null,
-          uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate().toISOString() : data.uploadedAt || null,
-        };
-      })
-      .filter((m: any) => (m.status === "approved" || !m.status) && (m.departmentId || "btech").toLowerCase() === deptId.toLowerCase());
+    if (!snaps || !Array.isArray(snaps)) return cached ? cached.data : [];
+
+    const seenIds = new Set<string>();
+    const materials: any[] = [];
+    const normReqDept = deptId.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    snaps.forEach((snap: any) => {
+      if (snap && snap.docs) {
+        snap.docs.forEach((d: any) => {
+          if (!seenIds.has(d.id)) {
+            seenIds.add(d.id);
+            const data = d.data();
+            const isApproved = data.status === "approved" || (!data.status && !data.rejectedAt);
+            const normDocDept = (data.departmentId || "btech").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const matchesDept = !data.departmentId || normDocDept === normReqDept ||
+              ((normReqDept.includes("btech") || normReqDept.includes("be")) && (normDocDept.includes("btech") || normDocDept.includes("be") || normDocDept.includes("mtech")));
+
+            if (isApproved && matchesDept) {
+              materials.push({
+                id: d.id,
+                ...data,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || null,
+                uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate().toISOString() : data.uploadedAt || null,
+              });
+            }
+          }
+        });
+      }
+    });
 
     serverMaterialsCache.set(cacheKey, { data: materials, timestamp: now });
     return materials;
@@ -186,7 +223,7 @@ export default async function SubjectSeoPage({
   const canonicalUrl = getSubjectCanonicalUrl(finalSubject);
 
   // Fetch materials server-side for initial HTML indexing
-  const serverMaterials = await fetchServerMaterials(finalSubject.departmentId, finalSubject.semesterId, finalSubject.id);
+  const serverMaterials = await fetchServerMaterials(finalSubject.departmentId, finalSubject.semesterId, finalSubject.id, subjectSlug);
   const pyqs = serverMaterials.filter((m: any) => m.category === "pyq");
   const notes = serverMaterials.filter((m: any) => m.category === "notes");
   const questions = serverMaterials.filter((m: any) => m.category === "questions");

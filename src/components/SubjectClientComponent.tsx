@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, increment, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import Link from "next/link";
 import { FileText, Loader2, Download, Check, History, BookOpen, HelpCircle, Upload, Sparkles, Clock, Lock, Eye, X, ThumbsUp, ThumbsDown, Trash2, Plus, ArrowLeft } from "lucide-react";
 import { useSubjects } from "@/context/SubjectsContext";
@@ -28,6 +28,8 @@ import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnosti
 
 import { getSubjectSlug } from "@/lib/seoUtils";
 import { SITE_CONFIG } from "@/lib/siteConfig";
+import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
+import PartnerSlot from "@/components/ads/PartnerSlot";
 
 const contributorCache: Record<string, string> = {};
 const getCachedContributorLevel = (uid: string): string | null => {
@@ -100,7 +102,7 @@ export default function SubjectClientComponent({
   
   const [materials, setMaterials] = useState<any[]>(initialMaterials || []);
   const [subjectSections, setSubjectSections] = useState<string[] | null>(() => {
-    if (initialMaterials && initialMaterials.length > 0) {
+    if (Array.isArray(initialMaterials)) {
       return Array.from(
         new Set(
           initialMaterials
@@ -112,7 +114,7 @@ export default function SubjectClientComponent({
     }
     return null;
   });
-  const [loading, setLoading] = useState<boolean>(() => !initialMaterials || initialMaterials.length === 0);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(initialMaterials));
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
@@ -195,15 +197,20 @@ export default function SubjectClientComponent({
   };
 
   const semesterSubjects = dynamicSubjects[deptId]?.[semId] || [];
-  const foundSubject = semesterSubjects.find(
+  const cleanSemKey = String(semId).replace(/^semester-/, "");
+  const staticSemesterSubs = STATIC_SUBJECTS[cleanSemKey] || [];
+  const allKnownSubjects = [...semesterSubjects, ...staticSemesterSubs];
+
+  const foundSubject = allKnownSubjects.find(
     s => s.id.toLowerCase() === subjectId.toLowerCase() || 
-         getSubjectSlug(s) === subjectId.toLowerCase()
+         getSubjectSlug(s) === subjectId.toLowerCase() ||
+         s.name.toLowerCase() === subjectId.toLowerCase()
   );
   const realSubjectId = foundSubject ? foundSubject.id : subjectId;
-  const subject = foundSubject || semesterSubjects.find(s => s.id === subjectId);
+  const subject = foundSubject || allKnownSubjects.find(s => s.id === subjectId);
   const subjectName = subject?.name || subjectId.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
 
-  const fetchMaterials = async (forceRefetch = false) => {
+  const fetchMaterials = useCallback(async (forceRefetch = false) => {
     const cacheKey = `paperino_subject_v3_cache_${deptId}_${semId}_${realSubjectId}`;
     
     if (forceRefetch) {
@@ -229,7 +236,7 @@ export default function SubjectClientComponent({
       }
     }
 
-    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials);
+    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials) && cachedData.materials.length > 0;
     if (!forceRefetch && hasCachedContent && (now - cachedData.timestamp < CACHE_TTL_MS)) {
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
@@ -241,47 +248,108 @@ export default function SubjectClientComponent({
       return;
     }
 
-    if (!initialMaterials || initialMaterials.length === 0 || forceRefetch) {
-      setLoading(true);
+    // If initialMaterials was provided by SSR with items and not forceRefetch, use them
+    if (!forceRefetch && Array.isArray(initialMaterials) && initialMaterials.length > 0 && !cachedData) {
+      const approvedCats = Array.from(
+        new Set(
+          initialMaterials
+            .filter((m: any) => m.status === "approved" || (!m.status && !m.rejectedAt))
+            .map((m: any) => m.category)
+            .filter((c: any) => ["pyq", "notes", "questions"].includes(c))
+        )
+      );
+      setMaterials(initialMaterials);
+      setSubjectSections(approvedCats);
+      setFetchError(null);
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
     setFetchError(null);
+
     try {
-      logFirestoreRead(`materials (${cacheKey})`, "Fetching subject materials from Firestore");
-      // Skip redundant client materials query when already delivered from SSR and not forceRefetch
-      const shouldQueryMaterials = forceRefetch || !initialMaterials || initialMaterials.length === 0;
-      const qMaterials = shouldQueryMaterials ? query(
-        collection(db, "materials"),
-        where("semesterId", "==", semId),
-        where("subjectId", "==", realSubjectId)
-      ) : null;
+      let matList: any[] | null = null;
 
-      const matSnapshot = qMaterials ? await getDocs(qMaterials) : null;
+      // Strategy 1: First try resilient first-party server API (/api/materials)
+      // This bypasses client-side Firestore connection failures, ad blockers, and persistence locks
+      try {
+        const queryParams = new URLSearchParams({
+          deptId,
+          semId,
+          subjectId: realSubjectId,
+          slug: subjectId,
+          ...(forceRefetch ? { refresh: "true" } : {})
+        });
+        const res = await fetch(`/api/materials?${queryParams.toString()}`);
+        if (res.ok) {
+          const apiJson = await res.json();
+          if (apiJson && apiJson.success && Array.isArray(apiJson.materials)) {
+            matList = apiJson.materials;
+          }
+        }
+      } catch (apiErr) {
+        console.warn("Direct API materials fetch failed, falling back to client SDK:", apiErr);
+      }
 
-      let detectedSections: string[] = [];
-      let matList: any[] = [];
-      if (matSnapshot) {
-        matList = matSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      } else if (initialMaterials && initialMaterials.length > 0) {
-        matList = initialMaterials;
+      // Strategy 2: Fallback to Firebase Client SDK if API was unavailable
+      if (matList === null) {
+        if (!db) {
+          throw new Error("Database client not available");
+        }
+        logFirestoreRead(`materials (${cacheKey})`, "Fetching subject materials from Firestore SDK");
+
+        const candidateSubjectIds = Array.from(new Set([realSubjectId, subjectId].filter(Boolean)));
+        const cleanSem = String(semId).replace(/^semester-/, "").trim();
+        const numSem = parseInt(cleanSem, 10);
+
+        const clientQueries: any[] = [];
+        candidateSubjectIds.forEach(sId => {
+          clientQueries.push(
+            getDocs(query(
+              collection(db, "materials"),
+              where("semesterId", "==", cleanSem),
+              where("subjectId", "==", sId)
+            ))
+          );
+          if (!isNaN(numSem)) {
+            clientQueries.push(
+              getDocs(query(
+                collection(db, "materials"),
+                where("semesterId", "==", numSem),
+                where("subjectId", "==", sId)
+              ))
+            );
+          }
+        });
+
+        const snapshots = await Promise.all(clientQueries);
+        const seenDocIds = new Set<string>();
+        const collected: any[] = [];
+        snapshots.forEach(snap => {
+          snap.docs.forEach((d: any) => {
+            if (!seenDocIds.has(d.id)) {
+              seenDocIds.add(d.id);
+              collected.push({ id: d.id, ...d.data() });
+            }
+          });
+        });
+        matList = collected;
       }
 
       // Only include categories that actually have approved materials uploaded!
-      // Pending, rejected, or empty configured sections without approved materials
-      // must NEVER create or enable a publicly visible active section.
       const categoriesWithApprovedMaterials = Array.from(
         new Set(
-          matList
+          (matList || [])
             .filter((m: any) => m.status === "approved" || (!m.status && !m.rejectedAt))
             .map((m: any) => m.category)
             .filter((c: any) => ["pyq", "notes", "questions"].includes(c))
         )
       );
 
-      detectedSections = categoriesWithApprovedMaterials;
-
       const finalCacheData = {
-        materials: matList,
-        sections: detectedSections || undefined,
+        materials: matList || [],
+        sections: categoriesWithApprovedMaterials,
         timestamp: Date.now()
       };
 
@@ -297,24 +365,59 @@ export default function SubjectClientComponent({
         }
       }
 
-      setMaterials(matList);
-      setSubjectSections(detectedSections);
+      setMaterials(matList || []);
+      setSubjectSections(categoriesWithApprovedMaterials);
+      setFetchError(null);
     } catch (error: any) {
       console.error("Error fetching subject data:", error);
-      const isQuota = error?.message?.includes("Quota exceeded") || error?.code === "resource-exhausted" || error?.message?.includes("RESOURCE_EXHAUSTED");
-      if (isQuota) {
-        setFetchError("Database Daily Free Quota Limit Reached (50,000 reads/day). All materials are 100% safe in Firestore! Upgrade to Firebase Blaze plan or wait for the midnight PST quota reset.");
+      // If we already have materials in state or initialMaterials, preserve them instead of showing a blank error
+      if ((materials && materials.length > 0) || (initialMaterials && initialMaterials.length > 0)) {
+        setFetchError(null);
       } else {
-        setFetchError("Unable to load subject materials right now. Please try again.");
+        const isQuota = error?.message?.includes("Quota exceeded") || error?.code === "resource-exhausted" || error?.message?.includes("RESOURCE_EXHAUSTED");
+        if (isQuota) {
+          setFetchError("Database Daily Free Quota Limit Reached (50,000 reads/day). All materials are 100% safe in Firestore! Upgrade to Firebase Blaze plan or wait for the midnight PST quota reset.");
+        } else {
+          setFetchError("Unable to load subject materials right now. Please try again.");
+        }
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [deptId, semId, realSubjectId, subjectId, initialMaterials, materials]);
+
+  // Synchronize cache when initialMaterials is provided from SSR
+  useEffect(() => {
+    if (Array.isArray(initialMaterials)) {
+      const cacheKey = `paperino_subject_v3_cache_${deptId}_${semId}_${realSubjectId}`;
+      const approvedCats = Array.from(
+        new Set(
+          initialMaterials
+            .filter((m: any) => m.status === "approved" || (!m.status && !m.rejectedAt))
+            .map((m: any) => m.category)
+            .filter((c: any) => ["pyq", "notes", "questions"].includes(c))
+        )
+      );
+      const cachePayload = {
+        materials: initialMaterials,
+        sections: approvedCats,
+        timestamp: Date.now()
+      };
+      subjectDataCache[cacheKey] = cachePayload;
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(cachePayload));
+        } catch {}
+      }
+    }
+  }, [deptId, semId, realSubjectId, initialMaterials]);
 
   useEffect(() => {
-    fetchMaterials(false);
-  }, [deptId, semId, subjectId]);
+    // If initialMaterials is empty [] (e.g. cold start SSR timeout) or missing, fetch dynamically
+    if (!Array.isArray(initialMaterials) || initialMaterials.length === 0) {
+      void fetchMaterials(false);
+    }
+  }, [deptId, semId, realSubjectId, initialMaterials, fetchMaterials]);
 
   // Analytics tracking for Most Visited Subject (deduplicated per session)
   useEffect(() => {
@@ -332,8 +435,9 @@ export default function SubjectClientComponent({
   }, [subjectId, subjectName]);
 
   // Private Workspace Security Gate
-  if (subject && subject.status === "pending") {
-    const isOwner = isContributor && user?.uid === subject.contributorId;
+  const subjectRecord = subject as any;
+  if (subjectRecord && subjectRecord.status === "pending") {
+    const isOwner = isContributor && user?.uid === subjectRecord.contributorId;
     if (!isAdmin && !isOwner) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 animate-in fade-in zoom-in duration-500">
@@ -769,6 +873,9 @@ export default function SubjectClientComponent({
               </div>
             )}
 
+            {/* AD 03: Study Materials Grid Slot */}
+            <PartnerSlot placement="study_materials" />
+
             {/* Notes Section */}
             {activeSections.includes("notes") && (
               <div id="section-card-notes" className="vision-glass p-6 rounded-[2rem] border border-white/[0.08] relative flex flex-col justify-between min-h-[300px] shadow-[0_0_30px_rgba(var(--primary-rgb),0.06)] transition-all duration-300">
@@ -1006,7 +1113,7 @@ export default function SubjectClientComponent({
           onSuccess={() => fetchMaterials(true)}
           departmentId={deptId}
           semesterId={semId}
-          subjectId={subjectId}
+          subjectId={realSubjectId}
           category={uploadCategory}
         />
       )}
@@ -1022,7 +1129,7 @@ export default function SubjectClientComponent({
             <h3 className="text-xl font-bold text-white mb-2">Delete Entire Subject?</h3>
             
             <p className="text-sm text-gray-300 mb-4 leading-relaxed">
-              Are you sure you want to permanently delete <strong className="text-white">"{subjectName}"</strong>?
+              Are you sure you want to permanently delete <strong className="text-white">&ldquo;{subjectName}&rdquo;</strong>?
             </p>
 
             <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3.5 mb-6 text-xs text-rose-300 space-y-1">

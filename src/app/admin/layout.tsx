@@ -7,7 +7,7 @@ import Link from "next/link";
 import { 
   Upload, Activity, Bot, FileText,
   ShieldCheck, ShieldAlert, MessageSquare, Plus, BookOpen, Radio, 
-  BrainCircuit, Wrench, ChevronDown, Sparkles, Gamepad2, FlaskConical
+  BrainCircuit, Wrench, ChevronDown, Sparkles, Gamepad2, FlaskConical, Megaphone
 } from "lucide-react";
 import { useBadges } from "@/context/BadgeContext";
 
@@ -233,6 +233,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/pulse" className="flex items-center gap-3 px-4 py-3 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors font-medium border border-cyan-500/20">
               <Radio size={20} />
               Manage Pulse Updates
+            </Link>
+
+            <div className="h-px w-full bg-white/10 my-2"></div>
+
+            {/* ── Paperino Ads Management ── */}
+            <Link 
+              href="/admin/ads" 
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium border ${
+                pathname === "/admin/ads" 
+                  ? "bg-purple-600/20 text-purple-300 font-semibold border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.2)]" 
+                  : "text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 border-purple-500/20"
+              }`}
+            >
+              <Megaphone size={20} />
+              <span>Paperino Ads</span>
             </Link>
 
           </nav>

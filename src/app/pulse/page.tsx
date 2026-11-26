@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, getDocs, Timestamp, doc, deleteDoc, limit } from "firebase/firestore";
 import {
@@ -12,6 +12,7 @@ import { useToast } from "@/components/Toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import FormattedDescription from "@/components/FormattedDescription";
+import PartnerSlot from "@/components/ads/PartnerSlot";
 
 import { usePulseNotifications } from "@/context/NotificationContext";
 
@@ -773,11 +774,18 @@ export default function PulsePage() {
               </p>
             </div>
           ) : (
-            filteredUpdates.map((update, idx) =>
-              STRUCTURED_CATEGORIES.includes(update.category)
-                ? <StructuredCard key={update.id} update={update} idx={idx} />
-                : <DynamicCard key={update.id} update={update} idx={idx} />
-            )
+            filteredUpdates.map((update, idx) => (
+              <React.Fragment key={update.id}>
+                {idx === 2 && (
+                  <div className="col-span-full">
+                    <PartnerSlot placement="pulse_feed" />
+                  </div>
+                )}
+                {STRUCTURED_CATEGORIES.includes(update.category)
+                  ? <StructuredCard update={update} idx={idx} />
+                  : <DynamicCard update={update} idx={idx} />}
+              </React.Fragment>
+            ))
           )}
         </main>
       </div>
