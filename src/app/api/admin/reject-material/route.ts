@@ -79,12 +79,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. If new subject request, remove pending dynamic_subjects document
-    if (isNewSubjectRequest && subjectId) {
+    if (isNewSubjectRequest) {
       const deptId = String(departmentId || "btech").toLowerCase();
       const semId = String(semesterId || "1");
-      const docId = `${deptId}_sem${semId}_${subjectId}`;
+      const docId = subjectId ? `${deptId}_sem${semId}_${subjectId}` : materialId;
       try {
         await adminDb.collection("dynamic_subjects").doc(docId).delete();
+        if (materialId && materialId !== docId) {
+          await adminDb.collection("dynamic_subjects").doc(materialId).delete();
+        }
       } catch (e) {}
     }
 

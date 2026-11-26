@@ -107,6 +107,11 @@ const serverMaterialsCache = new Map<string, { data: any[]; timestamp: number }>
 const SERVER_MATS_CACHE_TTL = 15 * 60 * 1000;
 
 async function fetchServerMaterials(deptId: string, semId: string, subjectId: string, subjectSlug?: string) {
+  // During SSG static build generation, skip Firestore materials queries to avoid burning 500+ reads across static subject pages.
+  // The client component seamlessly fetches fresh materials at runtime via /api/materials or sessionStorage cache.
+  if (process.env.NEXT_PHASE === "phase-production-build" || process.env.IS_NEXT_BUILD === "true") {
+    return [];
+  }
   if (!adminDb) return [];
   const cleanSemId = String(semId).replace(/^semester-/, "").trim();
   const cacheKey = `${deptId.toLowerCase()}_${cleanSemId}_${subjectId.toLowerCase()}`;

@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants.js";
 import path from "path";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['firebase-admin'],
   turbopack: {
-    root: path.resolve(__dirname),
+    root: process.cwd(),
   },
   devIndicators: false,
   async redirects() {
@@ -95,4 +96,11 @@ const nextConfig: NextConfig = {
   }
 };
 
-export default nextConfig;
+const createNextConfig = (phase: string): NextConfig => {
+  if (phase === PHASE_PRODUCTION_BUILD) {
+    process.env.IS_NEXT_BUILD = "true";
+  }
+  return nextConfig;
+};
+
+export default createNextConfig;

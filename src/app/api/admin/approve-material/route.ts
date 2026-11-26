@@ -59,14 +59,14 @@ export async function POST(req: NextRequest) {
       newSubjectData
     } = body;
 
-    if (!materialId || !subjectId || !category) {
-      return NextResponse.json({ error: "Missing required material fields (materialId, subjectId, category)." }, { status: 400 });
+    if (!materialId) {
+      return NextResponse.json({ error: "Missing required materialId field." }, { status: 400 });
     }
 
     const deptId = String(departmentId || "btech").toLowerCase();
     const semId = String(semesterId || "1");
-    const subId = String(subjectId);
-    const sectionType = String(category);
+    const subId = String(subjectId || materialId);
+    const sectionType = String(category || "notes");
     const cleanSubName = (subjectName || newSubjectData?.name || title || subId).trim();
     const cleanSubCode = (subjectCode || newSubjectData?.code || "").trim();
     const creatorName = uploaderName || "Contributor";
@@ -124,6 +124,12 @@ export async function POST(req: NextRequest) {
         createdAt: FieldValue.serverTimestamp(),
         sections: FieldValue.arrayUnion(sectionType)
       }, { merge: true });
+
+      if (materialId !== subDocId) {
+        await adminDb.collection("dynamic_subjects").doc(materialId).set({
+          status: "approved"
+        }, { merge: true }).catch(() => {});
+      }
     }
 
     // 4. Register section in subject_sections
@@ -174,25 +180,35 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString()
     });
 
-    // 5. Update uploader stats (0 reads)
-    if (uploaderId && !ALLOWED_ADMINS.includes(creatorEmail.toLowerCase())) {
+    // 5. Update uploader stats (supports both uploaderId and creatorEmail)
+    if (!ALLOWED_ADMINS.includes(creatorEmail.toLowerCase())) {
       try {
-        await adminDb.collection("users").doc(uploaderId).set({
-          uploads: FieldValue.increment(1),
-          approvedUploads: FieldValue.increment(1),
-          points: FieldValue.increment(10),
-          contributionPoints: FieldValue.increment(10)
-        }, { merge: true });
+        let targetUserId = uploaderId;
+        if (!targetUserId && creatorEmail) {
+          const userSnap = await adminDb.collection("users").where("email", "==", creatorEmail.toLowerCase().trim()).limit(1).get();
+          if (!userSnap.empty) {
+            targetUserId = userSnap.docs[0].id;
+          }
+        }
 
-        // Add approval notification
-        await adminDb.collection("notifications").add({
-          userId: uploaderId,
-          title: "Material Approved! ✅",
-          message: `Your material '${title || fileName || "Untitled"}' has been approved and is now live.`,
-          type: "material_approved",
-          read: false,
-          createdAt: FieldValue.serverTimestamp()
-        });
+        if (targetUserId) {
+          await adminDb.collection("users").doc(targetUserId).set({
+            uploads: FieldValue.increment(1),
+            approvedUploads: FieldValue.increment(1),
+            points: FieldValue.increment(10),
+            contributionPoints: FieldValue.increment(10)
+          }, { merge: true });
+
+          // Add approval notification
+          await adminDb.collection("notifications").add({
+            userId: targetUserId,
+            title: "Material Approved! ✅",
+            message: `Your material '${title || fileName || "Untitled"}' has been approved and is now live.`,
+            type: "material_approved",
+            read: false,
+            createdAt: FieldValue.serverTimestamp()
+          });
+        }
       } catch (userErr: any) {
         console.warn("[Approve Material API] Uploader reward skipped:", userErr?.message);
       }

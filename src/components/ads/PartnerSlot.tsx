@@ -43,6 +43,7 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const impressionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRecordedImpressionRef = useRef(false);
+  const lastClickTimeRef = useRef<number>(0);
 
   // Derived media error state
   const hasMediaError = Boolean(ad?.id && failedCampaignId === ad.id);
@@ -54,9 +55,13 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
 
     // Check session deduplication
     const sessionKey = `paperino_imp_${ad.id}_${placement}`;
-    if (typeof window !== "undefined" && sessionStorage.getItem(sessionKey)) {
-      hasRecordedImpressionRef.current = true;
-    } else {
+    try {
+      if (typeof window !== "undefined" && sessionStorage.getItem(sessionKey)) {
+        hasRecordedImpressionRef.current = true;
+      } else {
+        hasRecordedImpressionRef.current = false;
+      }
+    } catch {
       hasRecordedImpressionRef.current = false;
     }
 
@@ -70,8 +75,12 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
             // Start 1-second continuous visibility timer
             if (!impressionTimerRef.current) {
               impressionTimerRef.current = setTimeout(() => {
-                if (typeof window !== "undefined") {
-                  sessionStorage.setItem(sessionKey, "1");
+                try {
+                  if (typeof window !== "undefined") {
+                    sessionStorage.setItem(sessionKey, "1");
+                  }
+                } catch {
+                  // Fallback for private browsing where storage access is blocked
                 }
                 hasRecordedImpressionRef.current = true;
 
@@ -164,12 +173,19 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
   const handleAdClick = useCallback(() => {
     if (!ad) return;
 
+    // 1-second debounce to eliminate rapid duplicate clicks from double-taps
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 1000) {
+      return;
+    }
+    lastClickTimeRef.current = now;
+
     const payload = JSON.stringify({
       campaignId: ad.id,
       placementId: placement,
       event: "click",
-      timestamp: Date.now(),
-      eventToken: `${ad.id}_${placement}_click_${Date.now()}`,
+      timestamp: now,
+      eventToken: `${ad.id}_${placement}_click_${now}`,
     });
 
     if (navigator.sendBeacon) {

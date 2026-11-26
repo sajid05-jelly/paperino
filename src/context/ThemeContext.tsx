@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 type Theme = "cosmic-violet" | "ocean-blue" | "crimson-red" | "emerald-green" | "sunset-orange" | "midnight-silver";
 
@@ -27,11 +29,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem("paperino-theme", newTheme);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("paperino-theme", newTheme);
+      } catch {}
+    }
     if (newTheme === "cosmic-violet") {
       document.documentElement.removeAttribute("data-theme");
     } else {
       document.documentElement.setAttribute("data-theme", newTheme);
+    }
+
+    // Synchronize to Firestore user profile if logged in
+    if (auth?.currentUser && db) {
+      try {
+        setDoc(doc(db, "users", auth.currentUser.uid), { theme: newTheme }, { merge: true }).catch(() => {});
+      } catch {}
     }
   };
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { verifyServerAuth } from "@/lib/auth-verify";
 import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
@@ -172,5 +173,121 @@ export async function GET(req: NextRequest) {
       { success: false, error: errMessage, materials: [] },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    const verifiedUser = await verifyServerAuth(authHeader);
+
+    if (!verifiedUser) {
+      return NextResponse.json(
+        { error: "Please sign in to upload study materials." },
+        { status: 401 }
+      );
+    }
+
+    if (!adminDb) {
+      return NextResponse.json(
+        { error: "Database temporarily unavailable. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    const body = await req.json();
+    const {
+      departmentId = "btech",
+      semesterId = "1",
+      subjectId,
+      title,
+      category = "pyq",
+      fileId,
+      fileName,
+      fileUrl,
+      isContributor = false,
+      status: requestedStatus,
+      isNewSubjectRequest = false,
+      newSubjectData,
+      subjectName,
+      subjectCode
+    } = body;
+
+    if (!title || !String(title).trim()) {
+      return NextResponse.json({ error: "Material title is required." }, { status: 400 });
+    }
+
+    const isAdminUser = verifiedUser.role === "admin";
+    const status = (isAdminUser && !isContributor && requestedStatus === "approved") ? "approved" : "pending";
+    const uploadedBy = isAdminUser && !isContributor ? "admin" : "contributor";
+
+    const newMaterial = {
+      departmentId: String(departmentId || "btech").toLowerCase().trim(),
+      semesterId: String(semesterId || "1").trim(),
+      subjectId: String(subjectId || "").trim(),
+      title: String(title).trim(),
+      category: String(category || "pyq").trim(),
+      fileId: fileId || null,
+      fileName: fileName || null,
+      fileUrl: fileUrl || "",
+      status,
+      uploadedBy,
+      uploaderId: verifiedUser.uid,
+      uploaderName: verifiedUser.email ? verifiedUser.email.split("@")[0] : "Contributor",
+      uploaderEmail: verifiedUser.email ? verifiedUser.email.toLowerCase().trim() : null,
+      createdAt: Date.now(),
+      ...(isNewSubjectRequest ? { isNewSubjectRequest: true, newSubjectData, subjectName, subjectCode } : {})
+    };
+
+    const docRef = await adminDb.collection("materials").add(newMaterial);
+
+    // If this is a new subject request, automatically register/establish the subject in dynamic_subjects
+    if (isNewSubjectRequest && newSubjectData) {
+      try {
+        const cleanSubName = String(newSubjectData.name || subjectName || "").trim();
+        const cleanSubCode = String(newSubjectData.code || subjectCode || "").trim();
+        const targetDept = String(newSubjectData.departmentId || departmentId || "btech").toLowerCase().trim();
+        const targetSem = String(newSubjectData.semesterId || semesterId || "1").trim();
+        const cleanSubId = cleanSubCode
+          ? cleanSubCode.toLowerCase().replace(/[^a-z0-9]/g, "")
+          : cleanSubName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+
+        if (cleanSubId) {
+          const subjectDocId = `${targetDept}_sem${targetSem}_${cleanSubId}`;
+          const subjectDocRef = adminDb.collection("dynamic_subjects").doc(subjectDocId);
+          const existingSub = await subjectDocRef.get();
+          if (!existingSub.exists) {
+            await subjectDocRef.set({
+              subjectId: cleanSubId,
+              name: cleanSubName,
+              code: cleanSubCode,
+              departmentId: targetDept,
+              semesterId: targetSem,
+              sections: [String(category || "pyq").trim()],
+              createdBy: verifiedUser.uid,
+              contributorId: verifiedUser.uid,
+              contributorName: verifiedUser.email ? verifiedUser.email.split("@")[0] : "Contributor",
+              status: isAdminUser ? "approved" : "pending",
+              createdAt: new Date().toISOString()
+            }, { merge: true });
+          }
+        }
+      } catch (subErr) {
+        console.warn("[Materials API] Failed to auto-create dynamic subject record:", subErr);
+      }
+    }
+
+    // Invalidate in-memory server cache so new materials appear immediately
+    materialsApiCache.clear();
+
+    return NextResponse.json({
+      success: true,
+      id: docRef.id,
+      material: { id: docRef.id, ...newMaterial }
+    });
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to save material";
+    console.error("[Materials API POST Error]:", error);
+    return NextResponse.json({ error: errMessage }, { status: 500 });
   }
 }

@@ -232,7 +232,7 @@ export default function AddSubjectModal({
 
       setUploadStatus(isAdmin ? "Publishing subject and material..." : "Submitting to admin review queue...");
 
-      // 3. Save new material record in 'materials' with pending status and isNewSubjectRequest flag
+      // 3. Save new material record via resilient Server API (Firebase Admin SDK bypasses client rules/quota)
       const newMaterialRecord = {
         departmentId: targetDeptId,
         departmentName: targetDeptName,
@@ -248,7 +248,7 @@ export default function AddSubjectModal({
         status: isAdmin ? "approved" : "pending",
         uploaderId: user.uid,
         uploaderName: user.displayName || user.email || "Contributor",
-        uploaderEmail: user.email || null,
+        uploaderEmail: user.email ? user.email.toLowerCase().trim() : null,
         isNewSubjectRequest: true,
         newSubjectData: {
           name: subjectName.trim(),
@@ -259,20 +259,51 @@ export default function AddSubjectModal({
         createdAt: Date.now(),
       };
 
-      await addDoc(collection(db, "materials"), newMaterialRecord);
+      let serverSaved = false;
+      try {
+        const token = await user.getIdToken(true);
+        if (token) {
+          const apiRes = await fetch("/api/materials", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(newMaterialRecord)
+          });
 
-      // If user is admin, immediately create subject in dynamic_subjects
-      if (isAdmin) {
-        await createSubject(
-          targetDeptId,
-          "1",
-          subjectName.trim(),
-          subjectCode.trim(),
-          false,
-          user.uid,
-          user.displayName || "Admin",
-          [selectedCategory]
-        );
+          if (apiRes.ok) {
+            serverSaved = true;
+          } else {
+            const apiErr = await apiRes.json().catch(() => ({}));
+            if (apiErr.error) {
+              throw new Error(apiErr.error);
+            }
+          }
+        }
+      } catch (apiErr: any) {
+        if (apiErr.message && !apiErr.message.includes("Failed to fetch")) {
+          throw apiErr;
+        }
+        console.warn("[AddSubjectModal] Server API notice, falling back to client SDK:", apiErr);
+      }
+
+      if (!serverSaved) {
+        await addDoc(collection(db, "materials"), newMaterialRecord);
+
+        // If user is admin, immediately create subject in dynamic_subjects
+        if (isAdmin) {
+          await createSubject(
+            targetDeptId,
+            "1",
+            subjectName.trim(),
+            subjectCode.trim(),
+            false,
+            user.uid,
+            user.displayName || "Admin",
+            [selectedCategory]
+          );
+        }
       }
 
       // 4. Notify admins in real-time
@@ -299,7 +330,12 @@ export default function AddSubjectModal({
       }, 2200);
     } catch (err: any) {
       console.error("Failed to submit subject and material:", err);
-      setError(err?.message || "Something went wrong while uploading. Please try again.");
+      const errMsg = err?.message || "";
+      if (errMsg.includes("insufficient permissions") || errMsg.includes("permission-denied")) {
+        setError("Account authorization required. Please sign in again or refresh to complete upload.");
+      } else {
+        setError(errMsg || "Something went wrong while uploading. Please try again.");
+      }
     } finally {
       setLoading(false);
       setUploadStatus("");

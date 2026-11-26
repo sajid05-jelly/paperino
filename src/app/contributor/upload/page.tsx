@@ -15,7 +15,7 @@ import CreateCourseModal from "@/components/CreateCourseModal";
 export default function ContributorUploadPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { departments, subjects: dynamicSubjects, loading: contextLoading } = useSubjects();
+  const { departments, subjects: dynamicSubjects, loading: contextLoading, lazyLoadSubjects } = useSubjects();
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -38,15 +38,33 @@ export default function ContributorUploadPage() {
   useEffect(() => {
     if (approvedDepts.length > 0 && !formData.department) {
       const firstDeptId = approvedDepts[0].id;
-      const firstSubId = dynamicSubjects[firstDeptId]?.["1"]?.[0]?.id || "";
       setFormData(prev => ({
         ...prev,
         department: firstDeptId,
         semester: "1",
-        subject: firstSubId
       }));
     }
-  }, [approvedDepts, dynamicSubjects, formData.department]);
+  }, [approvedDepts, formData.department]);
+
+  // Lazy-load subjects whenever department or semester changes
+  useEffect(() => {
+    if (!formData.department || !formData.semester || !lazyLoadSubjects) return;
+    lazyLoadSubjects(formData.department, formData.semester).catch(err => {
+      console.warn("Error lazy-loading subjects in ContributorUploadPage:", err);
+    });
+  }, [formData.department, formData.semester, lazyLoadSubjects]);
+
+  // Sync subject selection once subjects are loaded
+  useEffect(() => {
+    const subs = (dynamicSubjects[formData.department]?.[formData.semester] || []).filter(
+      s => s.status !== "pending" && s.status !== "rejected"
+    );
+    if (subs.length > 0) {
+      if (!formData.subject || !subs.some(s => s.id === formData.subject)) {
+        setFormData(prev => ({ ...prev, subject: subs[0].id }));
+      }
+    }
+  }, [dynamicSubjects, formData.department, formData.semester, formData.subject]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -82,7 +100,7 @@ export default function ContributorUploadPage() {
     try {
       const result = await uploadToDriveDirect(file, formData.semester, formData.subject);
 
-      await addDoc(collection(db, "materials"), {
+      const materialPayload = {
         departmentId: formData.department,
         semesterId: formData.semester,
         subjectId: formData.subject,
@@ -90,12 +108,47 @@ export default function ContributorUploadPage() {
         category: formData.category,
         fileId: result.fileId,
         fileName: file.name,
+        fileUrl: result.webViewLink || "",
         uploaderId: user.uid,
-        uploaderName: user.displayName || "Contributor",
+        uploaderName: user.displayName || user.email || "Contributor",
+        uploaderEmail: user.email ? user.email.toLowerCase().trim() : null,
         uploadedBy: "contributor",
         status: "pending",
         createdAt: Date.now()
-      });
+      };
+
+      // Try Server API first (bypasses client permissions and quotas)
+      let saved = false;
+      try {
+        const token = await user.getIdToken(true);
+        if (token) {
+          const apiRes = await fetch("/api/materials", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(materialPayload)
+          });
+          if (apiRes.ok) {
+            saved = true;
+          } else {
+            const apiErr = await apiRes.json().catch(() => ({}));
+            if (apiErr.error) {
+              throw new Error(apiErr.error);
+            }
+          }
+        }
+      } catch (apiErr: any) {
+        if (apiErr.message && !apiErr.message.includes("Failed to fetch")) {
+          throw apiErr;
+        }
+        console.warn("[ContributorUploadPage] Server API notice, falling back to client:", apiErr);
+      }
+
+      if (!saved) {
+        await addDoc(collection(db, "materials"), materialPayload);
+      }
 
       // Notify admins
       await notifyAdmins(
@@ -112,7 +165,12 @@ export default function ContributorUploadPage() {
       
     } catch (error: any) {
       console.error("Error saving material:", error);
-      setMessage(error.message || "Error saving material. Check console.");
+      const errMsg = error?.message || "";
+      if (errMsg.includes("insufficient permissions") || errMsg.includes("permission-denied")) {
+        setMessage("Account authorization required. Please sign in again or refresh to complete upload.");
+      } else {
+        setMessage(errMsg || "Error saving material. Please try again.");
+      }
       setLoading(false);
     }
   };

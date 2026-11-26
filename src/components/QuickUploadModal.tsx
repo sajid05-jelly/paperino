@@ -126,6 +126,10 @@ if (!isOpen) return null;
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      setError("Please sign in to upload study materials.");
+      return;
+    }
     if (!file) {
       setError("Please select a file to upload.");
       return;
@@ -161,18 +165,58 @@ if (!isOpen) return null;
         category,
         fileId: result.fileId,
         fileName: file.name,
-        status: isAdmin ? "approved" : "pending",
+        fileUrl: result.webViewLink || "",
+        status: (isContributor || !isAdmin) ? "pending" : "approved",
         uploaderId: user?.uid || null,
-        uploaderName: user?.displayName || "Contributor",
-        uploadedBy: isAdmin ? "admin" : "contributor",
+        uploaderName: user?.displayName || user?.email || "Contributor",
+        uploaderEmail: user?.email ? user.email.toLowerCase().trim() : null,
+        uploadedBy: (isContributor || !isAdmin) ? "contributor" : "admin",
         createdAt: Date.now()
       };
 
-      // 2. Save metadata to Firestore using the Google Drive link
-      const docRef = await addDoc(collection(db, "materials"), newMaterial);
+      // 2. Save metadata via robust Server API with client fallback
+      let savedDocId = "";
+      try {
+        const token = user ? await user.getIdToken(true) : "";
+        if (token) {
+          const apiRes = await fetch("/api/materials", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              ...newMaterial,
+              isContributor
+            })
+          });
+          if (apiRes.ok) {
+            const apiData = await apiRes.json();
+            if (apiData.success && apiData.id) {
+              savedDocId = apiData.id;
+            }
+          } else {
+            const apiErr = await apiRes.json().catch(() => ({}));
+            if (apiErr.error) {
+              throw new Error(apiErr.error);
+            }
+          }
+        }
+      } catch (apiErr: any) {
+        if (apiErr.message && !apiErr.message.includes("Failed to fetch")) {
+          throw apiErr;
+        }
+        console.warn("[QuickUploadModal] Server API notice, falling back to client:", apiErr);
+      }
 
-      // 3. Notify admins if the material is pending review (contributor upload)
-      if (!isAdmin) {
+      // 3. Fallback to client Firestore if server save did not complete
+      if (!savedDocId) {
+        const docRef = await addDoc(collection(db, "materials"), newMaterial);
+        savedDocId = docRef.id;
+      }
+
+      // 4. Notify admins if the material is pending review (contributor upload)
+      if (isContributor || !isAdmin) {
         await notifyAdmins(
           db,
           "New Material Uploaded",
@@ -183,16 +227,20 @@ if (!isOpen) return null;
 
       setSuccess(true);
       
-      
       // Pass the new material back to the parent to update UI instantly
       setTimeout(() => {
-        onSuccess({ id: docRef.id, ...newMaterial });
+        onSuccess({ id: savedDocId, ...newMaterial });
         onClose();
       }, 1500); // Wait a bit to show success animation
       
     } catch (err: any) {
       console.error("Error saving material:", err);
-      setError(err.message || "Error saving material. Check console.");
+      const errMsg = err?.message || "";
+      if (errMsg.includes("insufficient permissions") || errMsg.includes("permission-denied")) {
+        setError("Account authorization required. Please sign in again or refresh to complete upload.");
+      } else {
+        setError(errMsg || "Error saving material. Please try again.");
+      }
       setLoading(false);
     }
   };

@@ -285,6 +285,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             } catch (claimErr) {}
           }
+
+          if (!finalUserData) {
+            const cachedAvatar = typeof window !== "undefined" && currentUser?.uid ? localStorage.getItem(`paperino_avatar_${currentUser.uid}`) : null;
+            const cachedTheme = typeof window !== "undefined" ? localStorage.getItem("paperino-theme") : null;
+            finalUserData = {
+              displayName: toProperCase(currentUser.displayName || ""),
+              email: (currentUser.email || "").toLowerCase(),
+              role: currentIsAdmin ? "admin" : "student",
+              plan: currentIsAdmin ? "premium" : "free",
+              paperinoAvatar: cachedAvatar,
+              theme: cachedTheme,
+              uploads: 0,
+              status: "active"
+            };
+          }
           clearTimeout(safetyTimeout);
         }
 
@@ -376,27 +391,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setRazorpaySubscriptionId(tokenResult.claims.razorpaySubscriptionId as string || "");
                 setRazorpaySubscriptionStatus(tokenResult.claims.razorpaySubscriptionStatus as string || "");
               }
-              // Self-healing: if plan is still free, verify server for captured payments
-              if (!tokenResult.claims?.plan || tokenResult.claims.plan === "free") {
-                currentUser.getIdToken().then(token => {
-                  fetch("/api/user/sync-plan", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "Authorization": `Bearer ${token}`
-                    }
-                  })
-                    .then(r => r.json())
-                    .then(syncData => {
-                      if (syncData.status === "auto_healed" && syncData.plan && syncData.plan !== "free") {
+              // Self-healing & Profile Recovery: verify server for captured payments, contributor milestones, avatar & theme recovery
+              currentUser.getIdToken().then(token => {
+                fetch("/api/user/sync-plan", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                  }
+                })
+                  .then(r => r.json())
+                  .then(syncData => {
+                    if (syncData.success && syncData.status === "auto_healed") {
+                      if (syncData.plan && syncData.plan !== "free") {
                         setPlan(syncData.plan as PlanType);
                         setIsPremiumActive(true);
-                        currentUser.getIdToken(true);
                       }
-                    })
-                    .catch(() => {});
-                }).catch(() => {});
-              }
+                      if (syncData.isContributorPlus) {
+                        setIsContributorPlus(true);
+                        setIsContributor(true);
+                      }
+                      if (typeof syncData.uploads === "number" && syncData.uploads > 0) {
+                        setUploads(syncData.uploads);
+                        setIsContributor(true);
+                        const count = syncData.uploads;
+                        setContributorLevel(count >= 20 ? "elite" : count >= 5 ? "active" : "contributor");
+                      }
+                      if (typeof syncData.contributionPoints === "number" && syncData.contributionPoints > 0) {
+                        setContributionPoints(syncData.contributionPoints);
+                      }
+                      if (syncData.paperinoAvatar) {
+                        setPaperinoAvatarState(syncData.paperinoAvatar);
+                        if (typeof window !== "undefined") {
+                          try {
+                            localStorage.setItem(`paperino_avatar_${currentUser.uid}`, syncData.paperinoAvatar);
+                          } catch {}
+                        }
+                      }
+                      if (syncData.avatarFrame) {
+                        setAvatarFrame(syncData.avatarFrame);
+                      }
+                      if (syncData.avatarCompanion) {
+                        setAvatarCompanion(syncData.avatarCompanion);
+                      }
+                      if (syncData.theme && typeof window !== "undefined") {
+                        try {
+                          localStorage.setItem("paperino-theme", syncData.theme);
+                          if (syncData.theme === "cosmic-violet") {
+                            document.documentElement.removeAttribute("data-theme");
+                          } else {
+                            document.documentElement.setAttribute("data-theme", syncData.theme);
+                          }
+                        } catch {}
+                      }
+                      currentUser.getIdToken(true).catch(() => {});
+                    }
+                  })
+                  .catch(() => {});
+              }).catch(() => {});
             } catch (e) {}
 
           }

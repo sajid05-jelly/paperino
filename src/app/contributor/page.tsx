@@ -68,15 +68,43 @@ export default function ContributorDashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      // 1. Fetch Uploads
+      // 1. Fetch via resilient Server API first (links both UID and email uploads)
+      const token = await user.getIdToken().catch(() => null);
+      if (token) {
+        const res = await fetch("/api/contributor/materials", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.materials)) {
+            setMaterials(data.materials);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // 2. Client-side fallback if server endpoint is unreachable
       const q = query(collection(db, "materials"), where("uploaderId", "==", user.uid));
       const snap = await getDocs(q);
       const mats: Material[] = [];
       snap.forEach(doc => mats.push({ id: doc.id, ...doc.data() } as Material));
+
+      // Also supplement with email query if available
+      if (user.email) {
+        const eq = query(collection(db, "materials"), where("uploaderEmail", "==", user.email.toLowerCase()));
+        const esnap = await getDocs(eq);
+        esnap.forEach(doc => {
+          if (!mats.some(m => m.id === doc.id)) {
+            mats.push({ id: doc.id, ...doc.data() } as Material);
+          }
+        });
+      }
+
       mats.sort((a, b) => b.createdAt - a.createdAt);
       setMaterials(mats);
 
-      // 2. Fetch downloads
+      // 3. Fetch downloads
       const udoc = await getDocs(query(collection(db, "users"), where("email", "==", user.email)));
       if (!udoc.empty) {
         setDownloadsCount(udoc.docs[0].data().downloads || 0);

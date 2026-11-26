@@ -187,7 +187,7 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
       const allItems = results.flat();
       const subjectReqs = allItems.filter(i => i.type === "subject_requests");
       const pendingCourses = allItems.filter(i => i.type === "courses");
-      const pendingReviews = allItems.filter(i => i.type === "reviews");
+      const pendingReviews = allItems.filter(i => i.type === "reviews" || i.type === "courses");
 
       setAdminSubjectRequestsRaw(subjectReqs);
       setAdminPendingCoursesRaw(pendingCourses);

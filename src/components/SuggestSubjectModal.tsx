@@ -219,7 +219,7 @@ export default function SuggestSubjectModal({
         status: "pending",
         uploaderId: user.uid,
         uploaderName: user.displayName || user.email || "Contributor",
-        uploaderEmail: user.email || null,
+        uploaderEmail: user.email ? user.email.toLowerCase().trim() : null,
         isNewSubjectRequest: true,
         newSubjectData: {
           name: subjectName.trim(),
@@ -230,7 +230,38 @@ export default function SuggestSubjectModal({
         createdAt: Date.now(),
       };
 
-      await addDoc(collection(db, "materials"), newMaterialRecord);
+      // Try Server API first (bypasses client permissions and quotas)
+      let saved = false;
+      try {
+        const token = await user.getIdToken(true);
+        if (token) {
+          const apiRes = await fetch("/api/materials", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(newMaterialRecord)
+          });
+          if (apiRes.ok) {
+            saved = true;
+          } else {
+            const apiErr = await apiRes.json().catch(() => ({}));
+            if (apiErr.error) {
+              throw new Error(apiErr.error);
+            }
+          }
+        }
+      } catch (apiErr: any) {
+        if (apiErr.message && !apiErr.message.includes("Failed to fetch")) {
+          throw apiErr;
+        }
+        console.warn("[SuggestSubjectModal] Server API notice, falling back to client:", apiErr);
+      }
+
+      if (!saved) {
+        await addDoc(collection(db, "materials"), newMaterialRecord);
+      }
 
       // 4. Notify all admins in real-time
       await notifyAdmins(
@@ -251,7 +282,12 @@ export default function SuggestSubjectModal({
       }, 2500);
     } catch (err: any) {
       console.error("Failed to submit subject and material:", err);
-      setError(err.message || "Something went wrong while uploading. Please try again.");
+      const errMsg = err?.message || "";
+      if (errMsg.includes("insufficient permissions") || errMsg.includes("permission-denied")) {
+        setError("Account authorization required. Please sign in again or refresh to complete upload.");
+      } else {
+        setError(errMsg || "Something went wrong while uploading. Please try again.");
+      }
     } finally {
       setLoading(false);
       setUploadStatus("");

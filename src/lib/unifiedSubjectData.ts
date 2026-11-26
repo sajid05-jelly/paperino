@@ -28,6 +28,8 @@ export interface UnifiedDepartment {
 }
 
 import { cache } from "react";
+import fs from "fs";
+import path from "path";
 import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnostics";
 
 let inMemoryUnifiedData: {
@@ -37,9 +39,44 @@ let inMemoryUnifiedData: {
 let lastUnifiedFetchTime = 0;
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30m TTL to protect read quota across crawlers & SSR
 
+const DISK_CACHE_DIR = path.join(process.cwd(), "node_modules", ".cache");
+const DISK_CACHE_PATH = path.join(DISK_CACHE_DIR, "unified_subjects_cache.json");
+
+function getDiskCache(): { departments: UnifiedDepartment[]; subjects: UnifiedSubject[] } | null {
+  try {
+    if (typeof window === "undefined" && fs.existsSync(DISK_CACHE_PATH)) {
+      const stat = fs.statSync(DISK_CACHE_PATH);
+      if (Date.now() - stat.mtimeMs < CACHE_TTL_MS) {
+        const raw = fs.readFileSync(DISK_CACHE_PATH, "utf8");
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.departments) && Array.isArray(parsed.subjects) && parsed.subjects.length > 0) {
+          return parsed;
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function setDiskCache(data: { departments: UnifiedDepartment[]; subjects: UnifiedSubject[] }) {
+  try {
+    if (typeof window === "undefined") {
+      if (!fs.existsSync(DISK_CACHE_DIR)) {
+        fs.mkdirSync(DISK_CACHE_DIR, { recursive: true });
+      }
+      fs.writeFileSync(DISK_CACHE_PATH, JSON.stringify(data), "utf8");
+    }
+  } catch {}
+}
+
 export function invalidateUnifiedDataCache() {
   inMemoryUnifiedData = null;
   lastUnifiedFetchTime = 0;
+  try {
+    if (typeof window === "undefined" && fs.existsSync(DISK_CACHE_PATH)) {
+      fs.unlinkSync(DISK_CACHE_PATH);
+    }
+  } catch {}
 }
 
 /**
@@ -67,6 +104,29 @@ export const getAllUnifiedData = cache(async (
           ? inMemoryUnifiedData.departments.filter(d => d.id === filterDeptId)
           : inMemoryUnifiedData.departments,
         subjects: inMemoryUnifiedData.subjects.filter(s => {
+          if (filterDeptId && s.departmentId !== filterDeptId) return false;
+          if (filterSemId && s.semesterId !== filterSemId) return false;
+          return true;
+        })
+      };
+    }
+  }
+
+  // Cross-worker disk cache check (protects against parallel Next.js SSG build workers hitting Firestore)
+  if (!forceRefetch) {
+    const diskCached = getDiskCache();
+    if (diskCached) {
+      inMemoryUnifiedData = diskCached;
+      lastUnifiedFetchTime = Date.now();
+      logFirestoreCacheHit("getAllUnifiedData", `Serving ${diskCached.subjects.length} subjects from multi-worker disk cache`);
+      if (!filterDeptId && !filterSemId) {
+        return diskCached;
+      }
+      return {
+        departments: filterDeptId 
+          ? diskCached.departments.filter(d => d.id === filterDeptId)
+          : diskCached.departments,
+        subjects: diskCached.subjects.filter(s => {
           if (filterDeptId && s.departmentId !== filterDeptId) return false;
           if (filterSemId && s.semesterId !== filterSemId) return false;
           return true;
@@ -211,6 +271,7 @@ export const getAllUnifiedData = cache(async (
 
   inMemoryUnifiedData = fullResult;
   lastUnifiedFetchTime = Date.now();
+  setDiskCache(fullResult);
 
   if (filterDeptId || filterSemId) {
     return {

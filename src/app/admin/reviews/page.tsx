@@ -66,6 +66,10 @@ export default function AdminReviewsPage() {
   const { showToast, dismissToast } = useToast();
 
   const handleDownloadMaterial = async (mat: Material) => {
+    if (!mat.fileId && !mat.fileUrl) {
+      showToast("No attachment file for this suggestion.", "info");
+      return;
+    }
     if (downloadingId === mat.id) return;
     setDownloadingId(mat.id);
     const success = await triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
@@ -94,6 +98,31 @@ export default function AdminReviewsPage() {
     }
 
     try {
+      // 1. Try robust Server Admin API with Firebase Admin SDK (handles both materials and dynamic course suggestions)
+      const token = user ? await user.getIdToken().catch(() => null) : null;
+      if (token) {
+        try {
+          const res = await fetch(`/api/admin/reviews?tab=${activeTab}&limit=50`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.materials)) {
+              setMaterials(data.materials);
+              setHasMoreMats(false);
+              setLoading(false);
+              setLoadingMore(false);
+              return;
+            }
+          }
+        } catch (apiErr) {
+          console.warn("[Admin Reviews] Server API fetch notice, falling back:", apiErr);
+        }
+      }
+
+      // 2. Client-side fallback
       const targetStatus = activeTab === "rejected" ? "rejected" : "pending";
       
       let q = query(
@@ -118,7 +147,7 @@ export default function AdminReviewsPage() {
 
       // Filter and check for 7-day auto deletion inside the load flow
       const deletePromises: Promise<void>[] = [];
-      const token = user ? await user.getIdToken() : "";
+      const clientToken = token || (user ? await user.getIdToken().catch(() => "") : "");
 
       snap.forEach(d => {
         const data = d.data();
@@ -133,7 +162,7 @@ export default function AdminReviewsPage() {
               if (fileId) {
                 await fetch(`/api/upload?fileId=${fileId}`, {
                   method: "DELETE",
-                  headers: { "Authorization": `Bearer ${token}` }
+                  headers: { "Authorization": `Bearer ${clientToken}` }
                 });
               }
               await deleteDoc(doc(db, "materials", matId));
@@ -238,6 +267,19 @@ export default function AdminReviewsPage() {
           approvedByAdminEmail: user.email,
           createdAt: serverTimestamp()
         }, { merge: true }).catch(e => console.warn("Section sync notice:", e));
+
+        // If this is a new course or subject suggestion, also ensure dynamic_subjects is marked approved
+        if (mat.isNewSubjectRequest) {
+          const subDocId = `${deptId}_sem${semId}_${subId}`;
+          await setDoc(doc(db, "dynamic_subjects", subDocId), {
+            status: "approved"
+          }, { merge: true }).catch(() => {});
+          if (mat.id !== subDocId) {
+            await setDoc(doc(db, "dynamic_subjects", mat.id), {
+              status: "approved"
+            }, { merge: true }).catch(() => {});
+          }
+        }
       } catch (clientErr) {
         console.warn("Client direct write notice:", clientErr);
       }
@@ -329,11 +371,29 @@ export default function AdminReviewsPage() {
   const handleRestore = async (id: string) => {
     setActionLoading(id);
     try {
+      const mat = materials.find(m => m.id === id);
       // Restore status to pending and remove rejectedAt
       await updateDoc(doc(db, "materials", id), {
         status: "pending",
         rejectedAt: null
-      });
+      }).catch(() => {});
+
+      if (mat?.isNewSubjectRequest) {
+        const deptId = String(mat.departmentId || "btech").toLowerCase();
+        const semId = String(mat.semesterId || "1");
+        const subId = String(mat.subjectId);
+        const subDocId = `${deptId}_sem${semId}_${subId}`;
+        await updateDoc(doc(db, "dynamic_subjects", subDocId), {
+          status: "pending",
+          rejectedAt: null
+        }).catch(() => {});
+        if (id !== subDocId) {
+          await updateDoc(doc(db, "dynamic_subjects", id), {
+            status: "pending",
+            rejectedAt: null
+          }).catch(() => {});
+        }
+      }
 
       setMaterials(prev => prev.map(m => m.id === id ? { ...m, status: "pending", rejectedAt: undefined } : m));
       showToast("Material restored to Pending queue", "success");
@@ -453,6 +513,19 @@ export default function AdminReviewsPage() {
           approvedByAdminEmail: user.email,
           createdAt: serverTimestamp()
         }, { merge: true }).catch(e => console.warn("Section sync notice:", e));
+
+        // If this is a new course or subject suggestion, also ensure dynamic_subjects is marked approved
+        if (mat.isNewSubjectRequest) {
+          const subDocId = `${deptId}_sem${semId}_${subId}`;
+          await setDoc(doc(db, "dynamic_subjects", subDocId), {
+            status: "approved"
+          }, { merge: true }).catch(() => {});
+          if (mat.id !== subDocId) {
+            await setDoc(doc(db, "dynamic_subjects", mat.id), {
+              status: "approved"
+            }, { merge: true }).catch(() => {});
+          }
+        }
 
         // 3. Server API for notifications & rewards
         if (token) {

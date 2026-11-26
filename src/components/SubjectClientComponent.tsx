@@ -114,7 +114,7 @@ export default function SubjectClientComponent({
     }
     return null;
   });
-  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(initialMaterials));
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(initialMaterials) || initialMaterials.length === 0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<"pyq" | "notes" | "questions">("pyq");
@@ -613,13 +613,22 @@ export default function SubjectClientComponent({
                     {serverOverview.universityName}
                   </span>
                 </div>
-                <p className="text-gray-300 text-sm leading-relaxed">
-                  Study materials, lecture notes, and previous year question papers for {serverOverview.subjectName} at {serverOverview.universityName}.
-                  {serverOverview.materialsCount > 0
-                    ? ` This subject currently has ${serverOverview.materialsCount} verified study ${serverOverview.materialsCount === 1 ? 'resource' : 'resources'} available on Paperino, including ${serverOverview.notesCount > 0 ? `${serverOverview.notesCount} set${serverOverview.notesCount === 1 ? '' : 's'} of notes` : ''}${serverOverview.notesCount > 0 && serverOverview.pyqsCount > 0 ? ', ' : ''}${serverOverview.pyqsCount > 0 ? `${serverOverview.pyqsCount} previous year question paper${serverOverview.pyqsCount === 1 ? '' : 's'}` : ''}${(serverOverview.notesCount > 0 || serverOverview.pyqsCount > 0) && serverOverview.questionsCount > 0 ? ', and ' : ''}${serverOverview.questionsCount > 0 ? `${serverOverview.questionsCount} question bank${serverOverview.questionsCount === 1 ? '' : 's'}` : ''}.`
-                    : ' Study materials, notes, and question papers for this subject are being collected and will be available soon.'
-                  }
-                </p>
+                {(() => {
+                  const mCount = materials.length > 0 ? materials.length : (serverOverview.materialsCount || 0);
+                  const nCount = materials.length > 0 ? materials.filter((m: any) => m.category === "notes").length : (serverOverview.notesCount || 0);
+                  const pCount = materials.length > 0 ? materials.filter((m: any) => m.category === "pyq").length : (serverOverview.pyqsCount || 0);
+                  const qCount = materials.length > 0 ? materials.filter((m: any) => m.category === "questions").length : (serverOverview.questionsCount || 0);
+
+                  return (
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      Study materials, lecture notes, and previous year question papers for {serverOverview.subjectName} at {serverOverview.universityName}.
+                      {mCount > 0
+                        ? ` This subject currently has ${mCount} verified study ${mCount === 1 ? 'resource' : 'resources'} available on Paperino, including ${nCount > 0 ? `${nCount} set${nCount === 1 ? '' : 's'} of notes` : ''}${nCount > 0 && pCount > 0 ? ', ' : ''}${pCount > 0 ? `${pCount} previous year question paper${pCount === 1 ? '' : 's'}` : ''}${(nCount > 0 || pCount > 0) && qCount > 0 ? ', and ' : ''}${qCount > 0 ? `${qCount} question bank${qCount === 1 ? '' : 's'}` : ''}.`
+                        : ' Study materials, notes, and question papers for this subject are being collected and will be available soon.'
+                      }
+                    </p>
+                  );
+                })()}
               </div>
             </div>
           )}
