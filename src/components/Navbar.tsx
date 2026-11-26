@@ -450,6 +450,11 @@ export default function Navbar() {
               <DoomsdayToggle className="!w-7 !h-7 !p-1.5" />
             </div>
 
+            {/* Desktop Doomsday Pill Toggle */}
+            <div className="hidden sm:flex items-center">
+              <DoomsdayToggle variant="pill" />
+            </div>
+
             <Link
               href="/pricing"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500/15 to-pink-500/15 hover:from-purple-500/25 hover:to-pink-500/25 border border-purple-500/30 text-purple-200 hover:text-white text-xs font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.15)]"
@@ -908,11 +913,27 @@ export default function Navbar() {
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Palette className="text-violet-400" /> Theme Customization
                 </h2>
-                <p className="text-xs text-gray-400 mt-1">Select your preferred platform aesthetic.</p>
+                <p className="text-xs text-gray-400 mt-1">Select your preferred platform aesthetic or activate special editions.</p>
               </div>
               <button onClick={() => setIsThemeOpen(false)} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Special Edition Banner: Doomsday Edition */}
+            <div className="px-6 pt-5 pb-1">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#10e87a] mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10e87a] animate-pulse" />
+                <span>Special Armored Protocol</span>
+              </div>
+              <DoomsdayToggle variant="card" />
+            </div>
+
+            {/* Standard Color Themes Title */}
+            <div className="px-6 pt-4 pb-0">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400/80">
+                Standard Color Themes
+              </div>
             </div>
 
             {/* Themes Grid */}

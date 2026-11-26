@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Palette, X, Check } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
+import DoomsdayToggle from "./DoomsdayToggle";
 
 const THEMES = [
   { id: "cosmic-violet", name: "Cosmic Violet", primary: "bg-violet-500", accent: "bg-fuchsia-500", shadow: "shadow-[0_0_15px_rgba(139,92,246,0.5)]" },
@@ -62,7 +63,18 @@ export default function ThemeSelector() {
           className="group relative bg-black/50 backdrop-blur-md border border-white/10 border-l-0 rounded-r-xl sm:rounded-r-2xl flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-violet-500/50 hover:bg-violet-500/10 w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[48px] md:h-[48px] text-gray-400 hover:text-white overflow-visible"
         >
           <Palette size={16} className="sm:w-5 sm:h-5 group-hover:drop-shadow-[0_0_8px_rgba(139,92,246,0.8)] transition-all duration-300" />
+          <span className="hidden sm:block absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-sm border border-violet-500/20 text-violet-300 text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-[0_0_10px_rgba(139,92,246,0.15)] z-[9901]">
+            Customize Theme
+          </span>
         </button>
+
+        {/* Doomsday Edition Toggle Button on Dock */}
+        <div className="group relative bg-black/50 backdrop-blur-md border border-white/10 border-l-0 rounded-r-xl sm:rounded-r-2xl flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-[#10e87a]/50 hover:bg-[#10e87a]/10 w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[48px] md:h-[48px] overflow-visible">
+          <DoomsdayToggle variant="dock" />
+          <span className="hidden sm:block absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-sm border border-[#10e87a]/30 text-[#10e87a] text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-[0_0_10px_rgba(16,232,122,0.2)] z-[9901]">
+            Doomsday Edition
+          </span>
+        </div>
       </div>
 
       {/* Theme Modal */}
@@ -77,11 +89,27 @@ export default function ThemeSelector() {
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Palette className="text-violet-400" /> Theme Customization
                 </h2>
-                <p className="text-xs text-gray-400 mt-1">Select your preferred platform aesthetic.</p>
+                <p className="text-xs text-gray-400 mt-1">Select your preferred platform aesthetic or activate special editions.</p>
               </div>
               <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Special Edition Banner: Doomsday Edition */}
+            <div className="px-6 pt-5 pb-1">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#10e87a] mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10e87a] animate-pulse" />
+                <span>Special Armored Protocol</span>
+              </div>
+              <DoomsdayToggle variant="card" />
+            </div>
+
+            {/* Standard Color Themes Title */}
+            <div className="px-6 pt-4 pb-0">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400/80">
+                Standard Color Themes
+              </div>
             </div>
 
             {/* Themes Grid */}
