@@ -127,23 +127,38 @@ export default function AdminPulsePage() {
 
   useEffect(() => {
     const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(25));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate))
-        .filter(u => {
-          const sName = (u.sourceName || "").toLowerCase();
-          const link = (u.link || "").toLowerCase();
-          return !sName.includes("unstop") && !link.includes("unstop.com");
+    const unsubscribe = onSnapshot(
+      q, 
+      (snapshot) => {
+        const data = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as PulseUpdate))
+          .filter(u => {
+            const sName = (u.sourceName || "").toLowerCase();
+            const link = (u.link || "").toLowerCase();
+            return !sName.includes("unstop") && !link.includes("unstop.com");
+          });
+        data.sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return 0;
         });
-      // Sort pinned posts to top locally to ensure they always show first
-      data.sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return 0;
-      });
-      setUpdates(data);
-      setLoading(false);
-    });
+        setUpdates(data);
+        setLoading(false);
+      },
+      async (err) => {
+        console.warn("[Admin Pulse] Snapshot error, falling back to server API:", err);
+        try {
+          const res = await fetch("/api/pulse?limit=50");
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && Array.isArray(json.updates)) {
+              setUpdates(json.updates);
+            }
+          }
+        } catch {}
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, []);

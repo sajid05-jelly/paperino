@@ -159,7 +159,7 @@ export default function PulsePage() {
       const now = Date.now();
       const cached = typeof window !== "undefined" ? sessionStorage.getItem("paperino_cached_pulse_updates") : null;
       const cachedTs = typeof window !== "undefined" ? sessionStorage.getItem("paperino_cached_pulse_updates_ts") : null;
-      if (!forceRefresh && cached && cachedTs && (now - parseInt(cachedTs, 10)) < 5 * 60 * 1000) {
+      if (!forceRefresh && cached && cachedTs && (now - parseInt(cachedTs, 10)) < 3 * 60 * 1000) {
         try {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -170,10 +170,27 @@ export default function PulsePage() {
         } catch {}
       }
 
-      const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(20));
-      const snapshot = await getDocs(q);
-      const fetched: PulseUpdate[] = [];
-      snapshot.forEach(d => fetched.push({ id: d.id, ...d.data() } as PulseUpdate));
+      // 1. Primary: Fetch via robust server-side API (Admin SDK bypasses client firestore quota/permission issues)
+      let fetched: PulseUpdate[] = [];
+      try {
+        const res = await fetch("/api/pulse?limit=80");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.updates)) {
+            fetched = data.updates;
+          }
+        }
+      } catch (apiErr) {
+        console.warn("Pulse API fetch failed, falling back to direct Firestore:", apiErr);
+      }
+
+      // 2. Fallback: Direct client Firestore query if API fails
+      if (fetched.length === 0) {
+        const q = query(collection(db, "pulse_updates"), orderBy("createdAt", "desc"), limit(20));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(d => fetched.push({ id: d.id, ...d.data() } as PulseUpdate));
+      }
+
       fetched.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
@@ -200,7 +217,20 @@ export default function PulsePage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "pulse_updates", id));
+      let deleted = false;
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch(`/api/pulse?id=${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) deleted = true;
+        } catch {}
+      }
+      if (!deleted) {
+        await deleteDoc(doc(db, "pulse_updates", id));
+      }
       setUpdates(prev => prev.filter(u => u.id !== id));
       if (typeof window !== "undefined") {
         try {
