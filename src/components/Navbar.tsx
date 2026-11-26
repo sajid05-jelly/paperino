@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 import UserAvatar from "./UserAvatar";
 import AvatarSelectorModal from "./AvatarSelectorModal";
 import { Menu, X, LogOut, Palette, Check, ChevronDown, FlaskConical, BrainCircuit, ShieldAlert, ShieldCheck, GraduationCap, Building2, FolderGit2, Gamepad2, BookOpen, Calculator, Zap, Code2, LayoutDashboard, Crown, MonitorPlay, User, LogIn } from "lucide-react";
-import DoomsdayToggle from "./DoomsdayToggle";
 import { useTheme } from "@/context/ThemeContext";
 import { usePulseNotifications } from "@/context/NotificationContext";
 import { useBadges } from "@/context/BadgeContext";
@@ -398,13 +397,10 @@ export default function Navbar() {
             >
               <Palette size={15} className="drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" aria-hidden="true" />
             </button>
-
-            {/* Doomsday Edition Toggle */}
-            <DoomsdayToggle />
           </div>
 
           <div className="flex items-center justify-end gap-2 lg:gap-3 flex-shrink-0">
-            {/* Mobile Utility Controls - WhatsApp, Instagram, Sound, Theme, Doomsday */}
+            {/* Mobile Utility Controls - WhatsApp, Instagram, Sound, Theme */}
             <div className="flex sm:hidden items-center gap-1.5 bg-white/5 border border-white/10 rounded-full p-1 backdrop-blur-md mr-1">
               {/* WhatsApp */}
               <a
@@ -445,14 +441,6 @@ export default function Navbar() {
               >
                 <Palette size={14} className="drop-shadow-[0_0_4px_rgba(139,92,246,0.4)]" aria-hidden="true" />
               </button>
-
-              {/* Doomsday Toggle for Mobile Top Header */}
-              <DoomsdayToggle className="!w-7 !h-7 !p-1.5" />
-            </div>
-
-            {/* Desktop Doomsday Pill Toggle */}
-            <div className="hidden sm:flex items-center">
-              <DoomsdayToggle variant="pill" />
             </div>
 
             <Link
@@ -559,11 +547,6 @@ export default function Navbar() {
                 </Link>
               </div>
             )}
-
-            {/* Doomsday Skin Toggle inside Mobile Drawer */}
-            <div className="px-3.5 py-2.5 border-b border-white/[0.06]">
-              <DoomsdayToggle variant="drawer" />
-            </div>
 
             {/* Scrollable Nav Links */}
             <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-4">
@@ -913,27 +896,11 @@ export default function Navbar() {
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Palette className="text-violet-400" /> Theme Customization
                 </h2>
-                <p className="text-xs text-gray-400 mt-1">Select your preferred platform aesthetic or activate special editions.</p>
+                <p className="text-xs text-gray-400 mt-1">Select your preferred platform aesthetic.</p>
               </div>
               <button onClick={() => setIsThemeOpen(false)} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
                 <X size={20} />
               </button>
-            </div>
-
-            {/* Special Edition Banner: Doomsday Edition */}
-            <div className="px-6 pt-5 pb-1">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#10e87a] mb-2 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10e87a] animate-pulse" />
-                <span>Special Armored Protocol</span>
-              </div>
-              <DoomsdayToggle variant="card" />
-            </div>
-
-            {/* Standard Color Themes Title */}
-            <div className="px-6 pt-4 pb-0">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400/80">
-                Standard Color Themes
-              </div>
             </div>
 
             {/* Themes Grid */}

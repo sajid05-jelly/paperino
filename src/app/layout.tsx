@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Cinzel, Chakra_Petch } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "@/styles/doomsday-skin.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
@@ -35,22 +34,6 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-  display: "swap",
-});
-
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
-  subsets: ["latin"],
-  weight: ["700", "800"],
-  preload: false,
-  display: "swap",
-});
-
-const chakraPetch = Chakra_Petch({
-  variable: "--font-chakra-petch",
-  subsets: ["latin"],
-  weight: ["600", "700"],
-  preload: false,
   display: "swap",
 });
 
@@ -125,7 +108,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${chakraPetch.variable} h-full antialiased dark`} suppressHydrationWarning style={{ overflowX: 'clip', maxWidth: '100%', width: '100%' }}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`} suppressHydrationWarning style={{ overflowX: 'clip', maxWidth: '100%', width: '100%' }}>
       <head>
         <meta name="color-scheme" content="dark" />
         <meta name="theme-color" content="#05030a" />
@@ -140,10 +123,7 @@ export default function RootLayout({
           (function() {
             try {
               document.documentElement.classList.add('dark');
-              var skin = localStorage.getItem('paperino_skin');
-              if (skin === 'doomsday') {
-                document.documentElement.setAttribute('data-skin', 'doomsday');
-              }
+              try { localStorage.removeItem('paperino_skin'); } catch (e) {}
               var theme = localStorage.getItem('paperino-theme') || 'cosmic-violet';
               if (theme && theme !== 'cosmic-violet') {
                 document.documentElement.setAttribute('data-theme', theme);

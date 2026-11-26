@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { usePlanGate } from "@/context/PlanGateContext";
-import { BookOpen, Zap, Sparkles, FileText, Calculator, FileSearch, Download, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot, Building2, ChevronRight, ShieldCheck } from "lucide-react";
+import { BookOpen, Zap, Sparkles, FileText, Calculator, FileSearch, Download, GraduationCap, Heart, BrainCircuit, ArrowRight, Bot, Building2, ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSubjects } from "@/context/SubjectsContext";
 import { sortDepartments } from "@/lib/courseSorting";
-import DoomsdayEmblem from "@/components/DoomsdayEmblem";
 
 const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: false });
 const AmbientOrbs = dynamic(() => import("@/components/AmbientOrbs"), { ssr: false });
@@ -33,39 +32,19 @@ export default function Home() {
       <div className="w-full max-w-7xl mx-auto relative z-10">
       {/* Hero Section */}
       <section className="flex flex-col items-center text-center w-full max-w-4xl mx-auto mb-20">
-        {/* Default Theme Hero (Visible in Default theme, hidden in Doomsday) */}
-        <div className="default-hero-content w-full">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-8 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-shadow animate-float">
-            <Zap size={16} className="text-purple-400" aria-hidden="true" />
-            <span className="tracking-wide">Prepare for exams at lightspeed</span>
-          </div>
-          <h1 className="text-5xl md:text-7xl lg:text-[5rem] font-bold tracking-tight text-white mb-6 w-full text-center leading-tight">
-            The Universe of <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-violet-400 text-glow animate-pulse">
-              Study Materials
-            </span>
-          </h1>
-          <p className="text-lg md:text-2xl text-gray-400/90 mb-12 max-w-2xl mx-auto px-4 font-light leading-relaxed">
-            Access semester-wise question papers, notes, and lab manuals in one seamless, space-themed platform.
-          </p>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm font-medium mb-8 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-shadow animate-float">
+          <Zap size={16} className="text-purple-400" aria-hidden="true" />
+          <span className="tracking-wide">Prepare for exams at lightspeed</span>
         </div>
-
-        {/* Doomsday Edition Hero (Hidden in Default theme, visible in Doomsday) */}
-        <div className="doomsday-hero-content flex-col items-center text-center w-full max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full doomsday-hero-badge text-xs font-bold uppercase tracking-widest mb-4">
-            <ShieldCheck size={14} className="text-[#10e87a]" />
-            <span>Special Edition Protocol</span>
-          </div>
-
-          <DoomsdayEmblem />
-
-          <h1 className="doomsday-hero-title text-4xl sm:text-6xl md:text-7xl lg:text-[5.25rem] font-extrabold tracking-tight mb-4 leading-none uppercase">
-            PAPERINO <span className="doomsday-hero-gradient block mt-2 text-3xl sm:text-5xl md:text-6xl">DOOMSDAY EDITION</span>
-          </h1>
-          <p className="text-base sm:text-xl md:text-2xl text-[#8aa095] mb-12 max-w-2xl mx-auto px-4 font-normal leading-relaxed">
-            Assemble Your Knowledge. Unleash Your Power.
-          </p>
-        </div>
+        <h1 className="text-5xl md:text-7xl lg:text-[5rem] font-bold tracking-tight text-white mb-6 w-full text-center leading-tight">
+          The Universe of <br className="hidden md:block" />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-violet-400 text-glow animate-pulse">
+            Study Materials
+          </span>
+        </h1>
+        <p className="text-lg md:text-2xl text-gray-400/90 mb-12 max-w-2xl mx-auto px-4 font-light leading-relaxed">
+          Access semester-wise question papers, notes, and lab manuals in one seamless, space-themed platform.
+        </p>
 
         {/* Dynamic total semesters calculation across all approved departments */}
         {(() => {
