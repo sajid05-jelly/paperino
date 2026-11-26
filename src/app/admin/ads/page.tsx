@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useId } from "react";
+import { useEffect, useState, useCallback, useId, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase";
 import {
@@ -8,9 +8,7 @@ import {
   AdCampaign,
   AdPlacementId,
   AdsGlobalConfig,
-  AdPaymentStatus,
   AdCampaignStatus,
-  AdUserTierTarget,
 } from "@/lib/adTypes";
 import {
   Megaphone,
@@ -25,45 +23,25 @@ import {
   Image as ImageIcon,
   Video,
   Upload,
-  Cloud,
   X,
+  FileUp,
 } from "lucide-react";
-
-interface AdsStats {
-  totalCampaigns: number;
-  active: number;
-  scheduled: number;
-  expired: number;
-  disabled: number;
-  totalImpressions?: number;
-  totalClicks?: number;
-  ctr?: number;
-  revenue: {
-    totalInr: number;
-    receivedInr: number;
-    outstandingInr: number;
-  };
-}
 
 export default function AdminAdsPage() {
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [globalConfig, setGlobalConfig] = useState<AdsGlobalConfig | null>(null);
-  const [stats, setStats] = useState<AdsStats | null>(null);
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
-  const [activeTab, setActiveTab] = useState<"placements" | "campaigns" | "revenue" | "r2setup">("placements");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Modal / Drawer State
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<AdCampaign | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Form Fields
+  // Simplified Form Fields — only essentials
   const [formTitle, setFormTitle] = useState("");
   const [formBrand, setFormBrand] = useState("");
-  const [formEmail, setFormEmail] = useState("");
-  const [formPhone, setFormPhone] = useState("");
   const [formPlacement, setFormPlacement] = useState<AdPlacementId>("home_top");
   const [formMediaType, setFormMediaType] = useState<"image" | "video">("image");
   const [formDesktopUrl, setFormDesktopUrl] = useState("");
@@ -74,26 +52,30 @@ export default function AdminAdsPage() {
   const [formStart, setFormStart] = useState("");
   const [formExpire, setFormExpire] = useState("");
   const [formPriority, setFormPriority] = useState(50);
-  const [formTier, setFormTier] = useState<AdUserTierTarget>("all");
-  const [formAmountInr, setFormAmountInr] = useState(0);
-  const [formReceivedInr, setFormReceivedInr] = useState(0);
-  const [formPaymentStatus, setFormPaymentStatus] = useState<AdPaymentStatus>("pending");
-  const [formPaymentRef, setFormPaymentRef] = useState("");
-  const [formNotes, setFormNotes] = useState("");
-  const [formStatus, setFormStatus] = useState<AdCampaignStatus>("draft");
 
-  // Local file upload states
-  const [uploadingMedia, setUploadingMedia] = useState(false);
+  // File upload states
+  const [uploadingDesktop, setUploadingDesktop] = useState(false);
+  const [uploadingMobile, setUploadingMobile] = useState(false);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
   const [uploadFeedback, setUploadFeedback] = useState<string | null>(null);
+
+  // Drag states
+  const [draggingDesktop, setDraggingDesktop] = useState(false);
+  const [draggingMobile, setDraggingMobile] = useState(false);
+  const desktopInputRef = useRef<HTMLInputElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
+  const posterInputRef = useRef<HTMLInputElement>(null);
+
+  // Desktop file name display
+  const [desktopFileName, setDesktopFileName] = useState<string | null>(null);
+  const [mobileFileName, setMobileFileName] = useState<string | null>(null);
 
   // Current timestamp for schedule comparison
   const [currentTime] = useState(() => Date.now());
 
-  // Unique accessible IDs for form fields
+  // Unique accessible IDs
   const titleInputId = useId();
   const brandInputId = useId();
-  const emailInputId = useId();
-  const phoneInputId = useId();
   const placementSelectId = useId();
   const mediaTypeSelectId = useId();
   const destUrlInputId = useId();
@@ -101,13 +83,6 @@ export default function AdminAdsPage() {
   const startAtInputId = useId();
   const expireAtInputId = useId();
   const priorityInputId = useId();
-  const tierSelectId = useId();
-  const amountInputId = useId();
-  const receivedInputId = useId();
-  const paymentStatusSelectId = useId();
-  const paymentRefInputId = useId();
-  const notesTextareaId = useId();
-  const statusSelectId = useId();
 
   // Helper to fetch admin authorization token
   const getAuthToken = useCallback(async () => {
@@ -115,7 +90,7 @@ export default function AdminAdsPage() {
     return await auth.currentUser.getIdToken();
   }, []);
 
-  // Fetch all ads data on manual refresh / action completion
+  // Fetch all ads data
   const loadAdsData = useCallback(async () => {
     try {
       const token = await getAuthToken();
@@ -128,7 +103,6 @@ export default function AdminAdsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to load campaigns");
 
       setGlobalConfig(data.config);
-      setStats(data.stats);
       setCampaigns(data.campaigns || []);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Failed to load campaigns";
@@ -157,7 +131,6 @@ export default function AdminAdsPage() {
 
         if (!ignore) {
           setGlobalConfig(data.config);
-          setStats(data.stats);
           setCampaigns(data.campaigns || []);
         }
       } catch (err: unknown) {
@@ -215,8 +188,6 @@ export default function AdminAdsPage() {
     setEditingCampaign(null);
     setFormTitle("");
     setFormBrand("");
-    setFormEmail("");
-    setFormPhone("");
     setFormPlacement(prefillPlacement || "home_top");
     setFormMediaType("image");
     setFormDesktopUrl("");
@@ -225,21 +196,15 @@ export default function AdminAdsPage() {
     setFormDestUrl("https://");
     setFormAlt("");
     
-    // Default: 30 days campaign duration starting now
     const now = new Date();
     const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     setFormStart(now.toISOString().slice(0, 16));
     setFormExpire(future.toISOString().slice(0, 16));
 
     setFormPriority(50);
-    setFormTier("all");
-    setFormAmountInr(0);
-    setFormReceivedInr(0);
-    setFormPaymentStatus("pending");
-    setFormPaymentRef("");
-    setFormNotes("");
-    setFormStatus("draft");
     setUploadFeedback(null);
+    setDesktopFileName(null);
+    setMobileFileName(null);
     setIsModalOpen(true);
   };
 
@@ -248,8 +213,6 @@ export default function AdminAdsPage() {
     setEditingCampaign(campaign);
     setFormTitle(campaign.title);
     setFormBrand(campaign.brandName);
-    setFormEmail(campaign.contactEmail || "");
-    setFormPhone(campaign.contactPhone || "");
     setFormPlacement(campaign.placementId);
     setFormMediaType(campaign.mediaType);
     setFormDesktopUrl(campaign.desktopCreativeUrl);
@@ -260,14 +223,9 @@ export default function AdminAdsPage() {
     setFormStart(campaign.startAt ? new Date(campaign.startAt).toISOString().slice(0, 16) : "");
     setFormExpire(campaign.expiresAt ? new Date(campaign.expiresAt).toISOString().slice(0, 16) : "");
     setFormPriority(campaign.priority || 50);
-    setFormTier(campaign.targetAudience?.userTier || "all");
-    setFormAmountInr(campaign.revenue?.amountInr || 0);
-    setFormReceivedInr(campaign.revenue?.amountReceivedInr || 0);
-    setFormPaymentStatus(campaign.revenue?.paymentStatus || "pending");
-    setFormPaymentRef(campaign.revenue?.paymentReference || "");
-    setFormNotes(campaign.revenue?.internalNotes || "");
-    setFormStatus(campaign.status);
     setUploadFeedback(null);
+    setDesktopFileName(null);
+    setMobileFileName(null);
     setIsModalOpen(true);
   };
 
@@ -284,27 +242,27 @@ export default function AdminAdsPage() {
       const payload = {
         title: formTitle,
         brandName: formBrand,
-        contactEmail: formEmail,
-        contactPhone: formPhone,
+        contactEmail: "",
+        contactPhone: "",
         placementId: formPlacement,
         mediaType: formMediaType,
         desktopCreativeUrl: formDesktopUrl,
         mobileCreativeUrl: formMobileUrl || undefined,
         videoPosterUrl: formPosterUrl || undefined,
         destinationUrl: formDestUrl,
-        accessibleDescription: formAlt,
+        accessibleDescription: formAlt || `Ad by ${formBrand}`,
         startAt: new Date(formStart).toISOString(),
         expiresAt: new Date(formExpire).toISOString(),
         priority: Number(formPriority) || 50,
-        targetAudience: { userTier: formTier },
+        targetAudience: { userTier: "all" as const },
         revenue: {
-          amountInr: Number(formAmountInr) || 0,
-          amountReceivedInr: Number(formReceivedInr) || 0,
-          paymentStatus: formPaymentStatus,
-          paymentReference: formPaymentRef,
-          internalNotes: formNotes,
+          amountInr: 0,
+          amountReceivedInr: 0,
+          paymentStatus: "pending" as const,
+          paymentReference: "",
+          internalNotes: "",
         },
-        status: formStatus,
+        status: "published" as AdCampaignStatus,
       };
 
       let res;
@@ -331,7 +289,7 @@ export default function AdminAdsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save campaign");
 
-      setFeedback({ type: "success", message: editingCampaign ? "Campaign updated successfully" : "Campaign created successfully" });
+      setFeedback({ type: "success", message: editingCampaign ? "Campaign updated ✓" : "Campaign published ✓" });
       setIsModalOpen(false);
       loadAdsData();
     } catch (err: unknown) {
@@ -344,9 +302,7 @@ export default function AdminAdsPage() {
 
   // Handle Delete Campaign
   const handleDeleteCampaign = async (id: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete campaign "${title}"? This cannot be undone.`)) {
-      return;
-    }
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
 
     try {
       const token = await getAuthToken();
@@ -355,9 +311,9 @@ export default function AdminAdsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete campaign");
+      if (!res.ok) throw new Error(data.error || "Failed to delete");
 
-      setFeedback({ type: "success", message: "Campaign deleted successfully" });
+      setFeedback({ type: "success", message: "Campaign deleted ✓" });
       loadAdsData();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Failed to delete campaign";
@@ -379,29 +335,29 @@ export default function AdminAdsPage() {
         body: JSON.stringify({ campaignId: campaign.id, status: nextStatus }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to change campaign status");
+      if (!res.ok) throw new Error(data.error || "Failed to change status");
 
-      setFeedback({ type: "success", message: `Campaign marked as ${nextStatus}` });
+      setFeedback({ type: "success", message: `Campaign ${nextStatus === "published" ? "activated" : "paused"} ✓` });
       loadAdsData();
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to delete campaign";
+      const errorMsg = err instanceof Error ? err.message : "Failed to update";
       setFeedback({ type: "error", message: errorMsg });
     }
   };
 
-  // Handle Media File Selection & Upload Ticket
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetField: "desktop" | "mobile" | "poster") => {
-    const file = e.target.files?.[0];
+  // ── Unified File Upload Handler (supports both click and drag-drop) ──
+  const handleFileUpload = async (file: File, targetField: "desktop" | "mobile" | "poster") => {
     if (!file) return;
 
-    setUploadingMedia(true);
+    const setUploading = targetField === "desktop" ? setUploadingDesktop : targetField === "mobile" ? setUploadingMobile : setUploadingPoster;
+    setUploading(true);
     setUploadFeedback(null);
 
     try {
       const token = await getAuthToken();
-      if (!token) throw new Error("Authentication missing");
+      if (!token) throw new Error("Not authenticated");
 
-      // Request presigned upload ticket from backend
+      // Step 1: Get upload ticket from our API
       const ticketRes = await fetch("/api/admin/ads/upload-ticket", {
         method: "POST",
         headers: {
@@ -418,16 +374,14 @@ export default function AdminAdsPage() {
       });
 
       const ticketData = await ticketRes.json();
-      if (!ticketRes.ok) throw new Error(ticketData.error || "Failed to generate upload ticket");
+      if (!ticketRes.ok) throw new Error(ticketData.error || "Upload ticket failed");
 
       if (!ticketData.configured) {
-        setUploadFeedback(
-          "⚠️ Media storage credentials (Cloudinary or Cloudflare R2) are not yet configured in .env.local. You can enter public media URLs directly below."
-        );
+        setUploadFeedback("⚠️ Cloudinary credentials not configured in environment variables. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to your Vercel env vars.");
         return;
       }
 
-      // Handler for Cloudinary Direct Upload
+      // Step 2: Upload to Cloudinary
       if (ticketData.storageProvider === "cloudinary") {
         const formData = new FormData();
         formData.append("file", file);
@@ -444,28 +398,33 @@ export default function AdminAdsPage() {
 
         if (!cloudRes.ok) {
           const errData = await cloudRes.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `Cloudinary upload failed with status ${cloudRes.status}`);
+          throw new Error(errData?.error?.message || `Upload failed (${cloudRes.status})`);
         }
 
         const cloudJson = await cloudRes.json();
         const uploadedUrl = cloudJson.secure_url;
 
-        // Assign uploaded URL
-        if (targetField === "desktop") setFormDesktopUrl(uploadedUrl);
-        if (targetField === "mobile") setFormMobileUrl(uploadedUrl);
+        if (targetField === "desktop") {
+          setFormDesktopUrl(uploadedUrl);
+          setDesktopFileName(file.name);
+        }
+        if (targetField === "mobile") {
+          setFormMobileUrl(uploadedUrl);
+          setMobileFileName(file.name);
+        }
         if (targetField === "poster") setFormPosterUrl(uploadedUrl);
 
-        // For video ads: Cloudinary automatically provides an instant video poster
+        // Auto-generate poster for video uploads
         if (formMediaType === "video" && targetField === "desktop" && !formPosterUrl) {
           const autoPoster = uploadedUrl.replace(/\.[^/.]+$/, ".jpg");
           setFormPosterUrl(autoPoster);
         }
 
-        setUploadFeedback(`✓ Uploaded successfully to Cloudinary: ${file.name}`);
+        setUploadFeedback(`✓ ${file.name} uploaded successfully`);
         return;
       }
 
-      // Handler for Cloudflare R2 Direct Upload
+      // R2 fallback
       if (ticketData.storageProvider === "r2") {
         const putRes = await fetch(ticketData.uploadUrl, {
           method: "PUT",
@@ -473,23 +432,49 @@ export default function AdminAdsPage() {
           body: file,
         });
 
-        if (!putRes.ok) throw new Error(`Cloudflare R2 direct upload failed with status ${putRes.status}`);
+        if (!putRes.ok) throw new Error(`R2 upload failed (${putRes.status})`);
 
-        // Assign uploaded URL
-        if (targetField === "desktop") setFormDesktopUrl(ticketData.publicUrl);
-        if (targetField === "mobile") setFormMobileUrl(ticketData.publicUrl);
+        if (targetField === "desktop") {
+          setFormDesktopUrl(ticketData.publicUrl);
+          setDesktopFileName(file.name);
+        }
+        if (targetField === "mobile") {
+          setFormMobileUrl(ticketData.publicUrl);
+          setMobileFileName(file.name);
+        }
         if (targetField === "poster") setFormPosterUrl(ticketData.publicUrl);
 
-        setUploadFeedback(`✓ Uploaded successfully to R2: ${file.name}`);
+        setUploadFeedback(`✓ ${file.name} uploaded successfully`);
         return;
       }
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Upload error";
-      setUploadFeedback(`Upload error: ${errorMsg}`);
+      const errorMsg = err instanceof Error ? err.message : "Upload failed";
+      setUploadFeedback(`❌ ${errorMsg}`);
     } finally {
-      setUploadingMedia(false);
+      setUploading(false);
     }
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, target: "desktop" | "mobile" | "poster") => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file, target);
+  };
+
+  const handleDrop = (e: React.DragEvent, target: "desktop" | "mobile") => {
+    e.preventDefault();
+    if (target === "desktop") setDraggingDesktop(false);
+    if (target === "mobile") setDraggingMobile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileUpload(file, target);
+  };
+
+  // Compute stats locally
+  const activeCampaigns = campaigns.filter((c) => {
+    if (c.status !== "published") return false;
+    const s = new Date(c.startAt).getTime();
+    const exp = new Date(c.expiresAt).getTime();
+    return currentTime >= s && currentTime <= exp;
+  });
 
   if (!user || !isAdmin) {
     return <div className="p-8 text-center text-white">Unauthorized access.</div>;
@@ -505,63 +490,62 @@ export default function AdminAdsPage() {
   }
 
   return (
-    <div className="space-y-8 w-full max-w-7xl mx-auto pb-16">
-      {/* ── Top Header & Global Kill Switch Banner ─────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-xl">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 shadow-md">
-            <Megaphone size={24} />
+    <div className="space-y-6 w-full max-w-6xl mx-auto pb-16">
+      {/* ── Header & Kill Switch ── */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+            <Megaphone size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white tracking-tight">Paperino Ads</h1>
-              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                Direct Ad Manager
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Admin-controlled direct advertising engine with zero-empty-box guarantee.
+            <h1 className="text-xl font-black text-white tracking-tight">Paperino Ads</h1>
+            <p className="text-[11px] text-gray-400">
+              {campaigns.length} campaigns · {activeCampaigns.length} active
             </p>
           </div>
         </div>
 
-        {/* Global Kill Switch Controller */}
-        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end bg-black/40 p-3 rounded-2xl border border-white/10">
-          <div className="text-left">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">System Kill Switch</span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`w-2 h-2 rounded-full ${globalConfig?.enabled ? "bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" : "bg-red-400 shadow-[0_0_8px_#f87171]"}`} />
-              <span className={`text-xs font-black uppercase ${globalConfig?.enabled ? "text-emerald-300" : "text-red-400"}`}>
-                {globalConfig?.enabled ? "ADS ACTIVE (ONLINE)" : "ADS GLOBALLY DISABLED (OFF)"}
-              </span>
-            </div>
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${globalConfig?.enabled ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
+            <span className={`text-xs font-bold ${globalConfig?.enabled ? "text-emerald-300" : "text-red-400"}`}>
+              {globalConfig?.enabled ? "LIVE" : "OFF"}
+            </span>
           </div>
 
           <button
             onClick={toggleGlobalKillSwitch}
             type="button"
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               globalConfig?.enabled
                 ? "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40"
                 : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
             }`}
           >
-            {globalConfig?.enabled ? "Kill All Ads" : "Enable System"}
+            {globalConfig?.enabled ? "Kill All Ads" : "Enable Ads"}
+          </button>
+
+          <button
+            onClick={() => openCreateModal()}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-lg active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>New Ad</span>
           </button>
         </div>
       </div>
 
-      {/* ── Status Feedback Banner ─────────────────────────────────────────────────── */}
+      {/* ── Feedback Banner ── */}
       {feedback && (
         <div
-          className={`p-4 rounded-xl border flex items-center justify-between text-xs font-semibold animate-in fade-in ${
+          className={`p-3 rounded-xl border flex items-center justify-between text-xs font-semibold ${
             feedback.type === "success"
               ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
               : "bg-red-500/15 border-red-500/30 text-red-300"
           }`}
         >
           <div className="flex items-center gap-2">
-            {feedback.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            {feedback.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
             <span>{feedback.message}</span>
           </div>
           <button onClick={() => setFeedback(null)} className="text-gray-400 hover:text-white p-1">
@@ -570,485 +554,210 @@ export default function AdminAdsPage() {
         </div>
       )}
 
-      {/* ── Overview Statistics Row ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-gray-400">Total Ads</span>
-          <span className="text-xl font-black text-white mt-1">{stats?.totalCampaigns || 0}</span>
-        </div>
-        <div className="p-3.5 rounded-2xl bg-emerald-500/[0.04] border border-emerald-500/20 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-emerald-400">Active</span>
-          <span className="text-xl font-black text-emerald-300 mt-1">{stats?.active || 0}</span>
-        </div>
-        <div className="p-3.5 rounded-2xl bg-cyan-500/[0.04] border border-cyan-500/20 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-cyan-400">Scheduled</span>
-          <span className="text-xl font-black text-cyan-300 mt-1">{stats?.scheduled || 0}</span>
-        </div>
-        <div className="p-3.5 rounded-2xl bg-amber-500/[0.04] border border-amber-500/20 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-amber-400">Expired</span>
-          <span className="text-xl font-black text-amber-300 mt-1">{stats?.expired || 0}</span>
-        </div>
-        <div className="p-3.5 rounded-2xl bg-blue-500/[0.04] border border-blue-500/20 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-blue-400">Impressions</span>
-          <span className="text-xl font-black text-blue-300 mt-1">{stats?.totalImpressions?.toLocaleString() || 0}</span>
-        </div>
-        <div className="p-3.5 rounded-2xl bg-teal-500/[0.04] border border-teal-500/20 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-teal-400">Valid Clicks</span>
-          <span className="text-xl font-black text-teal-300 mt-1">{stats?.totalClicks?.toLocaleString() || 0}</span>
-        </div>
-        <div className="p-3.5 rounded-2xl bg-indigo-500/[0.04] border border-indigo-500/20 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-indigo-400">CTR</span>
-          <span className="text-xl font-black text-indigo-300 mt-1">{stats?.ctr || 0}%</span>
-        </div>
-        <div className="p-3.5 rounded-2xl bg-purple-500/[0.04] border border-purple-500/20 flex flex-col">
-          <span className="text-[10px] uppercase font-bold text-purple-400">Revenue</span>
-          <span className="text-xl font-black text-purple-300 mt-1">₹{stats?.revenue.totalInr?.toLocaleString() || 0}</span>
-        </div>
-      </div>
+      {/* ── Placement Grid ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Object.values(AD_PLACEMENTS).map((slot) => {
+          const assignedCampaigns = campaigns.filter((c) => c.placementId === slot.id && c.status === "published");
+          const activeNow = assignedCampaigns.find((c) => {
+            const s = new Date(c.startAt).getTime();
+            const e = new Date(c.expiresAt).getTime();
+            return currentTime >= s && currentTime <= e;
+          });
 
-      {/* ── Navigation Tabs ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab("placements")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "placements"
-                ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-                : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            Visual Placement Manager
-          </button>
-          <button
-            onClick={() => setActiveTab("campaigns")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "campaigns"
-                ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-                : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            All Campaigns ({campaigns.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("revenue")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "revenue"
-                ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-                : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            Revenue & Payments
-          </button>
-          <button
-            onClick={() => setActiveTab("r2setup")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === "r2setup"
-                ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-                : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            <Cloud size={14} />
-            <span>Cloudflare R2 Setup Guide</span>
-          </button>
-        </div>
-
-        <button
-          onClick={() => openCreateModal()}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-lg active:scale-95 transition-all cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>New Advertisement</span>
-        </button>
-      </div>
-
-      {/* ── TAB 1: Visual Placement Manager ────────────────────────────────────────── */}
-      {activeTab === "placements" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.values(AD_PLACEMENTS).map((slot) => {
-              const assignedCampaigns = campaigns.filter((c) => c.placementId === slot.id && c.status === "published");
-              const activeNow = assignedCampaigns.find((c) => {
-                const s = new Date(c.startAt).getTime();
-                const e = new Date(c.expiresAt).getTime();
-                return currentTime >= s && currentTime <= e;
-              });
-
-              return (
-                <div
-                  key={slot.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 flex flex-col justify-between hover:border-purple-500/40 transition-all group"
-                >
+          return (
+            <div
+              key={slot.id}
+              className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 flex flex-col justify-between hover:border-purple-500/30 transition-all"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    {/* Header: Placement ID & Name */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 block">
-                          {slot.id}
-                        </span>
-                        <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
-                          {slot.name}
-                        </h3>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-purple-400">{slot.id}</span>
+                    <h3 className="text-sm font-bold text-white">{slot.name}</h3>
+                  </div>
+                  <span
+                    className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                      activeNow
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        : "bg-white/5 text-gray-500 border-white/10"
+                    }`}
+                  >
+                    {activeNow ? "LIVE" : "EMPTY"}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-gray-400 mb-3">{slot.locationDescription}</p>
+
+                {/* Creative Preview */}
+                <div className="w-full h-28 rounded-xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center mb-3">
+                  {activeNow ? (
+                    activeNow.mediaType === "video" ? (
+                      <div className="relative w-full h-full flex items-center justify-center bg-black">
+                        {activeNow.videoPosterUrl && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={activeNow.videoPosterUrl} alt="Poster" className="w-full h-full object-cover opacity-60" />
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Video size={24} className="text-white drop-shadow-md" />
+                        </div>
                       </div>
+                    ) : (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={activeNow.desktopCreativeUrl}
+                        alt={activeNow.accessibleDescription || "Ad"}
+                        className="w-full h-full object-contain p-2"
+                      />
+                    )
+                  ) : (
+                    <div className="text-center p-3">
+                      <ImageIcon size={20} className="mx-auto text-gray-600 mb-1" />
+                      <span className="text-[10px] text-gray-500 block">No ad assigned</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between text-[10px] text-gray-500 mb-3">
+                  <span>{slot.recommendedRatio}</span>
+                  <span className="uppercase font-bold">{slot.supportedMedia.join(" & ")}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => openCreateModal(slot.id)}
+                  className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold border border-white/10 transition-colors cursor-pointer text-center"
+                >
+                  {activeNow ? "Replace" : "+ Assign"}
+                </button>
+                {activeNow && (
+                  <button
+                    onClick={() => openEditModal(activeNow)}
+                    title="Edit"
+                    className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-colors"
+                  >
+                    <Edit size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── All Campaigns List ── */}
+      {campaigns.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+          <div className="p-4 border-b border-white/10">
+            <h2 className="text-sm font-bold text-white">All Campaigns ({campaigns.length})</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase font-black tracking-wider">
+                <tr>
+                  <th className="p-3">Brand & Title</th>
+                  <th className="p-3">Placement</th>
+                  <th className="p-3">Schedule</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Analytics</th>
+                  <th className="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {campaigns.map((c) => (
+                  <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="p-3">
+                      <div className="font-bold text-white text-sm">{c.brandName}</div>
+                      <div className="text-gray-400">{c.title}</div>
+                      <a
+                        href={c.destinationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] text-purple-400 hover:text-purple-300 mt-0.5"
+                      >
+                        <span className="max-w-[120px] truncate">{c.destinationUrl}</span>
+                        <ExternalLink size={9} />
+                      </a>
+                    </td>
+                    <td className="p-3 text-gray-300 font-mono text-[10px]">{c.placementId}</td>
+                    <td className="p-3 text-gray-300">
+                      <div className="text-[10px]">{new Date(c.startAt).toLocaleDateString("en-IN")}</div>
+                      <div className="text-gray-500 text-[10px]">{new Date(c.expiresAt).toLocaleDateString("en-IN")}</div>
+                    </td>
+                    <td className="p-3">
                       <span
-                        className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                          activeNow
+                        className={`uppercase text-[9px] font-black px-2 py-0.5 rounded-full border ${
+                          c.status === "published"
                             ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                            : "bg-white/5 text-gray-400 border-white/10"
+                            : c.status === "disabled"
+                            ? "bg-red-500/20 text-red-300 border-red-500/30"
+                            : "bg-white/10 text-gray-400 border-white/10"
                         }`}
                       >
-                        {activeNow ? "LIVE NOW" : "EMPTY"}
+                        {c.status}
                       </span>
-                    </div>
-
-                    <p className="text-xs text-gray-400 leading-relaxed mb-4">{slot.locationDescription}</p>
-
-                    {/* Creative Thumbnail / Placeholder */}
-                    <div className="w-full h-32 rounded-xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center relative mb-4">
-                      {activeNow ? (
-                        activeNow.mediaType === "video" ? (
-                          <div className="relative w-full h-full flex items-center justify-center bg-black">
-                            {activeNow.videoPosterUrl && (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={activeNow.videoPosterUrl}
-                                alt="Poster"
-                                className="w-full h-full object-cover opacity-60"
-                              />
-                            )}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Video size={28} className="text-white drop-shadow-md" />
-                            </div>
-                            <span className="absolute bottom-2 left-2 text-[9px] font-black uppercase bg-black/70 px-2 py-0.5 rounded text-white border border-white/20">
-                              Video (H.264)
-                            </span>
-                          </div>
-                        ) : (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={activeNow.desktopCreativeUrl}
-                            alt={activeNow.accessibleDescription || "Ad"}
-                            className="w-full h-full object-contain p-2"
-                          />
-                        )
-                      ) : (
-                        <div className="text-center p-4">
-                          <ImageIcon size={24} className="mx-auto text-gray-600 mb-1" />
-                          <span className="text-[11px] text-gray-500 block">No creative assigned</span>
-                          <span className="text-[9px] text-gray-600">Zero-box: Collapsed on website</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Specs & Dimensions */}
-                    <div className="space-y-1.5 text-[11px] text-gray-400 border-t border-white/5 pt-3 mb-4">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Ratio:</span>
-                        <span className="text-gray-300 font-semibold">{slot.recommendedRatio}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Dimensions:</span>
-                        <span className="text-gray-300 font-mono text-[10px]">{slot.dimensionsDescription}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Media:</span>
-                        <span className="text-gray-300 uppercase text-[10px] font-bold">
-                          {slot.supportedMedia.join(" & ")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Placement Actions */}
-                  <div className="flex items-center gap-2 pt-2">
-                    <button
-                      onClick={() => openCreateModal(slot.id)}
-                      className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold border border-white/10 transition-colors cursor-pointer text-center"
-                    >
-                      {activeNow ? "Replace Ad" : "+ Assign Ad"}
-                    </button>
-                    {activeNow && (
-                      <button
-                        onClick={() => openEditModal(activeNow)}
-                        title="Edit Campaign"
-                        className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-colors"
-                      >
-                        <Edit size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB 2: All Campaigns List ──────────────────────────────────────────────── */}
-      {activeTab === "campaigns" && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-          {campaigns.length === 0 ? (
-            <div className="p-12 text-center text-gray-500 text-sm">
-              No advertisement campaigns created yet. Click &quot;+ New Advertisement&quot; to get started.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase font-black tracking-wider">
-                  <tr>
-                    <th className="p-4">Brand & Title</th>
-                    <th className="p-4">Placement</th>
-                    <th className="p-4">Format</th>
-                    <th className="p-4">Schedule</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Analytics</th>
-                    <th className="p-4">Payment</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {campaigns.map((c) => (
-                    <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-4">
-                        <div className="font-bold text-white text-sm">{c.brandName}</div>
-                        <div className="text-gray-400 text-xs">{c.title}</div>
-                        <a
-                          href={c.destinationUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-300 mt-1"
+                    </td>
+                    <td className="p-3">
+                      <div className="text-white font-semibold">{(c.impressions || 0).toLocaleString()} <span className="text-[9px] text-gray-500">imp</span></div>
+                      <div className="text-teal-400 text-[10px]">{(c.clicks || 0).toLocaleString()} <span className="text-gray-500">clicks</span></div>
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => toggleCampaignStatus(c)}
+                          title={c.status === "published" ? "Pause" : "Activate"}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
                         >
-                          <span className="max-w-[150px] truncate">{c.destinationUrl}</span>
-                          <ExternalLink size={10} />
-                        </a>
-                      </td>
-                      <td className="p-4 font-mono text-gray-300">{c.placementId}</td>
-                      <td className="p-4">
-                        <span className="uppercase font-bold text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-300 border border-white/10">
-                          {c.mediaType}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-300">
-                        <div>From: {new Date(c.startAt).toLocaleDateString("en-IN")}</div>
-                        <div className="text-gray-500">To: {new Date(c.expiresAt).toLocaleDateString("en-IN")}</div>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`uppercase text-[10px] font-black px-2.5 py-1 rounded-full border ${
-                            c.status === "published"
-                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                              : c.status === "disabled"
-                              ? "bg-red-500/20 text-red-300 border-red-500/30"
-                              : "bg-white/10 text-gray-400 border-white/10"
-                          }`}
+                          {c.status === "published" ? <Pause size={13} /> : <Play size={13} />}
+                        </button>
+                        <button
+                          onClick={() => openEditModal(c)}
+                          title="Edit"
+                          className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 transition-colors"
                         >
-                          {c.status}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-semibold text-white">
-                          {(c.impressions || 0).toLocaleString()} <span className="text-[10px] text-gray-500 font-normal">imp</span>
-                        </div>
-                        <div className="text-[11px] text-teal-400">
-                          {(c.clicks || 0).toLocaleString()} <span className="text-[10px] text-gray-500 font-normal">clicks</span>
-                          <span className="ml-1 text-gray-400 font-mono">
-                            ({c.impressions && c.impressions > 0 ? (((c.clicks || 0) / c.impressions) * 100).toFixed(1) : "0"}%)
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-white">₹{c.revenue?.amountInr?.toLocaleString() || 0}</div>
-                        <span className="text-[10px] text-gray-400 capitalize">{c.revenue?.paymentStatus}</span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => toggleCampaignStatus(c)}
-                            title={c.status === "published" ? "Pause Ad" : "Activate Ad"}
-                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
-                          >
-                            {c.status === "published" ? <Pause size={14} /> : <Play size={14} />}
-                          </button>
-                          <button
-                            onClick={() => openEditModal(c)}
-                            title="Edit Campaign"
-                            className="p-2 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 transition-colors"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCampaign(c.id, c.title)}
-                            title="Delete Campaign"
-                            className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB 3: Revenue & Payments ─────────────────────────────────────────────── */}
-      {activeTab === "revenue" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10">
-              <span className="text-xs uppercase font-bold text-gray-400">Total Contracted Revenue</span>
-              <div className="text-3xl font-black text-white mt-1">₹{stats?.revenue.totalInr?.toLocaleString() || 0}</div>
-            </div>
-            <div className="p-5 rounded-2xl bg-emerald-500/[0.05] border border-emerald-500/20">
-              <span className="text-xs uppercase font-bold text-emerald-400">Collected Amount</span>
-              <div className="text-3xl font-black text-emerald-300 mt-1">₹{stats?.revenue.receivedInr?.toLocaleString() || 0}</div>
-            </div>
-            <div className="p-5 rounded-2xl bg-rose-500/[0.05] border border-rose-500/20">
-              <span className="text-xs uppercase font-bold text-rose-400">Pending / Outstanding</span>
-              <div className="text-3xl font-black text-rose-300 mt-1">₹{stats?.revenue.outstandingInr?.toLocaleString() || 0}</div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 space-y-4">
-            <h3 className="text-base font-bold text-white">Manual Payment Records</h3>
-            <p className="text-xs text-gray-400">
-              Advertising payments are arranged directly with brands via bank transfer or direct invoice. Record receipts manually here.
-            </p>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase font-black">
-                  <tr>
-                    <th className="p-3">Brand</th>
-                    <th className="p-3">Campaign</th>
-                    <th className="p-3">Total (₹)</th>
-                    <th className="p-3">Received (₹)</th>
-                    <th className="p-3">Outstanding (₹)</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Reference / Notes</th>
+                          <Edit size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCampaign(c.id, c.title)}
+                          title="Delete"
+                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {campaigns.map((c) => (
-                    <tr key={c.id}>
-                      <td className="p-3 font-bold text-white">{c.brandName}</td>
-                      <td className="p-3 text-gray-300">{c.title}</td>
-                      <td className="p-3 font-semibold text-white">₹{c.revenue?.amountInr?.toLocaleString() || 0}</td>
-                      <td className="p-3 text-emerald-400">₹{c.revenue?.amountReceivedInr?.toLocaleString() || 0}</td>
-                      <td className="p-3 text-rose-400">₹{c.revenue?.outstandingInr?.toLocaleString() || 0}</td>
-                      <td className="p-3">
-                        <span className="uppercase text-[9px] font-black px-2 py-0.5 rounded bg-white/5 border border-white/10 text-gray-300">
-                          {c.revenue?.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="p-3 text-gray-400 text-[11px]">
-                        {c.revenue?.paymentReference && <div>Ref: {c.revenue.paymentReference}</div>}
-                        {c.revenue?.internalNotes && <div className="italic">{c.revenue.internalNotes}</div>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* ── TAB 4: Cloudflare R2 Setup Guide ───────────────────────────────────────── */}
-      {activeTab === "r2setup" && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center border border-orange-500/30">
-              <Cloud size={20} />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">Cloudflare R2 Account & Bucket Setup Instructions</h2>
-              <p className="text-xs text-gray-400">
-                Follow these exact steps to activate zero-egress media storage for image & video advertisements.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4 text-xs text-gray-300 leading-relaxed">
-            <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-2">
-              <span className="font-bold text-white text-sm block">Step 1: Create Cloudflare R2 Bucket</span>
-              <ol className="list-decimal list-inside space-y-1 text-gray-400">
-                <li>Log in to your Cloudflare Dashboard (<a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" className="text-purple-400 underline">dash.cloudflare.com</a>).</li>
-                <li>In the sidebar, navigate to <strong>R2 Object Storage</strong>.</li>
-                <li>Click <strong>Create Bucket</strong>. Name your bucket (e.g., <code className="text-purple-300">paperino-ads</code>).</li>
-                <li>Leave default region as <strong>Automatic</strong> and click <strong>Create Bucket</strong>.</li>
-              </ol>
-            </div>
-
-            <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-2">
-              <span className="font-bold text-white text-sm block">Step 2: Generate API Tokens (Access Keys)</span>
-              <ol className="list-decimal list-inside space-y-1 text-gray-400">
-                <li>In the R2 overview page, click <strong>Manage R2 API Tokens</strong> on the right-hand panel.</li>
-                <li>Click <strong>Create API Token</strong>.</li>
-                <li>Permissions: Select <strong>Object Read & Write</strong>. Specify your bucket <code className="text-purple-300">paperino-ads</code>.</li>
-                <li>Click <strong>Create API Token</strong>. Securely copy the <strong>Access Key ID</strong> and <strong>Secret Access Key</strong>.</li>
-              </ol>
-            </div>
-
-            <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-2">
-              <span className="font-bold text-white text-sm block">Step 3: Enable Public Media Delivery</span>
-              <ol className="list-decimal list-inside space-y-1 text-gray-400">
-                <li>Inside your bucket settings, under <strong>Public Access</strong>, click <strong>Connect Domain</strong> (recommended: e.g., <code className="text-purple-300">cdn.paperino.site</code>) or enable <strong>R2.dev subdomain</strong>.</li>
-                <li>Under <strong>CORS Policy</strong>, add:</li>
-              </ol>
-              <pre className="p-3 bg-black/80 rounded-lg text-[11px] font-mono text-emerald-400 overflow-x-auto">
-{`[
-  {
-    "AllowedOrigins": ["https://www.paperino.site", "http://localhost:3000"],
-    "AllowedMethods": ["GET", "PUT", "HEAD"],
-    "AllowedHeaders": ["*"],
-    "MaxAgeSeconds": 3600
-  }
-]`}
-              </pre>
-            </div>
-
-            <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-2">
-              <span className="font-bold text-white text-sm block">Step 4: Add Environment Variables to .env.local</span>
-              <p className="text-gray-400">Add the following keys to your server environment (Vercel & local <code className="text-purple-300">.env.local</code>):</p>
-              <pre className="p-3 bg-black/80 rounded-lg text-[11px] font-mono text-purple-300 overflow-x-auto">
-{`R2_ACCOUNT_ID=your_cloudflare_account_id
-R2_ACCESS_KEY_ID=your_r2_access_key_id
-R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
-R2_BUCKET_NAME=paperino-ads
-R2_PUBLIC_URL=https://cdn.paperino.site`}
-              </pre>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── CREATE / EDIT CAMPAIGN MODAL DRAWER ────────────────────────────────────── */}
+      {/* ── CREATE / EDIT MODAL ── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setIsModalOpen(false)}></div>
 
-          <div className="relative w-full max-w-3xl max-h-[90vh] bg-[#0c0817] border border-white/10 rounded-3xl shadow-2xl overflow-y-auto p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
+          <div className="relative w-full max-w-2xl max-h-[90vh] bg-[#0c0817] border border-white/10 rounded-3xl shadow-2xl overflow-y-auto p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-5">
               <div>
-                <h2 className="text-xl font-black text-white">
-                  {editingCampaign ? "Edit Advertisement Campaign" : "New Advertisement Campaign"}
+                <h2 className="text-lg font-black text-white">
+                  {editingCampaign ? "Edit Ad" : "New Advertisement"}
                 </h2>
-                <p className="text-xs text-gray-400 mt-0.5">Configure creative assets, placement schedule, and payment details.</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Fill in details and upload your creative media.</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10">
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveCampaign} className="space-y-6 text-xs">
-              {/* Row 1: Brand & Title */}
+            <form onSubmit={handleSaveCampaign} className="space-y-5 text-xs">
+              {/* Brand & Title */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor={brandInputId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Brand / Company Name *
+                    Brand / Company *
                   </label>
                   <input
                     id={brandInputId}
@@ -1070,47 +779,17 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                     type="text"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g. Winter Internship Drive 2026"
+                    placeholder="e.g. Winter Internship Drive"
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500"
                   />
                 </div>
               </div>
 
-              {/* Row 1b: Sponsor Contact Info (Private/Internal) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor={emailInputId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Sponsor Contact Email (Internal)
-                  </label>
-                  <input
-                    id={emailInputId}
-                    type="email"
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
-                    placeholder="sponsor@brand.com"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor={phoneInputId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Sponsor Contact Phone (Internal)
-                  </label>
-                  <input
-                    id={phoneInputId}
-                    type="tel"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500"
-                  />
-                </div>
-              </div>
-
-              {/* Row 2: Placement & Media Type */}
+              {/* Placement & Media Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor={placementSelectId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Placement Target *
+                    Placement *
                   </label>
                   <select
                     id={placementSelectId}
@@ -1120,7 +799,7 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                   >
                     {Object.values(AD_PLACEMENTS).map((p) => (
                       <option key={p.id} value={p.id} className="bg-gray-900 text-white">
-                        {p.name} ({p.recommendedRatio})
+                        {p.name}
                       </option>
                     ))}
                   </select>
@@ -1136,106 +815,156 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500 cursor-pointer"
                   >
                     <option value="image" className="bg-gray-900 text-white">Image (WebP / PNG / JPEG)</option>
-                    <option value="video" className="bg-gray-900 text-white">Video (MP4 H.264 &lt;= 30s)</option>
+                    <option value="video" className="bg-gray-900 text-white">Video (MP4 ≤ 30s)</option>
                   </select>
                 </div>
               </div>
 
-              {/* Row 3: Direct Media Uploader & URLs */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
-                <span className="font-bold text-white text-xs block">Creative Media Assets</span>
+              {/* ── Creative Upload — Drag & Drop Zone ── */}
+              <div className="space-y-3">
+                <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Upload Creative *</span>
+                
+                {/* Desktop Creative — Drag & Drop */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDraggingDesktop(true); }}
+                  onDragLeave={() => setDraggingDesktop(false)}
+                  onDrop={(e) => handleDrop(e, "desktop")}
+                  onClick={() => desktopInputRef.current?.click()}
+                  className={`relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                    draggingDesktop
+                      ? "border-purple-400 bg-purple-500/10"
+                      : formDesktopUrl
+                      ? "border-emerald-500/40 bg-emerald-500/5"
+                      : "border-white/15 hover:border-purple-500/40 hover:bg-white/[0.02]"
+                  }`}
+                >
+                  <input
+                    ref={desktopInputRef}
+                    type="file"
+                    accept={formMediaType === "video" ? "video/mp4" : "image/webp,image/png,image/jpeg"}
+                    className="hidden"
+                    onChange={(e) => handleInputChange(e, "desktop")}
+                    disabled={uploadingDesktop}
+                  />
 
-                {/* Desktop Upload */}
-                <div>
-                  <label className="block text-gray-400 font-bold mb-1">Desktop Creative URL *</label>
-                  <div className="flex gap-2">
-                    <input
-                      required
-                      type="url"
-                      value={formDesktopUrl}
-                      onChange={(e) => setFormDesktopUrl(e.target.value)}
-                      placeholder="https://cdn.paperino.site/ads/..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none font-mono text-[11px]"
-                    />
-                    <label className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold cursor-pointer flex items-center gap-1.5 shrink-0">
-                      <Upload size={14} />
-                      <span>{uploadingMedia ? "Uploading..." : "Upload File"}</span>
-                      <input
-                        type="file"
-                        accept={formMediaType === "video" ? "video/mp4" : "image/webp,image/png,image/jpeg"}
-                        className="hidden"
-                        onChange={(e) => handleMediaUpload(e, "desktop")}
-                        disabled={uploadingMedia}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {/* Optional Mobile Upload */}
-                <div>
-                  <label className="block text-gray-400 font-bold mb-1">Optional Mobile Creative URL</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={formMobileUrl}
-                      onChange={(e) => setFormMobileUrl(e.target.value)}
-                      placeholder="Optional mobile variant URL"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none font-mono text-[11px]"
-                    />
-                    <label className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 font-bold cursor-pointer flex items-center gap-1.5 shrink-0">
-                      <Upload size={14} />
-                      <span>Upload</span>
-                      <input
-                        type="file"
-                        accept={formMediaType === "video" ? "video/mp4" : "image/webp,image/png,image/jpeg"}
-                        className="hidden"
-                        onChange={(e) => handleMediaUpload(e, "mobile")}
-                        disabled={uploadingMedia}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {/* Video Poster URL (Mandatory if video) */}
-                {formMediaType === "video" && (
-                  <div>
-                    <label className="block text-gray-400 font-bold mb-1">Video Poster Image URL (Mandatory) *</label>
-                    <div className="flex gap-2">
-                      <input
-                        required={formMediaType === "video"}
-                        type="url"
-                        value={formPosterUrl}
-                        onChange={(e) => setFormPosterUrl(e.target.value)}
-                        placeholder="https://cdn.paperino.site/ads/image/poster.webp"
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none font-mono text-[11px]"
-                      />
-                      <label className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 font-bold cursor-pointer flex items-center gap-1.5 shrink-0">
-                        <Upload size={14} />
-                        <span>Upload Poster</span>
-                        <input
-                          type="file"
-                          accept="image/webp,image/png,image/jpeg"
-                          className="hidden"
-                          onChange={(e) => handleMediaUpload(e, "poster")}
-                          disabled={uploadingMedia}
-                        />
-                      </label>
+                  {uploadingDesktop ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-purple-300 text-xs">Uploading...</span>
                     </div>
+                  ) : formDesktopUrl ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <CheckCircle2 size={24} className="text-emerald-400" />
+                      <span className="text-emerald-300 font-semibold text-xs">{desktopFileName || "Creative uploaded"}</span>
+                      <span className="text-gray-500 text-[10px]">Click or drag to replace</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <FileUp size={28} className="text-gray-500" />
+                      <span className="text-gray-300 font-semibold">Click or drag & drop file</span>
+                      <span className="text-gray-500 text-[10px]">
+                        {formMediaType === "video" ? "MP4 (Max 3MB)" : "WebP, PNG, JPEG (Max 2MB)"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Optional Mobile Creative */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDraggingMobile(true); }}
+                  onDragLeave={() => setDraggingMobile(false)}
+                  onDrop={(e) => handleDrop(e, "mobile")}
+                  onClick={() => mobileInputRef.current?.click()}
+                  className={`relative border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                    draggingMobile
+                      ? "border-purple-400 bg-purple-500/10"
+                      : formMobileUrl
+                      ? "border-emerald-500/30 bg-emerald-500/5"
+                      : "border-white/10 hover:border-white/20"
+                  }`}
+                >
+                  <input
+                    ref={mobileInputRef}
+                    type="file"
+                    accept={formMediaType === "video" ? "video/mp4" : "image/webp,image/png,image/jpeg"}
+                    className="hidden"
+                    onChange={(e) => handleInputChange(e, "mobile")}
+                    disabled={uploadingMobile}
+                  />
+
+                  {uploadingMobile ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-purple-300 text-[11px]">Uploading mobile variant...</span>
+                    </div>
+                  ) : formMobileUrl ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <CheckCircle2 size={14} className="text-emerald-400" />
+                      <span className="text-emerald-300 text-[11px]">{mobileFileName || "Mobile variant uploaded"}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2 text-gray-500">
+                      <Upload size={14} />
+                      <span className="text-[11px]">Optional: Upload mobile variant</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Video Poster Upload (only for video) */}
+                {formMediaType === "video" && (
+                  <div
+                    onClick={() => posterInputRef.current?.click()}
+                    className={`border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                      formPosterUrl
+                        ? "border-emerald-500/30 bg-emerald-500/5"
+                        : "border-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    <input
+                      ref={posterInputRef}
+                      type="file"
+                      accept="image/webp,image/png,image/jpeg"
+                      className="hidden"
+                      onChange={(e) => handleInputChange(e, "poster")}
+                      disabled={uploadingPoster}
+                    />
+                    {uploadingPoster ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-purple-300 text-[11px]">Uploading poster...</span>
+                      </div>
+                    ) : formPosterUrl ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle2 size={14} className="text-emerald-400" />
+                        <span className="text-emerald-300 text-[11px]">Video poster uploaded</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2 text-gray-500">
+                        <ImageIcon size={14} />
+                        <span className="text-[11px]">Upload video poster image *</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {uploadFeedback && (
-                  <p className="text-[11px] text-purple-300 bg-purple-500/10 p-2.5 rounded-lg border border-purple-500/20">
+                  <p className={`text-[11px] p-2 rounded-lg border ${
+                    uploadFeedback.startsWith("✓")
+                      ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/20"
+                      : uploadFeedback.startsWith("⚠")
+                      ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
+                      : "text-red-300 bg-red-500/10 border-red-500/20"
+                  }`}>
                     {uploadFeedback}
                   </p>
                 )}
               </div>
 
-              {/* Row 4: Destination URL & Accessibility */}
+              {/* Destination URL & Alt Text */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor={destUrlInputId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Destination HTTPS URL *
+                    Destination URL *
                   </label>
                   <input
                     id={destUrlInputId}
@@ -1249,7 +978,7 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                 </div>
                 <div>
                   <label htmlFor={altDescInputId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Accessible Description (Alt Text)
+                    Alt Text (Optional)
                   </label>
                   <input
                     id={altDescInputId}
@@ -1262,11 +991,11 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                 </div>
               </div>
 
-              {/* Row 5: Schedule Dates, Priority & Targeting */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              {/* Schedule & Priority */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label htmlFor={startAtInputId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Start Date & Time (UTC) *
+                    Start Date *
                   </label>
                   <input
                     id={startAtInputId}
@@ -1279,7 +1008,7 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                 </div>
                 <div>
                   <label htmlFor={expireAtInputId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Expiry Date & Time (UTC) *
+                    Expiry Date *
                   </label>
                   <input
                     id={expireAtInputId}
@@ -1304,114 +1033,9 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-purple-500"
                   />
                 </div>
-                <div>
-                  <label htmlFor={tierSelectId} className="block text-gray-400 font-bold mb-1.5 uppercase tracking-wider text-[10px]">
-                    Audience Tier
-                  </label>
-                  <select
-                    id={tierSelectId}
-                    value={formTier}
-                    onChange={(e) => setFormTier(e.target.value as AdUserTierTarget)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none cursor-pointer"
-                  >
-                    <option value="all" className="bg-gray-900 text-white">All Users</option>
-                    <option value="free" className="bg-gray-900 text-white">Free Users Only</option>
-                    <option value="premium" className="bg-gray-900 text-white">Premium Users Only</option>
-                  </select>
-                </div>
               </div>
 
-              {/* Row 6: Revenue & Status */}
-              <div className="space-y-4 p-4 rounded-2xl bg-white/[0.02] border border-white/10">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div>
-                    <label htmlFor={amountInputId} className="block text-gray-400 font-bold mb-1 uppercase tracking-wider text-[10px]">
-                      Amount (₹)
-                    </label>
-                    <input
-                      id={amountInputId}
-                      type="number"
-                      value={formAmountInr}
-                      onChange={(e) => setFormAmountInr(Number(e.target.value))}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor={receivedInputId} className="block text-gray-400 font-bold mb-1 uppercase tracking-wider text-[10px]">
-                      Received (₹)
-                    </label>
-                    <input
-                      id={receivedInputId}
-                      type="number"
-                      value={formReceivedInr}
-                      onChange={(e) => setFormReceivedInr(Number(e.target.value))}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor={paymentStatusSelectId} className="block text-gray-400 font-bold mb-1 uppercase tracking-wider text-[10px]">
-                      Payment Status
-                    </label>
-                    <select
-                      id={paymentStatusSelectId}
-                      value={formPaymentStatus}
-                      onChange={(e) => setFormPaymentStatus(e.target.value as AdPaymentStatus)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none cursor-pointer"
-                    >
-                      <option value="pending" className="bg-gray-900 text-white">Pending</option>
-                      <option value="partially_paid" className="bg-gray-900 text-white">Partially Paid</option>
-                      <option value="paid" className="bg-gray-900 text-white">Paid</option>
-                      <option value="refunded" className="bg-gray-900 text-white">Refunded</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor={statusSelectId} className="block text-gray-400 font-bold mb-1 uppercase tracking-wider text-[10px]">
-                      Campaign Status *
-                    </label>
-                    <select
-                      id={statusSelectId}
-                      value={formStatus}
-                      onChange={(e) => setFormStatus(e.target.value as AdCampaignStatus)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none cursor-pointer font-bold"
-                    >
-                      <option value="draft" className="bg-gray-900 text-white">Draft (Unpublished)</option>
-                      <option value="published" className="bg-gray-900 text-emerald-400 font-bold">Published (Active)</option>
-                      <option value="disabled" className="bg-gray-900 text-rose-400">Disabled (Paused)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                  <div>
-                    <label htmlFor={paymentRefInputId} className="block text-gray-400 font-bold mb-1 uppercase tracking-wider text-[10px]">
-                      Payment Reference / UTR (Internal)
-                    </label>
-                    <input
-                      id={paymentRefInputId}
-                      type="text"
-                      value={formPaymentRef}
-                      onChange={(e) => setFormPaymentRef(e.target.value)}
-                      placeholder="e.g. UTR / NEFT #9876543210"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor={notesTextareaId} className="block text-gray-400 font-bold mb-1 uppercase tracking-wider text-[10px]">
-                      Internal Notes (Private)
-                    </label>
-                    <input
-                      id={notesTextareaId}
-                      type="text"
-                      value={formNotes}
-                      onChange={(e) => setFormNotes(e.target.value)}
-                      placeholder="e.g. Approved by Lead Admin, Invoice sent on 26 Nov"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Buttons */}
+              {/* Submit */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                 <button
                   type="button"
@@ -1422,7 +1046,7 @@ R2_PUBLIC_URL=https://cdn.paperino.site`}
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || !formDesktopUrl}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold shadow-lg transition-all cursor-pointer disabled:opacity-50"
                 >
                   {saving ? "Saving..." : editingCampaign ? "Update Campaign" : "Publish Campaign"}
