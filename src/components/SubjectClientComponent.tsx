@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -28,7 +28,7 @@ import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnosti
 
 import { getSubjectSlug } from "@/lib/seoUtils";
 import { SITE_CONFIG } from "@/lib/siteConfig";
-import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
+import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG } from "@/lib/subjects";
 import PartnerSlot from "@/components/ads/PartnerSlot";
 
 const contributorCache: Record<string, string> = {};
@@ -101,6 +101,9 @@ export default function SubjectClientComponent({
   }, [deptId, semId, lazyLoadSubjects]);
   
   const [materials, setMaterials] = useState<any[]>(initialMaterials || []);
+  const materialsRef = useRef<any[]>(materials);
+  materialsRef.current = materials;
+  const fetchedSubjectKeysRef = useRef<Set<string>>(new Set());
   const [subjectSections, setSubjectSections] = useState<string[] | null>(() => {
     if (Array.isArray(initialMaterials)) {
       return Array.from(
@@ -199,7 +202,10 @@ export default function SubjectClientComponent({
   const semesterSubjects = dynamicSubjects[deptId]?.[semId] || [];
   const cleanSemKey = String(semId).replace(/^semester-/, "");
   const staticSemesterSubs = STATIC_SUBJECTS[cleanSemKey] || [];
-  const allKnownSubjects = [...semesterSubjects, ...staticSemesterSubs];
+  const catalogSubs = (COMPREHENSIVE_CATALOG || []).filter(
+    s => (s.departmentId === deptId || s.departmentId === (deptId || "").toLowerCase()) && String(s.semesterId) === cleanSemKey
+  );
+  const allKnownSubjects = [...semesterSubjects, ...catalogSubs, ...staticSemesterSubs];
 
   const foundSubject = allKnownSubjects.find(
     s => s.id.toLowerCase() === subjectId.toLowerCase() || 
@@ -236,7 +242,7 @@ export default function SubjectClientComponent({
       }
     }
 
-    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials) && cachedData.materials.length > 0;
+    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials);
     if (!forceRefetch && hasCachedContent && (now - cachedData.timestamp < CACHE_TTL_MS)) {
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
@@ -371,7 +377,7 @@ export default function SubjectClientComponent({
     } catch (error: any) {
       console.error("Error fetching subject data:", error);
       // If we already have materials in state or initialMaterials, preserve them instead of showing a blank error
-      if ((materials && materials.length > 0) || (initialMaterials && initialMaterials.length > 0)) {
+      if ((materialsRef.current && materialsRef.current.length > 0) || (initialMaterials && initialMaterials.length > 0)) {
         setFetchError(null);
       } else {
         const isQuota = error?.message?.includes("Quota exceeded") || error?.code === "resource-exhausted" || error?.message?.includes("RESOURCE_EXHAUSTED");
@@ -384,7 +390,7 @@ export default function SubjectClientComponent({
     } finally {
       setLoading(false);
     }
-  }, [deptId, semId, realSubjectId, subjectId, initialMaterials, materials]);
+  }, [deptId, semId, realSubjectId, subjectId, initialMaterials]);
 
   // Synchronize cache when initialMaterials is provided from SSR
   useEffect(() => {
@@ -412,12 +418,18 @@ export default function SubjectClientComponent({
     }
   }, [deptId, semId, realSubjectId, initialMaterials]);
 
+  const currentKey = `${deptId}_${semId}_${realSubjectId}`;
   useEffect(() => {
+    if (fetchedSubjectKeysRef.current.has(currentKey)) {
+      return;
+    }
+    fetchedSubjectKeysRef.current.add(currentKey);
+
     // If initialMaterials is empty [] (e.g. cold start SSR timeout) or missing, fetch dynamically
     if (!Array.isArray(initialMaterials) || initialMaterials.length === 0) {
       void fetchMaterials(false);
     }
-  }, [deptId, semId, realSubjectId, initialMaterials, fetchMaterials]);
+  }, [currentKey, initialMaterials, fetchMaterials]);
 
   // Analytics tracking for Most Visited Subject (deduplicated per session)
   useEffect(() => {

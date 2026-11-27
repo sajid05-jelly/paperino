@@ -169,9 +169,10 @@ export async function GET(req: NextRequest) {
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to fetch materials";
     console.error("[Materials API Error]:", error);
+    const isQuota = errMessage.includes("Quota exceeded") || errMessage.includes("RESOURCE_EXHAUSTED");
     return NextResponse.json(
-      { success: false, error: errMessage, materials: [] },
-      { status: 500 }
+      { success: true, materials: [], count: 0, isQuotaNotice: isQuota, warning: errMessage },
+      { status: 200 }
     );
   }
 }
