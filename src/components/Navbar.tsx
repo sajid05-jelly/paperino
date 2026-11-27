@@ -465,15 +465,17 @@ export default function Navbar() {
                   <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors hidden sm:block max-w-[80px] xl:max-w-[100px] truncate">
                     {user.displayName?.split(' ')[0] || 'Student'}
                   </span>
-                  {plan === "premium" && (
+                  {isAdmin ? (
+                    <span className="hidden sm:inline-block text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-[0_0_10px_rgba(244,63,94,0.6)]">
+                      ADMIN
+                    </span>
+                  ) : plan === "premium" ? (
                     <span className="hidden sm:inline-block text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_8px_#f59e0b]">PREM</span>
-                  )}
-                  {plan === "pro" && (
+                  ) : plan === "pro" ? (
                     <span className="hidden sm:inline-block text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.5)]">PRO</span>
-                  )}
-                  {plan === "plus" && (
+                  ) : plan === "plus" ? (
                     <span className="hidden sm:inline-block text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-[0_0_8px_rgba(168,85,247,0.5)]">PLUS</span>
-                  )}
+                  ) : null}
                 </Link>
                 <div className="hidden md:flex items-center flex-shrink-0">
                   <button 
@@ -848,16 +850,15 @@ export default function Navbar() {
                       <p className="text-xs font-bold text-white truncate">{user.displayName || "Student"}</p>
                       <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
                     </div>
-                    {plan === "premium" && (
+                    {isAdmin ? (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white shadow-[0_0_10px_rgba(244,63,94,0.6)]">ADMIN</span>
+                    ) : plan === "premium" ? (
                       <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_8px_#f59e0b]">PREM</span>
-                    )}
-                    {plan === "pro" && (
+                    ) : plan === "pro" ? (
                       <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.5)]">PRO</span>
-                    )}
-                    {plan === "plus" && (
+                    ) : plan === "plus" ? (
                       <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-[0_0_8px_rgba(168,85,247,0.5)]">PLUS</span>
-                    )}
-                    {plan === "free" && (
+                    ) : (
                       <span className="text-[9px] font-medium px-2 py-0.5 rounded bg-white/10 text-gray-400">FREE</span>
                     )}
                   </Link>

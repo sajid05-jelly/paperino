@@ -187,7 +187,7 @@ export function getEffectivePlan(userData?: any): {
   }
 
   // Admins receive full premium access
-  if (userData.role === "admin") {
+  if (userData.role === "admin" || userData.plan === "admin") {
     return { plan: "premium", isContributorPlus: false, isPaidPlan: false };
   }
 

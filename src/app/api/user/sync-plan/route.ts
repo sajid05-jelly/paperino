@@ -165,8 +165,24 @@ export async function POST(req: NextRequest) {
     // ──────────────────────────────────────────────────────────────────────────
     // 3. Contributor Free Plus Milestone (10+ Approved Materials = Free Plus)
     // ──────────────────────────────────────────────────────────────────────────
-    const isFreePlusEligible = (recoveredData.approvedUploads || 0) >= 10;
-    if (isFreePlusEligible) {
+    const allowedAdmins = [
+      "mohamedsajid.sa@gmail.com",
+      "sudharajsekar2005@gmail.com",
+      "admin.paperinoirfan27@gmail.com",
+      "admin.paperinosam14@gmail.com",
+      "gameplayitlifeitis@gmail.com",
+      "gameplayitlifeis@gmail.com",
+      "gameplayitlife@gmail.com",
+      "dejasvini28@gmail.com",
+      "kaushika13official@gmail.com"
+    ];
+    const isAdminUser = verifiedUser.role === "admin" || (cleanEmail && allowedAdmins.includes(cleanEmail));
+
+    const isFreePlusEligible = !isAdminUser && (recoveredData.approvedUploads || 0) >= 10;
+    if (isAdminUser) {
+      recoveredData.isContributorPlus = false;
+      recoveredData.plan = "admin";
+    } else if (isFreePlusEligible) {
       recoveredData.isContributorPlus = true;
       if (!recoveredData.plan || recoveredData.plan === "free") {
         recoveredData.plan = "plus";
@@ -213,7 +229,7 @@ export async function POST(req: NextRequest) {
     // ──────────────────────────────────────────────────────────────────────────
     // 5. Apply Restored Claims & Synchronize User Document
     // ──────────────────────────────────────────────────────────────────────────
-    const activePlan = recoveredData.plan || (isFreePlusEligible ? "plus" : "free");
+    const activePlan = isAdminUser ? "admin" : (recoveredData.plan || (isFreePlusEligible ? "plus" : "free"));
 
     if (adminAuth) {
       try {
@@ -221,6 +237,7 @@ export async function POST(req: NextRequest) {
         const currentClaims = userRecord.customClaims || {};
         await adminAuth.setCustomUserClaims(uid, {
           ...currentClaims,
+          ...(isAdminUser ? { role: "admin" } : {}),
           plan: activePlan,
           isContributorPlus: Boolean(recoveredData.isContributorPlus),
           uploads: recoveredData.approvedUploads || 0,
@@ -236,6 +253,7 @@ export async function POST(req: NextRequest) {
         const syncPayload: Record<string, any> = {
           email: cleanEmail,
           plan: activePlan,
+          ...(isAdminUser ? { role: "admin" } : {}),
           isContributorPlus: Boolean(recoveredData.isContributorPlus),
           uploads: recoveredData.uploads || 0,
           approvedUploads: recoveredData.approvedUploads || 0,

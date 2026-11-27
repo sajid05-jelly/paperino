@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const allowedAdmins = [
         "mohamedsajid.sa@gmail.com",
-        "mohamedsajid.sa@gamil.com",
+        "mohamedsajid.sa@gmail.com",
         "sudharajsekar2005@gmail.com",
         "admin.paperinoirfan27@gmail.com",
         "admin.paperinosam14@gmail.com",
