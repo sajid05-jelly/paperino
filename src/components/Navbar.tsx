@@ -42,15 +42,15 @@ export default function Navbar() {
   const [isLabsOpen, setIsLabsOpen] = useState(false);
   const [isLabsMobileOpen, setIsLabsMobileOpen] = useState(false);
   const [youtubeStudyEnabled, setYoutubeStudyEnabled] = useState(true);
-  const [tagline, setTagline] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("paperino_header_tagline") || "The Universe of Study Materials";
-    }
-    return "The Universe of Study Materials";
-  });
+  const [tagline, setTagline] = useState("The Universe of Study Materials");
 
   useEffect(() => {
     let isMounted = true;
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("paperino_header_tagline");
+      if (cached) setTagline(cached);
+    }
+
     const fetchTagline = async () => {
       try {
         const cached = typeof window !== "undefined" ? localStorage.getItem("paperino_header_tagline") : null;
@@ -205,7 +205,7 @@ export default function Navbar() {
             </div>
             <div className="hidden sm:flex flex-col select-none items-start">
               <span className="text-lg sm:text-xl font-bold tracking-tight text-white group-hover:text-glow transition-all duration-300 leading-none">Paperino</span>
-              <span className="text-[9px] text-gray-400 font-bold tracking-wider uppercase opacity-80 mt-0.5 max-w-[160px] truncate transition-opacity duration-500 hover:opacity-100" title={tagline}>{tagline}</span>
+              <span suppressHydrationWarning className="text-[9px] text-gray-400 font-bold tracking-wider uppercase opacity-80 mt-0.5 max-w-[160px] truncate transition-opacity duration-500 hover:opacity-100" title={tagline}>{tagline}</span>
             </div>
           </Link>
           

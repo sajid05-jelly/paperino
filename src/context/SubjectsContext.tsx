@@ -158,20 +158,20 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       }
     }
 
-    getDoc(doc(db, "platform_stats", "materialCounts"))
-      .then((snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          const counts = data.departments || {};
-          setDeptMaterialCounts(counts);
+    fetch("/api/stats/material-counts")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.departments) {
+          setDeptMaterialCounts(data.departments);
           if (typeof window !== "undefined") {
-            sessionStorage.setItem("paperino_dept_material_counts", JSON.stringify(counts));
+            sessionStorage.setItem("paperino_dept_material_counts", JSON.stringify(data.departments));
           }
         }
         countsLoadedRef.current = true;
       })
       .catch((err) => {
-        console.error("Failed to fetch material counts:", err);
+        console.warn("[SubjectsContext] Material counts fetch notice:", err?.message || err);
+        countsLoadedRef.current = true;
       });
 
     return dummyUnsub;

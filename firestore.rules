@@ -116,11 +116,8 @@ service cloud.firestore {
     }
 
     // ── Platform Stats ────────────────────────────────────────────────────────
-    match /platform_stats/materialCounts {
+    match /platform_stats/{document=**} {
       allow read: if true;
-    }
-     match /platform_stats/{document=**} {
-      allow read: if isSignedIn();
     }
 
     // ── AI Usage tracking (per-user, stored in users subcollection) ──────────

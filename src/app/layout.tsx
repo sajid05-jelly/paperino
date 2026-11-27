@@ -18,6 +18,7 @@ import ErrorSniffer from "@/components/ErrorSniffer";
 import MaintenanceGuard from "@/components/MaintenanceGuard";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 
 const FloatingFeedback = dynamic(() => import("@/components/FloatingFeedback"));
 const ThemeSelector = dynamic(() => import("@/components/ThemeSelector"));
@@ -115,23 +116,29 @@ export default function RootLayout({
         <meta name="theme-color" content="#05030a" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <script
+        <Script
+          id="google-adsense"
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7388792038614675"
           crossOrigin="anonymous"
+          strategy="lazyOnload"
         />
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function() {
-            try {
-              document.documentElement.classList.add('dark');
-              try { localStorage.removeItem('paperino_skin'); } catch (e) {}
-              var theme = localStorage.getItem('paperino-theme') || 'cosmic-violet';
-              if (theme && theme !== 'cosmic-violet') {
-                document.documentElement.setAttribute('data-theme', theme);
-              }
-            } catch (e) {}
-          })();
-        ` }} />
+        <Script
+          id="paperino-theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: `
+            (function() {
+              try {
+                document.documentElement.classList.add('dark');
+                try { localStorage.removeItem('paperino_skin'); } catch (e) {}
+                var theme = localStorage.getItem('paperino-theme') || 'cosmic-violet';
+                if (theme && theme !== 'cosmic-violet') {
+                  document.documentElement.setAttribute('data-theme', theme);
+                }
+              } catch (e) {}
+            })();
+          ` }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-gray-200 overflow-x-hidden w-full max-w-full" suppressHydrationWarning style={{ overflowX: 'clip' }}>
 
