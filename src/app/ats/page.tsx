@@ -53,22 +53,18 @@ export default function ATSAnalyzerPage() {
     let isMounted = true;
     const fetchConfig = async () => {
       try {
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Config fetch timeout")), 2000)
-        );
-        const configDoc = (await Promise.race([
-          getDoc(doc(db, "platform_config", "features")),
-          timeoutPromise
-        ])) as any;
-
-        if (isMounted && configDoc && configDoc.exists()) {
-          const data = configDoc.data();
-          if (data.atsEnabled !== undefined) setAtsEnabled(data.atsEnabled);
-          if (data.maintenanceTitle) setMaintenanceTitle(data.maintenanceTitle);
-          if (data.maintenanceMessage) setMaintenanceMessage(data.maintenanceMessage);
+        const res = await fetch("/api/config/features");
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json?.features) {
+            const data = json.features;
+            if (data.atsEnabled !== undefined) setAtsEnabled(data.atsEnabled);
+            if (data.maintenanceTitle) setMaintenanceTitle(data.maintenanceTitle);
+            if (data.maintenanceMessage) setMaintenanceMessage(data.maintenanceMessage);
+          }
         }
       } catch {
-        // Fallback to enabled silently if Firestore is slow or offline
+        // Fallback to enabled silently if API is slow or offline
       }
     };
     fetchConfig();

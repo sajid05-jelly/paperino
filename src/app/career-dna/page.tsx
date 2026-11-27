@@ -115,20 +115,24 @@ export default function CareerDnaPage() {
 
   // Check if Career DNA is enabled in feature flags
   useEffect(() => {
+    let isMounted = true;
     const checkFeatureFlag = async () => {
       try {
-        const configDoc = await getDoc(doc(db, "platform_config", "features"));
-        if (configDoc.exists()) {
-          const data = configDoc.data();
-          if (data.careerDnaEnabled !== undefined) {
-            setCareerDnaEnabled(data.careerDnaEnabled);
+        const res = await fetch("/api/config/features");
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json?.features?.careerDnaEnabled !== undefined) {
+            setCareerDnaEnabled(json.features.careerDnaEnabled);
           }
         }
-      } catch (err) {
-        console.error("Failed to fetch features flag:", err);
+      } catch (err: any) {
+        console.warn("[Career DNA] Feature flag notice:", err?.message || err);
       }
     };
     checkFeatureFlag();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // AI analysis fetcher
@@ -224,8 +228,8 @@ export default function CareerDnaPage() {
             triggerAnalysis(loadedFormData, false, true);
           }
         }
-      } catch (err) {
-        console.error("Error loading career dna:", err);
+      } catch (err: any) {
+        console.warn("[Career DNA] Error loading saved profile:", err?.message || err);
       } finally {
         setLoading(false);
       }
