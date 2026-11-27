@@ -60,7 +60,7 @@ const setCachedContributorLevel = (uid: string, level: string) => {
     } catch {}
   }
 };
-const subjectDataCache: Record<string, { materials: any[], sections?: string[], timestamp: number }> = {};
+const subjectDataCache: Record<string, { materials: any[], sections?: string[], timestamp: number, fetched?: boolean }> = {};
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10-minute cache TTL
 
 interface ServerOverview {
@@ -205,7 +205,8 @@ export default function SubjectClientComponent({
   const catalogSubs = (COMPREHENSIVE_CATALOG || []).filter(
     s => (s.departmentId === deptId || s.departmentId === (deptId || "").toLowerCase()) && String(s.semesterId) === cleanSemKey
   );
-  const allKnownSubjects = [...semesterSubjects, ...catalogSubs, ...staticSemesterSubs];
+  // Put static semester subjects first so canonical SRM IDs (e.g. 'acca', 'calc') are prioritized
+  const allKnownSubjects = [...staticSemesterSubs, ...semesterSubjects, ...catalogSubs];
 
   const foundSubject = allKnownSubjects.find(
     s => s.id.toLowerCase() === subjectId.toLowerCase() || 
@@ -217,7 +218,7 @@ export default function SubjectClientComponent({
   const subjectName = subject?.name || subjectId.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
 
   const fetchMaterials = useCallback(async (forceRefetch = false) => {
-    const cacheKey = `paperino_subject_v3_cache_${deptId}_${semId}_${realSubjectId}`;
+    const cacheKey = `paperino_subject_v5_cache_${deptId}_${semId}_${realSubjectId}`;
     
     if (forceRefetch) {
       delete subjectDataCache[cacheKey];
@@ -242,7 +243,7 @@ export default function SubjectClientComponent({
       }
     }
 
-    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials);
+    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials) && (cachedData.materials.length > 0 || cachedData.fetched === true);
     if (!forceRefetch && hasCachedContent && (now - cachedData.timestamp < CACHE_TTL_MS)) {
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
@@ -274,6 +275,18 @@ export default function SubjectClientComponent({
     setLoading(true);
     setFetchError(null);
 
+    // Resolve all possible candidate IDs/slugs for this subject
+    const allCandidateIds = new Set<string>([realSubjectId, subjectId].filter(Boolean));
+    allKnownSubjects.forEach(s => {
+      const sSlug = getSubjectSlug(s).toLowerCase();
+      if (allCandidateIds.has(s.id.toLowerCase()) || allCandidateIds.has(sSlug) || allCandidateIds.has(s.name.toLowerCase())) {
+        allCandidateIds.add(s.id);
+        allCandidateIds.add(s.id.toLowerCase());
+        allCandidateIds.add(sSlug);
+      }
+    });
+    const candidateList = Array.from(allCandidateIds);
+
     try {
       let matList: any[] | null = null;
 
@@ -285,6 +298,7 @@ export default function SubjectClientComponent({
           semId,
           subjectId: realSubjectId,
           slug: subjectId,
+          aliases: candidateList.join(","),
           ...(forceRefetch ? { refresh: "true" } : {})
         });
         const res = await fetch(`/api/materials?${queryParams.toString()}`);
@@ -305,12 +319,11 @@ export default function SubjectClientComponent({
         }
         logFirestoreRead(`materials (${cacheKey})`, "Fetching subject materials from Firestore SDK");
 
-        const candidateSubjectIds = Array.from(new Set([realSubjectId, subjectId].filter(Boolean)));
         const cleanSem = String(semId).replace(/^semester-/, "").trim();
         const numSem = parseInt(cleanSem, 10);
 
         const clientQueries: any[] = [];
-        candidateSubjectIds.forEach(sId => {
+        candidateList.forEach(sId => {
           clientQueries.push(
             getDocs(query(
               collection(db, "materials"),
@@ -356,7 +369,8 @@ export default function SubjectClientComponent({
       const finalCacheData = {
         materials: matList || [],
         sections: categoriesWithApprovedMaterials,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        fetched: true
       };
 
       // Save to memory cache
@@ -392,10 +406,10 @@ export default function SubjectClientComponent({
     }
   }, [deptId, semId, realSubjectId, subjectId, initialMaterials]);
 
-  // Synchronize cache when initialMaterials is provided from SSR
+  // Synchronize cache ONLY when initialMaterials actually has content from SSR
   useEffect(() => {
-    if (Array.isArray(initialMaterials)) {
-      const cacheKey = `paperino_subject_v3_cache_${deptId}_${semId}_${realSubjectId}`;
+    if (Array.isArray(initialMaterials) && initialMaterials.length > 0) {
+      const cacheKey = `paperino_subject_v5_cache_${deptId}_${semId}_${realSubjectId}`;
       const approvedCats = Array.from(
         new Set(
           initialMaterials
@@ -407,7 +421,8 @@ export default function SubjectClientComponent({
       const cachePayload = {
         materials: initialMaterials,
         sections: approvedCats,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        fetched: true
       };
       subjectDataCache[cacheKey] = cachePayload;
       if (typeof window !== "undefined") {
@@ -420,15 +435,18 @@ export default function SubjectClientComponent({
 
   const currentKey = `${deptId}_${semId}_${realSubjectId}`;
   useEffect(() => {
+    // If SSR already provided non-empty materials, no dynamic fetch needed
+    if (Array.isArray(initialMaterials) && initialMaterials.length > 0) {
+      setLoading(false);
+      return;
+    }
+
     if (fetchedSubjectKeysRef.current.has(currentKey)) {
       return;
     }
     fetchedSubjectKeysRef.current.add(currentKey);
 
-    // If initialMaterials is empty [] (e.g. cold start SSR timeout) or missing, fetch dynamically
-    if (!Array.isArray(initialMaterials) || initialMaterials.length === 0) {
-      void fetchMaterials(false);
-    }
+    void fetchMaterials(false);
   }, [currentKey, initialMaterials, fetchMaterials]);
 
   // Analytics tracking for Most Visited Subject (deduplicated per session)

@@ -4,6 +4,7 @@ import { getSubjectCanonicalUrl, generateSubjectJsonLd, getSubjectSeoPath } from
 import { SITE_CONFIG } from "@/lib/siteConfig";
 import SubjectClientComponent from "@/components/SubjectClientComponent";
 import { adminDb } from "@/lib/firebase-admin";
+import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
 
 export const dynamicParams = true;
 
@@ -80,6 +81,16 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
     const numericSemId = parseInt(cleanSemId, 10);
     const candidateIds = new Set<string>();
     if (subjectId) candidateIds.add(subjectId);
+
+    const semSubs = STATIC_SUBJECTS[cleanSemId] || [];
+    for (const sub of semSubs) {
+      const sSlug = sub.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+      if (candidateIds.has(sub.id.toLowerCase()) || candidateIds.has(sSlug)) {
+        candidateIds.add(sub.id);
+        candidateIds.add(sub.id.toLowerCase());
+        candidateIds.add(sSlug);
+      }
+    }
 
     const queries: Promise<any>[] = [];
     candidateIds.forEach((sId) => {

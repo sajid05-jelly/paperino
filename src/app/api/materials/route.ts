@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { verifyServerAuth } from "@/lib/auth-verify";
-import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
+import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG } from "@/lib/subjects";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     const semId = rawSemId.replace(/^semester-/, "").trim();
     const subjectId = (searchParams.get("subjectId") || "").toLowerCase().trim();
     const slug = (searchParams.get("slug") || "").toLowerCase().trim();
+    const aliases = (searchParams.get("aliases") || "").split(",").map(s => s.toLowerCase().trim()).filter(Boolean);
     const forceRefresh = searchParams.get("refresh") === "true";
 
     if (!semId && !subjectId && !slug) {
@@ -61,9 +62,14 @@ export async function GET(req: NextRequest) {
     const candidateSubjectIds = new Set<string>();
     if (subjectId) candidateSubjectIds.add(subjectId);
     if (slug) candidateSubjectIds.add(slug);
+    aliases.forEach(a => candidateSubjectIds.add(a));
 
     const semSubs = STATIC_SUBJECTS[semId] || [];
-    for (const sub of semSubs) {
+    const catalogSubs = (COMPREHENSIVE_CATALOG || []).filter(
+      (s) => String(s.semesterId) === semId
+    );
+    const allSubs = [...semSubs, ...catalogSubs];
+    for (const sub of allSubs) {
       const sSlug = sub.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
       if (candidateSubjectIds.has(sub.id.toLowerCase()) || candidateSubjectIds.has(sSlug)) {
         candidateSubjectIds.add(sub.id.toLowerCase());
