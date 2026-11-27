@@ -146,17 +146,14 @@ export default function CoursesPage() {
           </button>
         </div>
 
-        {/* Counter Info & Help Text */}
-        <div className="flex items-center justify-between text-xs text-gray-400 mt-3 px-2">
-          <span>
-            Showing <strong className="text-purple-300">{filteredSubjects.length}</strong> of {allSubjectsList.length} subjects
-          </span>
-          {searchQuery && (
+        {/* Search status (shown only when searching) */}
+        {searchQuery && (
+          <div className="flex items-center justify-between text-xs text-gray-400 mt-3 px-2">
             <span className="text-purple-400/80">
-              Matching &ldquo;{searchQuery}&rdquo;
+              Matching &ldquo;{searchQuery}&rdquo; ({filteredSubjects.length} found)
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Content Section: Loading, Empty, or Subjects Grid */}
