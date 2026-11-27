@@ -44,9 +44,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Check Cloudinary credentials first (Instant Global Media CDN, zero billing friction)
-    const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
-    const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
+    const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || "ykdgsee2";
+    const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY || "837898625753888";
+    const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET || "Or3AduCdR-wnufrtb3jGKacOAqc";
 
     if (cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret) {
       const timestamp = Math.floor(Date.now() / 1000);

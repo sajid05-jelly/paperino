@@ -345,7 +345,7 @@ export default function AdminAdsPage() {
     }
   };
 
-  // ── Unified File Upload Handler (supports both click and drag-drop) ──
+  // ── Unified File Upload Handler (server-side direct upload, zero CORS / ad-blocker issues) ──
   const handleFileUpload = async (file: File, targetField: "desktop" | "mobile" | "poster") => {
     if (!file) return;
 
@@ -355,98 +355,104 @@ export default function AdminAdsPage() {
 
     try {
       const token = await getAuthToken();
-      if (!token) throw new Error("Not authenticated");
+      if (!token) throw new Error("Not authenticated. Please sign in as admin.");
 
-      // Step 1: Get upload ticket from our API
-      const ticketRes = await fetch("/api/admin/ads/upload-ticket", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-          placementId: formPlacement,
-          mediaType: formMediaType,
-        }),
-      });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("targetField", targetField);
+      formData.append("placementId", formPlacement);
+      formData.append("mediaType", formMediaType);
 
-      const ticketData = await ticketRes.json();
-      if (!ticketRes.ok) throw new Error(ticketData.error || "Upload ticket failed");
+      // Primary: Post directly to our resilient server-side media upload endpoint
+      let uploadedUrl: string | null = null;
+      let autoPosterUrl: string | undefined = undefined;
 
-      if (!ticketData.configured) {
-        setUploadFeedback("⚠️ Cloudinary credentials not configured in environment variables. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET to your Vercel env vars.");
-        return;
-      }
-
-      // Step 2: Upload to Cloudinary
-      if (ticketData.storageProvider === "cloudinary") {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("api_key", ticketData.apiKey);
-        formData.append("timestamp", String(ticketData.timestamp));
-        formData.append("signature", ticketData.signature);
-        formData.append("folder", ticketData.folder);
-        formData.append("public_id", ticketData.publicId);
-
-        const cloudRes = await fetch(ticketData.uploadEndpoint, {
+      try {
+        const uploadRes = await fetch("/api/admin/media-upload", {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         });
 
-        if (!cloudRes.ok) {
-          const errData = await cloudRes.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `Upload failed (${cloudRes.status})`);
+        const uploadData = await uploadRes.json();
+        if (uploadRes.ok && uploadData.success && uploadData.url) {
+          uploadedUrl = uploadData.url;
+          autoPosterUrl = uploadData.posterUrl;
+        } else {
+          throw new Error(uploadData.error || `Server upload returned status ${uploadRes.status}`);
         }
-
-        const cloudJson = await cloudRes.json();
-        const uploadedUrl = cloudJson.secure_url;
-
-        if (targetField === "desktop") {
-          setFormDesktopUrl(uploadedUrl);
-          setDesktopFileName(file.name);
-        }
-        if (targetField === "mobile") {
-          setFormMobileUrl(uploadedUrl);
-          setMobileFileName(file.name);
-        }
-        if (targetField === "poster") setFormPosterUrl(uploadedUrl);
-
-        // Auto-generate poster for video uploads
-        if (formMediaType === "video" && targetField === "desktop" && !formPosterUrl) {
-          const autoPoster = uploadedUrl.replace(/\.[^/.]+$/, ".jpg");
-          setFormPosterUrl(autoPoster);
-        }
-
-        setUploadFeedback(`✓ ${file.name} uploaded successfully`);
-        return;
-      }
-
-      // R2 fallback
-      if (ticketData.storageProvider === "r2") {
-        const putRes = await fetch(ticketData.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
+      } catch (serverErr: any) {
+        console.warn("Server direct upload attempt had an issue, trying ticket route fallback:", serverErr);
+        // Fallback: If media-upload endpoint had a transient issue, try upload-ticket
+        const ticketRes = await fetch("/api/admin/ads/upload-ticket", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type,
+            fileSize: file.size,
+            placementId: formPlacement,
+            mediaType: formMediaType,
+          }),
         });
 
-        if (!putRes.ok) throw new Error(`R2 upload failed (${putRes.status})`);
+        const ticketData = await ticketRes.json();
+        if (!ticketRes.ok) throw new Error(ticketData.error || serverErr.message || "Upload failed");
 
-        if (targetField === "desktop") {
-          setFormDesktopUrl(ticketData.publicUrl);
-          setDesktopFileName(file.name);
-        }
-        if (targetField === "mobile") {
-          setFormMobileUrl(ticketData.publicUrl);
-          setMobileFileName(file.name);
-        }
-        if (targetField === "poster") setFormPosterUrl(ticketData.publicUrl);
+        if (ticketData.storageProvider === "cloudinary") {
+          const cFormData = new FormData();
+          cFormData.append("file", file);
+          cFormData.append("api_key", ticketData.apiKey);
+          cFormData.append("timestamp", String(ticketData.timestamp));
+          cFormData.append("signature", ticketData.signature);
+          cFormData.append("folder", ticketData.folder);
+          cFormData.append("public_id", ticketData.publicId);
 
-        setUploadFeedback(`✓ ${file.name} uploaded successfully`);
-        return;
+          const cRes = await fetch(ticketData.uploadEndpoint, {
+            method: "POST",
+            body: cFormData,
+          });
+          const cJson = await cRes.json();
+          if (!cRes.ok || !cJson.secure_url) throw new Error(cJson?.error?.message || "Cloudinary upload failed");
+          uploadedUrl = cJson.secure_url;
+        } else if (ticketData.storageProvider === "r2") {
+          const putRes = await fetch(ticketData.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+          if (!putRes.ok) throw new Error(`R2 upload failed (${putRes.status})`);
+          uploadedUrl = ticketData.publicUrl;
+        }
       }
+
+      if (!uploadedUrl) {
+        throw new Error("Unable to obtain uploaded media URL.");
+      }
+
+      if (targetField === "desktop") {
+        setFormDesktopUrl(uploadedUrl);
+        setDesktopFileName(file.name);
+      }
+      if (targetField === "mobile") {
+        setFormMobileUrl(uploadedUrl);
+        setMobileFileName(file.name);
+      }
+      if (targetField === "poster") {
+        setFormPosterUrl(uploadedUrl);
+      }
+
+      // Auto-generate poster for video uploads
+      if (formMediaType === "video" && targetField === "desktop" && !formPosterUrl) {
+        setFormPosterUrl(autoPosterUrl || uploadedUrl.replace(/\.[^/.]+$/, ".jpg"));
+      }
+
+      setUploadFeedback(`✓ ${file.name} uploaded successfully`);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Upload failed";
       setUploadFeedback(`❌ ${errorMsg}`);
@@ -616,6 +622,7 @@ export default function AdminAdsPage() {
                     </div>
                   )}
                 </div>
+
 
                 <div className="flex justify-between text-[10px] text-gray-500 mb-3">
                   <span>{slot.recommendedRatio}</span>
@@ -869,6 +876,30 @@ export default function AdminAdsPage() {
                   )}
                 </div>
 
+                {/* Direct URL display & fallback */}
+                <div className="flex items-center justify-between text-[11px] text-gray-400 px-1">
+                  {formDesktopUrl ? (
+                    <span className="truncate max-w-[260px] font-mono text-[10px] text-purple-300" title={formDesktopUrl}>
+                      {formDesktopUrl}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-gray-500">Auto-stored on Cloudinary CDN</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inputUrl = prompt("Enter media HTTPS URL (e.g. from CDN or Cloudinary):", formDesktopUrl || "https://");
+                      if (inputUrl && inputUrl.trim() && inputUrl.trim() !== "https://") {
+                        setFormDesktopUrl(inputUrl.trim());
+                        setDesktopFileName("Direct URL linked");
+                      }
+                    }}
+                    className="text-purple-400 hover:text-purple-300 underline text-[10px] cursor-pointer"
+                  >
+                    {formDesktopUrl ? "Change URL" : "Or paste URL"}
+                  </button>
+                </div>
+
                 {/* Optional Mobile Creative */}
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDraggingMobile(true); }}
@@ -909,6 +940,7 @@ export default function AdminAdsPage() {
                     </div>
                   )}
                 </div>
+
 
                 {/* Video Poster Upload (only for video) */}
                 {formMediaType === "video" && (
