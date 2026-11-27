@@ -4,6 +4,18 @@ import { verifyServerAuth } from "@/lib/auth-verify";
 
 export const dynamic = "force-dynamic";
 
+const ALLOWED_ADMINS = [
+  "mohamedsajid.sa@gmail.com",
+  "sudharajsekar2005@gmail.com",
+  "admin.paperinoirfan27@gmail.com",
+  "admin.paperinosam14@gmail.com",
+  "gameplayitlifeitis@gmail.com",
+  "gameplayitlifeis@gmail.com",
+  "gameplayitlife@gmail.com",
+  "dejasvini28@gmail.com",
+  "kaushika13official@gmail.com",
+];
+
 function getIsoWeek() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -57,7 +69,16 @@ export async function POST(req: NextRequest) {
 
     const authHeader = req.headers.get("Authorization");
     const user = await verifyServerAuth(authHeader);
-    if (!user || (user.role !== "admin" && user.role !== "lead_admin")) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized. Authentication required." }, { status: 401 });
+    }
+    const cleanEmail = (user.email || "").toLowerCase().trim();
+    const isAdmin =
+      user.role === "admin" ||
+      user.role === "lead_admin" ||
+      (cleanEmail && ALLOWED_ADMINS.includes(cleanEmail));
+
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized. Admin privileges required." }, { status: 401 });
     }
 

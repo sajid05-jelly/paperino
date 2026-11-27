@@ -75,33 +75,29 @@ export default function ChallengesControlPage() {
 
   const fetchWcConfig = useCallback(async () => {
     try {
-      // 1. Try client Firestore first
-      const snap = await getDoc(doc(db, "settings", "weeklyChallenges"));
-      if (snap.exists()) {
-        applyConfig(snap.data());
-        setError(null);
-        return;
-      }
-    } catch {
-      // Client read failed (e.g. firestore rules or offline), try API fallback
-    }
-
-    try {
-      // 2. Fallback to server-side Admin SDK route
-      const res = await fetch("/api/admin/system/challenges");
+      // 1. Fetch via server API (Admin SDK avoids client permission restrictions)
+      const res = await fetch("/api/challenges/config");
       if (res.ok) {
         const json = await res.json();
-        if (json.data) {
+        if (json?.data) {
           applyConfig(json.data);
           setError(null);
           return;
         }
       }
     } catch (err: any) {
-      console.warn("API fallback failed, using default values:", err);
+      console.warn("API config fetch notice:", err?.message || err);
     }
 
-    // Default configuration is already initialized in state, do not show error banner
+    try {
+      const snap = await getDoc(doc(db, "settings", "weeklyChallenges"));
+      if (snap.exists()) {
+        applyConfig(snap.data());
+        setError(null);
+        return;
+      }
+    } catch {}
+
     setError(null);
   }, [applyConfig]);
 
@@ -128,51 +124,31 @@ export default function ChallengesControlPage() {
       adminTestMode: false,
     };
 
-    let saved = false;
-
-    // 1. Try client Firestore write first
     try {
-      await setDoc(doc(db, "settings", "weeklyChallenges"), {
-        ...payload,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      saved = true;
-    } catch (clientErr) {
-      console.warn("Client setDoc failed, trying server API route:", clientErr);
-    }
+      const token = await user?.getIdToken();
+      const res = await fetch("/api/admin/system/challenges", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
 
-    // 2. If client Firestore write fails, try server API route with admin bearer token
-    if (!saved) {
-      try {
-        const token = await user?.getIdToken();
-        const res = await fetch("/api/admin/system/challenges", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          saved = true;
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to save via API route");
-        }
-      } catch (apiErr: any) {
-        console.error("Failed to save weeklyChallenges config:", apiErr);
-        setError("Failed to save changes: " + (apiErr?.message || "Please ensure you are logged in as admin."));
+      if (res.ok) {
+        setSuccess(true);
+        setError(null);
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save via API route");
       }
+    } catch (apiErr: any) {
+      console.error("Failed to save weeklyChallenges config:", apiErr);
+      setError("Failed to save changes: " + (apiErr?.message || "Please ensure you are logged in as admin."));
+    } finally {
+      setSaving(false);
     }
-
-    if (saved) {
-      setSuccess(true);
-      setError(null);
-      setTimeout(() => setSuccess(false), 3000);
-    }
-
-    setSaving(false);
   };
 
   if (loading) {

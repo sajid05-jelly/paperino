@@ -38,26 +38,39 @@ export default function ChallengeGameShell({
 
   // Realtime guard: If Maintenance Mode or Disabled is toggled in Admin, immediately lock game
   useEffect(() => {
-    const configRef = doc(db, "settings", "weeklyChallenges");
-    const unsubscribe = onSnapshot(configRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        if (data.maintenanceMode === true) {
-          setIsLockedByAdmin(true);
-          setLockReason("The Paperino Challenge Arena is currently under maintenance. Please check back shortly.");
-        } else if (data.enabled === false) {
-          setIsLockedByAdmin(true);
-          setLockReason("Weekly challenges are currently paused by the administrator.");
-        } else {
-          setIsLockedByAdmin(false);
-          setLockReason(null);
-        }
-      }
-    }, () => {
-      // Ignore fallback errors
-    });
+    let isMounted = true;
 
-    return () => unsubscribe();
+    const checkConfig = async () => {
+      try {
+        const res = await fetch("/api/challenges/config", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data && isMounted) {
+            const data = json.data;
+            if (data.maintenanceMode === true) {
+              setIsLockedByAdmin(true);
+              setLockReason("The Paperino Challenge Arena is currently under maintenance. Please check back shortly.");
+            } else if (data.enabled === false) {
+              setIsLockedByAdmin(true);
+              setLockReason("Weekly challenges are currently paused by the administrator.");
+            } else {
+              setIsLockedByAdmin(false);
+              setLockReason(null);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("API challenge config check notice:", err);
+      }
+    };
+
+    checkConfig();
+    const interval = setInterval(checkConfig, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const isGameActive = ["playing", "memorizing", "recalling", "round_feedback"].includes(gameState);

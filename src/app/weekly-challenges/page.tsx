@@ -67,13 +67,6 @@ const DEFAULT_CONFIG = {
     'logic-master',
     'code-breaker',
     'circuit-master',
-    'memory-matrix',
-    'impossible-room',
-    'word-forge',
-    'target-number',
-    'memory-heist',
-    'the-impostor',
-    'paradox'
   ],
   openTime: "00:00",
   closeTime: "23:59",
@@ -344,23 +337,38 @@ export default function WeeklyChallengesPage() {
   const [sessions, setSessions] = useState<Record<string, any>>({});
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
-  // 1. Subscribe to Live Firestore Config (instant updates when Admin toggles settings)
+  // 1. Fetch live admin config from server API (Admin DB superuser avoids client permission restrictions)
   useEffect(() => {
-    const configRef = doc(db, "settings", "weeklyChallenges");
-    const unsubscribe = onSnapshot(configRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        setConfig(prev => ({ ...prev, ...data }));
-      }
-      setLoading(false);
-    }, (error) => {
-      console.warn("Realtime config sync warning, falling back:", error);
-      getDoc(configRef).then(snap => {
-        if (snap.exists()) setConfig(prev => ({ ...prev, ...snap.data() }));
-      }).finally(() => setLoading(false));
-    });
+    let isMounted = true;
 
-    return () => unsubscribe();
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch("/api/challenges/config", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data && isMounted) {
+            setConfig(prev => ({ ...prev, ...json.data }));
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch challenge config from API:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchConfig();
+
+    // Re-check every 8s and on window focus for immediate reactivity when Admin updates settings
+    const interval = setInterval(fetchConfig, 8000);
+    const handleFocus = () => fetchConfig();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   // 2. Compute Active Games List directly from Admin Config
@@ -519,6 +527,48 @@ export default function WeeklyChallengesPage() {
             >
               <BookOpen size={16} />
               <span>Browse Study Notes</span>
+            </Link>
+            <Link
+              href="/"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium text-sm transition-colors border border-white/10 flex items-center justify-center gap-2"
+            >
+              <ArrowLeft size={15} />
+              <span>Back to Home</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Schedule Closed (0 days selected in Admin)
+  if (Array.isArray(config.availableDays) && config.availableDays.length === 0) {
+    return (
+      <div className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
+        <div className="max-w-lg w-full mx-auto p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#0c0916]/95 text-center shadow-xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-6">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Schedule Closed</span>
+          </div>
+
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+            <Clock className="h-8 w-8" />
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
+            Challenges Currently Closed
+          </h1>
+          <p className="text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-8 font-normal">
+            Weekly challenges are not active right now. No challenge days are currently scheduled by the administrator.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/courses"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              <BookOpen size={16} />
+              <span>Explore Materials</span>
             </Link>
             <Link
               href="/"
