@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+// Direct Firestore imports removed in favor of Server Admin API
 import { AlertTriangle, Wrench, X } from 'lucide-react';
 
 export default function MaintenanceBanner() {
@@ -28,22 +27,21 @@ export default function MaintenanceBanner() {
           }
         }
 
-        const snap = await getDoc(doc(db, 'settings', 'maintenance'));
-        if (isMounted) {
-          if (snap.exists()) {
-            const data = snap.data();
-            const isActive = data.isActive === true;
-            const msg = data.message && typeof data.message === 'string' && data.message.trim() !== '' ? data.message : message;
-            setShowBanner(isActive);
-            if (isActive && msg) setMessage(msg);
-            if (typeof window !== 'undefined') {
-              const payload = JSON.stringify({ isActive, message: msg, ts: Date.now() });
-              try { localStorage.setItem('paperino_maint_banner', payload); } catch {}
-              try { sessionStorage.setItem('paperino_maint_banner', payload); } catch {}
-            }
-          } else {
-            setShowBanner(false);
+        const res = await fetch("/api/admin/system/config");
+        if (res.ok && isMounted) {
+          const json = await res.json();
+          const cfg = json?.config || {};
+          const isActive = cfg.maintenance === true;
+          const msg = cfg.message && typeof cfg.message === 'string' && cfg.message.trim() !== '' ? cfg.message : message;
+          setShowBanner(isActive);
+          if (isActive && msg) setMessage(msg);
+          if (typeof window !== 'undefined') {
+            const payload = JSON.stringify({ isActive, message: msg, ts: Date.now() });
+            try { localStorage.setItem('paperino_maint_banner', payload); } catch {}
+            try { sessionStorage.setItem('paperino_maint_banner', payload); } catch {}
           }
+        } else if (isMounted) {
+          setShowBanner(false);
         }
       } catch (error) {
         console.warn('[MaintenanceBanner] Firestore read fallback:', error);

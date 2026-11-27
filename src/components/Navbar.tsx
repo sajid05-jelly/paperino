@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { db } from "@/lib/firebase";
-import { onSnapshot, doc, getDoc } from "firebase/firestore";
+// Firebase client Firestore no longer used in Navbar (migrated to Admin API proxy)
 import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/context/AuthContext";
@@ -60,16 +59,14 @@ export default function Navbar() {
           return; // Still fresh within 30 minutes across all browser tabs
         }
 
-        const snap = await getDoc(doc(db, "settings", "headerMessage"));
-        if (isMounted) {
-          if (snap.exists()) {
-            const data = snap.data();
-            const msg = data.message || "The Universe of Study Materials";
-            setTagline(msg);
-            if (typeof window !== "undefined") {
-              localStorage.setItem("paperino_header_tagline", msg);
-              localStorage.setItem("paperino_header_tagline_ts", Date.now().toString());
-            }
+        const res = await fetch("/api/admin/header-message");
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          const msg = data.text || "The Universe of Study Materials";
+          setTagline(msg);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("paperino_header_tagline", msg);
+            localStorage.setItem("paperino_header_tagline_ts", Date.now().toString());
           }
         }
       } catch (err) {

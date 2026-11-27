@@ -3,8 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+// Client Firestore imports removed in favor of Server Admin API
 import { X, CheckCircle2, Sparkles } from "lucide-react";
 import PaperinoLoader from "@/components/PaperinoLoader";
 
@@ -56,10 +55,9 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
           }
         } catch {}
 
-        const snap = fetchedData ? null : await getDoc(doc(db, "settings", "siteConfig"));
         if (isMounted) {
-          if (fetchedData || snap?.exists()) {
-            const data = fetchedData || snap?.data() || {};
+          if (fetchedData) {
+            const data = fetchedData;
             const maint = data.maintenance || false;
             const youtubeStudy = data.youtubeStudy !== false;
             setMaintenanceMode(maint);

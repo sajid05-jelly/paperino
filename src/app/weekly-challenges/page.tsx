@@ -3,17 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
-import { 
-  doc, 
-  getDoc, 
-  onSnapshot,
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  limit 
-} from "firebase/firestore";
+// Client Firestore imports removed in favor of Server Admin API
 import { 
   Trophy, 
   Lock, 
@@ -379,7 +369,7 @@ export default function WeeklyChallengesPage() {
     return [...ARENA_GAME_IDS];
   }, [config.activeGames]);
 
-  // 3. Lightweight single query for user's completed sessions
+  // 3. Lightweight single query for user's completed sessions via Server Admin API
   useEffect(() => {
     async function loadUserSessions() {
       if (!user) {
@@ -387,6 +377,16 @@ export default function WeeklyChallengesPage() {
         return;
       }
       try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/challenges/user-sessions", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!Array.isArray(json?.results)) return;
+
         const activeChallengeWeek = (config as any).currentWeek || getCurrentChallengeWeek();
         const sessionMap: Record<string, any> = {};
 
@@ -399,17 +399,7 @@ export default function WeeklyChallengesPage() {
           targetChallengeIds[dateChallengeId] = gId;
         });
 
-        const resultsRef = collection(db, "challenge_results");
-        const q = query(
-          resultsRef,
-          where("userId", "==", user.uid),
-          where("isOfficial", "==", true),
-          limit(15)
-        );
-        
-        const resSnap = await getDocs(q);
-        resSnap.forEach((docSnap) => {
-          const data = docSnap.data();
+        json.results.forEach((data: any) => {
           const gId = targetChallengeIds[data.challengeId] || data.gameId;
           if (gId) {
             sessionMap[gId] = {

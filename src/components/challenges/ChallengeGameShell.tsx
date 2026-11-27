@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, HelpCircle, X, AlertTriangle, Rocket, Wrench, Sparkles, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+// Client Firestore imports removed in favor of Server Admin API
 
 interface ChallengeGameShellProps {
   gameId: string;
