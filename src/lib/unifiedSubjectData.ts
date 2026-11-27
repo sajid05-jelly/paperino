@@ -151,7 +151,7 @@ export const getAllUnifiedData = cache(async (
     });
   });
 
-  // 2. Add All Comprehensive Pre-Configured Catalog Subjects (All departments & semesters 1-8)
+  // 2. Add Pre-Configured Catalog Subjects (strictly filtered to subjects with >= 1 study material)
   COMPREHENSIVE_CATALOG.forEach((s) => {
     const deptId = (s.departmentId || "btech").toLowerCase().trim();
     const semId = String(s.semesterId || "1").trim();
@@ -172,25 +172,6 @@ export const getAllUnifiedData = cache(async (
         status: "approved",
       });
     }
-  });
-
-  // 3. Add any legacy B.Tech subjects from STATIC_SUBJECTS that might have differing IDs
-  Object.entries(STATIC_SUBJECTS).forEach(([semId, subs]) => {
-    subs.forEach((s) => {
-      const uniqueKey = `btech_${semId}_${s.id.toLowerCase().trim()}`;
-      if (!subjectKeysSet.has(uniqueKey)) {
-        subjectKeysSet.add(uniqueKey);
-        subjectsList.push({
-          id: s.id,
-          name: s.name,
-          code: "",
-          departmentId: "btech",
-          departmentName: "Bachelor of Technology",
-          semesterId: semId,
-          status: "approved",
-        });
-      }
-    });
   });
 
   // 4. Fetch Dynamic Departments & Dynamic Subjects from Firestore (Merge live user submissions)

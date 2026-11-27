@@ -86,26 +86,6 @@ const getComprehensiveCatalogSubjects = (): Subject[] => {
     }
   });
 
-  // Also ensure legacy static B.Tech subjects are present
-  Object.entries(STATIC_SUBJECTS).forEach(([semId, subs]) => {
-    subs.forEach(s => {
-      const cleanId = s.id.toLowerCase().trim();
-      const key = `btech_${semId}_${cleanId}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          id: cleanId,
-          name: s.name,
-          code: "",
-          departmentId: "btech",
-          semesterId: semId,
-          status: "approved",
-          contributorId: "system",
-          contributorName: "System"
-        });
-      }
-    });
-  });
-
   return Array.from(map.values());
 };
 
@@ -204,7 +184,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       if (forceRefresh && typeof window !== "undefined") {
         sessionStorage.removeItem("paperino_cached_depts_v2");
         sessionStorage.removeItem("paperino_cached_depts_ts_v2");
-        sessionStorage.removeItem("paperino_cached_dynamic_subs_v1");
+        sessionStorage.removeItem("paperino_cached_dynamic_subs_v3");
         sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v1");
         loadedSemestersRef.current = {};
       }
@@ -267,7 +247,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       let cachedSubsFound = false;
 
       if (!forceRefresh && typeof window !== "undefined") {
-        const cachedSubs = sessionStorage.getItem("paperino_cached_dynamic_subs_v1");
+        const cachedSubs = sessionStorage.getItem("paperino_cached_dynamic_subs_v3");
         const cacheTs = sessionStorage.getItem("paperino_cached_dynamic_subs_ts_v1");
         if (cachedSubs && cacheTs && (Date.now() - parseInt(cacheTs)) < SUB_CACHE_TTL_MS) {
           try {
@@ -305,7 +285,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           });
 
           if (typeof window !== "undefined") {
-            sessionStorage.setItem("paperino_cached_dynamic_subs_v1", JSON.stringify(dynamicSubs));
+            sessionStorage.setItem("paperino_cached_dynamic_subs_v3", JSON.stringify(dynamicSubs));
             sessionStorage.setItem("paperino_cached_dynamic_subs_ts_v1", Date.now().toString());
           }
         } catch (dynErr) {
@@ -634,7 +614,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     }
 
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem("paperino_cached_dynamic_subs_v1");
+      sessionStorage.removeItem("paperino_cached_dynamic_subs_v3");
       sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v1");
       sessionStorage.removeItem("paperino_deleted_subjects");
     }
@@ -681,7 +661,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     }
 
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem("paperino_cached_dynamic_subs_v1");
+      sessionStorage.removeItem("paperino_cached_dynamic_subs_v3");
       sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v1");
     }
     await refreshSubjects(true);
