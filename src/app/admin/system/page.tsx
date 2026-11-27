@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { Power, Save, AlertCircle, Wrench, ShieldAlert, Loader2, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SystemControlPage() {
+  const { user } = useAuth();
   const [maintenance, setMaintenance] = useState(false);
   const [title, setTitle] = useState("System Maintenance Mode");
   const [message, setMessage] = useState("We are currently performing critical system upgrades. Please check back soon!");
@@ -23,32 +23,38 @@ export default function SystemControlPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingToggleVal, setPendingToggleVal] = useState(false);
 
-  // 1. Fetch current settings from database
+  // 1. Fetch current settings from database via secure server API
   useEffect(() => {
+    let isMounted = true;
     const fetchConfig = async () => {
       try {
-        const snap = await getDoc(doc(db, "settings", "siteConfig"));
-        if (snap.exists()) {
-          const data = snap.data();
-          setMaintenance(data.maintenance || false);
-          setTitle(data.title || "System Maintenance Mode");
-          setMessage(data.message || "");
-          setEstimatedReturn(data.estimatedReturn || "A few hours");
-          setShowProgress(data.showProgress ?? true);
-          setGame(data.game || "paperCatch");
-          setYoutubeStudy(data.youtubeStudy !== false); // true if undefined
+        const res = await fetch("/api/admin/system/config");
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json?.config) {
+            const data = json.config;
+            setMaintenance(Boolean(data.maintenance));
+            setTitle(data.title || "System Maintenance Mode");
+            setMessage(data.message || "");
+            setEstimatedReturn(data.estimatedReturn || "A few hours");
+            setShowProgress(data.showProgress ?? true);
+            setGame(data.game || "paperCatch");
+            setYoutubeStudy(data.youtubeStudy !== false);
+          }
         }
-      } catch (err) {
-        console.error("Failed to load siteConfig:", err);
-        setError("Failed to fetch current configuration.");
+      } catch (err: any) {
+        console.warn("[System Control] Failed to load siteConfig:", err?.message || err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchConfig();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // 2. Handle Save
+  // 2. Handle Save via secure server API
   const handleSave = async (forceValue?: boolean) => {
     setSaving(true);
     setSuccess(false);
@@ -57,23 +63,35 @@ export default function SystemControlPage() {
     const finalMaintenanceVal = typeof forceValue === "boolean" ? forceValue : maintenance;
 
     try {
-      await setDoc(doc(db, "settings", "siteConfig"), {
-        maintenance: finalMaintenanceVal,
-        title,
-        message,
-        estimatedReturn,
-        showProgress,
-        game,
-        youtubeStudy,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      const token = user ? await user.getIdToken() : "";
+      const res = await fetch("/api/admin/system/config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          maintenance: finalMaintenanceVal,
+          title,
+          message,
+          estimatedReturn,
+          showProgress,
+          game,
+          youtubeStudy,
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to save configuration");
+      }
 
       setSuccess(true);
       setMaintenance(finalMaintenanceVal);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      console.error("Failed to save configuration:", err);
-      setError("Failed to save changes. Make sure you are authenticated as an admin.");
+    } catch (err: any) {
+      console.warn("[System Control] Failed to save configuration:", err?.message || err);
+      setError(err?.message || "Failed to save changes. Make sure you are authenticated as an admin.");
     } finally {
       setSaving(false);
     }

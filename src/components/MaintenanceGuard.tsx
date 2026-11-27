@@ -47,10 +47,19 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
           }
         }
 
-        const snap = await getDoc(doc(db, "settings", "siteConfig"));
+        let fetchedData: any = null;
+        try {
+          const res = await fetch("/api/admin/system/config");
+          if (res.ok) {
+            const json = await res.json();
+            if (json?.config) fetchedData = json.config;
+          }
+        } catch {}
+
+        const snap = fetchedData ? null : await getDoc(doc(db, "settings", "siteConfig"));
         if (isMounted) {
-          if (snap.exists()) {
-            const data = snap.data();
+          if (fetchedData || snap?.exists()) {
+            const data = fetchedData || snap?.data() || {};
             const maint = data.maintenance || false;
             const youtubeStudy = data.youtubeStudy !== false;
             setMaintenanceMode(maint);
