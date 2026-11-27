@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useSubjects } from "@/context/SubjectsContext";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
+// Client Firestore imports removed in favor of Server Admin API
 import { 
   AlertTriangle, 
   Sparkles, 
@@ -57,48 +56,32 @@ export default function ExamEmergencyPage() {
     return istDate.toISOString().split("T")[0];
   };
 
-  // Sync / Listen to user profile usage fields
+  // Sync user emergency usage fields via Server Admin API
   useEffect(() => {
     if (!user) return;
 
     let isMounted = true;
-    const userRef = doc(db, "users", user.uid);
-    
-    getDoc(userRef).then(async (snap) => {
-      if (!isMounted || !snap.exists()) return;
-      const data = snap.data();
-      const count = data.emergencyMonthlyUsageCount || 0;
-      const lastResetMonth = data.emergencyLastResetMonth || "";
-      const currentMonth = getCurrentMonthKey();
-
-      if (lastResetMonth !== currentMonth) {
-        // Automatic monthly reset
-        try {
-          await updateDoc(userRef, {
-            emergencyMonthlyUsageCount: 0,
-            emergencyLastResetMonth: currentMonth
-          });
-          if (isMounted) {
-            setEmergencyUsageCount(0);
-            setEmergencyLastResetDate(currentMonth);
+    const fetchUsage = async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/exam-emergency/usage", {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
-        } catch (err) {
-          console.error("Error resetting emergency monthly usage:", err);
-          // FAIL-CLOSED: Block access if we can't reset usage due to database error
-          if (isMounted) setEmergencyUsageCount(9999);
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.success) {
+            setEmergencyUsageCount(data.count || 0);
+            setEmergencyLastResetDate(data.currentMonth || "");
+          }
         }
-      } else {
-        if (isMounted) {
-          setEmergencyUsageCount(count);
-          setEmergencyLastResetDate(lastResetMonth);
-        }
+      } catch (err) {
+        console.warn("[ExamEmergency] Fetch usage notice:", err);
       }
-    }).catch((err) => {
-      console.warn("[ExamEmergency] User doc fetch notice:", err);
-      // FAIL-CLOSED: If we can't read usage limits due to quota/network error, assume exhausted
-      if (isMounted) setEmergencyUsageCount(9999);
-    });
+    };
 
+    fetchUsage();
     return () => { isMounted = false; };
   }, [user]);
 
@@ -124,16 +107,34 @@ export default function ExamEmergencyPage() {
 
     try {
       if (user) {
-        const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, {
-          emergencyMonthlyUsageCount: emergencyUsageCount + 1,
-          emergencyLastResetMonth: getCurrentMonthKey()
+        const token = await user.getIdToken();
+        const res = await fetch("/api/exam-emergency/usage", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.count !== undefined) {
+            setEmergencyUsageCount(data.count);
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (!isAdmin) {
+            throw new Error(errData.error || "Failed to activate emergency mode");
+          }
+        }
       }
       setActiveDashboard(true);
     } catch (err: any) {
-      console.error("Failed to activate emergency mode:", err);
-      setError("Something went wrong. Please try again.");
+      console.warn("Notice activating emergency mode:", err);
+      if (!isAdmin) {
+        setError(err?.message || "Something went wrong. Please try again.");
+      } else {
+        // Admins unconditionally activate
+        setActiveDashboard(true);
+      }
     } finally {
       setIsActivating(false);
     }
