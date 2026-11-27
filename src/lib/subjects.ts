@@ -1,4 +1,46 @@
-export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
+import catalogData from "@/data/comprehensive_catalog.json";
+
+export interface StaticSubject {
+  id: string;
+  name: string;
+}
+
+export interface CatalogSubject {
+  id: string;
+  name: string;
+  code?: string;
+  departmentId: string;
+  semesterId: string;
+  sections?: string[];
+  status?: string;
+  contributorId?: string;
+  contributorName?: string;
+}
+
+export interface StaticDepartment {
+  id: string;
+  name: string;
+  code: string;
+  totalSemesters: number;
+  status: "approved" | "pending" | "rejected";
+}
+
+export const DEFAULT_DEPARTMENTS: StaticDepartment[] = [
+  { id: "btech", name: "Bachelor of Technology", code: "B.Tech", totalSemesters: 8, status: "approved" },
+  { id: "be", name: "Bachelor of Engineering", code: "B.E", totalSemesters: 8, status: "approved" },
+  { id: "mca", name: "Master of Computer Applications", code: "MCA", totalSemesters: 4, status: "approved" },
+  { id: "mba", name: "Master of Business Administration", code: "MBA", totalSemesters: 4, status: "approved" },
+  { id: "me-cse", name: "M.E Computer Science and Engineering", code: "M.E CSE", totalSemesters: 4, status: "approved" },
+  { id: "me-se", name: "M.E Structural Engineering", code: "M.E SE", totalSemesters: 4, status: "approved" },
+  { id: "science", name: "Faculty of Science and Humanities", code: "B.Sc", totalSemesters: 6, status: "approved" },
+  { id: "commerce", name: "School of Commerce", code: "B.Com", totalSemesters: 6, status: "approved" },
+  { id: "allied-health-sciences", name: "Allied Health Sciences", code: "AHS", totalSemesters: 8, status: "approved" },
+  { id: "bsc-cardio-perfusion-technology", name: "B.Sc Cardio Perfusion Technology", code: "CPT", totalSemesters: 8, status: "approved" },
+];
+
+export const COMPREHENSIVE_CATALOG: CatalogSubject[] = catalogData as CatalogSubject[];
+
+export const SUBJECTS: Record<string, StaticSubject[]> = {
   "1": [
     { id: "calc", name: "Calculus And Linear Algebra" },
     { id: "chem", name: "Chemistry" },
@@ -8,17 +50,22 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "foe", name: "Fundamental Of Economics (FOE)" },
     { id: "bs", name: "Biomedical Sensors" },
     { id: "fl", name: "Foreign Languages" },
-    { id: "cb", "name": "Cell Biology" },
-    { id: "mb", "name": "Microbiology" },
-    { id: "pac", "name": "Physical And Analytical Chemistry" },
-    { id: "biochem", "name": "Biochemistry" },
-    { id: "bcmw", "name": "Basic Civil & Mechanical Workshop" },
-    { id: "bio", "name": "Biology" }
+    { id: "cb", name: "Cell Biology" },
+    { id: "mb", name: "Microbiology" },
+    { id: "pac", name: "Physical And Analytical Chemistry" },
+    { id: "biochem", name: "Biochemistry" },
+    { id: "bcmw", name: "Basic Civil & Mechanical Workshop" },
+    { id: "bio", name: "Biology" },
+    { id: "eg", name: "Engineering Graphics" },
+    { id: "bce", name: "Basic Civil Engineering" },
+    { id: "bme", name: "Basic Mechanical Engineering" },
+    { id: "evs", name: "Environmental Science" }
   ],
   "2": [
     { id: "acca", name: "Advanced Calculus And Complex Analysis" },
     { id: "eee", name: "Electrical And Electronics Engineering" },
     { id: "spcm", name: "Semiconductor Physics And Computational Methods" },
+    { id: "pm", name: "Physics-Mechanics" },
     { id: "oodp", name: "Object Oriented Design And Programming" },
     { id: "ce", name: "Communicative English" },
     { id: "ep", name: "Electromagnetic Physics" },
@@ -45,7 +92,8 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "microbio3", name: "Microbiology" },
     { id: "se", name: "Social Engineering" },
     { id: "nma", name: "Numerical Methods & Analysis" },
-    { id: "fds", name: "Foundation of Data Science (FDS)" }
+    { id: "fds", name: "Foundation of Data Science (FDS)" },
+    { id: "oops", name: "Object Oriented Programming" }
   ],
   "4": [
     { id: "daa", name: "Design And Analysis Of Algorithms" },
@@ -64,6 +112,7 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "sigp", name: "Signal Processing" },
     { id: "cga", name: "CGA" },
     { id: "pft", name: "Programming for Financial Technologies [Honours]" },
+    { id: "qc", name: "Quantum Computing [Honours]" },
     { id: "bdtt", name: "Big Data Tools And Techniques" }
   ],
   "5": [
@@ -73,6 +122,7 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "ml5", name: "Machine Learning" },
     { id: "fswd", name: "Full Stack Web Development" },
     { id: "wtwtw", name: "Waste To Wealth To Wheels" },
+    { id: "iaf", name: "Indian Art Form" },
     { id: "cc5", name: "Community Connect" }
   ],
   "6": [
@@ -81,9 +131,25 @@ export const SUBJECTS: Record<string, { id: string, name: string }[]> = {
     { id: "ds6", name: "Data Science" },
     { id: "nlp", name: "Natural Language Processing" },
     { id: "cc6", name: "Cloud Computing" },
+    { id: "proj6", name: "Project" },
     { id: "tqmre", name: "TQM And Reliability Engineering" },
+    { id: "itk", name: "Indian Traditional Knowledge" },
     { id: "pb", name: "Plant Biotechnology" },
     { id: "ab", name: "Animal Biotechnology" },
     { id: "mt", name: "Marine Technology" }
+  ],
+  "7": [
+    { id: "bp7", name: "Behavioural Psychology" },
+    { id: "cv7", name: "Computer Vision" },
+    { id: "sw7", name: "Semantic Web" },
+    { id: "soa7", name: "Service Oriented Architecture" },
+    { id: "sss7", name: "Smart Sensor System" },
+    { id: "bd7", name: "Big Data Analytics" },
+    { id: "cs7", name: "Cyber Security" },
+    { id: "dl7", name: "Deep Learning" }
+  ],
+  "8": [
+    { id: "proj", name: "Major Project" },
+    { id: "intern", name: "Internship" }
   ]
 };

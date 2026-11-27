@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
               createdBy: verifiedUser.uid,
               contributorId: verifiedUser.uid,
               contributorName: verifiedUser.email ? verifiedUser.email.split("@")[0] : "Contributor",
-              status: isAdminUser ? "approved" : "pending",
+              status: "approved", // Always approved so newly established subjects are immediately unhidden and visible
               createdAt: new Date().toISOString()
             }, { merge: true });
           }

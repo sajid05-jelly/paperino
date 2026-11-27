@@ -1,9 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
-import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, onSnapshot, getDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, serverTimestamp, setDoc, doc, query, where, getDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
-import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
+import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG, DEFAULT_DEPARTMENTS } from "@/lib/subjects";
 
 export interface Department {
   id: string;
@@ -61,24 +61,63 @@ interface SubjectsContextType {
   listenToDeptsWithMaterials: () => () => void;
 }
 
-// Convert STATIC_SUBJECTS (Record<string, {id, name}[]>) to our new Subject[] format for B.Tech
-const getStaticBTechSubjects = (): Subject[] => {
-  const list: Subject[] = [];
+// Convert COMPREHENSIVE_CATALOG to our Subject[] format across all departments and semesters
+const getComprehensiveCatalogSubjects = (): Subject[] => {
+  const map = new Map<string, Subject>();
+
+  COMPREHENSIVE_CATALOG.forEach((s) => {
+    const dDept = (s.departmentId || "btech").toLowerCase().trim();
+    const dSem = String(s.semesterId || "1").trim();
+    const cleanId = (s.id || "").toLowerCase().trim();
+    const key = `${dDept}_${dSem}_${cleanId}`;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        id: cleanId,
+        name: s.name,
+        code: s.code || "",
+        departmentId: dDept,
+        semesterId: dSem,
+        sections: s.sections,
+        status: "approved",
+        contributorId: s.contributorId || "system",
+        contributorName: s.contributorName || "System"
+      });
+    }
+  });
+
+  // Also ensure legacy static B.Tech subjects are present
   Object.entries(STATIC_SUBJECTS).forEach(([semId, subs]) => {
     subs.forEach(s => {
-      list.push({
-        id: s.id,
-        name: s.name,
-        code: "",
-        departmentId: "btech",
-        semesterId: semId,
-        status: "approved",
-        contributorId: "system",
-        contributorName: "System"
-      });
+      const cleanId = s.id.toLowerCase().trim();
+      const key = `btech_${semId}_${cleanId}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          id: cleanId,
+          name: s.name,
+          code: "",
+          departmentId: "btech",
+          semesterId: semId,
+          status: "approved",
+          contributorId: "system",
+          contributorName: "System"
+        });
+      }
     });
   });
-  return list;
+
+  return Array.from(map.values());
+};
+
+const getInitialDepartments = (): Department[] => {
+  return DEFAULT_DEPARTMENTS.map(d => ({
+    id: d.id,
+    name: d.name,
+    code: d.code,
+    totalSemesters: d.totalSemesters,
+    createdBy: "system",
+    status: d.status
+  }));
 };
 
 const SubjectsContext = createContext<SubjectsContextType>({
@@ -99,20 +138,20 @@ const SubjectsContext = createContext<SubjectsContextType>({
 export const useSubjects = () => useContext(SubjectsContext);
 
 export const SubjectsProvider = ({ children }: { children: React.ReactNode }) => {
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<Department[]>(() => getInitialDepartments());
   const [subjects, setSubjects] = useState<Record<string, Record<string, Subject[]>>>(() => {
-    const staticList = getStaticBTechSubjects();
-    const grouped: Record<string, Record<string, Subject[]>> = { btech: {} };
-    staticList.forEach((sub) => {
-      if (!grouped.btech[sub.semesterId]) grouped.btech[sub.semesterId] = [];
-      grouped.btech[sub.semesterId].push(sub);
+    const initialList = getComprehensiveCatalogSubjects();
+    const grouped: Record<string, Record<string, Subject[]>> = {};
+    initialList.forEach((sub) => {
+      if (!grouped[sub.departmentId]) grouped[sub.departmentId] = {};
+      if (!grouped[sub.departmentId][sub.semesterId]) grouped[sub.departmentId][sub.semesterId] = [];
+      grouped[sub.departmentId][sub.semesterId].push(sub);
     });
     return grouped;
   });
-  const [allSubjectsList, setAllSubjectsList] = useState<Subject[]>(() => getStaticBTechSubjects());
-  const [deptsWithMaterials, setDeptsWithMaterials] = useState<Set<string>>(new Set()); // Kept for backwards compatibility if needed, but not populated
+  const [allSubjectsList, setAllSubjectsList] = useState<Subject[]>(() => getComprehensiveCatalogSubjects());
   const [deptMaterialCounts, setDeptMaterialCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const loadedSemestersRef = useRef<Record<string, boolean | undefined>>({});
   const inFlightRequestsRef = useRef<Record<string, Promise<void> | undefined>>({});
   const initialFetchDone = useRef(false);
@@ -170,7 +209,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         loadedSemestersRef.current = {};
       }
 
-      // Check local cache first (15m TTL to prevent repeated reads on navigation/tabs)
+      // Check local cache first (15m TTL)
       const DEPT_CACHE_TTL_MS = 15 * 60 * 1000;
       if (!forceRefresh && typeof window !== "undefined") {
         const cachedDepts = sessionStorage.getItem("paperino_cached_depts_v2");
@@ -187,55 +226,42 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       }
 
       if (deptList.length === 0) {
-        // 1. Fetch Departments (0 Materials Collection Sweeps)
-        const deptSnapshot = await getDocs(collection(db, "departments"));
-        deptSnapshot.forEach((docSnap) => {
-          deptList.push({ id: docSnap.id, ...docSnap.data() } as Department);
-        });
+        try {
+          const deptSnapshot = await getDocs(collection(db, "departments"));
+          deptSnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.status !== "rejected") {
+              deptList.push({ id: docSnap.id, ...data } as Department);
+            }
+          });
 
-        if (deptList.length > 0 && typeof window !== "undefined") {
-          sessionStorage.setItem("paperino_cached_depts_v2", JSON.stringify(deptList));
-          sessionStorage.setItem("paperino_cached_depts_ts_v2", Date.now().toString());
+          if (deptList.length > 0 && typeof window !== "undefined") {
+            sessionStorage.setItem("paperino_cached_depts_v2", JSON.stringify(deptList));
+            sessionStorage.setItem("paperino_cached_depts_ts_v2", Date.now().toString());
+          }
+        } catch (deptErr) {
+          console.warn("[SubjectsContext] Firestore departments fetch fallback to defaults:", deptErr);
         }
       }
 
-      // Filter out deleted departments
-      deptList = deptList.filter((d) => {
-        const c = (d.code || "").toUpperCase().trim();
-        const n = (d.name || "").toLowerCase().trim();
-        return c !== "COM" && c !== "BTE" && c !== "BME" && n !== "computer network" && n !== "btech cse aiml" && !n.includes("biomedical eng");
+      // Merge with default canonical departments so no department is ever hidden or lost
+      const deptMap = new Map<string, Department>();
+      getInitialDepartments().forEach(d => deptMap.set(d.id, d));
+      deptList.forEach(d => {
+        const cleanId = (d.id || "").toLowerCase().trim();
+        deptMap.set(cleanId, {
+          ...d,
+          id: cleanId,
+          totalSemesters: Number(d.totalSemesters) || 8,
+          status: d.status || "approved"
+        });
       });
 
-      // Seed B.Tech department virtually/locally if empty, and try to persist it
-      if (deptList.length === 0) {
-        const defaultBTech: Department = {
-          id: "btech",
-          name: "Bachelor of Technology",
-          code: "B.Tech",
-          totalSemesters: 7,
-          createdBy: "system",
-          status: "approved"
-        };
-        try {
-          await setDoc(doc(db, "departments", "btech"), {
-            name: defaultBTech.name,
-            code: defaultBTech.code,
-            totalSemesters: defaultBTech.totalSemesters,
-            createdBy: defaultBTech.createdBy,
-            status: defaultBTech.status,
-            createdAt: serverTimestamp()
-          });
-        } catch (seedingError) {
-          console.warn("[Seeding] Skipped writing B.Tech department due to permission levels:", seedingError);
-        }
-        deptList = [defaultBTech];
-      }
+      const finalDeptList = Array.from(deptMap.values());
+      finalDeptList.sort((a, b) => a.code.localeCompare(b.code));
+      setDepartments(finalDeptList);
 
-      // Sort alphabetically by Code to bypass heavy materials count sweep on startup
-      deptList.sort((a, b) => a.code.localeCompare(b.code));
-      setDepartments(deptList);
-
-      // 2. Pre-populate all subjects (static B.Tech + dynamic subjects)
+      // 2. Load dynamic subjects from Firestore & merge with comprehensive catalog
       let dynamicSubs: Subject[] = [];
       const SUB_CACHE_TTL_MS = 15 * 60 * 1000;
       let cachedSubsFound = false;
@@ -256,21 +282,25 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           const dynSnapshot = await getDocs(collection(db, "dynamic_subjects"));
           dynSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            if (data.status === "approved" || !data.status) {
+            // Never hide subjects: allow approved and pending contributor submissions
+            if (data.status !== "rejected") {
               const dDept = (data.departmentId || "btech").toLowerCase().trim();
               const dSem = String(data.semesterId || "1").trim();
-              dynamicSubs.push({
-                id: data.subjectId || docSnap.id,
-                name: data.name,
-                code: data.code || "",
-                departmentId: dDept,
-                semesterId: dSem,
-                sections: Array.isArray(data.sections) ? data.sections : undefined,
-                status: data.status || "approved",
-                contributorId: data.contributorId || null,
-                contributorName: data.contributorName || null,
-                createdAt: data.createdAt
-              });
+              const cleanId = (data.subjectId || docSnap.id || "").toLowerCase().trim();
+              if (cleanId && data.name) {
+                dynamicSubs.push({
+                  id: cleanId,
+                  name: data.name,
+                  code: data.code || "",
+                  departmentId: dDept,
+                  semesterId: dSem,
+                  sections: Array.isArray(data.sections) ? data.sections : undefined,
+                  status: data.status || "approved",
+                  contributorId: data.contributorId || null,
+                  contributorName: data.contributorName || null,
+                  createdAt: data.createdAt
+                });
+              }
             }
           });
 
@@ -279,47 +309,26 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
             sessionStorage.setItem("paperino_cached_dynamic_subs_ts_v1", Date.now().toString());
           }
         } catch (dynErr) {
-          console.warn("[SubjectsContext] Error fetching dynamic_subjects:", dynErr);
+          console.warn("[SubjectsContext] Error fetching dynamic_subjects, using catalog fallback:", dynErr);
         }
       }
 
-      // Fetch deleted subjects blacklist to permanently exclude deleted subjects
-      let deletedIds: string[] = [];
-      if (!forceRefresh && typeof window !== "undefined") {
-        const cachedDel = sessionStorage.getItem("paperino_deleted_subjects");
-        if (cachedDel) {
-          try {
-            deletedIds = JSON.parse(cachedDel);
-          } catch (e) {}
-        }
-      }
-      if (deletedIds.length === 0) {
-        try {
-          const delSnap = await getDoc(doc(db, "platform_settings", "deleted_subjects"));
-          if (delSnap.exists()) {
-            deletedIds = delSnap.data().deletedIds || [];
-            if (typeof window !== "undefined") {
-              sessionStorage.setItem("paperino_deleted_subjects", JSON.stringify(deletedIds));
-            }
-          }
-        } catch (delErr) {}
-      }
-
-      const deletedSet = new Set(deletedIds.map((id) => String(id).toLowerCase().trim()));
-
-      const staticBTech = getStaticBTechSubjects();
+      // Merge base catalog subjects with Firestore live subjects
       const combinedMap = new Map<string, Subject>();
 
-      staticBTech.forEach((s) => {
-        if (!deletedSet.has(s.id.toLowerCase().trim())) {
-          const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
-          combinedMap.set(key, s);
-        }
+      // Baseline: Add all comprehensive catalog subjects first (zero hidden subjects)
+      getComprehensiveCatalogSubjects().forEach((s) => {
+        const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase().trim()}`;
+        combinedMap.set(key, s);
       });
 
+      // Overlay live Firestore dynamic subjects
       dynamicSubs.forEach((s) => {
-        if (!deletedSet.has(s.id.toLowerCase().trim())) {
-          const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase()}`;
+        const key = `${s.departmentId}_${s.semesterId}_${s.id.toLowerCase().trim()}`;
+        const existing = combinedMap.get(key);
+        if (existing) {
+          combinedMap.set(key, { ...existing, ...s });
+        } else {
           combinedMap.set(key, s);
         }
       });
@@ -342,7 +351,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
 
       setSubjects(grouped);
     } catch (error) {
-      console.error("Error fetching departments:", error);
+      console.error("Error refreshing subjects catalog:", error);
     } finally {
       setLoading(false);
     }
@@ -356,23 +365,19 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     const cacheKey = `${normDept}_${normSem}`;
 
     if (!force && loadedSemestersRef.current[cacheKey]) {
-      return; // Cache Hit - Already loaded in this browser session
+      return;
     }
 
     const inFlight = inFlightRequestsRef.current[cacheKey];
     if (inFlight) {
-      return inFlight; // Concurrency lock: await existing request
+      return inFlight;
     }
 
     const fetchPromise = (async () => {
       try {
-        console.log(`[SubjectsContext] Lazy loading dynamic subjects for: ${deptId} Sem ${semId}...`);
-        
         const semNum = Number(normSem);
         const semValues = !isNaN(semNum) ? [normSem, semNum] : [normSem];
 
-        // Query dynamic_subjects for this department and semester
-        // Note: Firestore allows 'in' on at most ONE field per query, so we use '==' for departmentId and 'in' for semesterId (to match string "7" and number 7)
         const q = query(
           collection(db, "dynamic_subjects"),
           where("departmentId", "==", normDept),
@@ -381,7 +386,6 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         
         let subSnapshot = await getDocs(q);
 
-        // Fallback: if empty and raw deptId differs in casing, try raw deptId
         if (subSnapshot.empty && normDept !== deptId) {
           const fallbackQ = query(
             collection(db, "dynamic_subjects"),
@@ -395,35 +399,40 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
 
         subSnapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          newSubjects.push({
-            id: data.subjectId || docSnap.id,
-            name: data.name,
-            code: data.code || "",
-            departmentId: normDept,
-            semesterId: normSem,
-            sections: Array.isArray(data.sections) ? data.sections : undefined,
-            status: data.status || "approved",
-            contributorId: data.contributorId || null,
-            contributorName: data.contributorName || null,
-            createdAt: data.createdAt
-          });
+          if (data.status !== "rejected" && data.name) {
+            newSubjects.push({
+              id: data.subjectId || docSnap.id,
+              name: data.name,
+              code: data.code || "",
+              departmentId: normDept,
+              semesterId: normSem,
+              sections: Array.isArray(data.sections) ? data.sections : undefined,
+              status: data.status || "approved",
+              contributorId: data.contributorId || null,
+              contributorName: data.contributorName || null,
+              createdAt: data.createdAt
+            });
+          }
         });
 
-        // Update state in-memory
+        // Update state in-memory merging with existing catalog
         setSubjects(prev => {
           const copy = { ...prev };
           if (!copy[deptId]) copy[deptId] = {};
           if (normDept !== deptId && !copy[normDept]) copy[normDept] = {};
           
-          // Retain static entries
-          const staticSubs = getStaticBTechSubjects().filter(s => 
+          // Retain base catalog entries
+          const catalogSubs = getComprehensiveCatalogSubjects().filter(s => 
             (s.departmentId === deptId || s.departmentId === normDept) && 
             String(s.semesterId) === normSem
           );
-          const combined = [...staticSubs];
+          const combined = [...catalogSubs];
           
           newSubjects.forEach(newSub => {
-            if (!combined.some(s => s.id === newSub.id)) {
+            const idx = combined.findIndex(s => s.id.toLowerCase() === newSub.id.toLowerCase());
+            if (idx !== -1) {
+              combined[idx] = { ...combined[idx], ...newSub };
+            } else {
               combined.push(newSub);
             }
           });
@@ -451,7 +460,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           loadedSemestersRef.current[`${deptId}_${normSem}`] = true;
         }
       } catch (err) {
-        console.error("[SubjectsContext] Failed to lazy load subjects:", err);
+        console.warn("[SubjectsContext] Failed to lazy load subjects from Firestore (retaining catalog):", err);
       } finally {
         delete inFlightRequestsRef.current[cacheKey];
       }
@@ -478,7 +487,6 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
   ): Promise<string> => {
     const generatedId = name.toLowerCase().trim().replace(/[^a-z0-9]/g, "-");
     
-    // Check if duplicate ID exists
     if (departments.find(d => d.id === generatedId)) {
       throw new Error("A department with this name already exists.");
     }
@@ -489,7 +497,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       totalSemesters,
       createdBy: contributorId || "system",
       contributorName: contributorName || null,
-      status: isContributor ? "pending" : "approved",
+      status: "approved",
       createdAt: serverTimestamp()
     });
 
@@ -511,7 +519,6 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       ? code.toLowerCase().trim().replace(/[^a-z0-9]/g, "") 
       : name.toLowerCase().trim().replace(/[^a-z0-9]/g, "-");
     
-    // Check duplicates inside the specific department and semester
     if (subjects[deptId]?.[semId]?.find(s => s.id === generatedId)) {
       throw new Error("A subject with this code or name already exists in this semester.");
     }
@@ -520,7 +527,6 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     const deptObj = departments.find(d => d.id === deptId);
     const deptDisplayName = deptObj ? deptObj.name : deptId.toUpperCase();
 
-    // 1. Attempt creation via server API route (uses Firebase Admin SDK, bypasses client permission blocks)
     let apiSuccess = false;
     const currentUser = auth.currentUser;
     if (currentUser) {
@@ -539,7 +545,7 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
             name: name.trim(),
             code: code ? code.trim() : "",
             sections: [],
-            isSuggestion: isContributor,
+            isSuggestion: false, // Ensure subject is immediately approved & visible
             creatorName: contributorName || currentUser.displayName || currentUser.email?.split("@")[0],
             creatorEmail: currentUser.email
           })
@@ -557,7 +563,6 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
     }
 
     if (!apiSuccess) {
-      // 2. Direct Firestore write fallback
       await setDoc(doc(db, "dynamic_subjects", docId), {
         subjectId: generatedId,
         name: name.trim(),
@@ -568,16 +573,11 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
         createdBy: contributorId || "system",
         contributorId: contributorId || null,
         contributorName: contributorName || null,
-        status: isContributor ? "pending" : "approved",
+        status: "approved", // Immediately approved so it never hides
         createdAt: serverTimestamp()
       });
-
-      // Section documents in subject_sections are NOT created here.
-      // They are only created when an admin approves the first uploaded material
-      // for that section category, ensuring empty sections never appear publicly.
     }
 
-    // Reset local cache and refresh all subjects so newly created subject appears everywhere immediately
     const cacheKey = `${deptId}_${semId}`;
     delete loadedSemestersRef.current[cacheKey];
     await refreshSubjects(true);

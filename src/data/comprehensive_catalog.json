@@ -1,0 +1,5672 @@
+[
+  {
+    "id": "calc",
+    "name": "Calculus And Linear Algebra",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "chem",
+    "name": "Chemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "poe",
+    "name": "Philosophy Of Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "icb",
+    "name": "Introduction To Computational Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "pps",
+    "name": "Programming For Problem Solving",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "foe",
+    "name": "Fundamental Of Economics (FOE)",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bs",
+    "name": "Biomedical Sensors",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fl",
+    "name": "Foreign Languages",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cb",
+    "name": "Cell Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "mb",
+    "name": "Microbiology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "pac",
+    "name": "Physical And Analytical Chemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biochem",
+    "name": "Biochemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bcmw",
+    "name": "Basic Civil & Mechanical Workshop",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bio",
+    "name": "Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "acca",
+    "name": "Advanced Calculus And Complex Analysis",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "eee",
+    "name": "Electrical And Electronics Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "spcm",
+    "name": "Semiconductor Physics And Computational Methods",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "pm",
+    "name": "Physics-Mechanics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "oodp",
+    "name": "Object Oriented Design And Programming",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ce",
+    "name": "Communicative English",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ep",
+    "name": "Electromagnetic Physics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "em",
+    "name": "Engineering Mechanics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "espcb",
+    "name": "Electronic System And PCB Design",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bmtbe",
+    "name": "Building Materials In The Built Environment",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bac",
+    "name": "Basic Of Accounting And Costing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ps",
+    "name": "Probability And Statistics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "dsa",
+    "name": "Data Structures And Algorithm",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "coa",
+    "name": "Computer Organization And Architecture",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "os",
+    "name": "Operating Systems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tbvp",
+    "name": "Transforms And Boundary Value Problems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "app",
+    "name": "Advanced Programming Practice",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "dtm",
+    "name": "Design Thinking And Methodology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "dld",
+    "name": "Digital Logic Design",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ssd",
+    "name": "Solid State Devices",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biochem3",
+    "name": "Biochemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "eti",
+    "name": "Electromagnetic Theory And Interference",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bce",
+    "name": "Basic Chemical Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bp",
+    "name": "Bioprocess Principles",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "gc",
+    "name": "Genetics And Cytogenetics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "microbio3",
+    "name": "Microbiology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "se",
+    "name": "Social Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "nma",
+    "name": "Numerical Methods & Analysis",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fds",
+    "name": "Foundation of Data Science (FDS)",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "daa",
+    "name": "Design And Analysis Of Algorithms",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "dbms4",
+    "name": "Database Management Systems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ai4",
+    "name": "Artificial Intelligence",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "pqt",
+    "name": "Probability And Queueing Theory",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "se4",
+    "name": "Social Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bpe",
+    "name": "Bioprocess Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ccs",
+    "name": "Cell Communication And Signaling",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sp",
+    "name": "Software Process",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cep",
+    "name": "Chemical Engineering Principles",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "mb4",
+    "name": "Molecular Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "iot4",
+    "name": "Internet Of Things (IOT)",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "pas",
+    "name": "Probability & Applied Statistics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "dip",
+    "name": "Digital Image Processing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sigp",
+    "name": "Signal Processing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cga",
+    "name": "CGA",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "pft",
+    "name": "Programming for Financial Technologies [Honours]",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "qc",
+    "name": "Quantum Computing [Honours]",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bdtt",
+    "name": "Big Data Tools And Techniques",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "dm",
+    "name": "Discrete Mathematics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fla",
+    "name": "Formal Language And Automata",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cn5",
+    "name": "Computer Networks",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ml5",
+    "name": "Machine Learning",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fswd",
+    "name": "Full Stack Web Development",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "wtwtw",
+    "name": "Waste To Wealth To Wheels",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "iaf",
+    "name": "Indian Art Form",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cc5",
+    "name": "Community Connect",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sepm",
+    "name": "Software Engineering And Project Management",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cd6",
+    "name": "Compiler Design",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ds6",
+    "name": "Data Science",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "nlp",
+    "name": "Natural Language Processing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cc6",
+    "name": "Cloud Computing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "proj6",
+    "name": "Project",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tqmre",
+    "name": "TQM And Reliability Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "itk",
+    "name": "Indian Traditional Knowledge",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "pb",
+    "name": "Plant Biotechnology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ab",
+    "name": "Animal Biotechnology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "mt",
+    "name": "Marine Technology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bp7",
+    "name": "Behavioural Psychology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cv7",
+    "name": "Computer Vision",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sw7",
+    "name": "Semantic Web",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "soa7",
+    "name": "Service Oriented Architecture",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sss7",
+    "name": "Smart Sensor System",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "proj",
+    "name": "Major Project",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "intern",
+    "name": "Internship",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electromagnetic-theory-quantum-mechnanics-waves-and-optics",
+    "name": "Electromagnetic Theory, Quantum Mechnanics Waves and Optics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fake-1",
+    "name": "fake 1",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fake-2",
+    "name": "fake 2",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-operations-research",
+    "name": "Applied Operations Research",
+    "code": "BA3261",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "business-research-methods",
+    "name": "Business Research Methods",
+    "code": "BA3262",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "financial-management",
+    "name": "Financial Management",
+    "code": "BA3263",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "human-resource-management",
+    "name": "Human Resource Management",
+    "code": "BA3264",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "operations-management",
+    "name": "Operations Management",
+    "code": "BA3265",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "marketing-management",
+    "name": "Marketing Management",
+    "code": "BA3266",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "business-analytics",
+    "name": "Business Analytics",
+    "code": "BA3267",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-analysis-and-business-modelling-laboratory",
+    "name": "Data Analysis And Business Modelling Laboratory",
+    "code": "BA3241",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "supply-chain-management",
+    "name": "Supply Chain Management",
+    "code": "PBA506",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "digital-marketing",
+    "name": "Digital Marketing",
+    "code": "PBA106",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-project-management-and-quality",
+    "name": "Software Project Management and Quality",
+    "code": "PBA404",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "materials-management",
+    "name": "Materials Management",
+    "code": "PBA502",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "brand-management",
+    "name": "Brand Management",
+    "code": "PBA101",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-mining-for-business-intelligence",
+    "name": "Data Mining for Business Intelligence",
+    "code": "PBA402",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "project-management",
+    "name": "Project Management",
+    "code": "PBA504",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "services-marketing",
+    "name": "Services Marketing",
+    "code": "PBA105",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "organizational-theory-design-and-development",
+    "name": "Organizational Theory, Design and Development",
+    "code": "PBA305",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "enterprise-resource-planning",
+    "name": "Enterprise Resource Planning",
+    "code": "PBA403",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "international-trade-finance",
+    "name": "International Trade Finance",
+    "code": "PBA206",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cross-cultural-and-diversity-management",
+    "name": "Cross Cultural and Diversity Management",
+    "code": "PBA301",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "security-analysis-and-portfolio-management",
+    "name": "Security Analysis and Portfolio Management",
+    "code": "PBA205",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "labour-legislations",
+    "name": "Labour Legislations",
+    "code": "PBA303",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "merchant-banking-and-financial-services",
+    "name": "Merchant Banking and Financial Services",
+    "code": "PBA204",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "international-business-management",
+    "name": "International Business Management",
+    "code": "BA3362",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "strategic-management",
+    "name": "Strategic Management",
+    "code": "BA3361",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "services-operations-management",
+    "name": "Services Operations Management",
+    "code": "PBA505",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "entrepreneurship-essentials",
+    "name": "Entrepreneurship Essentials",
+    "code": "ABA404",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "english-for-research-paper-writing",
+    "name": "English for Research Paper Writing",
+    "code": "AEN401",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-networks-and-management",
+    "name": "Computer Networks and Management",
+    "code": "MC4164",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "python-programming",
+    "name": "Python Programming",
+    "code": "MC4163",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-database-technology",
+    "name": "Advanced Database Technology",
+    "code": "MC4162",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-structures-laboratory",
+    "name": "Data Structures Laboratory",
+    "code": "MC4165",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-data-structures-and-algorithms",
+    "name": "Advanced Data Structures and Algorithms",
+    "code": "MC4161",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "research-methods-and-intellectual-property-rights",
+    "name": "Research Methods and Intellectual Property Rights",
+    "code": "BA4171",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-probability-and-statistics",
+    "name": "Applied Probability and Statistics",
+    "code": "MA4121",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "disaster-management",
+    "name": "Disaster Management",
+    "code": "ACE402",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "python-programming-laboratory",
+    "name": "Python Programming Laboratory",
+    "code": "MC4167",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "database-technologies-laboratory",
+    "name": "Database Technologies Laboratory",
+    "code": "MC4166",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "full-stack-web-development",
+    "name": "Full Stack Web Development",
+    "code": "MC4261",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cloud-computing-and-mobile-app-development",
+    "name": "Cloud Computing and Mobile Application Development",
+    "code": "MC4262",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-data-science",
+    "name": "Advanced Data Science",
+    "code": "MC4263",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cyber-security-reg2024",
+    "name": "Cyber Security",
+    "code": "MC4264",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "object-oriented-software-engineering",
+    "name": "Object Oriented Software Engineering",
+    "code": "MC4265",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "full-stack-web-development-laboratory",
+    "name": "Full Stack Web Development Laboratory",
+    "code": "MC4266",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "mobile-application-development-laboratory",
+    "name": "Mobile Application Development Laboratory",
+    "code": "MC4267",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-visualization",
+    "name": "Data Visualization",
+    "code": "PMC302",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "big-data-analytics",
+    "name": "Big Data Analytics",
+    "code": "PMC304",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "communication-skills-enhancement-i",
+    "name": "Communication Skills Enhancement - I",
+    "code": "EN3117",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cyber-forensics",
+    "name": "Cyber Forensics",
+    "code": "PMC505",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "internet-of-things",
+    "name": "Internet of Things",
+    "code": "MC4362",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cryptography-and-cyber-security",
+    "name": "Cryptography and Cyber Security",
+    "code": "PMC503",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "machine-learning",
+    "name": "Machine Learning",
+    "code": "MC4361",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "communication-skills-enhancement-ii",
+    "name": "Communication Skills Enhancement - II",
+    "code": "EN4348",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "internet-of-things-laboratory",
+    "name": "Internet of Things Laboratory",
+    "code": "MC4364",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "machine-learning-laboratory",
+    "name": "Machine Learning Laboratory",
+    "code": "MC4363",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "operating-systems-and-security",
+    "name": "Operating Systems and Security",
+    "code": "PMC502",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-secure-software-systems",
+    "name": "Engineering Secure Software Systems",
+    "code": "PMC504",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-analytics-and-computing",
+    "name": "Data Analytics and Computing",
+    "code": "PMC103",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "neural-network-and-deep-learning",
+    "name": "Neural Network and Deep Learning",
+    "code": "PMC102",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "image-processing-and-machine-vision",
+    "name": "Image Processing and Machine Vision",
+    "code": "PMC104",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "structural-engineering-laboratory",
+    "name": "Structural Engineering Laboratory",
+    "code": "ST3164",
+    "departmentId": "me-se",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "structural-design-and-drawing-laboratory",
+    "name": "Structural Design and Drawing Laboratory",
+    "code": "ST3165",
+    "departmentId": "me-se",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "matrix-methods-of-structural-analysis",
+    "name": "Matrix Methods of Structural Analysis",
+    "code": "PST203",
+    "departmentId": "me-se",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-concrete-structures",
+    "name": "Advanced Concrete Structures",
+    "code": "ST3163",
+    "departmentId": "me-se",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "structural-dynamics-and-earthquake-engineering",
+    "name": "Structural Dynamics and Earthquake Engineering",
+    "code": "ST3162",
+    "departmentId": "me-se",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "theory-of-elasticity-and-plasticity",
+    "name": "Theory of Elasticity and Plasticity",
+    "code": "ST3161",
+    "departmentId": "me-se",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "maintenance-repair-and-rehabilitation-of-structures",
+    "name": "Maintenance, Repair and Rehabilitation of Structures",
+    "code": "PST102",
+    "departmentId": "me-se",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-steel-structures",
+    "name": "Advanced Steel Structures",
+    "code": "ST3261",
+    "departmentId": "me-se",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industrial-structures",
+    "name": "Industrial Structures",
+    "code": "ST3262",
+    "departmentId": "me-se",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "experimental-techniques-and-instrumentation",
+    "name": "Experimental Techniques and Instrumentation",
+    "code": "ST3263",
+    "departmentId": "me-se",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "finite-element-analysis-in-structural-engineering",
+    "name": "Finite Element Analysis in Structural Engineering",
+    "code": "ST3264",
+    "departmentId": "me-se",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "structural-design-studio",
+    "name": "Structural Design Studio",
+    "code": "ST3265",
+    "departmentId": "me-se",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-prestressed-concrete",
+    "name": "Advanced Prestressed Concrete",
+    "code": "PST403",
+    "departmentId": "me-se",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-concrete-technology",
+    "name": "Advanced Concrete Technology",
+    "code": "1917302",
+    "departmentId": "me-se",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "research-methodology-and-intellectual-property-rights",
+    "name": "Research Methodology and Intellectual Property Rights",
+    "code": "BA3371",
+    "departmentId": "me-se",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-of-bridges",
+    "name": "Design of Bridges",
+    "code": "PST503",
+    "departmentId": "me-se",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-of-sub-structures",
+    "name": "Design of Sub Structures",
+    "code": "PST603",
+    "departmentId": "me-se",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-concrete-technology",
+    "name": "Advanced Concrete Technology",
+    "code": "1917302",
+    "departmentId": "me-se",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-mathematics-for-computer-science-and-engineering",
+    "name": "Advanced Mathematics for Computer Science and Engineering",
+    "code": "MA3128",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "machine-learning",
+    "name": "Machine Learning",
+    "code": "DS3162",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-data-structures-and-algorithms",
+    "name": "Advanced Data Structures and Algorithms",
+    "code": "CP3161",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "database-practices",
+    "name": "Database Practices",
+    "code": "CP3162",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "network-technologies",
+    "name": "Network Technologies",
+    "code": "CP3163",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "agile-methodologies",
+    "name": "Agile Methodologies",
+    "code": "CP3164",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-data-structures-and-algorithms-laboratory",
+    "name": "Advanced Data Structures and Algorithms Laboratory",
+    "code": "CP3165",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "machine-learning-laboratory",
+    "name": "Machine Learning Laboratory",
+    "code": "DS3165",
+    "departmentId": "me-cse",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "internet-of-things",
+    "name": "Internet of Things",
+    "code": "CP3261",
+    "departmentId": "me-cse",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cloud-computing-technologies",
+    "name": "Cloud Computing Technologies",
+    "code": "CP3262",
+    "departmentId": "me-cse",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-data-science",
+    "name": "Advanced Data Science",
+    "code": "CP3263",
+    "departmentId": "me-cse",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-testing-and-quality-assurance",
+    "name": "Software Testing and Quality Assurance",
+    "code": "PCP101",
+    "departmentId": "me-cse",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "deep-learning",
+    "name": "Deep Learning",
+    "code": "DS3264",
+    "departmentId": "me-cse",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "web-design-and-management",
+    "name": "Web Design and Management",
+    "code": "PDS104",
+    "departmentId": "me-cse",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-data-science-laboratory",
+    "name": "Advanced Data Science Laboratory",
+    "code": "CP3264",
+    "departmentId": "me-cse",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "soft-computing",
+    "name": "Soft Computing",
+    "code": "PCP503",
+    "departmentId": "me-cse",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cyber-security",
+    "name": "Cyber Security",
+    "code": "PCP401",
+    "departmentId": "me-cse",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "research-methodology-and-intellectual-property-rights",
+    "name": "Research Methodology and Intellectual Property Rights",
+    "code": "BA3371",
+    "departmentId": "me-cse",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "ai-and-ml",
+    "name": "Ai and ml",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "anatomy-lower-limb-abdomen-and-pelvis",
+    "name": "Anatomy- Lower Limb, Abdomen and Pelvis",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "anotomy-upper-limb-head-neck-thorax",
+    "name": "Anotomy - Upper Limb,Head,Neck,Thorax",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cs-withaiml",
+    "name": "cs withaiml",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "english-for-heathcare-professional-s",
+    "name": "English for Heathcare Professional's",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "integrative-physiology",
+    "name": "Integrative Physiology",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-english-for-engineer",
+    "name": "Professional English for engineer",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sociology",
+    "name": "Sociology",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "systemic-physiology",
+    "name": "Systemic Physiology",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "theoretical-foundations-in-occupational-therapy",
+    "name": "Theoretical Foundations in Occupational Therapy",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "analyzing-occupation-and-activities",
+    "name": "Analyzing Occupation and Activities",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "anatomy-lower-limb-abdomen-and-pelvis",
+    "name": "Anatomy – Lower Limb, Abdomen and Pelvis",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "first-aid-and-emergency-care",
+    "name": "First Aid and Emergency Care",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "systemic-physiology",
+    "name": "Systemic Physiology",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "discrete-mathematics",
+    "name": "Discrete mathematics",
+    "code": "",
+    "departmentId": "allied-health-sciences",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "basic-civil-and-mechanical-engineering",
+    "name": "Basic Civil and Mechanical Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "basic-electrical-and-electronics-engineering",
+    "name": "Basic Electrical and Electronics Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "chemistry-laboratory-manual",
+    "name": "Chemistry Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-chemistry",
+    "name": "Engineering Chemistry",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-physics",
+    "name": "Engineering Physics",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-practices",
+    "name": "Engineering Practices",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-practices-laboratory-manual-civil",
+    "name": "Engineering Practices Laboratory Manual-Civil",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-practices-laboratory-manual-eee",
+    "name": "Engineering Practices Laboratory Manual-EEE",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-practices-laboratory-manual-eie",
+    "name": "Engineering Practices Laboratory Manual-EIE",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-practices-laboratory-manual-mech",
+    "name": "Engineering Practices Laboratory Manual-Mech",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "english-language-learning",
+    "name": "English Language Learning",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "english-language-learning-laboratory-manual",
+    "name": "English Language Learning Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "heritage-of-tamils",
+    "name": "Heritage of Tamils",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "laboratory-manual",
+    "name": "Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "laboratory-manual-civil",
+    "name": "Laboratory Manual-Civil",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "laboratory-manual-eee",
+    "name": "Laboratory Manual-EEE",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "laboratory-manual-eie",
+    "name": "Laboratory Manual-EIE",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "laboratory-manual-mech",
+    "name": "Laboratory Manual-Mech",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "matrices-and-calculus",
+    "name": "Matrices and Calculus",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "physics-laboratory-manual",
+    "name": "Physics Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-english-i",
+    "name": "Professional English-I",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "chemistry-for-construction-materials",
+    "name": "Chemistry for Construction Materials",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "chemistry-for-electronic-materials",
+    "name": "Chemistry for Electronic Materials",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-graphics-and-design",
+    "name": "Engineering Graphics and Design",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-sciences",
+    "name": "Engineering Sciences",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-sciences-laboratory-physics-manual",
+    "name": "Engineering Sciences Laboratory – Physics Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-sciences-laboratory-chemistry-manual",
+    "name": "Engineering Sciences Laboratory- Chemistry Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "physics-for-civil-engineering",
+    "name": "Physics for Civil Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "physics-for-electronics-engineering",
+    "name": "Physics for Electronics Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "problem-solving-and-python-programming",
+    "name": "Problem Solving and Python Programming",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "problem-solving-and-python-programming-laboratory-manual",
+    "name": "Problem solving and Python Programming Laboratory – Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-english-ii",
+    "name": "Professional English – II",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "statistics-and-numerical-methods",
+    "name": "Statistics and Numerical Methods",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tamils-and-technology",
+    "name": "தமிழரும் ததொழில்நுட்பமும்/ Tamils and Technology",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-fluid-dynamics-and-thermo-dynamics",
+    "name": "Applied Fluid Dynamics and Thermo Dynamics",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-mechanics",
+    "name": "Applied Mechanics",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-aided-drafting-and-modelling-laboratory-manual",
+    "name": "Computer Aided Drafting and Modelling Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "construction-materials",
+    "name": "Construction Materials",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "differential-equations",
+    "name": "Differential Equations",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electric-circuit-analysis",
+    "name": "Electric Circuit Analysis",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electric-circuits-laboratory-manual",
+    "name": "Electric Circuits Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electrical-and-electronic-instruments",
+    "name": "Electrical and Electronic Instruments",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electron-devices-and-circuits-laboratory-manual",
+    "name": "Electron Devices and Circuits Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electronic-devices-and-circuits",
+    "name": "Electronic Devices and Circuits",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fluid-mechanics",
+    "name": "Fluid Mechanics",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "laboratory-manual",
+    "name": "Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "measurements-and-transducers-laboratory-manual",
+    "name": "Measurements and Transducers Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "soil-mechanics",
+    "name": "Soil Mechanics",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "surveying-and-levelling",
+    "name": "Surveying and Levelling",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "transducers-engineering",
+    "name": "Transducers Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "transforms-and-partial",
+    "name": "Transforms and Partial",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "transforms-and-partial-differential-equations",
+    "name": "Transforms and Partial Differential Equations",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-hydraulic-engineering-construction-techniques-and-equipments",
+    "name": "Applied Hydraulic Engineering Construction Techniques and Equipments",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-mathematics-for-civil-engineering",
+    "name": "Applied Mathematics for Civil Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-mathematics-for-electrical-and-instrumentation-engineering",
+    "name": "Applied Mathematics for Electrical and Instrumentation Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "control-systems",
+    "name": "Control Systems",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "digital-logic-circuits",
+    "name": "Digital Logic Circuits",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electrical-machines",
+    "name": "Electrical Machines",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electrical-machines-and-control-systems-laboratory-manual",
+    "name": "Electrical Machines and Control Systems Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electronics-for-analog-signal-processing",
+    "name": "Electronics for Analog Signal Processing",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fluid-mechanics-and-machinery-laboratory-manual",
+    "name": "Fluid Mechanics and Machinery Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "irrigation-engineering-foundation-engineering",
+    "name": "Irrigation Engineering Foundation Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "laboratory-manual",
+    "name": "Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "linear-and-digital-integrated-circuits-laboratory-manual",
+    "name": "Linear and Digital Integrated Circuits Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "microprocessors-and-microcontrollers",
+    "name": "Microprocessors and Microcontrollers",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "microprocessors-and-microcontrollers-laboratory-manual",
+    "name": "Microprocessors and Microcontrollers Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "soil-mechanics-laboratory-manual",
+    "name": "Soil Mechanics Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "strength-of-materials",
+    "name": "Strength of Materials",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "strength-of-materials-laboratory-manual",
+    "name": "Strength of Materials Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "air-pollution-and-control-engineering",
+    "name": "Air Pollution and Control Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "analytical-instrumentation",
+    "name": "Analytical Instrumentation",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "concrete-elements",
+    "name": "Concrete Elements",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-of-reinforced-cement",
+    "name": "Design of Reinforced Cement",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "discrete-time-signal-processing",
+    "name": "Discrete Time Signal Processing",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "environmental-studies",
+    "name": "Environmental Studies",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "highway-and-railway-engineering",
+    "name": "Highway and Railway Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "highway-engineering-laboratory-manual",
+    "name": "Highway Engineering Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industrial-automation-systems",
+    "name": "Industrial Automation Systems",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industrial-instrumentation",
+    "name": "Industrial Instrumentation",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industrial-instrumentation-laboratory-manual",
+    "name": "Industrial Instrumentation Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "plc-scada",
+    "name": "PLC & SCADA",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "process-control",
+    "name": "Process Control",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "process-control-laboratory-manual",
+    "name": "Process Control Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "remote-sensing-and-geographical-information",
+    "name": "Remote Sensing and Geographical Information",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "robotics-automation",
+    "name": "Robotics & Automation",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "structural-analysis-i",
+    "name": "Structural Analysis-I",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "system-for-civil-engineering-repair-and-rehabilitation-of-structures",
+    "name": "System for Civil Engineering Repair and Rehabilitation of Structures",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "thermal-power-plant-instrumentation",
+    "name": "Thermal Power Plant Instrumentation",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "automotive-instrumentation-and-control",
+    "name": "Automotive Instrumentation and Control",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "construction-planning-and-management",
+    "name": "Construction Planning and Management",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-structures",
+    "name": "Data Structures",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-structures-lab-manual",
+    "name": "Data Structures Lab Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-of-steel-structural-elements",
+    "name": "Design of Steel Structural Elements",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "embedded-systems",
+    "name": "Embedded Systems",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "embedded-systems-lab-manual",
+    "name": "Embedded Systems Lab Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "entrepreneurship-development",
+    "name": "Entrepreneurship Development",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "human-resource-management",
+    "name": "Human Resource Management",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industrial-psychology",
+    "name": "Industrial Psychology",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industry-4-0-for-process-industries",
+    "name": "Industry 4.0 for Process Industries",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "instrumentation-and-control-in-petrochemical-industries",
+    "name": "Instrumentation and Control in Petrochemical Industries",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "iot-concepts-and-applications",
+    "name": "IoT Concepts and Applications",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "patent-drafting-for-beginners",
+    "name": "Patent Drafting for Beginners",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "prestressed-concrete-structures",
+    "name": "Prestressed Concrete Structures",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "principles-of-management",
+    "name": "Principles of Management",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-communication-lab-manual",
+    "name": "Professional Communication Lab Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sensor-for-iot-application",
+    "name": "Sensor for IOT Application",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "smart-cities-principles-of-management",
+    "name": "Smart Cities Principles of Management",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "structural-analysis-ii",
+    "name": "Structural Analysis-II",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "water-supply-and-waste-water-engineering",
+    "name": "Water Supply and Waste Water Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biomedical-instrumentation",
+    "name": "Biomedical Instrumentation",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-aided-design-and-drafting-laboratory",
+    "name": "Computer Aided Design and Drafting Laboratory",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-control-of-processes",
+    "name": "Computer Control of Processes",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electronic-materials",
+    "name": "Electronic Materials",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "estimation-costing-and-valuation-engineering",
+    "name": "Estimation, Costing and Valuation Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fibre-optics-and-laser-instrumentation",
+    "name": "Fibre Optics and Laser Instrumentation",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fundamentals-of-nanoscience",
+    "name": "Fundamentals of Nanoscience",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "hydrology-and-water-resources-engineering",
+    "name": "Hydrology and Water Resources Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industrial-automation-laboratory-manual",
+    "name": "Industrial Automation Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "industrial-data-network",
+    "name": "Industrial Data Network",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "instrumentation-system-design-laboratory-manual",
+    "name": "Instrumentation System Design Laboratory Manual",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "irrigation-engineering",
+    "name": "Irrigation Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "object-oriented-programming",
+    "name": "Object Oriented Programming",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "renewable-energy-systems",
+    "name": "Renewable Energy Systems",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-quality-management",
+    "name": "Software Quality Management",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "structural-dynamics",
+    "name": "Structural Dynamics",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "total-quality-management",
+    "name": "Total Quality Management",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "transducers-engineering",
+    "name": "Transducers Engineering",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "visual-communication",
+    "name": "Visual Communication",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "waste-water-treatment",
+    "name": "Waste Water Treatment",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "human-rights",
+    "name": "Human Rights",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "maintenance-repair-and-rehabilitation-of-structures",
+    "name": "Maintenance, Repair and Rehabilitation of Structures",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "prefabricated-structures",
+    "name": "Prefabricated Structures",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "principles-of-management",
+    "name": "Principles of Management",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "thermal-power-plant-instrumentation",
+    "name": "Thermal Power Plant Instrumentation",
+    "code": "",
+    "departmentId": "be",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "evs",
+    "name": "EVS",
+    "code": "",
+    "departmentId": "bsc-cardio-perfusion-technology",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "human-physiology",
+    "name": "Human physiology",
+    "code": "",
+    "departmentId": "bsc-cardio-perfusion-technology",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-database-technology-lab",
+    "name": "Advanced Database Technology Lab",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "career-advancement-i",
+    "name": "Career Advancement – I",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "database-technology",
+    "name": "Database Technology",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "java-programming-lab",
+    "name": "Java Programming Lab",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "object-oriented-programming-in-java",
+    "name": "Object-Oriented Programming in Java",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "operating-system",
+    "name": "Operating System",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-engineering",
+    "name": "Software Engineering",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "android-application-development",
+    "name": "Android Application Development",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "career-advancement-ii",
+    "name": "Career Advancement – II",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-communication",
+    "name": "Computer Communication",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cyber-security",
+    "name": "Cyber Security",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-analysis-using-r",
+    "name": "Data Analysis Using R",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "full-stack-development",
+    "name": "Full Stack Development",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fundamentals-of-generative-ai",
+    "name": "Fundamentals of Generative AI",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "modern-optimization-techniques",
+    "name": "Modern Optimization Techniques",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "natural-language-processing",
+    "name": "Natural Language Processing",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "programming-using-python",
+    "name": "Programming using Python",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "python-programming-lab",
+    "name": "Python Programming Lab",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "security-audit-and-risk-assessment",
+    "name": "Security Audit and Risk Assessment",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "adaptive-ai-in-data-analytics-and-predictive-modeling",
+    "name": "Adaptive AI in Data Analytics and Predictive Modeling",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-techniques-in-generative-ai",
+    "name": "Advanced Techniques in Generative AI",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "artificial-intelligence",
+    "name": "Artificial Intelligence",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "building-conversational-ai-for-human-resources",
+    "name": "Building Conversational AI for Human Resources",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "career-advancement-iii",
+    "name": "Career Advancement – III",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cloud-computing-and-virtualization",
+    "name": "Cloud Computing and Virtualization",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cyber-law-and-security",
+    "name": "Cyber Law and Security",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cyber-laws-and-ethics",
+    "name": "Cyber Laws and Ethics",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cyber-security-governance-risk-and-compliance",
+    "name": "Cyber Security Governance, Risk and Compliance",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-warehouse-and-data-mining",
+    "name": "Data Warehouse and Data Mining",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-and-analysis-of-algorithms",
+    "name": "Design and Analysis of Algorithms",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "generative-ai-large-language-models",
+    "name": "Generative AI & Large Language Models",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "mini-project",
+    "name": "Mini Project",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "oops-virtual-lab",
+    "name": "OOPS Virtual Lab",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-project-management",
+    "name": "Software Project Management",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "project",
+    "name": "Project",
+    "code": "",
+    "departmentId": "mca",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biology-human-physiology-and-anatomy",
+    "name": "Biology - Human physiology and Anatomy",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biomaterial-and-tissue-interaction",
+    "name": "Biomaterial And Tissue Interaction",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biomedical-instrumentation",
+    "name": "Biomedical Instrumentation",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biomems",
+    "name": "Biomems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "developmental-biology",
+    "name": "Developmental Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "integrated-circuit-design-for-bioinstrumentation",
+    "name": "Integrated Circuit Design For Bioinstrumentation",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "numerical-methods",
+    "name": "Numerical Methods",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "programming-in-java",
+    "name": "Programming In Java",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "artificial-intelligence",
+    "name": "Artificial intelligence",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "basic-civil-mechanical-workshop",
+    "name": "Basic Civil & Mechanical Workshop",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "big-data-analytics",
+    "name": "Big Data Analytics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biochemistry",
+    "name": "Biochemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biology",
+    "name": "Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biomedical-sensors",
+    "name": "Biomedical Sensors",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "calculus-and-linear-algebra",
+    "name": "Calculus And Linear Algebra",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cell-biology",
+    "name": "Cell Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "chemistry",
+    "name": "Chemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "chemistry-for-computer-science",
+    "name": "Chemistry for computer science",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cse-with-aiml",
+    "name": "Cse with aiml",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-science-and-artificial-intelligence",
+    "name": "Data science and artificial intelligence",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electromagnetic-theory-quantum-mechanics-waves-optics",
+    "name": "Electromagnetic Theory, Quantum Mechanics, Waves & Optics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electromagnetism-quantum-physics-and-optics-for-engineers",
+    "name": "Electromagnetism, Quantum Physics and Optics for Engineers",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-graphics",
+    "name": "Engineering graphics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "foreign-languages",
+    "name": "Foreign Languages",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fundamental-of-economics-foe",
+    "name": "Fundamental Of Economics (FOE)",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "genetics",
+    "name": "Genetics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "introduction-to-computational-biology",
+    "name": "Introduction To Computational Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "mathematics",
+    "name": "Mathematics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "microbiology",
+    "name": "Microbiology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "microbiology-anatomy-physiology-pharmocology",
+    "name": "Microbiology,anatomy,physiology,pharmocology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "philosophy-of-engineering",
+    "name": "Philosophy Of Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "physical-and-analytical-chemistry",
+    "name": "Physical And Analytical Chemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "physics-mechanics",
+    "name": "physics(mechanics)",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-english-for-engineer",
+    "name": "Professional English for engineer",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "programming-for-problem-solving",
+    "name": "Programming For Problem Solving",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-calculus-and-complex-analysis",
+    "name": "Advanced Calculus And Complex Analysis",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "basic-of-accounting-and-costing",
+    "name": "Basic Of Accounting And Costing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "building-materials-in-the-built-environment",
+    "name": "Building Materials In The Built Environment",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "communicative-english",
+    "name": "Communicative English",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electrical-and-electronics-engineering",
+    "name": "Electrical And Electronics Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electromagnetic-physics",
+    "name": "Electromagnetic Physics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electronic-system-and-pcb-design",
+    "name": "Electronic System And PCB Design",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "engineering-mechanics",
+    "name": "Engineering Mechanics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "object-oriented-design-and-programming",
+    "name": "Object Oriented Design And Programming",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "physics-mechanics",
+    "name": "Physics-Mechanics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "probability-and-statistics",
+    "name": "Probability And Statistics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "semiconductor-physics-and-computational-methods",
+    "name": "Semiconductor Physics And Computational Methods",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "advanced-programming-practice",
+    "name": "Advanced Programming Practice",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "basic-chemical-engineering",
+    "name": "Basic Chemical Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biochemistry",
+    "name": "Biochemistry",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "biomedical-signals-and-systems",
+    "name": "Biomedical signals and systems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bioprocess-principles",
+    "name": "Bioprocess Principles",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-organisation-an-architecture",
+    "name": "Computer organisation an architecture",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-organization-and-architecture",
+    "name": "Computer Organization And Architecture",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-structures-and-algorithm",
+    "name": "Data Structures And Algorithm",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-thinking-and-methodology",
+    "name": "Design Thinking And Methodology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "digital-logic-design",
+    "name": "Digital Logic Design",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "digital-logic-for-medical-system",
+    "name": "Digital logic for medical system",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electric-and-electronic-circuit",
+    "name": "Electric and electronic circuit",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "electromagnetic-theory-and-interference",
+    "name": "Electromagnetic Theory And Interference",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "foundation-of-data-science-fds",
+    "name": "Foundation of Data Science (FDS)",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "genetics-and-cytogenetics",
+    "name": "Genetics And Cytogenetics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "microbiology",
+    "name": "Microbiology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "numerical-methods-analysis",
+    "name": "Numerical Methods & Analysis",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "operating-systems",
+    "name": "Operating Systems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "social-engineering",
+    "name": "Social Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "solid-state-devices",
+    "name": "Solid State Devices",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "transforms-and-boundary-value-problems",
+    "name": "Transforms And Boundary Value Problems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "artificial-intelligence",
+    "name": "Artificial Intelligence",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "automation-in-manufacturing-system",
+    "name": "Automation in Manufacturing System",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "big-data-tools-and-techniques",
+    "name": "Big Data Tools And Techniques",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "bioprocess-engineering",
+    "name": "Bioprocess Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cell-communication-and-signaling",
+    "name": "Cell Communication And Signaling",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "chemical-engineering-principles",
+    "name": "Chemical Engineering Principles",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "database-management-systems",
+    "name": "Database Management Systems",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-and-analysis-of-algorithms",
+    "name": "Design And Analysis Of Algorithms",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "digital-image-processing",
+    "name": "Digital Image Processing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "internet-of-things-iot",
+    "name": "Internet Of Things (IOT)",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "molecular-biology",
+    "name": "Molecular Biology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "probability-applied-statistics",
+    "name": "Probability & Applied Statistics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "probability-and-queueing-theory",
+    "name": "Probability And Queueing Theory",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "programming-for-financial-technologies-honours",
+    "name": "Programming for Financial Technologies [Honours]",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "quantum-computing-honours",
+    "name": "Quantum Computing [Honours]",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "signal-processing",
+    "name": "Signal Processing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "social-engineering",
+    "name": "Social Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-process",
+    "name": "Software Process",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "big-data-essentials",
+    "name": "Big Data Essentials",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "community-connect",
+    "name": "Community Connect",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-networks",
+    "name": "Computer Networks",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "discrete-mathematics",
+    "name": "Discrete Mathematics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "formal-language-and-automata",
+    "name": "Formal Language And Automata",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "full-stack-web-development",
+    "name": "Full Stack Web Development",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "indian-art-form",
+    "name": "Indian Art Form",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "information-retrieval",
+    "name": "INFORMATION RETRIEVAL",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "introduction-to-sensors",
+    "name": "Introduction to Sensors",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "machine-learning",
+    "name": "Machine Learning",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "machine-learning-for-data-analytics",
+    "name": "Machine Learning for Data Analytics",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "microprocessor-microcontroller-and-interfacing-techniques",
+    "name": "Microprocessor, Microcontroller And Interfacing Techniques",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-elective-artificial-neural-network",
+    "name": "Professional elective - Artificial Neural Network",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "vlsi-design-and-technology",
+    "name": "VLSI design and technology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "waste-to-wealth-to-wheels",
+    "name": "Waste To Wealth To Wheels",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "animal-biotechnology",
+    "name": "Animal Biotechnology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cloud-computing",
+    "name": "Cloud Computing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "compiler-design",
+    "name": "Compiler Design",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "data-science",
+    "name": "Data Science",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "indian-traditional-knowledge",
+    "name": "Indian Traditional Knowledge",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "marine-technology",
+    "name": "Marine Technology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "natural-language-processing",
+    "name": "Natural Language Processing",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "plant-biotechnology",
+    "name": "Plant Biotechnology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "project",
+    "name": "Project",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-engineering-and-project-management",
+    "name": "Software Engineering And Project Management",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tqm-and-reliability-engineering",
+    "name": "TQM And Reliability Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "6",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "behavioural-psychology",
+    "name": "Behavioural Psychology",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-vision",
+    "name": "Computer Vision",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "semantic-web",
+    "name": "Semantic Web",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "service-oriented-architecture",
+    "name": "Service Oriented Architecture",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "smart-sensor-system",
+    "name": "Smart Sensor System",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "social-network-analysis",
+    "name": "Social Network Analysis",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-defined-network",
+    "name": "Software Defined Network",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "software-network-analysis",
+    "name": "Software Network Analysis",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "speech-recognition",
+    "name": "Speech Recognition",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sustainable-energy-engineering",
+    "name": "Sustainable Energy Engineering",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "wireless-mobile-communication",
+    "name": "Wireless Mobile Communication",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "wireless-sensor-networks",
+    "name": "Wireless Sensor Networks",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "7",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "internship",
+    "name": "Internship",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "major-project",
+    "name": "Major Project",
+    "code": "",
+    "departmentId": "btech",
+    "semesterId": "8",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "practical-cost-accounting",
+    "name": "Practical Cost Accounting",
+    "code": "",
+    "departmentId": "commerce",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tamil",
+    "name": "Tamil",
+    "code": "",
+    "departmentId": "commerce",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "basics-of-company-accpunts",
+    "name": "Basics of company accpunts",
+    "code": "",
+    "departmentId": "commerce",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "basics-of-cost-accounting",
+    "name": "Basics of cost accounting",
+    "code": "",
+    "departmentId": "commerce",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "income-tax-law-and-practice",
+    "name": "Income tax law and practice",
+    "code": "",
+    "departmentId": "commerce",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "muliti-discipline",
+    "name": "Muliti discipline",
+    "code": "",
+    "departmentId": "commerce",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "principal-of-marketing",
+    "name": "Principal of marketing",
+    "code": "",
+    "departmentId": "commerce",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "accountancy",
+    "name": "Accountancy",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "accounting-for-management",
+    "name": "Accounting for Management",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "economic-analysis-for-business",
+    "name": "Economic Analysis for Business",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "entrepreneurship-development",
+    "name": "Entrepreneurship Development",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "financial-reporting-analysis",
+    "name": "Financial reporting analysis",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "legal-and-ethical-business-environment",
+    "name": "Legal and ethical business environment",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "legal-aspects-of-business",
+    "name": "Legal Aspects of Business",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "management-concepts-and-organisational-behaviour",
+    "name": "Management Concepts and Organisational Behaviour",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "management-information-systems",
+    "name": "Management Information Systems",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "managerial-economics",
+    "name": "Managerial economics",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "marketing-management",
+    "name": "Marketing management",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "operation-management",
+    "name": "Operation management",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "principle-of-management",
+    "name": "principle of management",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "quantitative-aptitude-analysis",
+    "name": "Quantitative aptitude analysis",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "spreadsheet-modelling-laboratory",
+    "name": "Spreadsheet Modelling Laboratory",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "statistics-for-management",
+    "name": "Statistics for Management",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "business-environment-and-public-policy",
+    "name": "Business environment and public policy",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "business-reserach-method",
+    "name": "business reserach method",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "behavioral-finance",
+    "name": "Behavioral Finance",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "business-environment-and-public-policy",
+    "name": "Business environment and public policy",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "business-research-methodology",
+    "name": "business research methodology",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "consumer-behaviour",
+    "name": "Consumer behaviour",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "design-thinking-and-innovation",
+    "name": "Design thinking and innovation",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "forensic-finance",
+    "name": "Forensic finance",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "international-business",
+    "name": "International Business",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "introduction-to-research-methods",
+    "name": "Introduction to research methods",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "research-methodology",
+    "name": "Research Methodology",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "social-media-analytics",
+    "name": "Social Media Analytics",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "sustainalable-and-green-finance",
+    "name": "SUSTAINALABLE AND GREEN FINANCE",
+    "code": "",
+    "departmentId": "mba",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computing-fundamentals",
+    "name": "Computing fundamentals",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "discrete-mathematics",
+    "name": "discrete mathematics",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "english",
+    "name": "English",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "hardware-maintenance-and-troubleshooting",
+    "name": "hardware maintenance and troubleshooting",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "java-programming",
+    "name": "Java Programming",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "machine-learning",
+    "name": "Machine learning",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "maths-algebra-and-calculas",
+    "name": "maths(ALGEBRA AND CALCULAS)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "program-and-problem-solving",
+    "name": "Program and problem solving",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "programming-in-c-and-data-structure",
+    "name": "PROGRAMMING IN C AND DATA STRUCTURE",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tamil",
+    "name": "Tamil",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "value-education",
+    "name": "VALUE EDUCATION",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "1",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "eng-general-english",
+    "name": "eng(GENERAL ENGLISH)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "environmental-studies",
+    "name": "ENVIRONMENTAL STUDIES",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "general-pathalogy",
+    "name": "General Pathalogy",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "maths-numerical-analysisand-probability",
+    "name": "MATHS(NUMERICAL ANALYSISAND PROBABILITY)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "maths-operationsresearch",
+    "name": "MATHS(OPERATIONSRESEARCH)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-english-for-physical-science-1",
+    "name": "PROFESSIONAL ENGLISH FOR PHYSICAL SCIENCE-1",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tamil-2",
+    "name": "tamil(தமிழ் இலக்கிய வரலாறு-2)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "2",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-physics-1",
+    "name": "APPLIED PHYSICS -1",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "professional-english-for-physical-science",
+    "name": "PROFESSIONAL ENGLISH FOR PHYSICAL SCIENCE",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "programming-in-python",
+    "name": "PROGRAMMING IN PYTHON",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tamil",
+    "name": "tamil(தமிழக வரலாறும் பண்பாடும்)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tour-operations",
+    "name": "TOUR OPERATIONS",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "3",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "applied-physics-2",
+    "name": "APPLIED PHYSICS 2",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "cultural-tourism",
+    "name": "CULTURAL TOURISM",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "database-management-system",
+    "name": "DATABASE MANAGEMENT SYSTEM",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "english-general-english",
+    "name": "English (GENERAL ENGLISH)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "tamil",
+    "name": "Tamil(தமிழும் அறிவியலும்)",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "4",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-graphics",
+    "name": "computer graphics",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "computer-network",
+    "name": "computer network",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "digital-electronics-and-microprocessors",
+    "name": "digital electronics and microprocessors",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "fundamentals-of-algorithm",
+    "name": "Fundamentals of algorithm",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  },
+  {
+    "id": "web-technology",
+    "name": "web technology",
+    "code": "",
+    "departmentId": "science",
+    "semesterId": "5",
+    "status": "approved",
+    "contributorId": "system",
+    "contributorName": "System"
+  }
+]

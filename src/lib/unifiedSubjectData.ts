@@ -1,7 +1,7 @@
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { adminDb } from "@/lib/firebase-admin";
-import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
+import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG, DEFAULT_DEPARTMENTS } from "@/lib/subjects";
 
 export interface UnifiedSubject {
   id: string; // subjectId (e.g., 'chem', 'ml')
@@ -81,8 +81,8 @@ export function invalidateUnifiedDataCache() {
 
 /**
  * Unified Data Provider for All Courses, Semesters, and Subjects in Paperino.
- * Combines both static default subjects and dynamic Firestore departments/subjects.
- * Serves as the Single Source of Truth for Sitemap, Routing, Metadata & Structured Data.
+ * Combines comprehensive default subjects and dynamic Firestore departments/subjects.
+ * Resilient against Firestore quota exhaustion.
  */
 export const getAllUnifiedData = cache(async (
   forceRefetch = false,
@@ -112,7 +112,7 @@ export const getAllUnifiedData = cache(async (
     }
   }
 
-  // Cross-worker disk cache check (protects against parallel Next.js SSG build workers hitting Firestore)
+  // Cross-worker disk cache check
   if (!forceRefetch) {
     const diskCached = getDiskCache();
     if (diskCached) {
@@ -135,44 +135,70 @@ export const getAllUnifiedData = cache(async (
     }
   }
 
-  logFirestoreRead("departments & dynamic_subjects", "getAllUnifiedData cache miss - executing complete catalog fetch");
+  logFirestoreRead("departments & dynamic_subjects", "getAllUnifiedData cache miss - executing catalog fetch");
   const departmentsMap = new Map<string, UnifiedDepartment>();
   const subjectsList: UnifiedSubject[] = [];
   const subjectKeysSet = new Set<string>();
 
-  // 1. Add Default B.Tech Department
-  departmentsMap.set("btech", {
-    id: "btech",
-    name: "Bachelor of Technology",
-    code: "B.Tech",
-    totalSemesters: 7,
-    status: "approved",
-  });
-
-  // 2. Add Static Default Subjects (B.Tech Semesters 1-8)
-  Object.entries(STATIC_SUBJECTS).forEach(([semId, subs]) => {
-    subs.forEach((s) => {
-      const uniqueKey = `btech_${semId}_${s.id}`;
-      subjectKeysSet.add(uniqueKey);
-      subjectsList.push({
-        id: s.id,
-        name: s.name,
-        code: "",
-        departmentId: "btech",
-        departmentName: "Bachelor of Technology",
-        semesterId: semId,
-        status: "approved",
-      });
+  // 1. Seed All Canonical Default Departments (Resilience against Firestore downtime/quota exhaustion)
+  DEFAULT_DEPARTMENTS.forEach((dept) => {
+    departmentsMap.set(dept.id, {
+      id: dept.id,
+      name: dept.name,
+      code: dept.code,
+      totalSemesters: dept.totalSemesters,
+      status: dept.status,
     });
   });
 
-  // 3. Fetch Dynamic Departments & Dynamic Subjects from Firestore
+  // 2. Add All Comprehensive Pre-Configured Catalog Subjects (All departments & semesters 1-8)
+  COMPREHENSIVE_CATALOG.forEach((s) => {
+    const deptId = (s.departmentId || "btech").toLowerCase().trim();
+    const semId = String(s.semesterId || "1").trim();
+    const subId = (s.id || "").toLowerCase().trim();
+    const uniqueKey = `${deptId}_${semId}_${subId}`;
+
+    if (!subjectKeysSet.has(uniqueKey)) {
+      subjectKeysSet.add(uniqueKey);
+      const deptObj = departmentsMap.get(deptId);
+      subjectsList.push({
+        id: subId,
+        name: s.name,
+        code: s.code || "",
+        departmentId: deptId,
+        departmentName: deptObj ? deptObj.name : deptId.toUpperCase(),
+        semesterId: semId,
+        sections: s.sections,
+        status: "approved",
+      });
+    }
+  });
+
+  // 3. Add any legacy B.Tech subjects from STATIC_SUBJECTS that might have differing IDs
+  Object.entries(STATIC_SUBJECTS).forEach(([semId, subs]) => {
+    subs.forEach((s) => {
+      const uniqueKey = `btech_${semId}_${s.id.toLowerCase().trim()}`;
+      if (!subjectKeysSet.has(uniqueKey)) {
+        subjectKeysSet.add(uniqueKey);
+        subjectsList.push({
+          id: s.id,
+          name: s.name,
+          code: "",
+          departmentId: "btech",
+          departmentName: "Bachelor of Technology",
+          semesterId: semId,
+          status: "approved",
+        });
+      }
+    });
+  });
+
+  // 4. Fetch Dynamic Departments & Dynamic Subjects from Firestore (Merge live user submissions)
   try {
     let deptDocs: any[] = [];
     let subjectDocs: any[] = [];
 
     if (typeof window === "undefined" && adminDb) {
-      // Server-side Node / Build execution via Firebase Admin
       const timeoutMs = 3000;
       const timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore fetch timeout")), ms));
 
@@ -188,9 +214,6 @@ export const getAllUnifiedData = cache(async (
         subjectDocs = (subResult.value as any).docs.map((d: any) => ({ id: d.id, ...d.data() }));
       }
     } else if (db) {
-      // Client-side or fallback Firebase Client SDK execution
-      // We can use query and where directly if we import them at the top, or dynamically await
-      const { query, where } = await import("firebase/firestore");
       const deptSnap = await getDocs(collection(db, "departments"));
       deptDocs = deptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -199,25 +222,20 @@ export const getAllUnifiedData = cache(async (
     }
 
     // Process Dynamic Departments
-
     deptDocs.forEach((d) => {
-      const codeUpper = (d.code || "").toUpperCase().trim();
-      const nameLower = (d.name || "").toLowerCase().trim();
-      if (codeUpper === "COM" || codeUpper === "BTE" || codeUpper === "BME" || nameLower === "computer network" || nameLower === "btech cse aiml" || nameLower.includes("biomedical eng")) {
-        return;
-      }
-      if (d.status === "approved" || !d.status) {
+      if (d.status !== "rejected") {
         const serializeTimestamp = (ts: any) => {
           if (!ts) return null;
           if (ts.toDate) return ts.toDate().toISOString();
           if (ts._seconds) return new Date(ts._seconds * 1000).toISOString();
           return String(ts);
         };
-        departmentsMap.set(d.id, {
-          id: d.id,
-          name: d.name || d.id.toUpperCase(),
-          code: d.code || d.name || d.id.toUpperCase(),
-          totalSemesters: d.totalSemesters || 8,
+        const cleanId = (d.id || "").toLowerCase().trim();
+        departmentsMap.set(cleanId, {
+          id: cleanId,
+          name: d.name || cleanId.toUpperCase(),
+          code: d.code || d.name || cleanId.toUpperCase(),
+          totalSemesters: Number(d.totalSemesters) || 8,
           parentCourse: d.parentCourse || undefined,
           status: d.status || "approved",
           updatedAt: serializeTimestamp(d.updatedAt || d.createdAt),
@@ -228,40 +246,49 @@ export const getAllUnifiedData = cache(async (
 
     // Process Dynamic Subjects
     subjectDocs.forEach((s) => {
-      if (s.status === "approved" || !s.status) {
-        const deptId = s.departmentId || "btech";
-        const semId = String(s.semesterId || "1");
-        const subId = s.subjectId || s.id;
+      if (s.status !== "rejected") {
+        const deptId = (s.departmentId || "btech").toLowerCase().trim();
+        const semId = String(s.semesterId || "1").trim();
+        const subId = (s.subjectId || s.id || "").toLowerCase().trim();
         const uniqueKey = `${deptId}_${semId}_${subId}`;
 
-        if (!subjectKeysSet.has(uniqueKey)) {
+        const deptObj = departmentsMap.get(deptId);
+        const serializeTimestamp = (ts: any) => {
+          if (!ts) return null;
+          if (ts.toDate) return ts.toDate().toISOString();
+          if (ts._seconds) return new Date(ts._seconds * 1000).toISOString();
+          return String(ts);
+        };
+
+        const item: UnifiedSubject = {
+          id: subId,
+          name: s.name || subId,
+          code: s.code || "",
+          departmentId: deptId,
+          departmentName: deptObj ? deptObj.name : deptId.toUpperCase(),
+          semesterId: semId,
+          sections: Array.isArray(s.sections) ? s.sections : undefined,
+          status: s.status || "approved",
+          updatedAt: serializeTimestamp(s.updatedAt || s.createdAt),
+          createdAt: serializeTimestamp(s.createdAt),
+        };
+
+        if (subjectKeysSet.has(uniqueKey)) {
+          // Update existing with live Firestore data
+          const existingIdx = subjectsList.findIndex(
+            x => x.departmentId === deptId && x.semesterId === semId && x.id.toLowerCase() === subId
+          );
+          if (existingIdx !== -1) {
+            subjectsList[existingIdx] = { ...subjectsList[existingIdx], ...item };
+          }
+        } else {
           subjectKeysSet.add(uniqueKey);
-          const deptObj = departmentsMap.get(deptId);
-
-          const serializeTimestamp = (ts: any) => {
-            if (!ts) return null;
-            if (ts.toDate) return ts.toDate().toISOString();
-            if (ts._seconds) return new Date(ts._seconds * 1000).toISOString();
-            return String(ts);
-          };
-
-          subjectsList.push({
-            id: subId,
-            name: s.name || subId,
-            code: s.code || "",
-            departmentId: deptId,
-            departmentName: deptObj ? deptObj.name : deptId.toUpperCase(),
-            semesterId: semId,
-            sections: Array.isArray(s.sections) ? s.sections : undefined,
-            status: s.status || "approved",
-            updatedAt: serializeTimestamp(s.updatedAt || s.createdAt),
-            createdAt: serializeTimestamp(s.createdAt),
-          });
+          subjectsList.push(item);
         }
       }
     });
   } catch (err) {
-    console.warn("[getAllUnifiedData] Dynamic Firestore fetch skipped or deferred:", err);
+    console.warn("[getAllUnifiedData] Dynamic Firestore fetch skipped or deferred (using comprehensive fallback catalog):", err);
   }
 
   const fullResult = {

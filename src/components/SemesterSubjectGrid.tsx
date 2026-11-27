@@ -41,7 +41,7 @@ export default function SemesterSubjectGrid({ initialData, deptId, semId }: Seme
     }
 
     return clientSubs
-      .filter((s) => s.status === "approved" || !s.status)
+      .filter((s) => s.status !== "rejected")
       .map((s) => ({
         id: s.id,
         name: s.name,
