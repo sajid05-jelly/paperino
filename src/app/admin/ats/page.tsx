@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Bot, Save, AlertCircle, Activity, Power, ShieldCheck } from "lucide-react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ATSManagement() {
+  const { user } = useAuth();
   const [atsEnabled, setAtsEnabled] = useState(true);
   const [atsAdminTestMode, setAtsAdminTestMode] = useState(false);
   const [maintenanceTitle, setMaintenanceTitle] = useState("🚧 ATS Analyzer Building in Progress");
@@ -20,34 +20,38 @@ export default function ATSManagement() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchConfig = async () => {
       try {
-        // Fetch ATS Config
-        const configDoc = await getDoc(doc(db, "platform_config", "features"));
-        if (configDoc.exists()) {
-          const data = configDoc.data();
-          if (data.atsEnabled !== undefined) setAtsEnabled(data.atsEnabled);
-          if (data.atsAdminTestMode !== undefined) setAtsAdminTestMode(data.atsAdminTestMode);
-          if (data.maintenanceTitle) setMaintenanceTitle(data.maintenanceTitle);
-          if (data.maintenanceMessage) setMaintenanceMessage(data.maintenanceMessage);
-          if (data.lastUpdated) {
-            setLastUpdated(new Date(data.lastUpdated.toMillis ? data.lastUpdated.toMillis() : data.lastUpdated).toLocaleString());
+        const res = await fetch("/api/config/features");
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted) {
+            if (json?.features) {
+              const data = json.features;
+              if (data.atsEnabled !== undefined) setAtsEnabled(data.atsEnabled);
+              if (data.atsAdminTestMode !== undefined) setAtsAdminTestMode(data.atsAdminTestMode);
+              if (data.maintenanceTitle) setMaintenanceTitle(data.maintenanceTitle);
+              if (data.maintenanceMessage) setMaintenanceMessage(data.maintenanceMessage);
+              if (data.lastUpdated) {
+                setLastUpdated(new Date(data.lastUpdated).toLocaleString());
+              }
+            }
+            if (json?.stats?.atsUsage !== undefined) {
+              setAtsUsage(json.stats.atsUsage);
+            }
           }
         }
-
-        // Fetch Usage
-        const statsDoc = await getDoc(doc(db, "platform_stats", "global"));
-        if (statsDoc.exists()) {
-          setAtsUsage(statsDoc.data().atsUsage || 0);
-        }
-      } catch (err) {
-        console.error("Failed to load ATS config:", err);
-        setError("Failed to load configuration.");
+      } catch (err: any) {
+        console.warn("[ATS Admin] Failed to load config:", err?.message || err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchConfig();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSave = async () => {
@@ -55,19 +59,32 @@ export default function ATSManagement() {
     setError(null);
     setSuccess(false);
     try {
-      await setDoc(doc(db, "platform_config", "features"), {
-        atsEnabled,
-        atsAdminTestMode,
-        maintenanceTitle,
-        maintenanceMessage,
-        lastUpdated: new Date().toISOString()
-      }, { merge: true });
+      const token = user ? await user.getIdToken() : "";
+      const res = await fetch("/api/config/features", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          atsEnabled,
+          atsAdminTestMode,
+          maintenanceTitle,
+          maintenanceMessage,
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to save configuration.");
+      }
+
       setSuccess(true);
       setLastUpdated(new Date().toLocaleString());
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      console.error("Save failed:", err);
-      setError(err.message || "Failed to save configuration.");
+      console.warn("[ATS Admin] Save notice:", err?.message || err);
+      setError(err?.message || "Failed to save configuration.");
     } finally {
       setSaving(false);
     }

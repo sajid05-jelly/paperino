@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { BrainCircuit, Save, Activity, Power, ShieldCheck, RefreshCw, Briefcase, CheckCircle2, AlertCircle } from "lucide-react";
-import { collection, getCountFromServer, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CareerDnaManagement() {
+  const { user } = useAuth();
   const [careerDnaEnabled, setCareerDnaEnabled] = useState(true);
   const [careerDnaAdminTestMode, setCareerDnaAdminTestMode] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>("Unknown");
@@ -31,19 +33,22 @@ export default function CareerDnaManagement() {
     setLoading(true);
     setError(null);
 
-    // 1. Config
+    // 1. Config via server API
     try {
-      const configDoc = await getDoc(doc(db, "platform_config", "features"));
-      if (configDoc.exists()) {
-        const data = configDoc.data();
-        if (data.careerDnaEnabled !== undefined) setCareerDnaEnabled(data.careerDnaEnabled);
-        if (data.careerDnaAdminTestMode !== undefined) setCareerDnaAdminTestMode(data.careerDnaAdminTestMode);
-        if (data.lastUpdatedDna) {
-          setLastUpdated(new Date(data.lastUpdatedDna.toMillis ? data.lastUpdatedDna.toMillis() : data.lastUpdatedDna).toLocaleString());
+      const res = await fetch("/api/config/features");
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.features) {
+          const data = json.features;
+          if (data.careerDnaEnabled !== undefined) setCareerDnaEnabled(data.careerDnaEnabled);
+          if (data.careerDnaAdminTestMode !== undefined) setCareerDnaAdminTestMode(data.careerDnaAdminTestMode);
+          if (data.lastUpdatedDna) {
+            setLastUpdated(new Date(data.lastUpdatedDna).toLocaleString());
+          }
         }
       }
-    } catch (err) {
-      console.warn("Soft warning: Unable to read platform_config from client:", err);
+    } catch (err: any) {
+      console.warn("[Career DNA Admin] Notice reading features config:", err?.message || err);
     }
 
     // 2. Fetch Internship Count from Firestore
@@ -91,16 +96,30 @@ export default function CareerDnaManagement() {
     setError(null);
     setSuccess(false);
     try {
-      await setDoc(doc(db, "platform_config", "features"), {
-        careerDnaEnabled,
-        careerDnaAdminTestMode,
-        lastUpdatedDna: new Date().toISOString()
-      }, { merge: true });
+      const token = user ? await user.getIdToken() : "";
+      const res = await fetch("/api/config/features", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          careerDnaEnabled,
+          careerDnaAdminTestMode,
+          lastUpdatedDna: new Date().toISOString(),
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to save configuration.");
+      }
+
       setSuccess(true);
       setLastUpdated(new Date().toLocaleString());
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      console.error("Save failed:", err);
+      console.warn("[Career DNA Admin] Save notice:", err?.message || err);
       setError(err.message || "Failed to save configuration.");
     } finally {
       setSaving(false);
