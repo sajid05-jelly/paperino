@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_ADMINS = [
   "mohamedsajid.sa@gmail.com",
-  "mohamedsajid.sa@gmail.com",
   "sudharajsekar2005@gmail.com",
   "admin.paperinoirfan27@gmail.com",
   "admin.paperinosam14@gmail.com",
@@ -61,6 +60,17 @@ export async function GET(req: NextRequest) {
 
       matSnap.forEach((doc) => {
         const data = doc.data();
+        const uploaderEmail = (data.uploaderEmail || "").toLowerCase().trim();
+        // If an admin uploaded this material, auto-approve it immediately and skip the review queue
+        if (tab === "pending" && uploaderEmail && ALLOWED_ADMINS.includes(uploaderEmail)) {
+          doc.ref.update({
+            status: "approved",
+            approvedAt: new Date(),
+            approvedByAdminEmail: uploaderEmail,
+          }).catch(() => {});
+          return;
+        }
+
         seenIds.add(doc.id);
         const createdAt = data.createdAt?.toMillis
           ? data.createdAt.toMillis()
@@ -126,8 +136,19 @@ export async function GET(req: NextRequest) {
 
       dynSnap.forEach((doc) => {
         if (seenIds.has(doc.id)) return;
-        seenIds.add(doc.id);
         const data = doc.data();
+        const creatorEmail = (data.creatorEmail || data.uploaderEmail || "").toLowerCase().trim();
+        // If an admin created this subject, auto-approve it immediately and skip the review queue
+        if (tab === "pending" && creatorEmail && ALLOWED_ADMINS.includes(creatorEmail)) {
+          doc.ref.update({
+            status: "approved",
+            approvedAt: new Date(),
+            approvedByAdminEmail: creatorEmail,
+          }).catch(() => {});
+          return;
+        }
+
+        seenIds.add(doc.id);
         const createdAt = data.createdAt?.toMillis
           ? data.createdAt.toMillis()
           : typeof data.createdAt === "number"
@@ -174,8 +195,19 @@ export async function GET(req: NextRequest) {
 
       deptSnap.forEach((doc) => {
         if (seenIds.has(doc.id)) return;
-        seenIds.add(doc.id);
         const data = doc.data();
+        const creatorEmail = (data.creatorEmail || data.uploaderEmail || "").toLowerCase().trim();
+        // If an admin created this department, auto-approve it immediately and skip the review queue
+        if (tab === "pending" && creatorEmail && ALLOWED_ADMINS.includes(creatorEmail)) {
+          doc.ref.update({
+            status: "approved",
+            approvedAt: new Date(),
+            approvedByAdminEmail: creatorEmail,
+          }).catch(() => {});
+          return;
+        }
+
+        seenIds.add(doc.id);
         const createdAt = data.createdAt?.toMillis
           ? data.createdAt.toMillis()
           : typeof data.createdAt === "number"

@@ -1428,5 +1428,21 @@
     "approvedByAdminId": "admin",
     "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
     "createdAt": "2026-11-15T13:09:05.141Z"
+  },
+  {
+    "id": "btech_sem1_engineering-hydrology_pyq",
+    "subjectId": "engineering-hydrology",
+    "subjectName": "Engineering Hydrology",
+    "subjectCode": "",
+    "departmentId": "btech",
+    "departmentName": "BTECH",
+    "semesterId": "1",
+    "sectionType": "pyq",
+    "createdBy": "yOiHVAKZiRQU3sOL8DrZmGJpdbs2",
+    "creatorName": "malyajitkundu2005",
+    "creatorEmail": "malyajitkundu2005@gmail.com",
+    "approvedByAdminId": "EzEITZCSUKfGUWUkwgRGYtpS85Y2",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-27T16:22:58.758Z"
   }
 ]

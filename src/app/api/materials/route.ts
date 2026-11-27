@@ -224,9 +224,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Material title is required." }, { status: 400 });
     }
 
-    const isAdminUser = verifiedUser.role === "admin";
-    const status = (isAdminUser && !isContributor && requestedStatus === "approved") ? "approved" : "pending";
-    const uploadedBy = isAdminUser && !isContributor ? "admin" : "contributor";
+    const adminEmails = [
+      "mohamedsajid.sa@gmail.com",
+      "sudharajsekar2005@gmail.com",
+      "admin.paperinoirfan27@gmail.com",
+      "admin.paperinosam14@gmail.com",
+      "gameplayitlifeitis@gmail.com",
+      "gameplayitlifeis@gmail.com",
+      "gameplayitlife@gmail.com",
+      "dejasvini28@gmail.com",
+      "kaushika13official@gmail.com"
+    ];
+    const isAdminUser = verifiedUser.role === "admin" || (verifiedUser.email && adminEmails.includes(verifiedUser.email.toLowerCase().trim()));
+    const status = isAdminUser ? "approved" : "pending";
+    const uploadedBy = isAdminUser ? "admin" : "contributor";
 
     const newMaterial = {
       departmentId: String(departmentId || "btech").toLowerCase().trim(),

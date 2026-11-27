@@ -53,8 +53,19 @@ export async function POST(req: NextRequest) {
 
     const docId = `${departmentId}_sem${semesterId}_${generatedId}`;
 
-    const isAdmin = verifiedUser.role === "admin";
-    const status = isAdmin && !isSuggestion ? "approved" : "pending";
+    const adminEmails = [
+      "mohamedsajid.sa@gmail.com",
+      "sudharajsekar2005@gmail.com",
+      "admin.paperinoirfan27@gmail.com",
+      "admin.paperinosam14@gmail.com",
+      "gameplayitlifeitis@gmail.com",
+      "gameplayitlifeis@gmail.com",
+      "gameplayitlife@gmail.com",
+      "dejasvini28@gmail.com",
+      "kaushika13official@gmail.com"
+    ];
+    const isAdmin = verifiedUser.role === "admin" || (verifiedUser.email && adminEmails.includes(verifiedUser.email.toLowerCase().trim()));
+    const status = isAdmin ? "approved" : "pending";
 
     // 1. Create or update dynamic_subjects document
     await db.collection("dynamic_subjects").doc(docId).set(

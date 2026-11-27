@@ -166,11 +166,11 @@ if (!isOpen) return null;
         fileId: result.fileId,
         fileName: file.name,
         fileUrl: result.webViewLink || "",
-        status: (isContributor || !isAdmin) ? "pending" : "approved",
+        status: isAdmin ? "approved" : "pending",
         uploaderId: user?.uid || null,
         uploaderName: user?.displayName || user?.email || "Contributor",
         uploaderEmail: user?.email ? user.email.toLowerCase().trim() : null,
-        uploadedBy: (isContributor || !isAdmin) ? "contributor" : "admin",
+        uploadedBy: isAdmin ? "admin" : "contributor",
         createdAt: Date.now()
       };
 
@@ -216,7 +216,7 @@ if (!isOpen) return null;
       }
 
       // 4. Notify admins if the material is pending review (contributor upload)
-      if (isContributor || !isAdmin) {
+      if (!isAdmin) {
         await notifyAdmins(
           db,
           "New Material Uploaded",
