@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export type RequiredPlan = "plus" | "pro" | "premium";
 
@@ -36,15 +37,20 @@ const PlanGateContext = createContext<PlanGateContextType>({
 });
 
 export function PlanGateProvider({ children }: { children: ReactNode }) {
+  const { isAdmin } = useAuth();
   const [gate, setGate] = useState<PlanGateState>(defaultState);
 
   const showPlanGate = useCallback((featureName: string, requiredPlan: RequiredPlan, description?: string) => {
+    // Admins have full access and never see any upgrade/plan gate
+    if (isAdmin) return;
     setGate({ isOpen: true, type: "feature_lock", featureName, requiredPlan, description });
-  }, []);
+  }, [isAdmin]);
 
   const showLimitGate = useCallback((featureName: string, currentPlan: string, limit: number) => {
+    // Admins have unlimited limits and never see limit reached modal
+    if (isAdmin) return;
     setGate({ isOpen: true, type: "limit_reached", featureName, currentPlan, limit, requiredPlan: "plus" });
-  }, []);
+  }, [isAdmin]);
 
   const closePlanGate = useCallback(() => {
     setGate(prev => ({ ...prev, isOpen: false }));

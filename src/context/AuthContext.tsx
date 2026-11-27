@@ -665,7 +665,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPremiumActive,
       plan,
       isContributorPlus,
-      canAccess: (feature: FeatureKey) => isFeatureAllowed(plan, feature),
+      canAccess: (feature: FeatureKey) => isAdmin || isFeatureAllowed(plan, feature),
       razorpaySubscriptionId,
       razorpaySubscriptionStatus,
       premiumEndDate,

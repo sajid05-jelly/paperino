@@ -196,10 +196,10 @@ export default function ExamEmergencyPage() {
 
   // Route-level protection for direct access
   useEffect(() => {
-    if (plan === "free" || plan === "plus") {
+    if (!isAdmin && (plan === "free" || plan === "plus")) {
       showPlanGate("Exam Emergency Mode", "pro", "Upgrade to Pro to unlock Exam Emergency Mode.");
     }
-  }, [plan, showPlanGate]);
+  }, [isAdmin, plan, showPlanGate]);
 
   // Helper to flat list subjects
   function allSubjectsFlatList() {

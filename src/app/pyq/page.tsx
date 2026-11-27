@@ -9,7 +9,7 @@ import AICreditsDisplay from "@/components/AICreditsDisplay";
 import { usePlanGate } from "@/context/PlanGateContext";
 
 export default function PYQPredictorPage() {
-  const { plan, user } = useAuth();
+  const { plan, user, isAdmin } = useAuth();
   const { showLimitGate, showPlanGate } = usePlanGate();
   const [files, setFiles] = useState<File[]>([]);
   const [subject, setSubject] = useState<string>("");
@@ -29,12 +29,12 @@ export default function PYQPredictorPage() {
 
   
   useEffect(() => {
-    if (plan === "free") {
+    if (!isAdmin && plan === "free") {
       showPlanGate("PYQ Analyzer", "plus", "Upgrade to Plus to unlock PYQ Analyzer.");
     }
-  }, [plan, showPlanGate]);
+  }, [isAdmin, plan, showPlanGate]);
 
-  if (plan === "free") {
+  if (!isAdmin && plan === "free") {
     return (
       <div className="w-full min-h-screen relative flex items-center justify-center overflow-hidden bg-[#050308]">
         {/* Background Gradients */}

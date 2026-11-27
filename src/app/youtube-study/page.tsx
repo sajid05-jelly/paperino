@@ -86,7 +86,7 @@ const VideoThumbnail = ({ video }: { video: VideoResult }) => {
 
 export default function YouTubeStudyPage() {
   const { showToast } = useToast();
-  const { user, canAccess } = useAuth();
+  const { user, isAdmin, canAccess } = useAuth();
   const { showPlanGate } = usePlanGate();
 
   // Form state
@@ -154,7 +154,7 @@ export default function YouTubeStudyPage() {
   };
 
   const handleSearch = useCallback(async () => {
-    if (!canAccess("youtubeStudy")) {
+    if (!isAdmin && !canAccess("youtubeStudy")) {
       showPlanGate("YouTube Study AI", "pro", "Access the AI-powered YouTube Study search.");
       return;
     }
@@ -204,7 +204,7 @@ export default function YouTubeStudyPage() {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subject, customSubject, topic, language, canAccess, showPlanGate]);
+  }, [subject, customSubject, topic, language, isAdmin, canAccess, showPlanGate]);
 
   const getRankColor = (label: string) => {
     if (label === "Best Match") return "from-amber-500 to-yellow-400";
