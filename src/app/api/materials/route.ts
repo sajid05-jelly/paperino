@@ -3,12 +3,40 @@ import { adminDb } from "@/lib/firebase-admin";
 import { verifyServerAuth } from "@/lib/auth-verify";
 import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG, isMatchingDepartment } from "@/lib/subjects";
 import { getStoredSections } from "@/lib/sections-store";
+import verifiedMaterialsData from "@/data/verified_materials.json";
 
 export const dynamic = "force-dynamic";
 
 interface MaterialRecord {
   id: string;
   [key: string]: unknown;
+}
+
+function getVerifiedFallbackMaterials(departmentId: string, semId: string, candidateSubjectIds: Set<string>): MaterialRecord[] {
+  const normDept = (departmentId || "").toLowerCase();
+  const cleanSem = String(semId).replace(/^semester-/, "").trim();
+
+  return (verifiedMaterialsData as any[]).filter(m => {
+    const matchSem = String(m.semesterId).replace(/^semester-/, "") === cleanSem;
+    const matchDept = !normDept || normDept === "all" || isMatchingDepartment(normDept, m.departmentId);
+    const mSub = String(m.subjectId || "").toLowerCase();
+    const matchSub = candidateSubjectIds.has(mSub) || candidateSubjectIds.has(mSub.replace(/[^a-z0-9]/g, ""));
+    return matchSem && matchDept && matchSub;
+  }).map(m => ({
+    id: m.id,
+    title: m.title,
+    fileName: m.fileName,
+    fileId: m.fileId,
+    fileUrl: m.fileUrl,
+    category: m.category,
+    departmentId: m.departmentId,
+    semesterId: String(m.semesterId),
+    subjectId: m.subjectId,
+    status: "approved",
+    creatorName: m.creatorName || "Contributor",
+    createdAt: m.createdAt || Date.now(),
+    isVerifiedStore: true
+  }));
 }
 
 // Server-side in-memory cache for materials (10-minute TTL)
@@ -161,6 +189,14 @@ export async function GET(req: NextRequest) {
       return matchSem && matchSub && matchDept;
     });
 
+    // If Firestore returned no materials, check verified materials store (0 reads, 100% resilient)
+    if (materials.length === 0) {
+      const verifiedList = getVerifiedFallbackMaterials(departmentId, semId, candidateSubjectIds);
+      if (verifiedList.length > 0) {
+        materials.push(...verifiedList);
+      }
+    }
+
     if (materials.length === 0 && matchingSections.length > 0) {
       matchingSections.forEach((sec: any) => {
         const cat = sec.sectionType as "pyq" | "notes" | "questions";
@@ -200,7 +236,7 @@ export async function GET(req: NextRequest) {
         materials,
         sections: availableSections,
         count: materials.length,
-        source: "firestore",
+        source: materials.some(m => m.isVerifiedStore) ? "verified_store" : "firestore",
       },
       {
         headers: {
@@ -211,7 +247,29 @@ export async function GET(req: NextRequest) {
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to fetch materials";
     console.error("[Materials API Error]:", error);
-    const isQuota = errMessage.includes("Quota exceeded") || errMessage.includes("RESOURCE_EXHAUSTED");
+
+    // PRIORITY 1: Fallback to verified materials store (direct real files from Google Drive)
+    const verifiedList = getVerifiedFallbackMaterials(departmentId, semId, candidateSubjectIds);
+    if (verifiedList.length > 0) {
+      const availableSections = Array.from(
+        new Set(verifiedList.map(m => String(m.category || "")).filter(c => ["pyq", "notes", "questions"].includes(c)))
+      );
+      materialsApiCache.set(cacheKey, { materials: verifiedList, timestamp: Date.now() });
+      return NextResponse.json(
+        {
+          success: true,
+          materials: verifiedList,
+          sections: availableSections,
+          count: verifiedList.length,
+          source: "verified_materials_store"
+        },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          },
+        }
+      );
+    }
 
     try {
       const storedSections = getStoredSections();

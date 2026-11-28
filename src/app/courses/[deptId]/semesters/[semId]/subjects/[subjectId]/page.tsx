@@ -6,6 +6,7 @@ import { SITE_CONFIG } from "@/lib/siteConfig";
 import SubjectClientComponent from "@/components/SubjectClientComponent";
 import { adminDb } from "@/lib/firebase-admin";
 import { SUBJECTS as STATIC_SUBJECTS, isMatchingDepartment } from "@/lib/subjects";
+import verifiedMaterialsData from "@/data/verified_materials.json";
 
 export const dynamicParams = true;
 export const revalidate = 86400; // 24-hour Edge CDN caching (ISR) with stale-while-revalidate
@@ -79,21 +80,21 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
     return cached.data;
   }
 
+  const candidateIds = new Set<string>();
+  if (subjectId) candidateIds.add(subjectId);
+
+  const semSubs = STATIC_SUBJECTS[cleanSemId] || [];
+  for (const sub of semSubs) {
+    const sSlug = sub.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+    if (candidateIds.has(sub.id.toLowerCase()) || candidateIds.has(sSlug)) {
+      candidateIds.add(sub.id);
+      candidateIds.add(sub.id.toLowerCase());
+      candidateIds.add(sSlug);
+    }
+  }
+
   try {
     const numericSemId = parseInt(cleanSemId, 10);
-    const candidateIds = new Set<string>();
-    if (subjectId) candidateIds.add(subjectId);
-
-    const semSubs = STATIC_SUBJECTS[cleanSemId] || [];
-    for (const sub of semSubs) {
-      const sSlug = sub.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
-      if (candidateIds.has(sub.id.toLowerCase()) || candidateIds.has(sSlug)) {
-        candidateIds.add(sub.id);
-        candidateIds.add(sub.id.toLowerCase());
-        candidateIds.add(sSlug);
-      }
-    }
-
     const queries: Promise<any>[] = [];
     candidateIds.forEach((sId) => {
       queries.push(
@@ -146,9 +147,29 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
       }
     });
 
+    if (materials.length === 0) {
+      const verified = (verifiedMaterialsData as any[]).filter(m => {
+        const matchSem = String(m.semesterId).replace(/^semester-/, "") === cleanSemId;
+        const matchDept = !deptId || deptId === "all" || isMatchingDepartment(deptId, m.departmentId);
+        const mSub = String(m.subjectId || "").toLowerCase();
+        return matchSem && matchDept && (candidateIds.has(mSub) || candidateIds.has(mSub.replace(/[^a-z0-9]/g, "")));
+      });
+      if (verified.length > 0) {
+        serverMaterialsCache.set(cacheKey, { data: verified, timestamp: now });
+        return verified;
+      }
+    }
+
     serverMaterialsCache.set(cacheKey, { data: materials, timestamp: now });
     return materials;
   } catch (e) {
+    const verified = (verifiedMaterialsData as any[]).filter(m => {
+      const matchSem = String(m.semesterId).replace(/^semester-/, "") === cleanSemId;
+      const matchDept = !deptId || deptId === "all" || isMatchingDepartment(deptId, m.departmentId);
+      const mSub = String(m.subjectId || "").toLowerCase();
+      return matchSem && matchDept && (candidateIds.has(mSub) || candidateIds.has(mSub.replace(/[^a-z0-9]/g, "")));
+    });
+    if (verified.length > 0) return verified;
     return cached ? cached.data : [];
   }
 }

@@ -17,6 +17,7 @@ import { incrementMonthlyUsage, checkMonthlyUsage } from "@/lib/monthly-usage";
 import { getEffectivePlan, isFeatureAllowed, PlanType } from "@/lib/subscription";
 import { resolveUserDownloaderName, formatProfileName } from "@/lib/watermark";
 import { verifySignedDownloadToken } from "@/lib/downloadToken";
+import verifiedMaterialsData from "@/data/verified_materials.json";
 
 export const dynamic = "force-dynamic";
 
@@ -254,10 +255,21 @@ export async function GET(req: NextRequest) {
         rawFileTarget = matData.fileId || matData.fileUrl || rawFileTarget;
         matName = matData.fileName || matData.title || "material.pdf";
       } else {
-        console.warn("[Download API Stage 2] Material lookup timed out or not found, continuing with fileId param if available");
+        const local = (verifiedMaterialsData as any[]).find(m => m.id === matId || m.fileId === matId || (fileIdParam && m.fileId === fileIdParam));
+        if (local) {
+          rawFileTarget = local.fileId || local.fileUrl || rawFileTarget;
+          matName = local.fileName || local.title || "material.pdf";
+        } else {
+          console.warn("[Download API Stage 2] Material lookup timed out or not found, continuing with fileId param if available");
+        }
       }
     } catch (err: any) {
       console.error("[Download API Stage 2 Error] Error resolving material document:", err);
+      const local = (verifiedMaterialsData as any[]).find(m => m.id === matId || m.fileId === matId || (fileIdParam && m.fileId === fileIdParam));
+      if (local) {
+        rawFileTarget = local.fileId || local.fileUrl || rawFileTarget;
+        matName = local.fileName || local.title || "material.pdf";
+      }
     }
   }
 

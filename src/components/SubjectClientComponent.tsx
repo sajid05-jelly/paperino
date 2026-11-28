@@ -178,10 +178,6 @@ export default function SubjectClientComponent({
   };
 
   const handlePreviewClick = (mat: any) => {
-    if (mat.isConfiguredFallback) {
-      showToast("This document preview is temporarily being processed. Please try again shortly.", "info");
-      return;
-    }
     if (!canAccess("pdfPreview")) {
       showPlanGate("In-browser PDF Preview", "plus", "PDF preview is a premium feature. Upgrade to Plus, Pro, or Premium to view materials instantly in your browser.");
       return;
@@ -190,10 +186,6 @@ export default function SubjectClientComponent({
   };
 
   const handleDownloadMaterial = async (mat: any) => {
-    if (mat.isConfiguredFallback) {
-      showToast("This file is currently being prepared. Please try again shortly.", "info");
-      return;
-    }
     if (downloadingId === mat.id) return;
     setDownloadingId(mat.id);
     const success = await triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
