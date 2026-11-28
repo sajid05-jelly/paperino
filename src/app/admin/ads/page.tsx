@@ -654,13 +654,22 @@ export default function AdminAdsPage() {
                   {activeNow ? "Replace" : "+ Assign"}
                 </button>
                 {activeNow && (
-                  <button
-                    onClick={() => openEditModal(activeNow)}
-                    title="Edit"
-                    className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-colors"
-                  >
-                    <Edit size={14} />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => openEditModal(activeNow)}
+                      title="Edit Campaign"
+                      className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-colors cursor-pointer"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCampaign(activeNow.id, activeNow.title)}
+                      title="Remove Ad from Slot"
+                      className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </>
                 )}
               </div>
             </div>
