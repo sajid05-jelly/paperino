@@ -136,11 +136,11 @@ export default function ChallengeGameShell({
   }
 
   return (
-    <div className="min-h-screen w-full py-6 px-4 md:px-8 text-gray-200 bg-[var(--background)] flex flex-col justify-start items-center">
+    <div className="min-h-screen w-full py-6 px-4 md:px-8 text-gray-200 bg-[var(--background)] flex flex-col justify-between items-center relative">
       
       {/* 1. Shell Game Header Container */}
-      {isGameActive && (
-        <div className="w-full max-w-6xl glass-panel p-4 md:px-6 rounded-2xl border border-purple-500/20 mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 animate-in fade-in duration-300">
+      {isGameActive ? (
+        <div className="w-full max-w-6xl glass-panel p-4 md:px-6 rounded-2xl border border-purple-500/20 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 animate-in fade-in duration-300">
           {/* Header Row Left & Right for Mobile, unified horizontal row for Desktop */}
           <div className="w-full sm:w-auto flex justify-between sm:justify-start items-center gap-6">
             <button
@@ -185,12 +185,24 @@ export default function ChallengeGameShell({
             <span>Rules</span>
           </button>
         </div>
+      ) : (
+        <div className="w-full max-w-6xl flex justify-between items-center mb-4">
+          <button
+            onClick={handleExitClick}
+            className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-all cursor-pointer px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 shadow-sm"
+          >
+            <ArrowLeft size={16} /> <span>Back to Challenges</span>
+          </button>
+        </div>
       )}
 
       {/* 2. Interactive Game Content Container */}
-      <div className="w-full max-w-6xl flex-1 flex flex-col justify-start items-center">
+      <div className={`w-full max-w-6xl flex-1 flex flex-col ${isGameActive ? "justify-start pt-2" : "justify-center"} items-center my-auto`}>
         {children}
       </div>
+
+      {/* 3. Subtle bottom balance spacer when not in active game */}
+      {!isGameActive && <div className="w-full h-8 pointer-events-none" />}
 
       {/* 3. Re-openable Rules / Instructions Modal */}
       {showRulesModal && (
