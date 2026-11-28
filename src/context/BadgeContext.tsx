@@ -100,10 +100,13 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
           return; // Use locally cached seen timestamps for 15 mins
         }
 
-        const adminDocRef = doc(db, "users", user.uid);
-        const adminDocSnap = await getDoc(adminDocRef);
-        if (adminDocSnap.exists()) {
-          const data = adminDocSnap.data();
+        const token = await user.getIdToken();
+        const res = await fetch("/api/user/profile", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const data = json?.user || {};
           const adminSeen = data?.adminSeenSections || {};
           if (isMounted) {
             setLastSeenAdminSections((prev) => {

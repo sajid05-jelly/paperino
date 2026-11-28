@@ -205,6 +205,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (!finalUserData) {
+          // 1. Preferred path: Fetch profile via Server Admin API (bypasses Firestore client permission restrictions)
+          try {
+            const token = await currentUser.getIdToken();
+            const res = await fetch("/api/user/profile", {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const json = await res.json();
+              if (json?.user) {
+                finalUserData = json.user;
+              }
+            }
+          } catch (apiErr) {
+            console.warn("[AuthContext] User profile API fetch notice:", apiErr);
+          }
+        }
+
+        if (!finalUserData) {
           try {
             const userSnap = await getDoc(userRef);
           if (!userSnap.exists()) {
@@ -261,7 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (error) {
-          console.error("Error checking/creating user profile:", error);
+          console.warn("[AuthContext] Notice checking/creating user profile fallback:", error);
           if (currentIsAdmin) {
             finalUserData = {
               displayName: toProperCase(currentUser.displayName || "Admin"),
@@ -602,6 +620,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {}
     }
     try {
+      const token = await user.getIdToken();
+      fetch("/api/user/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          paperinoAvatar: avatarId,
+          displayName: toProperCase(user.displayName || ""),
+          email: user.email,
+        })
+      }).catch(() => {});
+    } catch {}
+    try {
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, {
         paperinoAvatar: avatarId,
@@ -610,7 +643,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastLogin: serverTimestamp()
       }, { merge: true });
     } catch (error) {
-      console.error("Error saving avatar to Firestore:", error);
+      console.warn("[AuthContext] Avatar Firestore write notice:", error);
     }
   };
 
