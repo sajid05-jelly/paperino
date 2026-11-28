@@ -148,11 +148,17 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
     });
 
     if (materials.length === 0) {
+      const cands = Array.from(candidateIds).map(c => c.toLowerCase());
       const verified = (verifiedMaterialsData as any[]).filter(m => {
         const matchSem = String(m.semesterId).replace(/^semester-/, "") === cleanSemId;
         const matchDept = !deptId || deptId === "all" || isMatchingDepartment(deptId, m.departmentId);
         const mSub = String(m.subjectId || "").toLowerCase();
-        return matchSem && matchDept && (candidateIds.has(mSub) || candidateIds.has(mSub.replace(/[^a-z0-9]/g, "")));
+        const mSubClean = mSub.replace(/[^a-z0-9]/g, "");
+        const matchSub = cands.some(cand => {
+          const candClean = cand.replace(/[^a-z0-9]/g, "");
+          return mSub === cand || mSubClean === candClean || (mSubClean.length >= 3 && candClean.includes(mSubClean)) || (candClean.length >= 3 && mSubClean.includes(candClean));
+        });
+        return matchSem && matchDept && matchSub;
       });
       if (verified.length > 0) {
         serverMaterialsCache.set(cacheKey, { data: verified, timestamp: now });
@@ -163,11 +169,17 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
     serverMaterialsCache.set(cacheKey, { data: materials, timestamp: now });
     return materials;
   } catch (e) {
+    const cands = Array.from(candidateIds).map(c => c.toLowerCase());
     const verified = (verifiedMaterialsData as any[]).filter(m => {
       const matchSem = String(m.semesterId).replace(/^semester-/, "") === cleanSemId;
       const matchDept = !deptId || deptId === "all" || isMatchingDepartment(deptId, m.departmentId);
       const mSub = String(m.subjectId || "").toLowerCase();
-      return matchSem && matchDept && (candidateIds.has(mSub) || candidateIds.has(mSub.replace(/[^a-z0-9]/g, "")));
+      const mSubClean = mSub.replace(/[^a-z0-9]/g, "");
+      const matchSub = cands.some(cand => {
+        const candClean = cand.replace(/[^a-z0-9]/g, "");
+        return mSub === cand || mSubClean === candClean || (mSubClean.length >= 3 && candClean.includes(mSubClean)) || (candClean.length >= 3 && mSubClean.includes(candClean));
+      });
+      return matchSem && matchDept && matchSub;
     });
     if (verified.length > 0) return verified;
     return cached ? cached.data : [];

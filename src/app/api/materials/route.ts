@@ -15,13 +15,24 @@ interface MaterialRecord {
 function getVerifiedFallbackMaterials(departmentId: string, semId: string, candidateSubjectIds: Set<string>): MaterialRecord[] {
   const normDept = (departmentId || "").toLowerCase();
   const cleanSem = String(semId).replace(/^semester-/, "").trim();
+  const cands = Array.from(candidateSubjectIds).map(c => c.toLowerCase());
 
   return (verifiedMaterialsData as any[]).filter(m => {
     const matchSem = String(m.semesterId).replace(/^semester-/, "") === cleanSem;
+    if (!matchSem) return false;
     const matchDept = !normDept || normDept === "all" || isMatchingDepartment(normDept, m.departmentId);
+    if (!matchDept) return false;
+
     const mSub = String(m.subjectId || "").toLowerCase();
-    const matchSub = candidateSubjectIds.has(mSub) || candidateSubjectIds.has(mSub.replace(/[^a-z0-9]/g, ""));
-    return matchSem && matchDept && matchSub;
+    const mSubClean = mSub.replace(/[^a-z0-9]/g, "");
+
+    return cands.some(cand => {
+      const candClean = cand.replace(/[^a-z0-9]/g, "");
+      return mSub === cand || 
+             mSubClean === candClean || 
+             (mSubClean.length >= 3 && candClean.includes(mSubClean)) ||
+             (candClean.length >= 3 && mSubClean.includes(candClean));
+    });
   }).map(m => ({
     id: m.id,
     title: m.title,
@@ -39,9 +50,9 @@ function getVerifiedFallbackMaterials(departmentId: string, semId: string, candi
   }));
 }
 
-// Server-side in-memory cache for materials (10-minute TTL)
+// Server-side in-memory cache for materials (30-minute TTL)
 const materialsApiCache = new Map<string, { materials: MaterialRecord[]; timestamp: number }>();
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -90,7 +101,7 @@ export async function GET(req: NextRequest) {
           { success: true, materials: cached.materials, count: cached.materials.length, source: "cache" },
           {
             headers: {
-              "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+              "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
             },
           }
         );
@@ -240,7 +251,7 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
         },
       }
     );
@@ -265,7 +276,7 @@ export async function GET(req: NextRequest) {
         },
         {
           headers: {
-            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+            "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
           },
         }
       );

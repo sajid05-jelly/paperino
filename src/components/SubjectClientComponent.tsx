@@ -233,13 +233,13 @@ export default function SubjectClientComponent({
     // Try to recover from sessionStorage if in-memory cache is empty (e.g. after navigation/remount)
     if (!cachedData && typeof window !== "undefined") {
       try {
-        const stored = sessionStorage.getItem(cacheKey);
+        const stored = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
         if (stored) {
           cachedData = JSON.parse(stored);
           subjectDataCache[cacheKey] = cachedData; // Restore to memory
         }
       } catch (e) {
-        console.warn("Failed to parse subject cache from sessionStorage", e);
+        console.warn("Failed to parse subject cache from storage", e);
       }
     }
 
@@ -382,12 +382,13 @@ export default function SubjectClientComponent({
         // Save to memory cache
         subjectDataCache[cacheKey] = finalCacheData;
         
-        // Save to sessionStorage cache to survive navigations
+        // Save to sessionStorage and localStorage cache to survive navigations and offline quota periods
         if (typeof window !== "undefined") {
           try {
             sessionStorage.setItem(cacheKey, JSON.stringify(finalCacheData));
+            localStorage.setItem(cacheKey, JSON.stringify(finalCacheData));
           } catch (e) {
-            console.warn("Failed to persist subject cache to sessionStorage (possibly too large)", e);
+            console.warn("Failed to persist subject cache to storage", e);
           }
         }
       }
@@ -401,9 +402,25 @@ export default function SubjectClientComponent({
       if ((materialsRef.current && materialsRef.current.length > 0) || (initialMaterials && initialMaterials.length > 0)) {
         setFetchError(null);
       } else {
-        // Fallback cleanly to empty state without showing scary quota warnings to users
-        setMaterials([]);
-        setSubjectSections([]);
+        // Check if persistent storage has cached materials before giving up
+        let restoredFromLocal = false;
+        if (typeof window !== "undefined") {
+          try {
+            const localRaw = localStorage.getItem(cacheKey) || sessionStorage.getItem(cacheKey);
+            if (localRaw) {
+              const parsed = JSON.parse(localRaw);
+              if (parsed && Array.isArray(parsed.materials) && parsed.materials.length > 0) {
+                setMaterials(parsed.materials);
+                setSubjectSections(parsed.sections || []);
+                restoredFromLocal = true;
+              }
+            }
+          } catch {}
+        }
+        if (!restoredFromLocal) {
+          setMaterials([]);
+          setSubjectSections([]);
+        }
         setFetchError(null);
       }
     } finally {
