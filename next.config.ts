@@ -52,6 +52,13 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "res.cloudinary.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+    ],
+  },
   async headers() {
     return [
       {
@@ -59,7 +66,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://*.firebaseapp.com https://*.googleapis.com https://checkout.razorpay.com https://*.razorpay.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://lh3.googleusercontent.com https://firebasestorage.googleapis.com https://*.googleapis.com https://*.razorpay.com https://i.ytimg.com https://*.ytimg.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://challenges.cloudflare.com https://*.razorpay.com; frame-src 'self' https://challenges.cloudflare.com https://*.firebaseapp.com https://*.firebaseauth.com https://*.razorpay.com https://www.youtube.com https://drive.google.com https://docs.google.com blob:; frame-ancestors 'self';"
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://*.firebaseapp.com https://*.googleapis.com https://checkout.razorpay.com https://*.razorpay.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://lh3.googleusercontent.com https://firebasestorage.googleapis.com https://*.googleapis.com https://*.razorpay.com https://i.ytimg.com https://*.ytimg.com https://*.r2.cloudflarestorage.com; media-src 'self' blob: data: https://res.cloudinary.com https://*.cloudinary.com https://*.r2.cloudflarestorage.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://*.r2.cloudflarestorage.com https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://challenges.cloudflare.com https://*.razorpay.com; frame-src 'self' https://challenges.cloudflare.com https://*.firebaseapp.com https://*.firebaseauth.com https://*.razorpay.com https://www.youtube.com https://drive.google.com https://docs.google.com blob:; frame-ancestors 'self';"
           },
           {
             key: "Strict-Transport-Security",
