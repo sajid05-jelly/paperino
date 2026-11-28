@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 // Client Firestore imports removed in favor of Server Admin API
 import { 
@@ -31,7 +32,11 @@ import {
   ShieldCheck,
   Activity,
   ArrowLeft,
-  BookOpen
+  BookOpen,
+  Crown,
+  Gift,
+  Flame,
+  Info
 } from "lucide-react";
 import { 
   ARENA_GAME_IDS,
@@ -248,7 +253,7 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
           <X size={20} />
         </button>
         
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
           <div className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400">
             <Trophy size={24} />
           </div>
@@ -256,6 +261,22 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
             <h2 className="text-xl font-bold text-white">Overall Top 5 Leaderboard</h2>
             <p className="text-xs text-purple-300">Weekly Challenge Standings</p>
           </div>
+        </div>
+
+        {/* Mega Event Reward Banner */}
+        <div className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-lime-500/20 via-emerald-500/10 to-yellow-500/20 border border-lime-500/40 flex items-center justify-between gap-3 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-xl bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
+              <Crown size={16} />
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider text-lime-400 font-bold">Mega Weekly Event</p>
+              <p className="text-xs font-bold text-white">#1 Wins Free Paperino Premium!</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-lime-500/20 text-lime-300 border border-lime-500/30 font-bold shrink-0">
+            ACTIVE
+          </span>
         </div>
 
         {loading ? (
@@ -298,10 +319,15 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
                   }`}>
                     #{entry.rank}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white truncate max-w-[140px]">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-white truncate max-w-[140px] sm:max-w-[180px]">
                       {entry.displayName}
                     </span>
+                    {idx === 0 && (
+                      <span className="text-[10px] font-mono font-bold text-lime-400 flex items-center gap-1 mt-0.5">
+                        <Crown size={11} className="text-yellow-400" /> #1 Free Premium Winner
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -318,6 +344,224 @@ function LeaderboardModal({ isOpen, onClose }: { isOpen: boolean, onClose: () =>
         )}
       </div>
     </div>
+  );
+}
+
+function MegaChallengeHero({ onOpenLeaderboard }: { onOpenLeaderboard: () => void }) {
+  const [showEventRules, setShowEventRules] = useState(false);
+
+  const scrollToGames = () => {
+    const el = document.getElementById("challenge-games");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  return (
+    <>
+      <section className="relative overflow-hidden rounded-3xl border-2 border-lime-500/40 bg-gradient-to-br from-[#0a180d]/95 via-[#06110a]/95 to-[#0e071c]/95 p-6 sm:p-8 backdrop-blur-2xl shadow-[0_0_50px_rgba(34,197,94,0.18)]">
+        {/* Ambient Glows */}
+        <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-lime-500/15 blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-emerald-500/15 blur-[80px] pointer-events-none" />
+        
+        {/* Subtle Cyber Grid scanlines */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.03)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 justify-between">
+          {/* Left Column: Event Content */}
+          <div className="flex-1 space-y-5 text-center lg:text-left">
+            
+            {/* Top Pill Badges */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-lime-500/20 text-lime-300 border border-lime-500/40 shadow-[0_0_15px_rgba(34,197,94,0.3)]">
+                <Flame className="w-3.5 h-3.5 text-lime-400 animate-pulse" />
+                <span>Special Event</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
+                <Gamepad2 className="w-3.5 h-3.5" />
+                <span>Mega Edition</span>
+              </div>
+              <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold tracking-wider bg-yellow-400/10 text-yellow-300 border border-yellow-400/30">
+                <span>⚡ PLAY • COMPETE • CLIMB • WIN!</span>
+              </div>
+            </div>
+
+            {/* Gamified Main Title */}
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-[0.25em] text-lime-400 font-extrabold flex items-center justify-center lg:justify-start gap-2 mb-1">
+                <span>PAPERINO ARENA</span>
+                <span>•</span>
+                <span>HIGH-STAKES RACE</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white uppercase drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] font-sans">
+                WEEKLY CHALLENGE
+              </h2>
+              <div className="inline-block mt-1.5 transform -rotate-1">
+                <span className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-lime-400 via-emerald-400 to-green-500 text-black font-black text-xs sm:text-sm md:text-base tracking-wider uppercase shadow-[0_0_25px_rgba(34,197,94,0.6)] font-mono">
+                  ⚡ MEGA EDITION ⚡
+                </span>
+              </div>
+            </div>
+
+            {/* Tagline */}
+            <p className="text-xs sm:text-sm md:text-base text-gray-300 max-w-xl leading-relaxed font-medium">
+              A special, high-stakes edition of our Weekly Challenge! Run the race across coding, puzzle, and logic arenas to claim the ultimate championship prize.
+            </p>
+
+            {/* Prize Callout Box */}
+            <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-black/70 border-2 border-lime-500/50 shadow-[0_0_30px_rgba(34,197,94,0.25)] text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-lime-500/20 text-yellow-300 border border-yellow-400/40 shadow-[0_0_20px_rgba(234,179,8,0.3)] flex-shrink-0">
+                  <Crown size={28} className="animate-bounce" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded border border-yellow-400/30">
+                      Grand Prize
+                    </span>
+                    <span className="text-[11px] font-mono text-lime-400 font-bold">Rank #1 Global Leader</span>
+                  </div>
+                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white mt-1 leading-snug">
+                    Rank #1 & Win a <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime-300 via-emerald-300 to-green-400 underline decoration-lime-400/50">Free Premium Subscription</span>!
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Whoever finishes top on the global leaderboard wins Paperino Premium unlocked free on their account.
+                  </p>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex flex-col items-center justify-center p-3 rounded-xl bg-lime-500/10 border border-lime-500/30 text-lime-300 text-center flex-shrink-0 min-w-[110px]">
+                <Gift className="w-6 h-6 text-lime-400 mb-1" />
+                <span className="text-[9px] font-mono uppercase tracking-wider text-gray-300">Reward</span>
+                <span className="text-xs font-black text-white">PREMIUM</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-1">
+              <button
+                onClick={scrollToGames}
+                className="px-6 py-3.5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider text-black bg-gradient-to-r from-lime-400 via-emerald-400 to-green-500 hover:brightness-110 shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2.5"
+              >
+                <Gamepad2 size={18} />
+                <span>Join the Mega Challenge</span>
+                <ChevronRight size={16} />
+              </button>
+
+              <button
+                onClick={onOpenLeaderboard}
+                className="px-5 py-3.5 rounded-xl font-bold text-xs sm:text-sm text-lime-300 bg-lime-950/40 hover:bg-lime-950/80 border border-lime-500/40 hover:border-lime-400 shadow-[0_0_15px_rgba(34,197,94,0.15)] transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Trophy size={16} className="text-yellow-400" />
+                <span>View #1 Race</span>
+              </button>
+
+              <button
+                onClick={() => setShowEventRules(true)}
+                className="px-4 py-3.5 rounded-xl font-bold text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Info size={15} />
+                <span>Rules</span>
+              </button>
+            </div>
+
+          </div>
+
+          {/* Right Column: Poster Image Artwork */}
+          <div className="w-full sm:w-auto flex-shrink-0 flex justify-center">
+            <div className="relative group rounded-3xl p-2 bg-gradient-to-b from-lime-500/40 via-emerald-500/20 to-purple-500/30 border border-lime-500/40 shadow-[0_0_40px_rgba(34,197,94,0.25)] transition-transform duration-300 hover:scale-[1.02]">
+              <div className="relative w-[260px] sm:w-[300px] md:w-[320px] aspect-square rounded-2xl overflow-hidden bg-black/60 shadow-inner">
+                <Image
+                  src="/images/mega-weekly-challenge.jpg"
+                  alt="Paperino Mega Weekly Challenge Poster"
+                  fill
+                  sizes="(max-width: 640px) 260px, 320px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-70 pointer-events-none" />
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono text-lime-300 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-lime-500/30">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-lime-400 animate-ping" />
+                    LIVE RACE
+                  </span>
+                  <span className="font-bold text-yellow-400 flex items-center gap-1">
+                    <Crown size={12} /> #1 WINS PREMIUM
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Event Rules Modal */}
+      {showEventRules && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-[#0a120a] border-2 border-lime-500/40 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(34,197,94,0.3)]">
+            <button
+              onClick={() => setShowEventRules(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-3 rounded-2xl bg-lime-500/20 text-lime-400 border border-lime-500/30">
+                <Crown size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white">Mega Weekly Challenge</h3>
+                <p className="text-xs text-lime-300 font-mono">Official Rules & Rewards</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs sm:text-sm text-gray-300 leading-relaxed">
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
+                <h4 className="font-bold text-white flex items-center gap-2 mb-1">
+                  <span className="w-5 h-5 rounded-full bg-lime-500/20 text-lime-400 flex items-center justify-center text-xs font-mono font-bold">1</span>
+                  The Grand Prize: Free Premium
+                </h4>
+                <p className="text-gray-400 text-xs pl-7">
+                  The player holding the <strong className="text-lime-300">#1 position on the Global Leaderboard</strong> at the close of the weekly cycle will be awarded a <strong className="text-white">Free Paperino Premium Subscription</strong> for 1 Month.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
+                <h4 className="font-bold text-white flex items-center gap-2 mb-1">
+                  <span className="w-5 h-5 rounded-full bg-lime-500/20 text-lime-400 flex items-center justify-center text-xs font-mono font-bold">2</span>
+                  Run the Race Across All Arenas
+                </h4>
+                <p className="text-gray-400 text-xs pl-7">
+                  Compete in the active weekly challenges (Bug Hunter, Logic Master, Circuit Master, Memory Rush, etc.). Your cumulative highest official scores across all games are tallied to determine your rank.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
+                <h4 className="font-bold text-white flex items-center gap-2 mb-1">
+                  <span className="w-5 h-5 rounded-full bg-lime-500/20 text-lime-400 flex items-center justify-center text-xs font-mono font-bold">3</span>
+                  Tie-breaking & Fair Play
+                </h4>
+                <p className="text-gray-400 text-xs pl-7">
+                  When scores tie, lowest completion time and earliest submission break the tie. Automated bots, script injection, and multi-accounting are strictly prohibited.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowEventRules(false);
+                scrollToGames();
+              }}
+              className="mt-6 w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-gradient-to-r from-lime-400 to-emerald-400 hover:brightness-110 shadow-lg cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Gamepad2 size={16} />
+              <span>Enter Arena — Start Playing</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -571,7 +815,10 @@ export default function WeeklyChallengesPage() {
             )}
           </div>
 
-          {/* ─── 2. SCHEDULE NOTICE (IF CLOSED TODAY) ─── */}
+          {/* ─── 2. MEGA WEEKLY CHALLENGE EVENT SHOWCASE ─── */}
+          <MegaChallengeHero onOpenLeaderboard={() => setShowLeaderboard(true)} />
+
+          {/* ─── 3. SCHEDULE NOTICE (IF CLOSED TODAY) ─── */}
           {!isTimeAvailable && (
             <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-amber-950/25 p-4 sm:p-5 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_30px_rgba(245,158,11,0.12)]">
               <div className="flex items-start gap-3.5">
@@ -600,8 +847,8 @@ export default function WeeklyChallengesPage() {
             </div>
           )}
 
-          {/* ─── 3. ACTIVE GAMES GRID ─── */}
-          <div>
+          {/* ─── 4. ACTIVE GAMES GRID ─── */}
+          <div id="challenge-games" className="scroll-mt-8">
             {activeGamesList.length === 0 ? (
               <div className="p-12 rounded-3xl bg-white/[0.02] border border-white/10 text-center space-y-3">
                 <Gamepad2 className="mx-auto h-12 w-12 text-gray-500" />
