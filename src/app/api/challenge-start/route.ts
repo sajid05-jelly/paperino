@@ -12,9 +12,13 @@ import {
   CODE_BREAKER_POOL, 
   CIRCUIT_CHALLENGES, 
   MEMORY_RUSH_CARDS, 
-  TYPING_BLITZ_SNIPPETS, 
+  TYPING_BLITZ_SNIPPETS,
+  WORD_LIST,
+  IMPOSTOR_SCENARIOS,
+  PARADOX_CHAINS,
   pickSeededQuestions 
 } from '@/lib/arenaPuzzles';
+import { getLeaderboard as buildLeaderboard } from '@/lib/challengeLeaderboard';
 
 const VALID_GAMES = [
   'bug-hunter',
@@ -31,20 +35,6 @@ const VALID_GAMES = [
   'memory-heist',
   'the-impostor',
   'paradox'
-];
-
-
-const WORD_LIST = [
-  'algorithm', 'binary', 'compiler', 'database', 'encrypt',
-  'function', 'gateway', 'hardware', 'integer', 'javascript',
-  'kernel', 'library', 'malware', 'network', 'optimize',
-  'protocol', 'quantum', 'runtime', 'software', 'terminal',
-  'unicode', 'virtual', 'webpack', 'syntax', 'boolean',
-  'variable', 'iterate', 'modular', 'parsing', 'graphic',
-  'machine', 'digital', 'storage', 'compute', 'encrypt',
-  'browser', 'silicon', 'circuit', 'deploy', 'python',
-  'tensor', 'neural', 'server', 'docker', 'devops',
-  'kotlin', 'github', 'struct', 'lambda', 'cursor'
 ];
 
 function getISOWeekId(date: Date): string {
@@ -69,16 +59,6 @@ function mulberry32(seed: number) {
   };
 }
 
-function getSeed(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return hash;
-}
-
-import { getLeaderboard as buildLeaderboard } from '@/lib/challengeLeaderboard';
-
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -86,7 +66,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized: Auth header missing' }, { status: 401 });
     }
 
-    // Parse body immediately (no await needed before auth)
     let body;
     try {
       body = await request.json();
@@ -94,7 +73,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid JSON request payload' }, { status: 400 });
     }
 
-    const { gameId } = body;
+    const { gameId, checkOnly } = body;
     if (!gameId || !VALID_GAMES.includes(gameId)) {
       return NextResponse.json({ error: 'Invalid gameId parameter' }, { status: 400 });
     }
@@ -103,7 +82,7 @@ export async function POST(request: Request) {
     const challengeDate = now.toISOString().split('T')[0];
     const weekId = getISOWeekId(now);
 
-    // === PARALLEL BATCH 1: Auth + Config fetch at the same time ===
+    // Verify auth and config in parallel
     const [authUser, configSnap] = await Promise.all([
       verifyServerAuth(authHeader).catch((e: any) => {
         console.error("[challenge-start] Token verification error:", e);
@@ -120,12 +99,8 @@ export async function POST(request: Request) {
 
     const { uid } = authUser;
 
-    // Process config
-    const isOfficial = true;
-    
     // Resolve canonical challengeId using admin config (or fallback)
     const challengeId = await getCanonicalChallengeId(gameId, authUser);
-
     const cfg = (configSnap && configSnap.exists) ? (configSnap.data() || {}) : {};
 
     if (configSnap && configSnap.exists) {
@@ -145,14 +120,12 @@ export async function POST(request: Request) {
 
     const maxAttempts = Number(cfg.officialAttempts) || 1;
 
-    // === Check existing result for attempt limit enforcement ===
-    let sessionId: string = crypto.randomUUID();
+    // Check existing official results to determine official attempt vs practice replay
+    let prevResult: any = null;
     const deterministicResultDocId = `${challengeId}-${uid}-res`;
 
     if (adminDb) {
       try {
-        let prevResult: any = null;
-
         if (maxAttempts > 1) {
           const sessionsSnap = await adminDb.collection("challenge_sessions")
             .where("userId", "==", uid)
@@ -168,14 +141,11 @@ export async function POST(request: Request) {
             };
           }
         } else {
-          // Enforce 1 ATTEMPT per challengeId + userId
-          // Step 1: Check deterministic doc directly (fastest, requires zero query index)
           const directDoc = await adminDb.collection("challenge_results").doc(deterministicResultDocId).get();
           if (directDoc.exists) {
             prevResult = directDoc.data();
           }
 
-          // Step 2: Fallback query if direct doc wasn't found (for legacy documents)
           if (!prevResult) {
             const existingResults = await adminDb.collection("challenge_results")
               .where("userId", "==", uid)
@@ -189,7 +159,6 @@ export async function POST(request: Request) {
             }
           }
 
-          // Step 3: Check completed session docs as secondary guard
           if (!prevResult) {
             const existingSession = await adminDb.collection("challenge_sessions")
               .where("userId", "==", uid)
@@ -207,58 +176,47 @@ export async function POST(request: Request) {
             }
           }
         }
-
-        if (prevResult) {
-          const userScore = prevResult.score || 0;
-          const userDuration = prevResult.durationMs || 0;
-
-          // Build leaderboard scoped to this exact challengeId
-          const { leaderboard, userRank } = await buildLeaderboard(challengeId, uid);
-
-          return NextResponse.json({ 
-            error: "You've already completed the allowed official attempts for this challenge.", 
-            completed: true,
-            wasAlreadyCompleted: true,
-            score: userScore,
-            durationMs: userDuration,
-            rank: userRank || 1,
-            leaderboard,
-            challengeId: challengeId
-          }, { status: 409 });
-        }
       } catch (err) {
         console.warn("[challenge-start] Attempt check warning:", err);
       }
     }
 
-    // Write session to Firestore
-    if (adminDb) {
-      const sessionData = {
-        userId: uid,
+    const wasAlreadyCompleted = Boolean(prevResult);
+    const isOfficial = !wasAlreadyCompleted;
+
+    // If client is only probing attempt status on mount (without starting game)
+    if (checkOnly) {
+      let leaderboard: any[] = [];
+      let userRank: number | null = null;
+      if (wasAlreadyCompleted) {
+        const lbData = await buildLeaderboard(challengeId, uid);
+        leaderboard = lbData.leaderboard;
+        userRank = lbData.userRank;
+      }
+      return NextResponse.json({
         gameId,
-        challengeDate,
         challengeId,
-        weekId,
-        startedAt: admin.firestore.Timestamp.now(),
-        status: 'in_progress',
         isOfficial,
-        createdAt: admin.firestore.Timestamp.now()
-      };
-      await adminDb.collection("challenge_sessions").doc(sessionId).set(sessionData).catch((dbErr: any) => {
-        console.error("[challenge-start] session write failed:", dbErr.message);
+        wasAlreadyCompleted,
+        score: prevResult?.score || 0,
+        durationMs: prevResult?.durationMs || 0,
+        rank: userRank || 1,
+        leaderboard
       });
-    } else {
-      console.warn("[challenge-start] adminDb not initialized, using local simulation mode");
-      sessionId = `local-fallback-${crypto.randomBytes(8).toString('hex')}`;
     }
 
-    const seedNum = getSeed(`${gameId}-${challengeDate}`);
-    const rand = mulberry32(seedNum);
+    // High-entropy unique per-session seed ensures every new attempt gets fresh, non-repetitive puzzles
+    const randomSeedBytes = crypto.randomBytes(4).readUInt32BE(0);
+    const sessionSeed = (randomSeedBytes & 0x7FFFFFFF) || (Date.now() ^ Math.floor(Math.random() * 1000000));
+    const rand = mulberry32(sessionSeed);
 
+    let sessionId: string = crypto.randomUUID();
     let puzzleData: any = {};
+    let sessionMeta: Record<string, any> = {};
 
+    // Generate fresh puzzle data according to game type
     if (gameId === 'bug-hunter') {
-      const questions = pickSeededQuestions(BUG_HUNTER_POOL, 5, seedNum).map(q => ({
+      const questions = pickSeededQuestions(BUG_HUNTER_POOL, 5, sessionSeed).map(q => ({
         id: q.id,
         category: q.category,
         question: q.question,
@@ -266,32 +224,37 @@ export async function POST(request: Request) {
         options: q.options
       }));
       puzzleData = { questions };
+      sessionMeta = { questionIds: questions.map(q => q.id) };
     } else if (gameId === 'number-detective') {
-      const questions = pickSeededQuestions(NUMBER_DETECTIVE_POOL, 5, seedNum).map(q => ({
+      const questions = pickSeededQuestions(NUMBER_DETECTIVE_POOL, 5, sessionSeed).map(q => ({
         id: q.id,
         category: q.category,
         question: q.question,
         options: q.options
       }));
       puzzleData = { questions };
+      sessionMeta = { questionIds: questions.map(q => q.id) };
     } else if (gameId === 'logic-master') {
-      const questions = pickSeededQuestions(LOGIC_MASTER_POOL, 5, seedNum).map(q => ({
+      const questions = pickSeededQuestions(LOGIC_MASTER_POOL, 5, sessionSeed).map(q => ({
         id: q.id,
         category: q.category,
         question: q.question,
         options: q.options
       }));
       puzzleData = { questions };
+      sessionMeta = { questionIds: questions.map(q => q.id) };
     } else if (gameId === 'code-breaker') {
-      const questions = pickSeededQuestions(CODE_BREAKER_POOL, 5, seedNum).map(q => ({
+      const questions = pickSeededQuestions(CODE_BREAKER_POOL, 5, sessionSeed).map(q => ({
         id: q.id,
         category: q.category,
         question: q.question,
         options: q.options
       }));
       puzzleData = { questions, numDigits: 4, range: [0, 7] };
+      sessionMeta = { questionIds: questions.map(q => q.id) };
     } else if (gameId === 'circuit-master') {
-      const circuits = CIRCUIT_CHALLENGES.map(c => ({
+      const selectedCircuits = pickSeededQuestions(CIRCUIT_CHALLENGES, 4, sessionSeed);
+      const circuits = selectedCircuits.map(c => ({
         id: c.id,
         title: c.title,
         expression: c.expression,
@@ -299,9 +262,11 @@ export async function POST(request: Request) {
         targetOutput: c.targetOutput
       }));
       puzzleData = { circuits };
+      sessionMeta = { circuitIds: circuits.map(c => c.id) };
     } else if (gameId === 'memory-rush') {
-      const pairs = MEMORY_RUSH_CARDS.map(c => ({ ...c }));
-      const deck = [...pairs, ...pairs].map((c, idx) => ({
+      // Pick 8 unique pairs from the expanded 24-card tech pool
+      const selectedCards = pickSeededQuestions(MEMORY_RUSH_CARDS, 8, sessionSeed);
+      const deck = [...selectedCards, ...selectedCards].map((c, idx) => ({
         uid: `card-${idx}-${c.id}`,
         cardId: c.id,
         symbol: c.symbol,
@@ -313,8 +278,12 @@ export async function POST(request: Request) {
         [deck[i], deck[j]] = [deck[j], deck[i]];
       }
       puzzleData = { deck };
+      sessionMeta = { cardIds: selectedCards.map(c => c.id) };
     } else if (gameId === 'typing-blitz') {
-      puzzleData = { snippets: TYPING_BLITZ_SNIPPETS };
+      // Pick 3 unique code snippets from the 16-snippet pool
+      const snippets = pickSeededQuestions(TYPING_BLITZ_SNIPPETS, 3, sessionSeed);
+      puzzleData = { snippets };
+      sessionMeta = { snippetIds: snippets.map(s => s.id) };
     } else if (gameId === 'memory-matrix') {
       const rounds = [];
       for (let r = 0; r < 5; r++) {
@@ -332,27 +301,33 @@ export async function POST(request: Request) {
       }
       puzzleData = { rounds };
     } else if (gameId === 'impossible-room') {
-      const roomElements = [
-        { id: 'desk', name: 'Desk' },
-        { id: 'painting', name: 'Painting' },
-        { id: 'bookshelf', name: 'Bookshelf' },
-        { id: 'safe', name: 'Safe' },
-        { id: 'rug', name: 'Rug' }
+      // Dynamic random 4-digit code generated per session
+      const d1 = 1 + Math.floor(rand() * 9);
+      const d2 = 1 + Math.floor(rand() * 9);
+      const d3 = 1 + Math.floor(rand() * 9);
+      const d4 = 1 + Math.floor(rand() * 9);
+      const masterCode = `${d1}${d2}${d3}${d4}`;
+      const clueDetails = [
+        { id: "wall-clock", digit: d1, pos: 1, hint: `1st Digit is ${d1}` },
+        { id: "bookshelf", digit: d2, pos: 2, hint: `2nd Digit is ${d2}` },
+        { id: "oil-painting", digit: d3, pos: 3, hint: `3rd Digit is ${d3}` },
+        { id: "desk-lamp", digit: d4, pos: 4, hint: `4th Digit is ${d4}` },
       ];
-      puzzleData = { roomElements };
+      puzzleData = { masterCode, clueDetails };
+      sessionMeta = { masterCode };
     } else if (gameId === 'word-forge') {
-      const rounds = [];
-      for (let r = 0; r < 6; r++) {
-        const wordIdx = Math.floor(rand() * WORD_LIST.length);
-        const word = WORD_LIST[wordIdx];
+      // Pick 6 unique words from the expanded 150+ vocabulary pool
+      const chosenWords = pickSeededQuestions(WORD_LIST, 6, sessionSeed);
+      const rounds = chosenWords.map(word => {
         const chars = word.split('');
         for (let i = chars.length - 1; i > 0; i--) {
           const j = Math.floor(rand() * (i + 1));
           [chars[i], chars[j]] = [chars[j], chars[i]];
         }
-        rounds.push({ scrambled: chars.join(''), length: word.length });
-      }
+        return { scrambled: chars.join(''), length: word.length, original: word };
+      });
       puzzleData = { rounds };
+      sessionMeta = { words: chosenWords };
     } else if (gameId === 'target-number') {
       const OPERAND_POOL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25];
       const pickFromPool = (pool: number[]) => pool[Math.floor(rand() * pool.length)];
@@ -381,13 +356,11 @@ export async function POST(request: Request) {
 
       puzzleData = { rounds };
     } else if (gameId === 'memory-heist') {
-      // Generate a 3x3 grid with 6 items placed at random positions (seeded)
-      const ITEMS = ['🔑', '📱', '💻', '📕', '🎧', '☕', '🖊️', '📷', '🔮'];
+      const ITEMS = ['🔑', '📱', '💻', '📕', '🎧', '☕', '🖊️', '📷', '🔮', '💎', '⌚', '🕹️', '🛡️', '📦'];
       const gridSize = 3;
       const totalCells = gridSize * gridSize;
       const itemCount = 6;
 
-      // Pick 6 unique items from pool
       const itemPool = [...ITEMS];
       const chosenItems: string[] = [];
       for (let i = 0; i < itemCount; i++) {
@@ -396,7 +369,6 @@ export async function POST(request: Request) {
         itemPool.splice(idx, 1);
       }
 
-      // Assign to 6 unique positions in 3x3 grid
       const posPool = Array.from({ length: totalCells }, (_, i) => i);
       const chosenPositions: number[] = [];
       for (let i = 0; i < itemCount; i++) {
@@ -405,15 +377,10 @@ export async function POST(request: Request) {
         posPool.splice(idx, 1);
       }
 
-      // Build grid: position -> item (null = empty)
       const grid: (string | null)[] = Array(totalCells).fill(null);
       chosenItems.forEach((item, i) => {
         grid[chosenPositions[i]] = item;
       });
-
-      // Generate 3 questions from the actual grid state
-      // Question types: (a) position of item, (b) item at position, (c) which row has item
-      const questions: Array<{ question: string; options: string[]; correctAnswer: string }> = [];
 
       const rowNames = ['top', 'middle', 'bottom'];
       const colNames = ['left', 'center', 'right'];
@@ -424,8 +391,6 @@ export async function POST(request: Request) {
         return `${rowNames[row]}-${colNames[col]}`;
       };
 
-      // Pre-calculate all deterministic indices before any sort() calls
-      // because Array.sort() makes an unpredictable number of comparisons depending on the JS engine.
       const q1ItemIdx = Math.floor(rand() * itemCount);
       const q2ItemIdx = (q1ItemIdx + 1 + Math.floor(rand() * (itemCount - 1))) % itemCount;
       
@@ -444,7 +409,9 @@ export async function POST(request: Request) {
         allLabels.splice(i, 1);
       });
       const q1Options = [correctLabel, ...wrongLabels].sort(() => rand() - 0.5);
-      questions.push({ question: `Where was the ${q1Item}?`, options: q1Options, correctAnswer: correctLabel });
+      const questions: Array<{ question: string; options: string[]; correctAnswer: string }> = [
+        { question: `Where was the ${q1Item}?`, options: q1Options, correctAnswer: correctLabel }
+      ];
 
       const q2Pos = chosenPositions[q2ItemIdx];
       const q2Label = posToLabel(q2Pos);
@@ -471,179 +438,40 @@ export async function POST(request: Request) {
         questions,
         displaySeconds: 5,
       };
+      sessionMeta = { questions };
     } else if (gameId === 'the-impostor') {
-      // Pre-validated scenario pool — every scenario has exactly one logical answer
-      const SCENARIOS = [
-        {
-          characters: ['Arun', 'Bala', 'Cathy', 'David'],
-          clues: ['Only one person likes both coffee and coding.', 'Arun likes coffee but not coding.', 'Bala likes coding but not coffee.', 'Cathy likes both coffee and coding.', 'David likes neither.'],
-          question: 'Who likes both coffee and coding?',
-          answer: 'Cathy',
-          options: ['Arun', 'Bala', 'Cathy', 'David'],
-        },
-        {
-          characters: ['Alice', 'Bob', 'Carol', 'Dan'],
-          clues: ['Three people are telling the truth. One is lying.', 'Alice says: "I am in Room 1."', 'Bob says: "Alice is not in Room 1."', 'Carol says: "Bob is in Room 2."', 'Dan says: "Carol is telling the truth."'],
-          question: 'Who is lying?',
-          answer: 'Bob',
-          options: ['Alice', 'Bob', 'Carol', 'Dan'],
-        },
-        {
-          characters: ['Priya', 'Raj', 'Sam', 'Tina'],
-          clues: ['Each person has a unique job: Doctor, Engineer, Artist, Chef.', 'Priya is not an Artist.', 'Raj is an Engineer.', 'Sam is not a Doctor.', 'Tina is an Artist.'],
-          question: 'Who is the Doctor?',
-          answer: 'Priya',
-          options: ['Priya', 'Raj', 'Sam', 'Tina'],
-        },
-        {
-          characters: ['Emma', 'Faisal', 'Grace', 'Hiro'],
-          clues: ['One person scored 100 in the test.', 'Emma scored higher than Grace.', 'Faisal scored the lowest.', 'Hiro scored higher than Emma.', 'Only one person scored 100.'],
-          question: 'Who scored 100?',
-          answer: 'Hiro',
-          options: ['Emma', 'Faisal', 'Grace', 'Hiro'],
-        },
-        {
-          characters: ['Lena', 'Marco', 'Nina', 'Omar'],
-          clues: ['One of them stole the key.', 'Lena was in the library all day.', 'Marco was with Lena.', 'Nina was seen near the key cabinet.', 'Omar was outside the building.'],
-          question: 'Who stole the key?',
-          answer: 'Nina',
-          options: ['Lena', 'Marco', 'Nina', 'Omar'],
-        },
-        {
-          characters: ['Kiran', 'Leo', 'Mia', 'Noah'],
-          clues: ['Exactly one person sent the anonymous message.', 'Kiran has no email account.', 'Leo was offline that evening.', 'Mia sent a message at 8PM.', 'Noah was playing games.'],
-          question: 'Who sent the anonymous message?',
-          answer: 'Mia',
-          options: ['Kiran', 'Leo', 'Mia', 'Noah'],
-        },
-        {
-          characters: ['Aria', 'Ben', 'Cara', 'Dev'],
-          clues: ['One person is the team leader.', 'Aria always follows orders.', 'Ben gives orders to Cara.', 'Cara follows Ben\'s orders.', 'Dev follows no one.'],
-          question: 'Who is the team leader?',
-          answer: 'Ben',
-          options: ['Aria', 'Ben', 'Cara', 'Dev'],
-        },
-        {
-          characters: ['Finn', 'Gina', 'Hugo', 'Iris'],
-          clues: ['One person finished the puzzle first.', 'Finn finished after Gina.', 'Hugo finished before Iris.', 'Gina finished before Hugo.', 'Iris finished last.'],
-          question: 'Who finished the puzzle first?',
-          answer: 'Gina',
-          options: ['Finn', 'Gina', 'Hugo', 'Iris'],
-        },
-      ];
-
-      const pool = [...SCENARIOS];
-      const rounds = [];
-      for (let r = 0; r < 5; r++) {
-        if (pool.length === 0) break;
-        const idx = Math.floor(rand() * pool.length);
-        rounds.push({ ...pool[idx] });
-        pool.splice(idx, 1);
-      }
+      // Pick 5 unique scenarios from the expanded 20-scenario pool
+      const rounds = pickSeededQuestions(IMPOSTOR_SCENARIOS, 5, sessionSeed);
       puzzleData = { rounds };
+      sessionMeta = { scenarios: rounds.map(r => r.answer) };
     } else if (gameId === 'paradox') {
-      // Pre-validated deterministic instruction chains with exactly one correct answer
-      const CHAINS = [
-        {
-          values: [8, 3, 12, 5],
-          instructions: [
-            { text: 'Select the largest number.', active: true },
-            { text: 'Ignore the previous instruction.', active: false },
-            { text: 'Select the smallest number.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '3',
-          options: ['8', '3', '12', '5'],
-        },
-        {
-          values: [7, 2, 15, 9],
-          instructions: [
-            { text: 'Select the smallest number.', active: true },
-            { text: 'Do exactly the opposite of the previous instruction.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '15',
-          options: ['7', '2', '15', '9'],
-        },
-        {
-          values: [4, 11, 6, 20],
-          instructions: [
-            { text: 'Select the largest number.', active: true },
-            { text: 'Ignore all previous instructions.', active: false },
-            { text: 'Select the number closest to 10.', active: true },
-            { text: 'Keep the previous instruction.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '11',
-          options: ['4', '11', '6', '20'],
-        },
-        {
-          values: [1, 5, 9, 13],
-          instructions: [
-            { text: 'Select the number at position 3 (1-indexed).', active: true },
-            { text: 'Discard the previous instruction.', active: false },
-            { text: 'Select the even number.', active: false },
-            { text: 'Select the number greater than 10.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '13',
-          options: ['1', '5', '9', '13'],
-        },
-        {
-          values: [6, 14, 3, 8],
-          instructions: [
-            { text: 'Select the odd number.', active: true },
-            { text: 'Reverse the previous instruction — select an even number.', active: true },
-            { text: 'Among even numbers, select the smallest.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '6',
-          options: ['6', '14', '3', '8'],
-        },
-        {
-          values: [10, 4, 7, 25],
-          instructions: [
-            { text: 'Select the number that is divisible by 5.', active: true },
-            { text: 'Also consider numbers divisible by 2.', active: false },
-            { text: 'Only the first active instruction matters.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '10',
-          options: ['10', '4', '7', '25'],
-        },
-        {
-          values: [2, 9, 16, 5],
-          instructions: [
-            { text: 'Select a prime number.', active: true },
-            { text: 'Override: select a perfect square.', active: true },
-            { text: 'The latest instruction overrides all.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '16',
-          options: ['2', '9', '16', '5'],
-        },
-        {
-          values: [3, 18, 7, 12],
-          instructions: [
-            { text: 'Select the number divisible by 3.', active: true },
-            { text: 'Ignore this instruction.', active: false },
-            { text: 'Among numbers divisible by 3, select the largest.', active: true },
-          ],
-          question: 'Which number should you select?',
-          answer: '18',
-          options: ['3', '18', '7', '12'],
-        },
-      ];
-
-      const pool = [...CHAINS];
-      const rounds = [];
-      for (let r = 0; r < 5; r++) {
-        if (pool.length === 0) break;
-        const idx = Math.floor(rand() * pool.length);
-        rounds.push({ ...pool[idx] });
-        pool.splice(idx, 1);
-      }
+      // Pick 5 unique instruction chains from the expanded 20-chain pool
+      const rounds = pickSeededQuestions(PARADOX_CHAINS, 5, sessionSeed);
       puzzleData = { rounds };
+      sessionMeta = { chains: rounds.map(r => r.answer) };
+    }
+
+    // Write session to Firestore
+    if (adminDb) {
+      const sessionData = {
+        userId: uid,
+        gameId,
+        challengeDate,
+        challengeId,
+        weekId,
+        sessionSeed,
+        startedAt: admin.firestore.Timestamp.now(),
+        status: 'in_progress',
+        isOfficial,
+        createdAt: admin.firestore.Timestamp.now(),
+        ...sessionMeta
+      };
+      await adminDb.collection("challenge_sessions").doc(sessionId).set(sessionData).catch((dbErr: any) => {
+        console.error("[challenge-start] session write failed:", dbErr.message);
+      });
+    } else {
+      console.warn("[challenge-start] adminDb not initialized, using local simulation mode");
+      sessionId = `local-fallback-${crypto.randomBytes(8).toString('hex')}`;
     }
 
     return NextResponse.json({
@@ -653,6 +481,7 @@ export async function POST(request: Request) {
       challengeId,
       weekId,
       isOfficial,
+      wasAlreadyCompleted,
       puzzleData
     });
   } catch (error: any) {

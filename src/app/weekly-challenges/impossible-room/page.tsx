@@ -138,20 +138,13 @@ export default function ImpossibleRoomPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ gameId: "impossible-room" })
+          body: JSON.stringify({ gameId: "impossible-room", checkOnly: true })
         });
         const configData = await configRes.json();
         
-        if (configRes.status === 409 && configData.completed) {
-          setResultData({
-            score: configData.score,
-            durationMs: configData.durationMs,
-            rank: configData.rank,
-            isOfficial: true,
-            leaderboard: configData.leaderboard || []
-          });
+        if (configData.wasAlreadyCompleted || (configRes.status === 409 && configData.completed)) {
           setWasAlreadyCompleted(true);
-          setGameState("result");
+          setIsOfficial(false);
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
         }
@@ -184,27 +177,22 @@ export default function ImpossibleRoomPage() {
       });
       
       const data = await res.json();
-      if (res.status === 409 && data.completed) {
-        setResultData({
-          score: data.score,
-          durationMs: data.durationMs,
-          rank: data.rank,
-          isOfficial: true,
-          leaderboard: data.leaderboard || []
-        });
-        setWasAlreadyCompleted(true);
-        setGameState("result");
-        return;
-      }
       if (!res.ok) throw new Error(data.error || "Failed to start session");
       setSessionId(data.sessionId);
-      setIsOfficial(data.isOfficial);
+      setIsOfficial(Boolean(data.isOfficial));
+      setWasAlreadyCompleted(Boolean(data.wasAlreadyCompleted));
       
-      // Generate dynamic room code
-      const d1 = Math.floor(Math.random() * 10);
-      const d2 = Math.floor(Math.random() * 10);
-      const d3 = Math.floor(Math.random() * 10);
-      const d4 = Math.floor(Math.random() * 10);
+      // Dynamic room code
+      let d1 = Math.floor(Math.random() * 10);
+      let d2 = Math.floor(Math.random() * 10);
+      let d3 = Math.floor(Math.random() * 10);
+      let d4 = Math.floor(Math.random() * 10);
+      if (data.puzzleData?.masterCode && data.puzzleData.masterCode.length === 4) {
+        d1 = parseInt(data.puzzleData.masterCode[0], 10);
+        d2 = parseInt(data.puzzleData.masterCode[1], 10);
+        d3 = parseInt(data.puzzleData.masterCode[2], 10);
+        d4 = parseInt(data.puzzleData.masterCode[3], 10);
+      }
       setExpectedCode(`${d1}${d2}${d3}${d4}`);
 
       const newObjects = ROOM_OBJECTS.map(obj => ({

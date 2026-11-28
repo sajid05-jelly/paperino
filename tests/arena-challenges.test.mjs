@@ -141,18 +141,18 @@ describe("Paperino Challenge Arena — 7 Interactive Games & Answer Review Verif
   });
 
   describe("8. Memory Rush & Typing Blitz Assets", () => {
-    test("Memory rush has 8 unique concept cards with symbols and definitions", () => {
-      assert.equal(MEMORY_RUSH_CARDS.length, 8);
+    test("Memory rush has unique concept cards with symbols and definitions", () => {
+      assert.ok(MEMORY_RUSH_CARDS.length >= 8);
       const ids = new Set(MEMORY_RUSH_CARDS.map(c => c.id));
-      assert.equal(ids.size, 8);
+      assert.equal(ids.size, MEMORY_RUSH_CARDS.length);
       MEMORY_RUSH_CARDS.forEach(c => {
         assert.ok(c.symbol && c.symbol.length > 0);
         assert.ok(c.concept && c.concept.length > 10);
       });
     });
 
-    test("Typing blitz has 3 developer code snippets with syntax explanations", () => {
-      assert.equal(TYPING_BLITZ_SNIPPETS.length, 3);
+    test("Typing blitz has developer code snippets with syntax explanations", () => {
+      assert.ok(TYPING_BLITZ_SNIPPETS.length >= 3);
       TYPING_BLITZ_SNIPPETS.forEach(s => {
         assert.ok(s.code && s.code.length > 10);
         assert.ok(s.explanation && s.explanation.length > 10);

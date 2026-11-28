@@ -66,20 +66,13 @@ export default function CircuitMasterPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ gameId: "circuit-master" })
+          body: JSON.stringify({ gameId: "circuit-master", checkOnly: true })
         });
         const configData = await configRes.json();
         
-        if (configRes.status === 409 && configData.completed) {
-          setResultData({
-            score: configData.score,
-            durationMs: configData.durationMs,
-            rank: configData.rank,
-            isOfficial: true,
-            leaderboard: configData.leaderboard || []
-          });
+        if (configData.wasAlreadyCompleted || (configRes.status === 409 && configData.completed)) {
           setWasAlreadyCompleted(true);
-          setGameState("result");
+          setIsOfficial(false);
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
         }
@@ -119,23 +112,12 @@ export default function CircuitMasterPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        if (res.status === 409 && data.completed) {
-          setResultData({
-            score: data.score,
-            durationMs: data.durationMs,
-            rank: data.rank,
-            isOfficial: true,
-            leaderboard: data.leaderboard || []
-          });
-          setWasAlreadyCompleted(true);
-          setGameState("result");
-          return;
-        }
         throw new Error(data.error || "Failed to initialize game");
       }
 
       setSessionId(data.sessionId);
       setIsOfficial(Boolean(data.isOfficial));
+      setWasAlreadyCompleted(Boolean(data.wasAlreadyCompleted));
       if (data.puzzleData?.circuits) {
         setCircuits(data.puzzleData.circuits);
         // Initialize all inputs to 0

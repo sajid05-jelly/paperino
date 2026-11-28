@@ -90,20 +90,13 @@ const [startTime, setStartTime] = useState<number>(0);
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ gameId: "memory-matrix" })
+          body: JSON.stringify({ gameId: "memory-matrix", checkOnly: true })
         });
         const configData = await configRes.json();
         
-        if (configRes.status === 409 && configData.completed) {
-          setResultData({
-            score: configData.score,
-            durationMs: configData.durationMs,
-            rank: configData.rank,
-            isOfficial: true,
-            leaderboard: configData.leaderboard || []
-          });
+        if (configData.wasAlreadyCompleted || (configRes.status === 409 && configData.completed)) {
           setWasAlreadyCompleted(true);
-          setGameState("result");
+          setIsOfficial(false);
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
         }
@@ -147,24 +140,13 @@ const [startTime, setStartTime] = useState<number>(0);
       });
       
       const data = await res.json();
-      if (res.status === 409 && data.completed) {
-        setResultData({
-          score: data.score,
-          durationMs: data.durationMs,
-          rank: data.rank,
-          isOfficial: true,
-          leaderboard: data.leaderboard || []
-        });
-        setWasAlreadyCompleted(true);
-        setGameState('result');
-        return;
-      }
       if (!res.ok) throw new Error(data.error || 'Failed to start challenge session');
       
       setSessionId(data.sessionId);
       setIsOfficial(Boolean(data.isOfficial));
+      setWasAlreadyCompleted(Boolean(data.wasAlreadyCompleted));
       
-      const seedNum = getSeed(data.challengeId);
+      const seedNum = data.sessionSeed || getSeed(data.challengeId);
       const rand = mulberry32(seedNum);
       const generatedRounds: string[][] = [];
       

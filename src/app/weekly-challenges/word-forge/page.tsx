@@ -24,24 +24,54 @@ interface Round {
 const WORD_BANK = [
   { word: 'ALGORITHM', hint: 'A step-by-step procedure for calculations.' },
   { word: 'BINARY', hint: 'A system of numerical notation that has 2 rather than 10 as a base.' },
-  { word: 'COMPILER', hint: 'A program that converts instructions into a machine-code.' },
+  { word: 'COMPILER', hint: 'A program that converts instructions into machine code.' },
   { word: 'DATABASE', hint: 'A structured set of data held in a computer.' },
-  { word: 'ENCRYPT', hint: 'Conceal data by converting it into a code.' },
+  { word: 'ENCRYPT', hint: 'Conceal data by converting it into a cryptographic code.' },
   { word: 'FUNCTION', hint: 'A block of code designed to perform a particular task.' },
-  { word: 'HARDWARE', hint: 'The physical parts of a computer.' },
+  { word: 'HARDWARE', hint: 'The physical parts and electronics of a computer.' },
   { word: 'JAVASCRIPT', hint: 'A programming language commonly used in web development.' },
-  { word: 'KERNEL', hint: 'The core of a computer operating system.' },
+  { word: 'KERNEL', hint: 'The foundational core of a computer operating system.' },
   { word: 'NETWORK', hint: 'A collection of computers and devices connected together.' },
-  { word: 'SOFTWARE', hint: 'The programs and other operating information used by a computer.' },
-  { word: 'TERMINAL', hint: 'A program that allows you to type commands.' },
-  { word: 'VARIABLE', hint: 'A value that can change, depending on conditions.' },
-  { word: 'STORAGE', hint: 'The retention of retrievable data on a computer.' },
-  { word: 'BROWSER', hint: 'A program with a graphical user interface for displaying HTML files.' },
-  { word: 'SERVER', hint: 'A computer or computer program which manages access to a centralized resource.' },
-  { word: 'PYTHON', hint: 'A high-level general-purpose programming language.' },
-  { word: 'SYNTAX', hint: 'The arrangement of words and phrases to create well-formed sentences.' },
-  { word: 'BOOLEAN', hint: 'Denoting a system of algebraic notation used to represent logical propositions.' },
-  { word: 'ITERATE', hint: 'Perform or utter repeatedly.' }
+  { word: 'SOFTWARE', hint: 'The programs and operating information used by a computer.' },
+  { word: 'TERMINAL', hint: 'A command-line program that allows typing system commands.' },
+  { word: 'VARIABLE', hint: 'A named memory container whose value can change.' },
+  { word: 'STORAGE', hint: 'The persistent retention of retrievable data.' },
+  { word: 'BROWSER', hint: 'A client software used to access the World Wide Web.' },
+  { word: 'SERVER', hint: 'A computer system that provides centralized services to clients.' },
+  { word: 'PYTHON', hint: 'A high-level interpreted programming language.' },
+  { word: 'SYNTAX', hint: 'The rules defining grammar and structure of code.' },
+  { word: 'BOOLEAN', hint: 'A binary datatype with only True or False values.' },
+  { word: 'ITERATE', hint: 'Looping through elements of a collection repeatedly.' },
+  { word: 'BANDWIDTH', hint: 'Maximum rate of data transfer across a network path.' },
+  { word: 'FIREWALL', hint: 'Security system monitoring incoming and outgoing network traffic.' },
+  { word: 'FIRMWARE', hint: 'Permanent software programmed directly into read-only memory.' },
+  { word: 'GATEWAY', hint: 'A network node linking two distinct networking systems.' },
+  { word: 'INTERFACE', hint: 'A shared boundary across which components exchange information.' },
+  { word: 'MODULAR', hint: 'Constructed from separate, reusable software units.' },
+  { word: 'OPERAND', hint: 'The quantity or value on which an operation is performed.' },
+  { word: 'PARSING', hint: 'Analyzing a string of symbols into components conforming to grammar.' },
+  { word: 'POINTER', hint: 'An object in code whose value refers directly to a memory address.' },
+  { word: 'PROTOCOL', hint: 'A set of standard rules governing communication between devices.' },
+  { word: 'QUANTUM', hint: 'Computing paradigm utilizing superposition and entanglement.' },
+  { word: 'RECURSION', hint: 'A programming technique where a function calls itself directly.' },
+  { word: 'ROUTER', hint: 'Networking device forwarding data packets between computer networks.' },
+  { word: 'RUNTIME', hint: 'The period during which a computer program is executing.' },
+  { word: 'SEGMENT', hint: 'A division or partition of computer memory or code.' },
+  { word: 'SOCKET', hint: 'An endpoint for communication between two machines.' },
+  { word: 'THREAD', hint: 'The smallest sequence of programmed instructions managed by an OS scheduler.' },
+  { word: 'UNICODE', hint: 'Universal character encoding standard assigning code points.' },
+  { word: 'UPGRADE', hint: 'Replacing hardware or software with a newer or superior version.' },
+  { word: 'VECTOR', hint: 'A dynamic one-dimensional array data structure.' },
+  { word: 'VIRTUAL', hint: 'Simulated environment running independently of physical hardware.' },
+  { word: 'WEBPACK', hint: 'A popular static module bundler for modern JavaScript applications.' },
+  { word: 'WIRELESS', hint: 'Telecommunications in which electromagnetic waves carry the signal.' },
+  { word: 'BACKEND', hint: 'Server-side data processing and storage layer of an application.' },
+  { word: 'FRONTEND', hint: 'Client-side user interface layer rendered in browsers or apps.' },
+  { word: 'DOCKER', hint: 'Containerization platform packaging software into standardized units.' },
+  { word: 'DEVOPS', hint: 'Methodology combining software development and IT operations.' },
+  { word: 'KOTLIN', hint: 'Modern concise statically typed language targeting the JVM and Android.' },
+  { word: 'GITHUB', hint: 'Cloud platform hosting Git repositories and collaborative workflows.' },
+  { word: 'LAMBDA', hint: 'Anonymous function defined without being bound to an identifier.' }
 ];
 
 const FIXED_ROUNDS: Round[] = [];
@@ -86,20 +116,13 @@ export default function WordForgePage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${await user.getIdToken()}`
           },
-          body: JSON.stringify({ gameId: "word-forge" })
+          body: JSON.stringify({ gameId: "word-forge", checkOnly: true })
         });
         const configData = await configRes.json();
         
-        if (configRes.status === 409 && configData.completed) {
-          setResultData({
-            score: configData.score,
-            durationMs: configData.durationMs,
-            rank: configData.rank,
-            isOfficial: true,
-            leaderboard: configData.leaderboard || []
-          });
+        if (configData.wasAlreadyCompleted || (configRes.status === 409 && configData.completed)) {
           setWasAlreadyCompleted(true);
-          setGameState("result");
+          setIsOfficial(false);
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
         }
@@ -134,21 +157,10 @@ export default function WordForgePage() {
       });
       
       const data = await res.json();
-      if (res.status === 409 && data.completed) {
-        setResultData({
-          score: data.score,
-          durationMs: data.durationMs,
-          rank: data.rank,
-          isOfficial: true,
-          leaderboard: data.leaderboard || []
-        });
-        setWasAlreadyCompleted(true);
-        setGameState("result");
-        return;
-      }
       if (!res.ok) throw new Error(data.error || "Failed to start session");
       setSessionId(data.sessionId);
-      setIsOfficial(data.isOfficial);
+      setIsOfficial(Boolean(data.isOfficial));
+      setWasAlreadyCompleted(Boolean(data.wasAlreadyCompleted));
       
       // Generate dynamic rounds
       const shuffled = [...WORD_BANK].sort(() => 0.5 - Math.random()).slice(0, 6);

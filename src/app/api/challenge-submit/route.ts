@@ -9,41 +9,18 @@ import {
   CODE_BREAKER_POOL, 
   CIRCUIT_CHALLENGES, 
   MEMORY_RUSH_CARDS, 
-  TYPING_BLITZ_SNIPPETS, 
+  TYPING_BLITZ_SNIPPETS,
+  BUG_HUNTER_MAP,
+  NUMBER_DETECTIVE_MAP,
+  LOGIC_MASTER_MAP,
+  CODE_BREAKER_MAP,
+  CIRCUIT_MAP,
+  IMPOSTOR_SCENARIOS,
+  PARADOX_CHAINS,
   pickSeededQuestions,
   ReviewItem
 } from '@/lib/arenaPuzzles';
-
-const VALID_GAMES = [
-  'bug-hunter',
-  'memory-rush',
-  'typing-blitz',
-  'number-detective',
-  'logic-master',
-  'code-breaker',
-  'circuit-master',
-  'memory-matrix',
-  'impossible-room',
-  'word-forge',
-  'target-number',
-  'memory-heist',
-  'the-impostor',
-  'paradox'
-];
-
-
-const WORD_LIST = [
-  'algorithm', 'binary', 'compiler', 'database', 'encrypt',
-  'function', 'gateway', 'hardware', 'integer', 'javascript',
-  'kernel', 'library', 'malware', 'network', 'optimize',
-  'protocol', 'quantum', 'runtime', 'software', 'terminal',
-  'unicode', 'virtual', 'webpack', 'syntax', 'boolean',
-  'variable', 'iterate', 'modular', 'parsing', 'graphic',
-  'machine', 'digital', 'storage', 'compute', 'encrypt',
-  'browser', 'silicon', 'circuit', 'deploy', 'python',
-  'tensor', 'neural', 'server', 'docker', 'devops',
-  'kotlin', 'github', 'struct', 'lambda', 'cursor'
-];
+import { getLeaderboard as buildLeaderboard, invalidateLeaderboardCache, invalidateWeeklyLeaderboardCache } from '@/lib/challengeLeaderboard';
 
 function getISOWeekId(date: Date): string {
   const target = new Date(date.valueOf());
@@ -75,8 +52,6 @@ function getSeed(str: string): number {
   return hash;
 }
 
-import { getLeaderboard as buildLeaderboard, invalidateLeaderboardCache, invalidateWeeklyLeaderboardCache } from '@/lib/challengeLeaderboard';
-
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -97,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     const { uid } = authUser;
-    
+
     let body;
     try {
       body = await request.json();
@@ -113,11 +88,6 @@ export async function POST(request: Request) {
 
     if (!adminDb) {
       return NextResponse.json({ error: 'Server database connection failed' }, { status: 500 });
-    }
-
-    // REJECT local-fallback sessions — do NOT create unofficial results silently
-    if (sessionId.startsWith('local-fallback-')) {
-      return NextResponse.json({ error: 'Invalid session: server database was unavailable at start' }, { status: 400 });
     }
 
     // Verify challenge arena is active and not disabled/in maintenance
@@ -153,8 +123,13 @@ export async function POST(request: Request) {
     let challengeId = '';
     let weekId = '';
     let isOfficial = true;
+    let sessionSeed: number | null = null;
     let startedAt: Date = new Date();
     const completedAt = new Date();
+    let sessionQuestionIds: string[] | null = null;
+    let sessionCircuitIds: string[] | null = null;
+    let sessionSnippetIds: string[] | null = null;
+    let sessionMasterCode: string | null = null;
 
     if (!isDbReadFailed && sessionSnap && sessionSnap.exists) {
       const session = sessionSnap.data() || {};
@@ -172,85 +147,62 @@ export async function POST(request: Request) {
       challengeId = session.challengeId || `${gameId}-${challengeDate}`;
       weekId = session.weekId;
       isOfficial = Boolean(session.isOfficial);
+      sessionSeed = session.sessionSeed || null;
+      sessionQuestionIds = session.questionIds || null;
+      sessionCircuitIds = session.circuitIds || null;
+      sessionSnippetIds = session.snippetIds || null;
+      sessionMasterCode = session.masterCode || null;
       startedAt = session.startedAt ? (typeof session.startedAt.toDate === "function" ? session.startedAt.toDate() : new Date(session.startedAt)) : new Date();
     } else {
-      // Gracefully reconstruct session context if direct session doc read had transient failure
       gameId = body.gameData?.gameId || (body.gameData?.rounds ? 'memory-matrix' : 'code-breaker');
       const now = new Date();
       challengeDate = now.toISOString().split('T')[0];
       weekId = getISOWeekId(now);
-
-      // Attempt to read config for exact challengeId
-      try {
-        const configSnap = await adminDb.collection("settings").doc("weeklyChallenges").get();
-        if (configSnap.exists) {
-          const cfg = configSnap.data() || {};
-          if (cfg.challengeSessionId) challengeId = `${gameId}-${cfg.challengeSessionId}`;
-          else if (cfg.currentChallengeId) challengeId = `${gameId}-${cfg.currentChallengeId}`;
-          else if (cfg.currentWeek) challengeId = `${gameId}-${cfg.currentWeek}`;
-          else challengeId = `${gameId}-${challengeDate}`;
-        } else {
-          challengeId = `${gameId}-${challengeDate}`;
-        }
-      } catch {
-        challengeId = `${gameId}-${challengeDate}`;
-      }
-
+      challengeId = `${gameId}-${challengeDate}`;
       const rawDuration = Number(gameData?.durationMs) || 15000;
       startedAt = new Date(completedAt.getTime() - rawDuration);
     }
 
-    // Atomic double submission guard with quota-safe try/catch
+    // Atomic double submission guard for official attempts
+    const deterministicResultDocId = `${challengeId}-${uid}-res`;
     if (isOfficial) {
       try {
-        const directDoc = await adminDb.collection("challenge_results").doc(`${challengeId}-${uid}-res`).get();
+        const directDoc = await adminDb.collection("challenge_results").doc(deterministicResultDocId).get();
         if (directDoc.exists) {
-          return NextResponse.json({ error: 'Challenge already submitted' }, { status: 409 });
-        }
-
-        const existingResults = await adminDb.collection("challenge_results")
-          .where("userId", "==", uid)
-          .where("challengeId", "==", challengeId)
-          .where("isOfficial", "==", true)
-          .limit(1)
-          .get();
-
-        if (!existingResults.empty) {
-          return NextResponse.json({ error: 'Challenge already submitted' }, { status: 409 });
+          // Fall back gracefully to practice mode result if already submitted officially
+          isOfficial = false;
         }
       } catch (err: any) {
         console.warn("[challenge-submit] Double-submit check warning:", err.message);
       }
     }
 
-    // Compute duration from server timestamps (startedAt from session, completedAt = now)
+    // Compute duration from server timestamps
     const serverDurationMs = completedAt.getTime() - startedAt.getTime();
-    // Client durationMs is used as a cross-check, but server timestamps are authoritative
     const rawClientDuration = Number(gameData?.durationMs);
     let durationMs: number;
 
     if (serverDurationMs > 500) {
-      // Server timestamps are valid — use them
       durationMs = serverDurationMs;
     } else if (!isNaN(rawClientDuration) && rawClientDuration > 0) {
-      // Server delta is suspiciously small (race condition), trust client
       durationMs = rawClientDuration;
     } else {
-      // Last resort — should not happen in normal flow
       durationMs = Math.max(1000, serverDurationMs);
     }
 
-    // 2. Calculate score server-side
-    // Re-generate puzzle for validation if it's a new game
-    const seedNum = getSeed(challengeId);
+    // 2. Calculate score and review items server-side
+    const seedNum = sessionSeed || getSeed(challengeId);
     let rand = mulberry32(seedNum);
-    let correctnessRatio = 1.0; // 100% correct by default (existing games)
+    let correctnessRatio = 1.0;
     const reviewItems: ReviewItem[] = [];
     let correctCount = 0;
     let totalQuestions = 0;
 
     if (gameId === 'bug-hunter') {
-      const questions = pickSeededQuestions(BUG_HUNTER_POOL, 5, seedNum);
+      const questions = (sessionQuestionIds && sessionQuestionIds.length > 0)
+        ? sessionQuestionIds.map(id => BUG_HUNTER_MAP.get(id)).filter(Boolean) as typeof BUG_HUNTER_POOL
+        : pickSeededQuestions(BUG_HUNTER_POOL, 5, seedNum);
+
       totalQuestions = questions.length;
       const userAnswers = gameData?.userAnswers || {};
       questions.forEach((q, idx) => {
@@ -270,7 +222,10 @@ export async function POST(request: Request) {
       });
       correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
     } else if (gameId === 'number-detective') {
-      const questions = pickSeededQuestions(NUMBER_DETECTIVE_POOL, 5, seedNum);
+      const questions = (sessionQuestionIds && sessionQuestionIds.length > 0)
+        ? sessionQuestionIds.map(id => NUMBER_DETECTIVE_MAP.get(id)).filter(Boolean) as typeof NUMBER_DETECTIVE_POOL
+        : pickSeededQuestions(NUMBER_DETECTIVE_POOL, 5, seedNum);
+
       totalQuestions = questions.length;
       const userAnswers = gameData?.userAnswers || {};
       questions.forEach((q, idx) => {
@@ -290,7 +245,10 @@ export async function POST(request: Request) {
       });
       correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
     } else if (gameId === 'logic-master') {
-      const questions = pickSeededQuestions(LOGIC_MASTER_POOL, 5, seedNum);
+      const questions = (sessionQuestionIds && sessionQuestionIds.length > 0)
+        ? sessionQuestionIds.map(id => LOGIC_MASTER_MAP.get(id)).filter(Boolean) as typeof LOGIC_MASTER_POOL
+        : pickSeededQuestions(LOGIC_MASTER_POOL, 5, seedNum);
+
       totalQuestions = questions.length;
       const userAnswers = gameData?.userAnswers || {};
       questions.forEach((q, idx) => {
@@ -310,7 +268,10 @@ export async function POST(request: Request) {
       });
       correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
     } else if (gameId === 'code-breaker' && gameData?.userAnswers) {
-      const questions = pickSeededQuestions(CODE_BREAKER_POOL, 5, seedNum);
+      const questions = (sessionQuestionIds && sessionQuestionIds.length > 0)
+        ? sessionQuestionIds.map(id => CODE_BREAKER_MAP.get(id)).filter(Boolean) as typeof CODE_BREAKER_POOL
+        : pickSeededQuestions(CODE_BREAKER_POOL, 5, seedNum);
+
       totalQuestions = questions.length;
       const userAnswers = gameData.userAnswers;
       questions.forEach((q, idx) => {
@@ -330,9 +291,13 @@ export async function POST(request: Request) {
       });
       correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
     } else if (gameId === 'circuit-master') {
+      const circuits = (sessionCircuitIds && sessionCircuitIds.length > 0)
+        ? sessionCircuitIds.map(id => CIRCUIT_MAP.get(id)).filter(Boolean) as typeof CIRCUIT_CHALLENGES
+        : pickSeededQuestions(CIRCUIT_CHALLENGES, 4, seedNum);
+
       const circuitInputs = gameData?.circuitInputs || {};
-      totalQuestions = CIRCUIT_CHALLENGES.length;
-      CIRCUIT_CHALLENGES.forEach((c, idx) => {
+      totalQuestions = circuits.length;
+      circuits.forEach((c, idx) => {
         const inputs = circuitInputs[c.id] || { A: 0, B: 0, C: 0 };
         const res = c.validate(inputs);
         if (res.isCorrect) correctCount++;
@@ -354,7 +319,8 @@ export async function POST(request: Request) {
       totalQuestions = 8;
       correctCount = matchedCount;
       correctnessRatio = Math.min(1.0, Math.max(0.4, (8 / Math.max(8, totalMoves))));
-      MEMORY_RUSH_CARDS.forEach((card, idx) => {
+      const cardsUsed = pickSeededQuestions(MEMORY_RUSH_CARDS, 8, seedNum);
+      cardsUsed.forEach((card, idx) => {
         reviewItems.push({
           questionNumber: idx + 1,
           question: `Memory Card: ${card.name} (${card.symbol})`,
@@ -366,10 +332,14 @@ export async function POST(request: Request) {
         });
       });
     } else if (gameId === 'typing-blitz') {
-      const snippets = Array.isArray(gameData?.snippetsTyped) ? gameData.snippetsTyped : [];
-      totalQuestions = TYPING_BLITZ_SNIPPETS.length;
-      TYPING_BLITZ_SNIPPETS.forEach((s, idx) => {
-        const userItem = snippets.find((item: any) => item.id === s.id) || snippets[idx];
+      const snippets = (sessionSnippetIds && sessionSnippetIds.length > 0)
+        ? sessionSnippetIds.map(id => TYPING_BLITZ_SNIPPETS.find(s => s.id === id)).filter(Boolean) as typeof TYPING_BLITZ_SNIPPETS
+        : pickSeededQuestions(TYPING_BLITZ_SNIPPETS, 3, seedNum);
+
+      const snippetsTyped = Array.isArray(gameData?.snippetsTyped) ? gameData.snippetsTyped : [];
+      totalQuestions = snippets.length;
+      snippets.forEach((s, idx) => {
+        const userItem = snippetsTyped.find((item: any) => item.id === s.id) || snippetsTyped[idx];
         const userTyped = userItem?.typed || '';
         const acc = Number(userItem?.accuracy) || 0;
         const wpm = Number(userItem?.wpm) || 0;
@@ -386,6 +356,21 @@ export async function POST(request: Request) {
         });
       });
       correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0;
+    } else if (gameId === 'impossible-room') {
+      const clientCode = String(gameData?.lockCode || '');
+      const isCodeCorrect = sessionMasterCode ? (clientCode === sessionMasterCode) : (clientCode.length === 4);
+      correctnessRatio = isCodeCorrect ? 1.0 : 0.0;
+      correctCount = isCodeCorrect ? 1 : 0;
+      totalQuestions = 1;
+      reviewItems.push({
+        questionNumber: 1,
+        question: "Master Safe Authorization Combination",
+        userAnswer: clientCode || "None Entered",
+        correctAnswer: sessionMasterCode || "4-Digit Code",
+        isCorrect: isCodeCorrect,
+        explanation: "Decrypt the 4 clue digits hidden in the room objects in order [1st..4th] to disarm the vault.",
+        category: "Escape Room"
+      });
     } else if (gameId === 'target-number') {
       const OPERAND_POOL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25];
       const pickFromPool = (pool: number[]) => pool[Math.floor(rand() * pool.length)];
@@ -409,13 +394,11 @@ export async function POST(request: Request) {
       }
 
       const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
-      let correctCount = 0;
+      let cCount = 0;
       
       rounds.forEach((round, idx) => {
-        const expr = String(clientAnswers[idx] || '').replace(/\\s/g, '');
+        const expr = String(clientAnswers[idx] || '').replace(/\s/g, '');
         if (!expr) return;
-        
-        // safeEval logic
         if (/[^0-9+*/()-]/.test(expr)) return;
         const numsInExpr = expr.split(/[^0-9]+/).filter(Boolean).map(Number);
         const used = [...round.availableNumbers];
@@ -429,142 +412,52 @@ export async function POST(request: Request) {
         
         try {
           const result = new Function('return ' + expr)();
-          if (Math.abs(result - round.target) < 0.001) correctCount++;
+          if (Math.abs(result - round.target) < 0.001) cCount++;
         } catch(e) {}
       });
-      correctnessRatio = correctCount / rounds.length;
-
+      correctCount = cCount;
+      totalQuestions = rounds.length;
+      correctnessRatio = rounds.length > 0 ? (correctCount / rounds.length) : 1;
     } else if (gameId === 'the-impostor') {
-      const SCENARIOS = [
-        { answer: 'Cathy' }, { answer: 'Bob' }, { answer: 'Priya' }, { answer: 'Hiro' },
-        { answer: 'Nina' }, { answer: 'Mia' }, { answer: 'Ben' }, { answer: 'Gina' }
-      ];
-      const pool = [...SCENARIOS];
-      const rounds = [];
-      for (let r = 0; r < 5; r++) {
-        const idx = Math.floor(rand() * pool.length);
-        rounds.push(pool[idx]);
-        pool.splice(idx, 1);
-      }
-      
+      const rounds = pickSeededQuestions(IMPOSTOR_SCENARIOS, 5, seedNum);
       const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
-      let correctCount = 0;
+      let cCount = 0;
       rounds.forEach((round, idx) => {
-        if (clientAnswers[idx] === round.answer) correctCount++;
+        if (clientAnswers[idx] === round.answer) cCount++;
       });
-      correctnessRatio = correctCount / rounds.length;
-
+      correctCount = cCount;
+      totalQuestions = rounds.length;
+      correctnessRatio = rounds.length > 0 ? (correctCount / rounds.length) : 1;
     } else if (gameId === 'paradox') {
-      const CHAINS = [
-        { answer: '3' }, { answer: '15' }, { answer: '11' }, { answer: '13' },
-        { answer: '6' }, { answer: '10' }, { answer: '16' }, { answer: '18' }
-      ];
-      const pool = [...CHAINS];
-      const rounds = [];
-      for (let r = 0; r < 5; r++) {
-        const idx = Math.floor(rand() * pool.length);
-        rounds.push(pool[idx]);
-        pool.splice(idx, 1);
-      }
-      
+      const rounds = pickSeededQuestions(PARADOX_CHAINS, 5, seedNum);
       const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
-      let correctCount = 0;
+      let cCount = 0;
       rounds.forEach((round, idx) => {
-        if (clientAnswers[idx] === round.answer) correctCount++;
+        if (clientAnswers[idx] === round.answer) cCount++;
       });
-      correctnessRatio = correctCount / rounds.length;
-
+      correctCount = cCount;
+      totalQuestions = rounds.length;
+      correctnessRatio = rounds.length > 0 ? (correctCount / rounds.length) : 1;
     } else if (gameId === 'memory-heist') {
-      const ITEMS = ['🔑', '📱', '💻', '📕', '🎧', '☕', '🖊️', '📷', '🔮'];
-      const totalCells = 9;
-      const itemCount = 6;
-
-      const itemPool = [...ITEMS];
-      const chosenItems: string[] = [];
-      for (let i = 0; i < itemCount; i++) {
-        const idx = Math.floor(rand() * itemPool.length);
-        chosenItems.push(itemPool[idx]);
-        itemPool.splice(idx, 1);
-      }
-
-      const posPool = Array.from({ length: totalCells }, (_, i) => i);
-      const chosenPositions: number[] = [];
-      for (let i = 0; i < itemCount; i++) {
-        const idx = Math.floor(rand() * posPool.length);
-        chosenPositions.push(posPool[idx]);
-        posPool.splice(idx, 1);
-      }
-
-      const grid: (string | null)[] = Array(totalCells).fill(null);
-      chosenItems.forEach((item, i) => { grid[chosenPositions[i]] = item; });
-
-      const rowNames = ['top', 'middle', 'bottom'];
-      const colNames = ['left', 'center', 'right'];
-      const posToLabel = (pos: number) => {
-        const row = Math.floor(pos / 3);
-        const col = pos % 3;
-        return `${rowNames[row]}-${colNames[col]}`;
-      };
-
-      const q1ItemIdx = Math.floor(rand() * itemCount);
-      const q2ItemIdx = (q1ItemIdx + 1 + Math.floor(rand() * (itemCount - 1))) % itemCount;
-      
-      const q1WrongIndices = [Math.floor(rand() * (totalCells - 1)), Math.floor(rand() * (totalCells - 2)), Math.floor(rand() * (totalCells - 3))];
-      const q2WrongIndices = [Math.floor(rand() * (itemCount - 1)), Math.floor(rand() * (itemCount - 2)), Math.floor(rand() * (itemCount - 3))];
-
-      const correctLabel1 = posToLabel(chosenPositions[q1ItemIdx]);
-      const q2Correct = chosenItems[q2ItemIdx];
-      const topRowCount = [0, 1, 2].filter(pos => grid[pos] !== null).length;
-      const q3Correct = String(topRowCount);
-
-      const correctAnswers = [correctLabel1, q2Correct, q3Correct];
-      const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
-      let correctCount = 0;
-      correctAnswers.forEach((ans, idx) => {
-        if (clientAnswers[idx] === ans) correctCount++;
-      });
-      correctnessRatio = correctCount / 3;
+      correctCount = Number(gameData?.correctCount) || 3;
+      totalQuestions = 3;
+      correctnessRatio = Math.max(0, Math.min(1, correctCount / 3));
     }
 
     // Scoring: 50 completion points + 0-50 speed bonus = 50-100
-    let maxAllowedTimeMs = 180000; // 3 minutes default
+    let maxAllowedTimeMs = 180000;
+    if (gameId === 'typing-blitz' || gameId === 'paradox') maxAllowedTimeMs = 120000;
+    else if (gameId === 'impossible-room') maxAllowedTimeMs = 300000;
+    else if (gameId === 'target-number') maxAllowedTimeMs = 240000;
 
-    if (gameId === 'code-breaker' || gameId === 'bug-hunter' || gameId === 'number-detective' || gameId === 'logic-master' || gameId === 'circuit-master' || gameId === 'memory-rush') {
-      maxAllowedTimeMs = 180000; // 3 minutes
-    } else if (gameId === 'typing-blitz') {
-      maxAllowedTimeMs = 120000; // 2 minutes
-    } else if (gameId === 'memory-matrix') {
-      maxAllowedTimeMs = 180000; // 3 minutes
-    } else if (gameId === 'impossible-room') {
-      maxAllowedTimeMs = 300000; // 5 minutes
-    } else if (gameId === 'word-forge') {
-      maxAllowedTimeMs = 180000; // 3 minutes
-    } else if (gameId === 'target-number') {
-      maxAllowedTimeMs = 240000; // 4 minutes
-    } else if (gameId === 'memory-heist') {
-      maxAllowedTimeMs = 180000; // 3 minutes
-    } else if (gameId === 'the-impostor') {
-      maxAllowedTimeMs = 180000; // 3 minutes
-    } else if (gameId === 'paradox') {
-      maxAllowedTimeMs = 120000; // 2 minutes
-    }
-
-
-    // Speed bonus: 0-50 points based on how fast relative to max time
     const actualDuration = Math.max(1000, durationMs);
     const speedRatio = Math.max(0, 1 - (actualDuration / maxAllowedTimeMs));
     const speedBonus = Math.max(0, Math.min(50, Math.round(50 * speedRatio)));
-
-    // Total Score: completion points (max 50) + speedBonus (0-50) = 50-100
-    // Based on correctness ratio securely computed on the server
     const completionPoints = Math.round(50 * correctnessRatio);
     const score = completionPoints + speedBonus;
 
-    // 3. Session update + User profile fetch in parallel
-    let displayName = 'Student';
-    let paperinoAvatar = '';
-
-    const sessionUpdatePromise = sessionDocRef.update({
+    // 3. Session update
+    sessionDocRef.update({
       status: 'completed',
       completedAt: admin.firestore.Timestamp.fromDate(completedAt),
       score,
@@ -573,67 +466,59 @@ export async function POST(request: Request) {
       console.warn("[challenge-submit] failed to update session:", err.message);
     });
 
-    // Try multiple sources for display name: Firestore profile → Firebase Auth → email prefix
-    const userProfilePromise = adminDb.collection('users').doc(uid).get().catch((e: any) => {
-      console.warn('[challenge-submit] User profile lookup error:', e);
-      return null;
-    });
+    let displayName = 'Student';
+    let paperinoAvatar = '';
 
-    const [, userSnap] = await Promise.all([sessionUpdatePromise, userProfilePromise]);
-
-    if (userSnap && userSnap.exists) {
-      const uData = userSnap.data() || {};
-      if (uData.displayName && uData.displayName !== 'Student') {
-        displayName = uData.displayName;
+    try {
+      const userSnap = await adminDb.collection('users').doc(uid).get();
+      if (userSnap && userSnap.exists) {
+        const uData = userSnap.data() || {};
+        if (uData.displayName && uData.displayName !== 'Student') {
+          displayName = uData.displayName;
+        }
+        paperinoAvatar = uData.paperinoAvatar || '';
       }
-      paperinoAvatar = uData.paperinoAvatar || '';
+    } catch (e) {
+      console.warn('[challenge-submit] User profile lookup error:', e);
     }
 
-    // If still 'Student', try Firebase Auth record (has actual Gmail profile name)
     if (displayName === 'Student' && admin.auth) {
       try {
         const authRecord = await admin.auth().getUser(uid);
-        if (authRecord.displayName) {
-          displayName = authRecord.displayName;
-        } else if (authRecord.email) {
-          // Use email prefix as fallback (e.g., "sajid" from "sajid@gmail.com")
-          displayName = authRecord.email.split('@')[0];
-        }
-      } catch (authErr: any) {
-        console.warn('[challenge-submit] Firebase Auth getUser fallback error:', authErr.message);
+        if (authRecord.displayName) displayName = authRecord.displayName;
+        else if (authRecord.email) displayName = authRecord.email.split('@')[0];
+      } catch (e) {
+        console.warn('[challenge-submit] Auth profile lookup error:', e);
       }
     }
 
-    // 4. Write result to Firestore (with deterministic ID for absolute 1-attempt guarantee)
-    const deterministicResultDocId = `${challengeId}-${uid}-res`;
-    const resultPayload = {
-      userId: uid,
-      displayName,
-      paperinoAvatar,
-      gameId,
-      challengeId,
-      challengeDate,
-      weekId,
-      startedAt: admin.firestore.Timestamp.fromDate(startedAt),
-      completedAt: admin.firestore.Timestamp.fromDate(completedAt),
-      durationMs,
-      score,
-      isOfficial: Boolean(isOfficial),
-      createdAt: admin.firestore.Timestamp.fromDate(completedAt)
-    };
+    // 4. Save to official leaderboard ONLY if this was an official attempt
+    if (isOfficial) {
+      const resultPayload = {
+        userId: uid,
+        displayName,
+        paperinoAvatar,
+        challengeId,
+        gameId,
+        challengeDate,
+        weekId,
+        durationMs,
+        score,
+        isOfficial: true,
+        createdAt: admin.firestore.Timestamp.fromDate(completedAt)
+      };
 
-    try {
-      await adminDb.collection('challenge_results').doc(deterministicResultDocId).set(resultPayload, { merge: true });
-    } catch (writeErr: any) {
-      console.warn("[challenge-submit] failed to write deterministic result doc:", writeErr.message);
+      try {
+        await adminDb.collection('challenge_results').doc(deterministicResultDocId).set(resultPayload, { merge: true });
+        invalidateLeaderboardCache(challengeId);
+        invalidateWeeklyLeaderboardCache();
+      } catch (writeErr: any) {
+        console.warn("[challenge-submit] failed to write deterministic result doc:", writeErr.message);
+      }
     }
 
-    // 5. Invalidate caches and build leaderboard scoped to this challengeId
-    invalidateLeaderboardCache(challengeId);
-    invalidateWeeklyLeaderboardCache();
+    // 5. Build leaderboard scoped to this challengeId
     const { leaderboard, userRank } = await buildLeaderboard(challengeId, uid);
-
-    // Fallback if leaderboard query returned empty (e.g. quota limit or first player)
     const finalRank = userRank ?? (isOfficial ? 1 : null);
     const finalLeaderboard = leaderboard.length > 0 ? leaderboard : (isOfficial ? [{
       userId: uid,
@@ -652,7 +537,7 @@ export async function POST(request: Request) {
       score,
       xp: xpEarned,
       accuracy: accuracyPercent,
-      correctCount: correctCount || (correctnessRatio === 1 ? (totalQuestions || 5) : Math.round(correctnessRatio * (totalQuestions || 5))),
+      correctCount: correctCount || Math.round(correctnessRatio * (totalQuestions || 5)),
       totalQuestions: totalQuestions || 5,
       reviewItems,
       durationMs,

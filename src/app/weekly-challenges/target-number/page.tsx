@@ -114,10 +114,9 @@ export default function TargetNumberPage() {
           body: JSON.stringify({ gameId: "target-number", checkOnly: true })
         });
         const data = await res.json();
-        if (res.status === 409 && data.completed) {
-          setResultData({ score: data.score, durationMs: data.durationMs, rank: data.rank, isOfficial: true, leaderboard: data.leaderboard || [] });
+        if (data.wasAlreadyCompleted || (res.status === 409 && data.completed)) {
           setWasAlreadyCompleted(true);
-          setGameState("result");
+          setIsOfficial(false);
         } else if (!res.ok) {
           setError(data.error || "Failed to contact game servers");
         }
@@ -145,15 +144,10 @@ export default function TargetNumberPage() {
         body: JSON.stringify({ gameId: "target-number" })
       });
       const data = await res.json();
-      if (res.status === 409 && data.completed) {
-        setResultData({ score: data.score, durationMs: data.durationMs, rank: data.rank, isOfficial: true, leaderboard: data.leaderboard || [] });
-        setWasAlreadyCompleted(true);
-        setGameState("result");
-        return;
-      }
       if (!res.ok) throw new Error(data.error || "Failed to start session");
       setSessionId(data.sessionId);
       setIsOfficial(Boolean(data.isOfficial));
+      setWasAlreadyCompleted(Boolean(data.wasAlreadyCompleted));
       setPuzzle(data.puzzleData);
       setExpression("");
       setEvalResult(null);
