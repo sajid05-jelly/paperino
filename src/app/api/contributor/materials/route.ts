@@ -74,8 +74,23 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. Supplement from configured_sections.json backup if available
+    // 2. Supplement from configured_sections.json & verified_materials.json backup if available
     try {
+      const vPath = path.join(process.cwd(), "src", "data", "verified_materials.json");
+      if (fs.existsSync(vPath)) {
+        const vMaterials = JSON.parse(fs.readFileSync(vPath, "utf-8"));
+        if (Array.isArray(vMaterials)) {
+          vMaterials.forEach((m: any) => {
+            const isMatch = (m.uploaderId && m.uploaderId === uid) ||
+                            (m.uploaderEmail && m.uploaderEmail.toLowerCase().trim() === cleanEmail) ||
+                            (m.creatorEmail && m.creatorEmail.toLowerCase().trim() === cleanEmail);
+            if (isMatch && !materialsMap.has(m.id)) {
+              materialsMap.set(m.id, m);
+            }
+          });
+        }
+      }
+
       const filePath = path.join(process.cwd(), "src", "data", "configured_sections.json");
       if (fs.existsSync(filePath)) {
         const content = fs.readFileSync(filePath, "utf-8");

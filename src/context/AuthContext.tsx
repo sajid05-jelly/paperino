@@ -191,7 +191,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch {}
         }
 
-        // Check sessionStorage cache first (15m TTL to avoid getDoc on every refresh/tab)
+        // Check persistent localStorage & sessionStorage cache first
+        const profileEmailCacheKey = currentUser.email ? `paperino_user_profile_email_${currentUser.email.toLowerCase()}` : null;
         if (typeof window !== "undefined") {
           try {
             const cachedRaw = sessionStorage.getItem(profileCacheKey);
@@ -199,6 +200,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const cachedObj = JSON.parse(cachedRaw);
               if (cachedObj && (Date.now() - cachedObj.timestamp) < USER_PROFILE_TTL_MS) {
                 finalUserData = cachedObj.data;
+              }
+            }
+            if (!finalUserData) {
+              const persistentRaw = localStorage.getItem(profileCacheKey) || (profileEmailCacheKey ? localStorage.getItem(profileEmailCacheKey) : null);
+              if (persistentRaw) {
+                const parsed = JSON.parse(persistentRaw);
+                if (parsed && (parsed.uploads > 0 || parsed.plan !== "free" || parsed.points > 0 || parsed.role === "admin")) {
+                  finalUserData = parsed;
+                }
               }
             }
           } catch {}
@@ -307,16 +317,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!finalUserData) {
             const cachedAvatar = typeof window !== "undefined" && currentUser?.uid ? localStorage.getItem(`paperino_avatar_${currentUser.uid}`) : null;
             const cachedTheme = typeof window !== "undefined" ? localStorage.getItem("paperino-theme") : null;
-            finalUserData = {
-              displayName: toProperCase(currentUser.displayName || ""),
-              email: (currentUser.email || "").toLowerCase(),
-              role: currentIsAdmin ? "admin" : "student",
-              plan: currentIsAdmin ? "premium" : "free",
-              paperinoAvatar: cachedAvatar,
-              theme: cachedTheme,
-              uploads: 0,
-              status: "active"
-            };
+            const persistentRaw = typeof window !== "undefined" ? (localStorage.getItem(profileCacheKey) || (profileEmailCacheKey ? localStorage.getItem(profileEmailCacheKey) : null)) : null;
+            if (persistentRaw) {
+              try {
+                const parsed = JSON.parse(persistentRaw);
+                if (parsed && (parsed.uploads > 0 || parsed.plan !== "free" || parsed.points > 0 || parsed.role === "admin")) {
+                  finalUserData = parsed;
+                }
+              } catch {}
+            }
+            if (!finalUserData) {
+              finalUserData = {
+                displayName: toProperCase(currentUser.displayName || ""),
+                email: (currentUser.email || "").toLowerCase(),
+                role: currentIsAdmin ? "admin" : "student",
+                plan: currentIsAdmin ? "premium" : "free",
+                paperinoAvatar: cachedAvatar,
+                theme: cachedTheme,
+                uploads: 0,
+                status: "active"
+              };
+            }
           }
           clearTimeout(safetyTimeout);
         }
@@ -329,6 +350,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               data: finalUserData,
               timestamp: Date.now()
             }));
+            if (finalUserData.uploads > 0 || finalUserData.plan !== "free" || finalUserData.points > 0 || finalUserData.role === "admin") {
+              localStorage.setItem(profileCacheKey, JSON.stringify(finalUserData));
+              if (profileEmailCacheKey) {
+                localStorage.setItem(profileEmailCacheKey, JSON.stringify(finalUserData));
+              }
+            }
           } catch {}
         }
 
