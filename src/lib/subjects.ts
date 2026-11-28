@@ -38,6 +38,39 @@ export const DEFAULT_DEPARTMENTS: StaticDepartment[] = [
   { id: "bsc-cardio-perfusion-technology", name: "B.Sc Cardio Perfusion Technology", code: "CPT", totalSemesters: 8, status: "approved" },
 ];
 
+/**
+ * Robust department normalization matching:
+ * Matches slug, name, and standard abbreviations (e.g. "bachelor-of-technology" <-> "btech", "B.Tech", "bachelor of technology")
+ */
+export function isMatchingDepartment(reqDept?: string | null, docDept?: string | null): boolean {
+  if (!reqDept || reqDept === "all" || !docDept) return true;
+  const d1 = String(reqDept).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const d2 = String(docDept).toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (d1 === d2) return true;
+
+  const isBtechOrEngg1 = d1.includes("btech") || d1.includes("bachelor") || d1.includes("technology") || d1.includes("be") || d1.includes("engineering");
+  const isBtechOrEngg2 = d2.includes("btech") || d2.includes("bachelor") || d2.includes("technology") || d2.includes("be") || d2.includes("engineering") || d2.includes("mtech");
+  if (isBtechOrEngg1 && isBtechOrEngg2) return true;
+
+  const isMca1 = d1.includes("mca") || d1.includes("computerapplication");
+  const isMca2 = d2.includes("mca") || d2.includes("computerapplication");
+  if (isMca1 && isMca2) return true;
+
+  const isMba1 = d1.includes("mba") || d1.includes("businessadmin");
+  const isMba2 = d2.includes("mba") || d2.includes("businessadmin");
+  if (isMba1 && isMba2) return true;
+
+  const isCommerce1 = d1.includes("commerce") || d1.includes("bcom");
+  const isCommerce2 = d2.includes("commerce") || d2.includes("bcom");
+  if (isCommerce1 && isCommerce2) return true;
+
+  const isScience1 = d1.includes("science") || d1.includes("bsc");
+  const isScience2 = d2.includes("science") || d2.includes("bsc");
+  if (isScience1 && isScience2) return true;
+
+  return false;
+}
+
 export const COMPREHENSIVE_CATALOG: CatalogSubject[] = catalogData as CatalogSubject[];
 
 export const SUBJECTS: Record<string, StaticSubject[]> = {

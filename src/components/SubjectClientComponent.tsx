@@ -126,6 +126,7 @@ export default function SubjectClientComponent({
   const [downloadedId, setDownloadedId] = useState<string | null>(null);
   const [showDeleteSubjectModal, setShowDeleteSubjectModal] = useState(false);
   const [isDeletingSubject, setIsDeletingSubject] = useState(false);
+  const [isQuotaNotice, setIsQuotaNotice] = useState(false);
   const [backUrl, setBackUrl] = useState("/courses");
 
   useEffect(() => {
@@ -178,6 +179,10 @@ export default function SubjectClientComponent({
   };
 
   const handlePreviewClick = (mat: any) => {
+    if (mat.isConfiguredFallback) {
+      showToast("Firebase daily read quota is active. In-browser document preview will resume as soon as the quota resets.", "info");
+      return;
+    }
     if (!canAccess("pdfPreview")) {
       showPlanGate("In-browser PDF Preview", "plus", "PDF preview is a premium feature. Upgrade to Plus, Pro, or Premium to view materials instantly in your browser.");
       return;
@@ -186,6 +191,10 @@ export default function SubjectClientComponent({
   };
 
   const handleDownloadMaterial = async (mat: any) => {
+    if (mat.isConfiguredFallback) {
+      showToast("Firebase daily read quota is active. Direct file downloading will resume as soon as the quota resets.", "info");
+      return;
+    }
     if (downloadingId === mat.id) return;
     setDownloadingId(mat.id);
     const success = await triggerSecureDownload(mat, showToast, dismissToast, (loading) => {
@@ -218,7 +227,7 @@ export default function SubjectClientComponent({
   const subjectName = subject?.name || subjectId.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
 
   const fetchMaterials = useCallback(async (forceRefetch = false) => {
-    const cacheKey = `paperino_subject_v5_cache_${deptId}_${semId}_${realSubjectId}`;
+    const cacheKey = `paperino_subject_v6_cache_${deptId}_${semId}_${realSubjectId}`;
     
     if (forceRefetch) {
       delete subjectDataCache[cacheKey];
@@ -243,7 +252,7 @@ export default function SubjectClientComponent({
       }
     }
 
-    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials) && (cachedData.materials.length > 0 || cachedData.fetched === true);
+    const hasCachedContent = !!cachedData && Array.isArray(cachedData.materials) && cachedData.materials.length > 0;
     if (!forceRefetch && hasCachedContent && (now - cachedData.timestamp < CACHE_TTL_MS)) {
       logFirestoreCacheHit(`SubjectClientComponent (${cacheKey})`, "Serving materials from session cache");
       setMaterials(cachedData.materials);
@@ -306,6 +315,16 @@ export default function SubjectClientComponent({
           const apiJson = await res.json();
           if (apiJson && apiJson.success && Array.isArray(apiJson.materials)) {
             matList = apiJson.materials;
+            if (apiJson.isQuotaNotice) {
+              setIsQuotaNotice(true);
+            }
+            if (Array.isArray(apiJson.sections) && apiJson.sections.length > 0) {
+              setSubjectSections(apiJson.sections);
+            }
+          } else if (apiJson && apiJson.isQuotaNotice) {
+            setIsQuotaNotice(true);
+            setFetchError("Database Daily Free Quota Limit Reached (50,000 reads/day). All materials are 100% safe in Firestore! Quota resets shortly or upon upgrading to Firebase Blaze plan.");
+            return;
           }
         }
       } catch (apiErr) {
@@ -373,15 +392,17 @@ export default function SubjectClientComponent({
         fetched: true
       };
 
-      // Save to memory cache
-      subjectDataCache[cacheKey] = finalCacheData;
-      
-      // Save to sessionStorage cache to survive navigations
-      if (typeof window !== "undefined") {
-        try {
-          sessionStorage.setItem(cacheKey, JSON.stringify(finalCacheData));
-        } catch (e) {
-          console.warn("Failed to persist subject cache to sessionStorage (possibly too large)", e);
+      if (matList && matList.length > 0) {
+        // Save to memory cache
+        subjectDataCache[cacheKey] = finalCacheData;
+        
+        // Save to sessionStorage cache to survive navigations
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(finalCacheData));
+          } catch (e) {
+            console.warn("Failed to persist subject cache to sessionStorage (possibly too large)", e);
+          }
         }
       }
 
@@ -409,7 +430,7 @@ export default function SubjectClientComponent({
   // Synchronize cache ONLY when initialMaterials actually has content from SSR
   useEffect(() => {
     if (Array.isArray(initialMaterials) && initialMaterials.length > 0) {
-      const cacheKey = `paperino_subject_v5_cache_${deptId}_${semId}_${realSubjectId}`;
+      const cacheKey = `paperino_subject_v6_cache_${deptId}_${semId}_${realSubjectId}`;
       const approvedCats = Array.from(
         new Set(
           initialMaterials
@@ -751,6 +772,24 @@ export default function SubjectClientComponent({
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {isQuotaNotice && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs text-amber-300 animate-in fade-in duration-300">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <span>
+                Firebase Spark Daily Free Read Quota reached (50,000 reads/day). Showing verified course materials and sections from local store. Full document downloads will restore when the daily quota resets.
+              </span>
+            </div>
+            <button
+              onClick={() => setIsQuotaNotice(false)}
+              className="p-1 text-amber-400/70 hover:text-amber-200 transition-colors ml-2 cursor-pointer shrink-0"
+              title="Dismiss notice"
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
 

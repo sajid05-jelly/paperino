@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { verifyServerAuth } from "@/lib/auth-verify";
-import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG } from "@/lib/subjects";
+import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG, isMatchingDepartment } from "@/lib/subjects";
+import { getStoredSections } from "@/lib/sections-store";
 
 export const dynamic = "force-dynamic";
 
@@ -15,26 +16,45 @@ const materialsApiCache = new Map<string, { materials: MaterialRecord[]; timesta
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const departmentId = (searchParams.get("departmentId") || searchParams.get("deptId") || "").toLowerCase().trim();
-    const rawSemId = searchParams.get("semesterId") || searchParams.get("semId") || "";
-    const semId = rawSemId.replace(/^semester-/, "").trim();
-    const subjectId = (searchParams.get("subjectId") || "").toLowerCase().trim();
-    const slug = (searchParams.get("slug") || "").toLowerCase().trim();
-    const aliases = (searchParams.get("aliases") || "").split(",").map(s => s.toLowerCase().trim()).filter(Boolean);
-    const forceRefresh = searchParams.get("refresh") === "true";
+  const { searchParams } = new URL(req.url);
+  const departmentId = (searchParams.get("departmentId") || searchParams.get("deptId") || "").toLowerCase().trim();
+  const rawSemId = searchParams.get("semesterId") || searchParams.get("semId") || "";
+  const semId = rawSemId.replace(/^semester-/, "").trim();
+  const subjectId = (searchParams.get("subjectId") || "").toLowerCase().trim();
+  const slug = (searchParams.get("slug") || "").toLowerCase().trim();
+  const aliases = (searchParams.get("aliases") || "").split(",").map(s => s.toLowerCase().trim()).filter(Boolean);
+  const forceRefresh = searchParams.get("refresh") === "true";
 
-    if (!semId && !subjectId && !slug) {
-      return NextResponse.json(
-        { error: "semesterId and subjectId are required" },
-        { status: 400 }
-      );
+  if (!semId && !subjectId && !slug) {
+    return NextResponse.json(
+      { error: "semesterId and subjectId are required" },
+      { status: 400 }
+    );
+  }
+
+  // Resolve all candidate subject IDs (e.g. "calc" <-> "calculus-and-linear-algebra")
+  const candidateSubjectIds = new Set<string>();
+  if (subjectId) candidateSubjectIds.add(subjectId);
+  if (slug) candidateSubjectIds.add(slug);
+  aliases.forEach(a => candidateSubjectIds.add(a));
+
+  const semSubs = STATIC_SUBJECTS[semId] || [];
+  const catalogSubs = (COMPREHENSIVE_CATALOG || []).filter(
+    (s) => String(s.semesterId) === semId
+  );
+  const allSubs = [...semSubs, ...catalogSubs];
+  for (const sub of allSubs) {
+    const sSlug = sub.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+    if (candidateSubjectIds.has(sub.id.toLowerCase()) || candidateSubjectIds.has(sSlug)) {
+      candidateSubjectIds.add(sub.id.toLowerCase());
+      candidateSubjectIds.add(sSlug);
     }
+  }
 
-    const cacheKey = `${departmentId || "all"}_${semId}_${subjectId || slug}`;
-    const now = Date.now();
+  const cacheKey = `${departmentId || "all"}_${semId}_${subjectId || slug}`;
+  const now = Date.now();
 
+  try {
     if (!forceRefresh) {
       const cached = materialsApiCache.get(cacheKey);
       if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
@@ -56,25 +76,6 @@ export async function GET(req: NextRequest) {
         count: 0,
         warning: "Database initializing"
       });
-    }
-
-    // Resolve all candidate subject IDs (e.g. "calc" <-> "calculus-and-linear-algebra")
-    const candidateSubjectIds = new Set<string>();
-    if (subjectId) candidateSubjectIds.add(subjectId);
-    if (slug) candidateSubjectIds.add(slug);
-    aliases.forEach(a => candidateSubjectIds.add(a));
-
-    const semSubs = STATIC_SUBJECTS[semId] || [];
-    const catalogSubs = (COMPREHENSIVE_CATALOG || []).filter(
-      (s) => String(s.semesterId) === semId
-    );
-    const allSubs = [...semSubs, ...catalogSubs];
-    for (const sub of allSubs) {
-      const sSlug = sub.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
-      if (candidateSubjectIds.has(sub.id.toLowerCase()) || candidateSubjectIds.has(sSlug)) {
-        candidateSubjectIds.add(sub.id.toLowerCase());
-        candidateSubjectIds.add(sSlug);
-      }
     }
 
     // Query materials with flexible string & numeric semesterId matching
@@ -126,11 +127,8 @@ export async function GET(req: NextRequest) {
           if (!isApproved) return;
 
           // Resilient department filter
-          if (normReqDept && normReqDept !== "all" && data.departmentId) {
-            const normDocDept = String(data.departmentId).toLowerCase().replace(/[^a-z0-9]/g, "");
-            const isBtechGroup = (normReqDept.includes("btech") || normReqDept.includes("be")) && 
-                                 (normDocDept.includes("btech") || normDocDept.includes("be") || normDocDept.includes("mtech"));
-            if (normDocDept !== normReqDept && !isBtechGroup) {
+          if (departmentId && departmentId !== "all" && data.departmentId) {
+            if (!isMatchingDepartment(departmentId, data.departmentId)) {
               return;
             }
           }
@@ -153,16 +151,54 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // Check configured sections store to supplement sections or provide fallback
+    const storedSections = getStoredSections();
+    const matchingSections = storedSections.filter((sec: any) => {
+      const matchSem = String(sec.semesterId) === String(semId);
+      const matchSub = candidateSubjectIds.has(String(sec.subjectId).toLowerCase()) ||
+                       (sec.subjectName && candidateSubjectIds.has(String(sec.subjectName).toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-")));
+      const matchDept = isMatchingDepartment(departmentId, sec.departmentId);
+      return matchSem && matchSub && matchDept;
+    });
+
+    if (materials.length === 0 && matchingSections.length > 0) {
+      matchingSections.forEach((sec: any) => {
+        const cat = sec.sectionType as "pyq" | "notes" | "questions";
+        const catName = cat === "pyq" ? "Past Question Papers" : cat === "notes" ? "Lecture Notes & Syllabus" : "Important Questions";
+        materials.push({
+          id: sec.id,
+          title: `${sec.subjectName || subjectId} — ${catName}`,
+          fileName: `${sec.subjectId}_${cat}.pdf`,
+          category: cat,
+          departmentId: sec.departmentId,
+          semesterId: String(sec.semesterId),
+          subjectId: sec.subjectId,
+          status: "approved",
+          creatorName: sec.creatorName || "Contributor",
+          createdAt: sec.createdAt ? new Date(sec.createdAt).getTime() : now,
+          isConfiguredFallback: true,
+        });
+      });
+    }
+
     // Sort newest first
     materials.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
 
     // Cache the result
     materialsApiCache.set(cacheKey, { materials, timestamp: now });
 
+    const availableSections = Array.from(
+      new Set([
+        ...materials.map((m: any) => m.category).filter((c: any) => ["pyq", "notes", "questions"].includes(c)),
+        ...matchingSections.map((s: any) => s.sectionType)
+      ])
+    );
+
     return NextResponse.json(
       {
         success: true,
         materials,
+        sections: availableSections,
         count: materials.length,
         source: "firestore",
       },
@@ -176,8 +212,55 @@ export async function GET(req: NextRequest) {
     const errMessage = error instanceof Error ? error.message : "Failed to fetch materials";
     console.error("[Materials API Error]:", error);
     const isQuota = errMessage.includes("Quota exceeded") || errMessage.includes("RESOURCE_EXHAUSTED");
+
+    try {
+      const storedSections = getStoredSections();
+      const matchingSections = storedSections.filter((sec: any) => {
+        const matchSem = String(sec.semesterId) === String(semId);
+        const matchSub = candidateSubjectIds.has(String(sec.subjectId).toLowerCase()) ||
+                         (sec.subjectName && candidateSubjectIds.has(String(sec.subjectName).toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-")));
+        const matchDept = isMatchingDepartment(departmentId, sec.departmentId);
+        return matchSem && matchSub && matchDept;
+      });
+
+      if (matchingSections.length > 0) {
+        const fallbackMats: MaterialRecord[] = matchingSections.map((sec: any) => {
+          const cat = sec.sectionType as "pyq" | "notes" | "questions";
+          const catName = cat === "pyq" ? "Past Question Papers" : cat === "notes" ? "Lecture Notes & Syllabus" : "Important Questions";
+          return {
+            id: sec.id,
+            title: `${sec.subjectName || subjectId} — ${catName}`,
+            fileName: `${sec.subjectId}_${cat}.pdf`,
+            category: cat,
+            departmentId: sec.departmentId,
+            semesterId: String(sec.semesterId),
+            subjectId: sec.subjectId,
+            status: "approved",
+            creatorName: sec.creatorName || "Contributor",
+            createdAt: sec.createdAt ? new Date(sec.createdAt).getTime() : Date.now(),
+            isConfiguredFallback: true,
+            isQuotaNotice: true
+          };
+        });
+
+        materialsApiCache.set(cacheKey, { materials: fallbackMats, timestamp: Date.now() });
+
+        return NextResponse.json({
+          success: true,
+          materials: fallbackMats,
+          sections: Array.from(new Set(matchingSections.map((s: any) => s.sectionType))),
+          count: fallbackMats.length,
+          isQuotaNotice: true,
+          source: "stored_sections_fallback",
+          warning: "Firebase daily free read quota reached. Serving verified sections from local store."
+        });
+      }
+    } catch (fallbackErr) {
+      console.warn("Fallback sections resolution failed:", fallbackErr);
+    }
+
     return NextResponse.json(
-      { success: true, materials: [], count: 0, isQuotaNotice: isQuota, warning: errMessage },
+      { success: false, materials: [], count: 0, isQuotaNotice: isQuota, warning: errMessage },
       { status: 200 }
     );
   }

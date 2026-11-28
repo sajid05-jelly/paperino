@@ -46,23 +46,35 @@ test("Materials Endpoint & Subject Materials Handling", async (t) => {
     assert.equal(numSemId, 1);
   });
 
-  await t.test("4. Resilient Department Normalization matches btech, b.tech, and b.tech / m.tech", () => {
-    const norm = (dept) => (dept || "btech").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const isBtechMatch = (reqDept, docDept) => {
-      const normReq = norm(reqDept);
-      const normDoc = norm(docDept);
-      if (!docDept || normReq === "all" || normDoc === normReq) return true;
-      return (
-        (normReq.includes("btech") || normReq.includes("be")) &&
-        (normDoc.includes("btech") || normDoc.includes("be") || normDoc.includes("mtech"))
-      );
+  await t.test("4. Resilient Department Normalization matches btech, b.tech, and bachelor-of-technology", () => {
+    const isMatchingDepartment = (reqDept, docDept) => {
+      if (!reqDept || reqDept === "all" || !docDept) return true;
+      const d1 = String(reqDept).toLowerCase().replace(/[^a-z0-9]/g, "");
+      const d2 = String(docDept).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (d1 === d2) return true;
+
+      const isBtechOrEngg1 = d1.includes("btech") || d1.includes("bachelor") || d1.includes("technology") || d1.includes("be") || d1.includes("engineering");
+      const isBtechOrEngg2 = d2.includes("btech") || d2.includes("bachelor") || d2.includes("technology") || d2.includes("be") || d2.includes("engineering") || d2.includes("mtech");
+      if (isBtechOrEngg1 && isBtechOrEngg2) return true;
+
+      const isMca1 = d1.includes("mca") || d1.includes("computerapplication");
+      const isMca2 = d2.includes("mca") || d2.includes("computerapplication");
+      if (isMca1 && isMca2) return true;
+
+      const isMba1 = d1.includes("mba") || d1.includes("businessadmin");
+      const isMba2 = d2.includes("mba") || d2.includes("businessadmin");
+      if (isMba1 && isMba2) return true;
+
+      return false;
     };
 
-    assert.equal(isBtechMatch("btech", "B.Tech"), true);
-    assert.equal(isBtechMatch("btech", "b.tech / m.tech"), true);
-    assert.equal(isBtechMatch("btech", "btech"), true);
-    assert.equal(isBtechMatch("btech", undefined), true);
-    assert.equal(isBtechMatch("btech", "mca"), false);
+    assert.equal(isMatchingDepartment("btech", "B.Tech"), true);
+    assert.equal(isMatchingDepartment("btech", "b.tech / m.tech"), true);
+    assert.equal(isMatchingDepartment("btech", "btech"), true);
+    assert.equal(isMatchingDepartment("bachelor-of-technology", "btech"), true);
+    assert.equal(isMatchingDepartment("btech", "Bachelor of Technology"), true);
+    assert.equal(isMatchingDepartment("btech", undefined), true);
+    assert.equal(isMatchingDepartment("btech", "mca"), false);
   });
 
   await t.test("5. Subject ID Candidate Resolution bridges slug 'calculus-and-linear-algebra' to 'calc'", () => {

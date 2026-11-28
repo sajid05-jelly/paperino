@@ -5,7 +5,7 @@ import { getSubjectSlug, matchSubjectBySlug, getSubjectCanonicalUrl, generateSub
 import { SITE_CONFIG } from "@/lib/siteConfig";
 import SubjectClientComponent from "@/components/SubjectClientComponent";
 import { adminDb } from "@/lib/firebase-admin";
-import { SUBJECTS as STATIC_SUBJECTS } from "@/lib/subjects";
+import { SUBJECTS as STATIC_SUBJECTS, isMatchingDepartment } from "@/lib/subjects";
 
 export const dynamicParams = true;
 export const revalidate = 86400; // Cache pages for 24 hours (ISR) to protect Firestore read quota from crawler traffic
@@ -175,9 +175,7 @@ async function fetchServerMaterials(deptId: string, semId: string, subjectId: st
             seenIds.add(d.id);
             const data = d.data();
             const isApproved = data.status === "approved" || (!data.status && !data.rejectedAt);
-            const normDocDept = (data.departmentId || "btech").toLowerCase().replace(/[^a-z0-9]/g, "");
-            const matchesDept = !data.departmentId || normDocDept === normReqDept ||
-              ((normReqDept.includes("btech") || normReqDept.includes("be")) && (normDocDept.includes("btech") || normDocDept.includes("be") || normDocDept.includes("mtech")));
+            const matchesDept = isMatchingDepartment(deptId, data.departmentId);
 
             if (isApproved && matchesDept) {
               materials.push({
