@@ -4,30 +4,8 @@ import { PublicAdsManifest } from "@/lib/adTypes";
 
 export const dynamic = "force-dynamic";
 
-let inMemoryManifestCache: PublicAdsManifest | null = {
-  enabled: true,
-  analyticsEnabled: true,
-  version: 16,
-  generatedAt: new Date().toISOString(),
-  campaigns: [
-    {
-      id: "ad_02_home_featured",
-      brandName: "PAPERINO",
-      placementId: "home_featured",
-      mediaType: "image",
-      desktopCreativeUrl: "https://res.cloudinary.com/ykdgsee2/image/upload/v1795872958/paperino_ads/ad_image_1795872958240_1577d9e96401_paperino_ads_website_banner_pn.png",
-      destinationUrl: "https://www.instagram.com/paperino_hi?hvrq=MXNoZjViNWlvNnZtdA%3D%3D&utm_source=qr",
-      accessibleDescription: "Promote with Paperino",
-      startAt: "2026-11-28T00:00:00.000Z",
-      expiresAt: "2027-01-01T12:00:00.000Z",
-      priority: 50,
-      targetAudience: {
-        userTier: "all",
-      },
-    },
-  ],
-};
-let lastManifestFetchTime = Date.now();
+let inMemoryManifestCache: PublicAdsManifest | null = null;
+let lastManifestFetchTime = 0;
 const MANIFEST_CACHE_TTL_MS = 60 * 1000; // 60s in-memory TTL to avoid exhausting Firestore quota
 
 /**
