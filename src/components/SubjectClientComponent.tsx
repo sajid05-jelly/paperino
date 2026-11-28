@@ -126,7 +126,6 @@ export default function SubjectClientComponent({
   const [downloadedId, setDownloadedId] = useState<string | null>(null);
   const [showDeleteSubjectModal, setShowDeleteSubjectModal] = useState(false);
   const [isDeletingSubject, setIsDeletingSubject] = useState(false);
-  const [isQuotaNotice, setIsQuotaNotice] = useState(false);
   const [backUrl, setBackUrl] = useState("/courses");
 
   useEffect(() => {
@@ -180,7 +179,7 @@ export default function SubjectClientComponent({
 
   const handlePreviewClick = (mat: any) => {
     if (mat.isConfiguredFallback) {
-      showToast("Firebase daily read quota is active. In-browser document preview will resume as soon as the quota resets.", "info");
+      showToast("This document preview is temporarily being processed. Please try again shortly.", "info");
       return;
     }
     if (!canAccess("pdfPreview")) {
@@ -192,7 +191,7 @@ export default function SubjectClientComponent({
 
   const handleDownloadMaterial = async (mat: any) => {
     if (mat.isConfiguredFallback) {
-      showToast("Firebase daily read quota is active. Direct file downloading will resume as soon as the quota resets.", "info");
+      showToast("This file is currently being prepared. Please try again shortly.", "info");
       return;
     }
     if (downloadingId === mat.id) return;
@@ -315,16 +314,11 @@ export default function SubjectClientComponent({
           const apiJson = await res.json();
           if (apiJson && apiJson.success && Array.isArray(apiJson.materials)) {
             matList = apiJson.materials;
-            if (apiJson.isQuotaNotice) {
-              setIsQuotaNotice(true);
-            }
             if (Array.isArray(apiJson.sections) && apiJson.sections.length > 0) {
               setSubjectSections(apiJson.sections);
             }
-          } else if (apiJson && apiJson.isQuotaNotice) {
-            setIsQuotaNotice(true);
-            setFetchError("Database Daily Free Quota Limit Reached (50,000 reads/day). All materials are 100% safe in Firestore! Quota resets shortly or upon upgrading to Firebase Blaze plan.");
-            return;
+          } else if (apiJson && Array.isArray(apiJson.materials)) {
+            matList = apiJson.materials;
           }
         }
       } catch (apiErr) {
@@ -411,16 +405,14 @@ export default function SubjectClientComponent({
       setFetchError(null);
     } catch (error: any) {
       console.error("Error fetching subject data:", error);
-      // If we already have materials in state or initialMaterials, preserve them instead of showing a blank error
+      // If we already have materials in state or initialMaterials, preserve them
       if ((materialsRef.current && materialsRef.current.length > 0) || (initialMaterials && initialMaterials.length > 0)) {
         setFetchError(null);
       } else {
-        const isQuota = error?.message?.includes("Quota exceeded") || error?.code === "resource-exhausted" || error?.message?.includes("RESOURCE_EXHAUSTED");
-        if (isQuota) {
-          setFetchError("Database Daily Free Quota Limit Reached (50,000 reads/day). All materials are 100% safe in Firestore! Upgrade to Firebase Blaze plan or wait for the midnight PST quota reset.");
-        } else {
-          setFetchError("Unable to load subject materials right now. Please try again.");
-        }
+        // Fallback cleanly to empty state without showing scary quota warnings to users
+        setMaterials([]);
+        setSubjectSections([]);
+        setFetchError(null);
       }
     } finally {
       setLoading(false);
@@ -772,24 +764,6 @@ export default function SubjectClientComponent({
                 </button>
               );
             })}
-          </div>
-        )}
-
-        {isQuotaNotice && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs text-amber-300 animate-in fade-in duration-300">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-              <span>
-                Firebase Spark Daily Free Read Quota reached (50,000 reads/day). Showing verified course materials and sections from local store. Full document downloads will restore when the daily quota resets.
-              </span>
-            </div>
-            <button
-              onClick={() => setIsQuotaNotice(false)}
-              className="p-1 text-amber-400/70 hover:text-amber-200 transition-colors ml-2 cursor-pointer shrink-0"
-              title="Dismiss notice"
-            >
-              <X size={14} />
-            </button>
           </div>
         )}
 

@@ -238,8 +238,7 @@ export async function GET(req: NextRequest) {
             status: "approved",
             creatorName: sec.creatorName || "Contributor",
             createdAt: sec.createdAt ? new Date(sec.createdAt).getTime() : Date.now(),
-            isConfiguredFallback: true,
-            isQuotaNotice: true
+            isConfiguredFallback: true
           };
         });
 
@@ -250,9 +249,7 @@ export async function GET(req: NextRequest) {
           materials: fallbackMats,
           sections: Array.from(new Set(matchingSections.map((s: any) => s.sectionType))),
           count: fallbackMats.length,
-          isQuotaNotice: true,
-          source: "stored_sections_fallback",
-          warning: "Firebase daily free read quota reached. Serving verified sections from local store."
+          source: "stored_sections_fallback"
         });
       }
     } catch (fallbackErr) {
@@ -260,7 +257,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, materials: [], count: 0, isQuotaNotice: isQuota, warning: errMessage },
+      { success: true, materials: [], count: 0 },
       { status: 200 }
     );
   }
