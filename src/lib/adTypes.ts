@@ -50,11 +50,11 @@ export const AD_PLACEMENTS: Record<AdPlacementId, AdPlacementInfo> = {
   },
   study_materials: {
     id: "study_materials",
-    name: "AD 03 — Study Materials Grid Slot",
-    page: "Courses & Subject View (/courses/[dept]/...)",
-    locationDescription: "Injected between material category groups (e.g. after Notes/PYQs).",
-    recommendedRatio: "Native Card (approx 3.5:1)",
-    dimensionsDescription: "Desktop: 900x260, Mobile: 500x200",
+    name: "AD 03 — Study Materials Square Showcase",
+    page: "All Subjects & Materials (/courses)",
+    locationDescription: "Flanking square advertisements on the left and right sides of the All Subjects & Materials heading section.",
+    recommendedRatio: "1:1 (Square)",
+    dimensionsDescription: "Square (e.g. 300x300, 500x500)",
     supportedMedia: ["image"],
   },
   desktop_sidebar: {

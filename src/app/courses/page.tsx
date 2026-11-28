@@ -96,21 +96,38 @@ export default function CoursesPage() {
       <div className="text-glow absolute -top-40 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="text-glow absolute top-1/3 -right-40 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-      {/* Main Header */}
-      <div className="text-center mb-8 w-full relative z-10 max-w-3xl">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
-          <BookOpen size={14} className="text-purple-400" />
-          <span>Study Materials Library</span>
+      {/* Main Header & Flanking Ads Row */}
+      <div className="w-full relative z-10 mb-8 sm:mb-10">
+        <div className="flex items-center justify-center gap-4 lg:gap-6 xl:gap-8 w-full max-w-7xl mx-auto">
+          {/* Left Flank Square Ad (Desktop lg+) */}
+          <PartnerSlot
+            placement="study_materials"
+            className="hidden lg:block shrink-0 w-36 xl:w-44 2xl:w-48 aspect-square my-auto"
+          />
+
+          {/* Central Column: Main Header */}
+          <div className="flex-1 w-full max-w-2xl xl:max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
+              <BookOpen size={14} className="text-purple-400" />
+              <span>Study Materials Library</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-purple-300 mb-4 tracking-tight text-glow">
+              All Subjects & Materials
+            </h1>
+            <p className="text-gray-400 text-sm sm:text-base md:text-lg font-light leading-relaxed max-w-2xl mx-auto">
+              Directly access previous year question papers (PYQs), lecture notes, and exam guides. Search any subject name or code below.
+            </p>
+          </div>
+
+          {/* Right Flank Square Ad (Desktop lg+) */}
+          <PartnerSlot
+            placement="study_materials"
+            className="hidden lg:block shrink-0 w-36 xl:w-44 2xl:w-48 aspect-square my-auto"
+          />
         </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-purple-300 mb-4 tracking-tight text-glow">
-          All Subjects & Materials
-        </h1>
-        <p className="text-gray-400 text-sm sm:text-base md:text-lg font-light leading-relaxed max-w-2xl mx-auto">
-          Directly access previous year question papers (PYQs), lecture notes, and exam guides. Search any subject name or code below.
-        </p>
       </div>
 
-      {/* Search Bar & Add Subject Action Bar */}
+      {/* Search Bar & Add Subject Action Bar (Centered cleanly below heading section) */}
       <div className="w-full max-w-3xl mx-auto mb-10 relative z-10">
         <div className="flex flex-col sm:flex-row items-center gap-3">
           {/* Search Input Box */}

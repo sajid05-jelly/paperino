@@ -29,7 +29,6 @@ import { logFirestoreRead, logFirestoreCacheHit } from "@/lib/firestoreDiagnosti
 import { getSubjectSlug } from "@/lib/seoUtils";
 import { SITE_CONFIG } from "@/lib/siteConfig";
 import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG } from "@/lib/subjects";
-import PartnerSlot from "@/components/ads/PartnerSlot";
 
 const contributorCache: Record<string, string> = {};
 const getCachedContributorLevel = (uid: string): string | null => {
@@ -933,9 +932,6 @@ export default function SubjectClientComponent({
                 </div>
               </div>
             )}
-
-            {/* AD 03: Study Materials Grid Slot */}
-            <PartnerSlot placement="study_materials" />
 
             {/* Notes Section */}
             {activeSections.includes("notes") && (

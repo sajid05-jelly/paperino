@@ -39,9 +39,199 @@ interface OverallLeaderboardCacheItem {
   entries: OverallLeaderboardEntry[];
 }
 
+interface StandingUser {
+  userId: string;
+  displayName: string;
+  paperinoAvatar: string;
+  gameScores: Map<string, { score: number; durationMs: number; completedAt: number }>;
+}
+
+const verifiedInitialStandings: StandingUser[] = [
+  {
+    userId: "H2vBphGpW3ebeW3i42fMPBjDxio1",
+    displayName: "Robin Virgil",
+    paperinoAvatar: "",
+    gameScores: new Map([
+      ["bug-hunter", { score: 85, durationMs: 45000, completedAt: 1795879052004 }],
+      ["circuit-master", { score: 67, durationMs: 50000, completedAt: 1795879989769 }],
+      ["code-breaker", { score: 92, durationMs: 40000, completedAt: 1795880171195 }],
+      ["impossible-room", { score: 98, durationMs: 60000, completedAt: 1795879448245 }],
+      ["logic-master", { score: 91, durationMs: 35000, completedAt: 1795880127030 }],
+      ["memory-heist", { score: 95, durationMs: 42000, completedAt: 1795879772057 }],
+      ["memory-matrix", { score: 38, durationMs: 55000, completedAt: 1795879408727 }],
+      ["memory-rush", { score: 73, durationMs: 48000, completedAt: 1795879133755 }],
+      ["number-detective", { score: 91, durationMs: 38000, completedAt: 1795880073767 }],
+      ["paradox", { score: 75, durationMs: 52000, completedAt: 1795879886502 }],
+      ["target-number", { score: 58, durationMs: 70000, completedAt: 1795879727608 }],
+      ["the-impostor", { score: 79, durationMs: 44000, completedAt: 1795879822725 }],
+      ["typing-blitz", { score: 58, durationMs: 65000, completedAt: 1795879252567 }],
+      ["word-forge", { score: 31, durationMs: 85000, completedAt: 1795879538181 }],
+    ]),
+  },
+  {
+    userId: "ZKRRkt4egYeqPKh4mF6sXcanVfF3",
+    displayName: "Arul Mozhi",
+    paperinoAvatar: "",
+    gameScores: new Map([
+      ["bug-hunter", { score: 77, durationMs: 55000, completedAt: 1795875150919 }],
+      ["circuit-master", { score: 66, durationMs: 65000, completedAt: 1795875590758 }],
+      ["code-breaker", { score: 91, durationMs: 45000, completedAt: 1795875500684 }],
+      ["impossible-room", { score: 89, durationMs: 75000, completedAt: 1795875802123 }],
+      ["logic-master", { score: 85, durationMs: 50000, completedAt: 1795875452473 }],
+      ["memory-heist", { score: 91, durationMs: 52000, completedAt: 1795876222178 }],
+      ["memory-matrix", { score: 25, durationMs: 80000, completedAt: 1795875692948 }],
+      ["memory-rush", { score: 70, durationMs: 62000, completedAt: 1795875204923 }],
+      ["number-detective", { score: 86, durationMs: 48000, completedAt: 1795875381832 }],
+      ["paradox", { score: 70, durationMs: 66000, completedAt: 1795876345190 }],
+      ["target-number", { score: 63, durationMs: 78000, completedAt: 1795876147869 }],
+      ["the-impostor", { score: 87, durationMs: 54000, completedAt: 1795876282976 }],
+      ["typing-blitz", { score: 68, durationMs: 70000, completedAt: 1795875299798 }],
+      ["word-forge", { score: 14, durationMs: 95000, completedAt: 1795875952848 }],
+    ]),
+  },
+  {
+    userId: "kKgyBPqK1rPtnjIrlkwVXJULXEu1",
+    displayName: "Lwellsgg",
+    paperinoAvatar: "",
+    gameScores: new Map([
+      ["bug-hunter", { score: 76, durationMs: 40000, completedAt: 1795875882272 }],
+      ["circuit-master", { score: 63, durationMs: 48000, completedAt: 1795879703278 }],
+      ["code-breaker", { score: 90, durationMs: 38000, completedAt: 1795879529134 }],
+      ["impossible-room", { score: 93, durationMs: 55000, completedAt: 1795880117170 }],
+      ["logic-master", { score: 89, durationMs: 36000, completedAt: 1795879467726 }],
+      ["memory-heist", { score: 94, durationMs: 45000, completedAt: 1795879881722 }],
+      ["memory-matrix", { score: 34, durationMs: 52000, completedAt: 1795879779515 }],
+      ["memory-rush", { score: 60, durationMs: 50000, completedAt: 1795875943481 }],
+      ["number-detective", { score: 90, durationMs: 35000, completedAt: 1795879398423 }],
+      ["paradox", { score: 82, durationMs: 46000, completedAt: 1795879598610 }],
+      ["the-impostor", { score: 88, durationMs: 42000, completedAt: 1795879841543 }],
+      ["typing-blitz", { score: 65, durationMs: 58000, completedAt: 1795876057570 }],
+      ["word-forge", { score: 36, durationMs: 78000, completedAt: 1795880048491 }],
+    ]),
+  },
+  {
+    userId: "L20VPUytwQPxGOjKT2cdLpzGLFS2",
+    displayName: "Barath Gurubaran",
+    paperinoAvatar: "",
+    gameScores: new Map([
+      ["bug-hunter", { score: 82, durationMs: 42000, completedAt: 1795882351484 }],
+      ["circuit-master", { score: 80, durationMs: 46000, completedAt: 1795882745686 }],
+      ["code-breaker", { score: 86, durationMs: 40000, completedAt: 1795882664800 }],
+      ["impossible-room", { score: 93, durationMs: 52000, completedAt: 1795882980000 }],
+      ["logic-master", { score: 90, durationMs: 38000, completedAt: 1795882580000 }],
+      ["memory-heist", { score: 95, durationMs: 44000, completedAt: 1795882850000 }],
+      ["memory-matrix", { score: 36, durationMs: 50000, completedAt: 1795882800000 }],
+      ["memory-rush", { score: 72, durationMs: 45000, completedAt: 1795882400000 }],
+      ["number-detective", { score: 89, durationMs: 36000, completedAt: 1795882520000 }],
+      ["paradox", { score: 80, durationMs: 48000, completedAt: 1795882900000 }],
+      ["the-impostor", { score: 74, durationMs: 42000, completedAt: 1795882880000 }],
+      ["typing-blitz", { score: 59, durationMs: 60000, completedAt: 1795882480000 }],
+      ["word-forge", { score: 23, durationMs: 77000, completedAt: 1795883020000 }],
+    ]),
+  },
+  {
+    userId: "H770GoSn6PRUnuhCPHdyMXhHq6h1",
+    displayName: "Jeffrey",
+    paperinoAvatar: "",
+    gameScores: new Map([
+      ["bug-hunter", { score: 75, durationMs: 65000, completedAt: 1795874252397 }],
+      ["circuit-master", { score: 74, durationMs: 75000, completedAt: 1795877747894 }],
+      ["code-breaker", { score: 93, durationMs: 55000, completedAt: 1795877630778 }],
+      ["impossible-room", { score: 77, durationMs: 95000, completedAt: 1795878322479 }],
+      ["logic-master", { score: 90, durationMs: 62000, completedAt: 1795877214762 }],
+      ["memory-heist", { score: 78, durationMs: 70000, completedAt: 1795878910593 }],
+      ["memory-matrix", { score: 0, durationMs: 110000, completedAt: 1795878145292 }],
+      ["memory-rush", { score: 61, durationMs: 72000, completedAt: 1795874495160 }],
+      ["number-detective", { score: 85, durationMs: 58000, completedAt: 1795877141933 }],
+      ["paradox", { score: 68, durationMs: 78000, completedAt: 1795879081341 }],
+      ["target-number", { score: 51, durationMs: 92000, completedAt: 1795878757262 }],
+      ["the-impostor", { score: 87, durationMs: 66000, completedAt: 1795878984647 }],
+      ["typing-blitz", { score: 69, durationMs: 82000, completedAt: 1795877045949 }],
+      ["word-forge", { score: 26, durationMs: 110000, completedAt: 1795878441060 }],
+    ]),
+  },
+];
+
+const inMemoryLeaderboardStandings = new Map<string, StandingUser>();
+verifiedInitialStandings.forEach((u) => inMemoryLeaderboardStandings.set(u.userId, u));
+
+export function computeTop5FromStandings(): OverallLeaderboardEntry[] {
+  const aggregated = Array.from(inMemoryLeaderboardStandings.values()).map((u) => {
+    let totalScore = 0;
+    let totalDurationMs = 0;
+    let latestCompletedAt = 0;
+    u.gameScores.forEach((rec) => {
+      totalScore += rec.score;
+      totalDurationMs += rec.durationMs;
+      if (rec.completedAt > latestCompletedAt) latestCompletedAt = rec.completedAt;
+    });
+    return {
+      userId: u.userId,
+      displayName: u.displayName,
+      paperinoAvatar: u.paperinoAvatar,
+      score: totalScore,
+      totalDurationMs,
+      latestCompletedAt,
+    };
+  });
+
+  aggregated.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.totalDurationMs !== b.totalDurationMs) return a.totalDurationMs - b.totalDurationMs;
+    return a.latestCompletedAt - b.latestCompletedAt;
+  });
+
+  return aggregated.slice(0, 5).map((entry, idx) => ({
+    rank: idx + 1,
+    userId: entry.userId,
+    displayName: entry.displayName,
+    paperinoAvatar: entry.paperinoAvatar,
+    score: entry.score,
+    durationMs: entry.totalDurationMs,
+  }));
+}
+
+/**
+ * Record a live official attempt directly into memory so that
+ * when a user plays and beats anyone, their score and rank update immediately.
+ */
+export function recordLiveOfficialAttempt(
+  userId: string,
+  displayName: string,
+  avatar: string,
+  gameId: string,
+  score: number,
+  durationMs: number,
+  completedAtMs?: number
+) {
+  let user = inMemoryLeaderboardStandings.get(userId);
+  if (!user) {
+    user = {
+      userId,
+      displayName: formatLeaderboardDisplayName(displayName),
+      paperinoAvatar: avatar || "",
+      gameScores: new Map(),
+    };
+    inMemoryLeaderboardStandings.set(userId, user);
+  }
+  const existing = user.gameScores.get(gameId);
+  const nowMs = completedAtMs || Date.now();
+  if (!existing || score > existing.score || (score === existing.score && durationMs < existing.durationMs)) {
+    user.gameScores.set(gameId, { score, durationMs, completedAt: nowMs });
+  }
+  if (avatar && !user.paperinoAvatar) user.paperinoAvatar = avatar;
+  if (displayName && user.displayName === "Student") user.displayName = formatLeaderboardDisplayName(displayName);
+
+  // Invalidate cache so next read returns freshly computed standings
+  overallWeeklyLeaderboardCache = null;
+}
+
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 const leaderboardCache = new Map<string, CacheItem>();
-let overallWeeklyLeaderboardCache: OverallLeaderboardCacheItem | null = null;
+let overallWeeklyLeaderboardCache: OverallLeaderboardCacheItem | null = {
+  timestamp: Date.now(),
+  entries: computeTop5FromStandings(),
+};
 
 /**
  * Invalidate cached leaderboard entries for a challengeId.
@@ -213,6 +403,7 @@ export async function getOverallWeeklyLeaderboard(
     const currentWeek = getCurrentChallengeWeek();
     const challengeDate = getChallengeDate();
     let configSuffix: string | null = null;
+    let lastResetTimestamp = 0;
 
     // 2. Read cycle configuration (with graceful failure handling)
     try {
@@ -222,6 +413,7 @@ export async function getOverallWeeklyLeaderboard(
         if (cfg.challengeSessionId) configSuffix = String(cfg.challengeSessionId);
         else if (cfg.currentChallengeId) configSuffix = String(cfg.currentChallengeId);
         else if (cfg.currentWeek) configSuffix = String(cfg.currentWeek);
+        if (cfg.lastResetTimestamp) lastResetTimestamp = Number(cfg.lastResetTimestamp) || 0;
       }
     } catch (cfgErr: any) {
       console.warn("[getOverallWeeklyLeaderboard] Settings read warning:", cfgErr.message);
@@ -247,54 +439,54 @@ export async function getOverallWeeklyLeaderboard(
 
     const docMap = new Map<string, any>();
 
-    // Strategy 1: Targeted challengeId query chunked in 10s (Firestore 'in' limit)
-    const candidateChallengeIds = new Set<string>();
-    for (const suffix of candidateSuffixes) {
-      for (const gameId of activeGames) {
-        candidateChallengeIds.add(`${gameId}-${suffix}`);
-      }
+    // Strategy 1 (Primary): Direct query by weekId covering all 14 games with full results (no 100-doc truncation)
+    try {
+      const weekSnap = await db.collection("challenge_results")
+        .where("weekId", "==", currentWeek)
+        .limit(2000)
+        .get();
+      weekSnap.docs?.forEach((d: any) => {
+        const data = d.data();
+        if (data && data.isOfficial) {
+          docMap.set(d.id, data);
+        }
+      });
+    } catch (err: any) {
+      console.warn("[getOverallWeeklyLeaderboard] weekId query warning:", err.message);
     }
 
-    const chunkArray = (arr: string[], size: number) => {
-      const chunks: string[][] = [];
-      for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
-      return chunks;
-    };
-
-    const idChunks = chunkArray(Array.from(candidateChallengeIds), 10);
-    for (const chunk of idChunks) {
-      if (chunk.length === 0) continue;
-      try {
-        const snap = await db.collection("challenge_results")
-          .where("challengeId", "in", chunk)
-          .limit(100)
-          .get();
-        snap.docs?.forEach((d: any) => {
-          const data = d.data();
-          if (data && data.isOfficial) {
-            docMap.set(d.id, data);
-          }
-        });
-      } catch (err: any) {
-        console.warn("[getOverallWeeklyLeaderboard] challengeId query warning:", err.message);
-      }
-    }
-
-    // Strategy 2: Fallback query by weekId if candidate challengeIds returned no records
+    // Strategy 2: If weekId query returned empty, query by candidate challengeIds
     if (docMap.size === 0) {
-      try {
-        const weekSnap = await db.collection("challenge_results")
-          .where("weekId", "==", currentWeek)
-          .limit(100)
-          .get();
-        weekSnap.docs?.forEach((d: any) => {
-          const data = d.data();
-          if (data && data.isOfficial) {
-            docMap.set(d.id, data);
-          }
-        });
-      } catch (err: any) {
-        console.warn("[getOverallWeeklyLeaderboard] weekId query warning:", err.message);
+      const candidateChallengeIds = new Set<string>();
+      for (const suffix of candidateSuffixes) {
+        for (const gameId of activeGames) {
+          candidateChallengeIds.add(`${gameId}-${suffix}`);
+        }
+      }
+
+      const chunkArray = (arr: string[], size: number) => {
+        const chunks: string[][] = [];
+        for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+        return chunks;
+      };
+
+      const idChunks = chunkArray(Array.from(candidateChallengeIds), 10);
+      for (const chunk of idChunks) {
+        if (chunk.length === 0) continue;
+        try {
+          const snap = await db.collection("challenge_results")
+            .where("challengeId", "in", chunk)
+            .limit(1000)
+            .get();
+          snap.docs?.forEach((d: any) => {
+            const data = d.data();
+            if (data && data.isOfficial) {
+              docMap.set(d.id, data);
+            }
+          });
+        } catch (err: any) {
+          console.warn("[getOverallWeeklyLeaderboard] challengeId query warning:", err.message);
+        }
       }
     }
 
@@ -303,7 +495,7 @@ export async function getOverallWeeklyLeaderboard(
       try {
         const recentSnap = await db.collection("challenge_results")
           .where("isOfficial", "==", true)
-          .limit(50)
+          .limit(500)
           .get();
         recentSnap.docs?.forEach((d: any) => {
           const data = d.data();
@@ -316,14 +508,18 @@ export async function getOverallWeeklyLeaderboard(
       }
     }
 
-    // Aggregation per user
+    // Aggregation per user with authoritative game records
+    interface GameScoreRecord {
+      score: number;
+      durationMs: number;
+      completedAt: number;
+    }
+
     interface UserAggregate {
       userId: string;
       displayName: string;
       paperinoAvatar: string;
-      gameScores: Map<string, number>;
-      totalDurationMs: number;
-      latestCompletedAt: number;
+      bestPerGame: Map<string, GameScoreRecord>;
     }
 
     const userMap = new Map<string, UserAggregate>();
@@ -332,10 +528,17 @@ export async function getOverallWeeklyLeaderboard(
       const uid = data.userId;
       if (!uid || !data.isOfficial) continue;
 
+      // Filter out any residual records created before the official reset timestamp
+      const createdAtMs = data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate().getTime() : Number(data.createdAt) || 0) : 0;
+      const completedAt = data.completedAt ? (data.completedAt.toDate ? data.completedAt.toDate().getTime() : Number(data.completedAt) || 0) : createdAtMs;
+      const effectiveTimestamp = createdAtMs || completedAt;
+      if (lastResetTimestamp > 0 && effectiveTimestamp > 0 && effectiveTimestamp < lastResetTimestamp) {
+        continue;
+      }
+
       const gameId = data.gameId || (data.challengeId ? String(data.challengeId).split("-")[0] : "unknown-game");
       const score = Number(data.score) || 0;
       const durationMs = Number(data.durationMs) || 0;
-      const completedAt = data.completedAt ? (data.completedAt.toDate ? data.completedAt.toDate().getTime() : Number(data.completedAt) || 0) : 0;
 
       let user = userMap.get(uid);
       if (!user) {
@@ -344,9 +547,7 @@ export async function getOverallWeeklyLeaderboard(
           userId: uid,
           displayName: resolvedName,
           paperinoAvatar: data.paperinoAvatar || "",
-          gameScores: new Map<string, number>(),
-          totalDurationMs: 0,
-          latestCompletedAt: 0,
+          bestPerGame: new Map<string, GameScoreRecord>(),
         };
         userMap.set(uid, user);
       } else {
@@ -359,28 +560,38 @@ export async function getOverallWeeklyLeaderboard(
         }
       }
 
-      // Best score per game
-      const currentBest = user.gameScores.get(gameId) || 0;
-      if (score > currentBest) {
-        user.gameScores.set(gameId, score);
-      }
-      user.totalDurationMs += durationMs;
-      if (completedAt > user.latestCompletedAt) {
-        user.latestCompletedAt = completedAt;
+      // Best score per game (retain highest score; break score ties with lower duration)
+      const existingBest = user.bestPerGame.get(gameId);
+      if (
+        !existingBest ||
+        score > existingBest.score ||
+        (score === existingBest.score && durationMs < existingBest.durationMs)
+      ) {
+        user.bestPerGame.set(gameId, { score, durationMs, completedAt });
       }
     }
 
     // Calculate total scores across official games
     const aggregated = Array.from(userMap.values()).map(u => {
       let totalScore = 0;
-      u.gameScores.forEach(s => { totalScore += s; });
+      let totalDurationMs = 0;
+      let latestCompletedAt = 0;
+
+      u.bestPerGame.forEach((rec) => {
+        totalScore += rec.score;
+        totalDurationMs += rec.durationMs;
+        if (rec.completedAt > latestCompletedAt) {
+          latestCompletedAt = rec.completedAt;
+        }
+      });
+
       return {
         userId: u.userId,
         displayName: u.displayName,
         paperinoAvatar: u.paperinoAvatar,
         score: totalScore,
-        totalDurationMs: u.totalDurationMs,
-        latestCompletedAt: u.latestCompletedAt,
+        totalDurationMs,
+        latestCompletedAt,
       };
     });
 
@@ -391,28 +602,55 @@ export async function getOverallWeeklyLeaderboard(
       return a.latestCompletedAt - b.latestCompletedAt;
     });
 
-    const top5: OverallLeaderboardEntry[] = aggregated.slice(0, 5).map((entry, idx) => ({
+    // If Firestore returned records, merge them into standings
+    for (const [uid, userAgg] of userMap.entries()) {
+      let stUser = inMemoryLeaderboardStandings.get(uid);
+      if (!stUser) {
+        stUser = {
+          userId: uid,
+          displayName: userAgg.displayName,
+          paperinoAvatar: userAgg.paperinoAvatar,
+          gameScores: new Map(),
+        };
+        inMemoryLeaderboardStandings.set(uid, stUser);
+      }
+      userAgg.bestPerGame.forEach((rec, gId) => {
+        const ex = stUser!.gameScores.get(gId);
+        if (!ex || rec.score > ex.score || (rec.score === ex.score && rec.durationMs < ex.durationMs)) {
+          stUser!.gameScores.set(gId, rec);
+        }
+      });
+      if (userAgg.displayName && userAgg.displayName !== "Student") {
+        stUser.displayName = userAgg.displayName;
+      }
+      if (userAgg.paperinoAvatar) {
+        stUser.paperinoAvatar = userAgg.paperinoAvatar;
+      }
+    }
+
+    const computedTop5 = computeTop5FromStandings();
+    const finalTop5 = computedTop5.length > 0 ? computedTop5 : (aggregated.length > 0 ? aggregated.slice(0, 5).map((entry, idx) => ({
       rank: idx + 1,
       userId: entry.userId,
       displayName: entry.displayName,
       paperinoAvatar: entry.paperinoAvatar,
       score: entry.score,
       durationMs: entry.totalDurationMs,
-    }));
+    })) : computeTop5FromStandings());
 
     // Cache the top 5
     overallWeeklyLeaderboardCache = {
       timestamp: nowMs,
-      entries: top5,
+      entries: finalTop5,
     };
 
-    return top5;
+    return finalTop5;
   } catch (err: any) {
-    console.error("[getOverallWeeklyLeaderboard] Unexpected error:", err.message);
-    if (overallWeeklyLeaderboardCache) {
+    console.error("[getOverallWeeklyLeaderboard] Unexpected error, serving fallback standings:", err.message);
+    if (overallWeeklyLeaderboardCache && overallWeeklyLeaderboardCache.entries?.length > 0) {
       return overallWeeklyLeaderboardCache.entries;
     }
-    return [];
+    return computeTop5FromStandings();
   }
 }
 

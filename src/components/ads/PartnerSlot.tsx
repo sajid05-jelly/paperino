@@ -25,6 +25,9 @@ function getReducedDataSnapshot(): boolean {
   return reducedMotion || saveData;
 }
 
+// Module-level deduplication to guarantee zero double-counting within the same page session
+const recordedInFlightImpressions = new Set<string>();
+
 export default function PartnerSlot({ placement, className = "" }: PartnerSlotProps) {
   const { ad, loading, enabled, isVideoPlaying, requestPlay, releasePlay } = useAdSlot(placement);
 
@@ -53,10 +56,13 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
     const container = containerRef.current;
     if (!container || !ad || !enabled || hasMediaError) return;
 
-    // Check session deduplication
+    // Check session and in-flight deduplication
     const sessionKey = `paperino_imp_${ad.id}_${placement}`;
     try {
-      if (typeof window !== "undefined" && sessionStorage.getItem(sessionKey)) {
+      if (
+        recordedInFlightImpressions.has(sessionKey) ||
+        (typeof window !== "undefined" && sessionStorage.getItem(sessionKey))
+      ) {
         hasRecordedImpressionRef.current = true;
       } else {
         hasRecordedImpressionRef.current = false;
@@ -75,6 +81,14 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
             // Start 1-second continuous visibility timer
             if (!impressionTimerRef.current) {
               impressionTimerRef.current = setTimeout(() => {
+                if (
+                  recordedInFlightImpressions.has(sessionKey) ||
+                  (typeof window !== "undefined" && sessionStorage.getItem(sessionKey))
+                ) {
+                  hasRecordedImpressionRef.current = true;
+                  return;
+                }
+                recordedInFlightImpressions.add(sessionKey);
                 try {
                   if (typeof window !== "undefined") {
                     sessionStorage.setItem(sessionKey, "1");
@@ -263,8 +277,8 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
 
     case "study_materials":
       containerStyles +=
-        " w-full my-6 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-purple-500/30";
-      aspectWrapper += " aspect-[16/6] sm:aspect-[7/2] min-h-[110px] max-h-[200px]";
+        " rounded-2xl border border-purple-500/25 bg-[#0d071a]/85 shadow-[0_0_25px_rgba(168,85,247,0.15)] hover:border-purple-500/50 hover:shadow-[0_0_35px_rgba(168,85,247,0.25)]";
+      aspectWrapper += " w-full h-full aspect-square relative flex items-center justify-center overflow-hidden bg-black/40";
       break;
 
     case "desktop_sidebar":
@@ -352,7 +366,7 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
               </div>
             </div>
           ) : (
-            <picture className="w-full block">
+            <picture className={placement === "study_materials" ? "w-full h-full flex items-center justify-center p-2" : "w-full block"}>
               {ad.mobileCreativeUrl && (
                 <source media="(max-width: 640px)" srcSet={ad.mobileCreativeUrl} />
               )}
@@ -361,7 +375,12 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
                 alt={ad.accessibleDescription || ad.brandName}
                 loading="lazy"
                 onError={() => ad?.id && setFailedCampaignId(ad.id)}
-                className="w-full h-auto block group-hover:scale-[1.01] transition-transform duration-500"
+                style={placement === "study_materials" ? { maxWidth: "100%", maxHeight: "100%", objectFit: "contain" } : undefined}
+                className={
+                  placement === "study_materials"
+                    ? "max-w-full max-h-full object-contain group-hover:scale-[1.02] transition-transform duration-300 rounded-lg"
+                    : "w-full h-auto block group-hover:scale-[1.01] transition-transform duration-500"
+                }
               />
             </picture>
           )}
@@ -373,9 +392,11 @@ export default function PartnerSlot({ placement, className = "" }: PartnerSlotPr
           </div>
 
           {/* Subtle Brand Watermark */}
-          <div className="hidden sm:block absolute bottom-2 left-3 z-20 text-[10px] font-semibold text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] pointer-events-none">
-            {ad.brandName}
-          </div>
+          {placement !== "study_materials" && (
+            <div className="hidden sm:block absolute bottom-2 left-3 z-20 text-[10px] font-semibold text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] pointer-events-none">
+              {ad.brandName}
+            </div>
+          )}
         </div>
       </a>
     </div>

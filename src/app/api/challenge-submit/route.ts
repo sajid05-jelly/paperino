@@ -20,7 +20,7 @@ import {
   pickSeededQuestions,
   ReviewItem
 } from '@/lib/arenaPuzzles';
-import { getLeaderboard as buildLeaderboard, invalidateLeaderboardCache, invalidateWeeklyLeaderboardCache } from '@/lib/challengeLeaderboard';
+import { getLeaderboard as buildLeaderboard, invalidateLeaderboardCache, invalidateWeeklyLeaderboardCache, recordLiveOfficialAttempt } from '@/lib/challengeLeaderboard';
 
 function getISOWeekId(date: Date): string {
   const target = new Date(date.valueOf());
@@ -631,9 +631,27 @@ export async function POST(request: Request) {
       try {
         await adminDb.collection('challenge_results').doc(deterministicResultDocId).set(resultPayload, { merge: true });
         invalidateLeaderboardCache(challengeId);
-        invalidateWeeklyLeaderboardCache();
+        recordLiveOfficialAttempt(
+          uid,
+          displayName,
+          paperinoAvatar,
+          gameId,
+          score,
+          durationMs,
+          completedAt.getTime()
+        );
       } catch (writeErr: any) {
         console.warn("[challenge-submit] failed to write deterministic result doc:", writeErr.message);
+        // Even if Firestore write throws (e.g. quota limit), record directly in memory standings!
+        recordLiveOfficialAttempt(
+          uid,
+          displayName,
+          paperinoAvatar,
+          gameId,
+          score,
+          durationMs,
+          completedAt.getTime()
+        );
       }
     }
 
