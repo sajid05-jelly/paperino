@@ -136,7 +136,7 @@ export default function ChallengeGameShell({
   }
 
   return (
-    <div className="min-h-screen w-full py-6 px-4 md:px-8 text-gray-200 bg-[var(--background)] flex flex-col justify-between items-center relative">
+    <div className="min-h-[calc(100vh-5rem)] md:min-h-[calc(100vh-6rem)] w-full py-4 md:py-6 px-4 md:px-8 text-gray-200 bg-[var(--background)] flex flex-col justify-between items-center relative">
       
       {/* 1. Shell Game Header Container */}
       {isGameActive ? (
@@ -197,7 +197,7 @@ export default function ChallengeGameShell({
       )}
 
       {/* 2. Interactive Game Content Container */}
-      <div className={`w-full max-w-6xl flex-1 flex flex-col ${isGameActive ? "justify-start pt-2" : "justify-center"} items-center my-auto`}>
+      <div className={`w-full max-w-6xl flex-1 flex flex-col ${isGameActive ? "justify-start pt-2" : "justify-center my-auto"} items-center`}>
         {children}
       </div>
 
