@@ -53,8 +53,20 @@ export default function TheImpostorPage() {
         });
         const data = await res.json();
         if (data.wasAlreadyCompleted || (res.status === 409 && data.completed)) {
+          setResultData({
+            score: data.score ?? 0,
+            durationMs: data.durationMs ?? 0,
+            rank: data.rank ?? 1,
+            accuracy: data.accuracy ?? 100,
+            correctCount: data.correctCount,
+            totalQuestions: data.totalQuestions,
+            reviewItems: data.reviewItems || [],
+            isOfficial: true,
+            leaderboard: data.leaderboard || []
+          });
           setWasAlreadyCompleted(true);
-          setIsOfficial(false);
+          setIsOfficial(true);
+          setGameState("result");
         } else if (!res.ok) {
           setError(data.error || "Failed to contact game servers");
         }
@@ -82,7 +94,25 @@ export default function TheImpostorPage() {
         body: JSON.stringify({ gameId: "the-impostor" })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to start session");
+      if (!res.ok) {
+        if (res.status === 409 && data.completed) {
+          setResultData({
+            score: data.score ?? 0,
+            durationMs: data.durationMs ?? 0,
+            rank: data.rank ?? 1,
+            accuracy: data.accuracy ?? 100,
+            correctCount: data.correctCount,
+            totalQuestions: data.totalQuestions,
+            reviewItems: data.reviewItems || [],
+            isOfficial: true,
+            leaderboard: data.leaderboard || []
+          });
+          setWasAlreadyCompleted(true);
+          setGameState("result");
+          return;
+        }
+        throw new Error(data.error || "Failed to start session");
+      }
       setSessionId(data.sessionId);
       setIsOfficial(Boolean(data.isOfficial));
       setWasAlreadyCompleted(Boolean(data.wasAlreadyCompleted));

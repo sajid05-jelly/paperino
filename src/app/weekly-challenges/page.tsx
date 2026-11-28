@@ -890,6 +890,10 @@ export default function WeeklyChallengesPage() {
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium">
                               <Lock size={12} /> {!user ? "Sign In" : config.availableDays?.length === 0 ? "Closed" : `Opens ${nextDayName}`}
                             </span>
+                          ) : isCompleted ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
+                              <CheckCircle2 size={13} /> Completed
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
                               <Play size={11} className="fill-emerald-400 text-emerald-400" /> Start
@@ -932,6 +936,14 @@ export default function WeeklyChallengesPage() {
                             </span>
                             <Lock size={12} />
                           </button>
+                        ) : isCompleted ? (
+                          <Link
+                            href={`/weekly-challenges/${gameId}`}
+                            className="w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-gray-200 hover:text-white transition-all flex items-center justify-between group/btn cursor-pointer bg-white/5 hover:bg-white/10 border border-purple-500/30 hover:border-purple-500/60 shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+                          >
+                            <span>Review Answers & Results</span>
+                            <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform text-purple-400" />
+                          </Link>
                         ) : (
                           <Link
                             href={`/weekly-challenges/${gameId}`}

@@ -395,53 +395,160 @@ export async function POST(request: Request) {
 
       const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
       let cCount = 0;
+      totalQuestions = rounds.length;
       
       rounds.forEach((round, idx) => {
         const expr = String(clientAnswers[idx] || '').replace(/\s/g, '');
-        if (!expr) return;
-        if (/[^0-9+*/()-]/.test(expr)) return;
-        const numsInExpr = expr.split(/[^0-9]+/).filter(Boolean).map(Number);
-        const used = [...round.availableNumbers];
-        let validNums = true;
-        for (const n of numsInExpr) {
-          const i = used.indexOf(n);
-          if (i === -1) { validNums = false; break; }
-          used.splice(i, 1);
+        let isCorrect = false;
+        if (expr && !/[^0-9+*/()-]/.test(expr)) {
+          const numsInExpr = expr.split(/[^0-9]+/).filter(Boolean).map(Number);
+          const used = [...round.availableNumbers];
+          let validNums = true;
+          for (const n of numsInExpr) {
+            const i = used.indexOf(n);
+            if (i === -1) { validNums = false; break; }
+            used.splice(i, 1);
+          }
+          if (validNums) {
+            try {
+              const result = new Function('return ' + expr)();
+              if (Math.abs(result - round.target) < 0.001) isCorrect = true;
+            } catch(e) {}
+          }
         }
-        if (!validNums) return;
-        
-        try {
-          const result = new Function('return ' + expr)();
-          if (Math.abs(result - round.target) < 0.001) cCount++;
-        } catch(e) {}
+        if (isCorrect) cCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: `Target: ${round.target} | Allowed numbers: [${round.availableNumbers.join(', ')}]`,
+          userAnswer: expr || 'Not Answered',
+          correctAnswer: `Valid equation reaching ${round.target}`,
+          isCorrect,
+          explanation: isCorrect ? `Successfully evaluated to target ${round.target}.` : `The target number was ${round.target}.`,
+          category: 'Mental Arithmetic'
+        });
       });
       correctCount = cCount;
-      totalQuestions = rounds.length;
       correctnessRatio = rounds.length > 0 ? (correctCount / rounds.length) : 1;
     } else if (gameId === 'the-impostor') {
       const rounds = pickSeededQuestions(IMPOSTOR_SCENARIOS, 5, seedNum);
       const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
       let cCount = 0;
+      totalQuestions = rounds.length;
       rounds.forEach((round, idx) => {
-        if (clientAnswers[idx] === round.answer) cCount++;
+        const uAns = clientAnswers[idx];
+        const isCorrect = uAns === round.answer;
+        if (isCorrect) cCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: `${round.question}\n\nClues:\n${round.clues.map(c => '• ' + c).join('\n')}`,
+          userAnswer: uAns || 'Not Answered',
+          correctAnswer: round.answer,
+          isCorrect,
+          explanation: `Deductive rules confirm ${round.answer} is the true conclusion.`,
+          options: round.options,
+          category: 'Deductive Logic'
+        });
       });
       correctCount = cCount;
-      totalQuestions = rounds.length;
       correctnessRatio = rounds.length > 0 ? (correctCount / rounds.length) : 1;
     } else if (gameId === 'paradox') {
       const rounds = pickSeededQuestions(PARADOX_CHAINS, 5, seedNum);
       const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
       let cCount = 0;
+      totalQuestions = rounds.length;
       rounds.forEach((round, idx) => {
-        if (clientAnswers[idx] === round.answer) cCount++;
+        const uAns = clientAnswers[idx];
+        const isCorrect = uAns === round.answer;
+        if (isCorrect) cCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: `Instruction Rule Chain:\n${round.instructions.map(i => '• ' + i).join('\n')}`,
+          userAnswer: uAns || 'Not Answered',
+          correctAnswer: round.answer,
+          isCorrect,
+          explanation: `Following all sequential instruction overrides leads to ${round.answer}.`,
+          options: round.options,
+          category: 'Cognitive Agility'
+        });
       });
       correctCount = cCount;
-      totalQuestions = rounds.length;
       correctnessRatio = rounds.length > 0 ? (correctCount / rounds.length) : 1;
     } else if (gameId === 'memory-heist') {
       correctCount = Number(gameData?.correctCount) || 3;
       totalQuestions = 3;
       correctnessRatio = Math.max(0, Math.min(1, correctCount / 3));
+      const clientAnswers = Array.isArray(gameData?.answers) ? gameData.answers : [];
+      for (let i = 0; i < 3; i++) {
+        const isItemCorrect = i < correctCount;
+        reviewItems.push({
+          questionNumber: i + 1,
+          question: `Vault Recall Check ${i + 1} (Grid Item Location & Count)`,
+          userAnswer: clientAnswers[i] || (isItemCorrect ? 'Correct Recall' : 'Incorrect Position'),
+          correctAnswer: 'Exact Memory Match',
+          isCorrect: isItemCorrect,
+          explanation: 'Spatial sequence recall of high-tech items across the 3x3 security grid.',
+          category: 'Visual Memory'
+        });
+      }
+    } else if (gameId === 'memory-matrix') {
+      const userRounds = Array.isArray(gameData?.userRounds) ? gameData.userRounds : [];
+      totalQuestions = 5;
+      correctCount = userRounds.filter((r: any) => r.isCorrect).length;
+      if (userRounds.length > 0) {
+        userRounds.forEach((r: any, idx: number) => {
+          reviewItems.push({
+            questionNumber: idx + 1,
+            question: `Spatial Pattern Round ${idx + 1} (${3 + idx} targets on grid)`,
+            userAnswer: r.isCorrect ? 'Correct Pattern Reconstructed' : 'Tile Pattern Mismatch',
+            correctAnswer: 'All Target Coordinates Reconstructed',
+            isCorrect: Boolean(r.isCorrect),
+            explanation: `Memorize and reconstruct all active cell coordinates under timed pressure.`,
+            category: 'Spatial Memory'
+          });
+        });
+      } else {
+        reviewItems.push({
+          questionNumber: 1,
+          question: "Memory Matrix 5-Round Pattern Recall",
+          userAnswer: `${gameData?.score || 50} pts recorded`,
+          correctAnswer: "Complete spatial reconstruction",
+          isCorrect: true,
+          explanation: "Spatial pattern memory recall across 5 expanding rounds.",
+          category: 'Spatial Memory'
+        });
+      }
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0.8;
+    } else if (gameId === 'word-forge') {
+      const userWords = Array.isArray(gameData?.words) ? gameData.words : (Array.isArray(gameData?.userAnswers) ? gameData.userAnswers : []);
+      const rounds = Array.isArray(gameData?.activeRounds) ? gameData.activeRounds : [];
+      totalQuestions = rounds.length || 6;
+      rounds.forEach((r: any, idx: number) => {
+        const uAns = String(userWords[idx] || '').trim().toUpperCase();
+        const cAns = String(r.correctAnswer || '').trim().toUpperCase();
+        const isCorrect = uAns === cAns;
+        if (isCorrect) correctCount++;
+        reviewItems.push({
+          questionNumber: idx + 1,
+          question: `${r.title || ('Round ' + (idx + 1))}: ${r.question || r.hint}`,
+          userAnswer: uAns || 'Not Answered',
+          correctAnswer: cAns,
+          isCorrect,
+          explanation: r.hint || `The technical word was ${cAns}.`,
+          category: 'Vocabulary'
+        });
+      });
+      if (reviewItems.length === 0) {
+        reviewItems.push({
+          questionNumber: 1,
+          question: "Word Forge Technical Vocabulary",
+          userAnswer: `${gameData?.score || 50} pts completed`,
+          correctAnswer: "Anagrams & Clues Solved",
+          isCorrect: true,
+          explanation: "Vocabulary reconstruction from anagrams and developer clues.",
+          category: "Vocabulary"
+        });
+      }
+      correctnessRatio = totalQuestions > 0 ? (correctCount / totalQuestions) : 0.8;
     }
 
     // Scoring: 50 completion points + 0-50 speed bonus = 50-100
@@ -456,12 +563,21 @@ export async function POST(request: Request) {
     const completionPoints = Math.round(50 * correctnessRatio);
     const score = completionPoints + speedBonus;
 
+    const accuracyPercent = Math.round(correctnessRatio * 100);
+    const xpEarned = Math.max(50, score * 10);
+    const resolvedCorrectCount = correctCount || Math.round(correctnessRatio * (totalQuestions || 5));
+    const resolvedTotalQuestions = totalQuestions || 5;
+
     // 3. Session update
     sessionDocRef.update({
       status: 'completed',
       completedAt: admin.firestore.Timestamp.fromDate(completedAt),
       score,
-      durationMs
+      durationMs,
+      accuracy: accuracyPercent,
+      correctCount: resolvedCorrectCount,
+      totalQuestions: resolvedTotalQuestions,
+      reviewItems: reviewItems || []
     }).catch((err: any) => {
       console.warn("[challenge-submit] failed to update session:", err.message);
     });
@@ -504,6 +620,10 @@ export async function POST(request: Request) {
         weekId,
         durationMs,
         score,
+        accuracy: accuracyPercent,
+        correctCount: resolvedCorrectCount,
+        totalQuestions: resolvedTotalQuestions,
+        reviewItems: reviewItems || [],
         isOfficial: true,
         createdAt: admin.firestore.Timestamp.fromDate(completedAt)
       };
@@ -528,9 +648,6 @@ export async function POST(request: Request) {
       durationMs,
       rank: 1
     }] : []);
-
-    const accuracyPercent = Math.round(correctnessRatio * 100);
-    const xpEarned = Math.max(50, score * 10);
 
     return NextResponse.json({
       success: true,

@@ -71,8 +71,20 @@ export default function CircuitMasterPage() {
         const configData = await configRes.json();
         
         if (configData.wasAlreadyCompleted || (configRes.status === 409 && configData.completed)) {
+          setResultData({
+            score: configData.score ?? 0,
+            durationMs: configData.durationMs ?? 0,
+            rank: configData.rank ?? 1,
+            accuracy: configData.accuracy ?? 100,
+            correctCount: configData.correctCount,
+            totalQuestions: configData.totalQuestions,
+            reviewItems: configData.reviewItems || [],
+            isOfficial: true,
+            leaderboard: configData.leaderboard || []
+          });
           setWasAlreadyCompleted(true);
-          setIsOfficial(false);
+          setIsOfficial(true);
+          setGameState("result");
         } else if (!configRes.ok) {
           setError(configData.error || "Failed to contact game servers");
         }
@@ -112,6 +124,22 @@ export default function CircuitMasterPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 409 && data.completed) {
+          setResultData({
+            score: data.score ?? 0,
+            durationMs: data.durationMs ?? 0,
+            rank: data.rank ?? 1,
+            accuracy: data.accuracy ?? 100,
+            correctCount: data.correctCount,
+            totalQuestions: data.totalQuestions,
+            reviewItems: data.reviewItems || [],
+            isOfficial: true,
+            leaderboard: data.leaderboard || []
+          });
+          setWasAlreadyCompleted(true);
+          setGameState("result");
+          return;
+        }
         throw new Error(data.error || "Failed to initialize game");
       }
 

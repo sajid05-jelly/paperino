@@ -200,9 +200,38 @@ export async function POST(request: Request) {
         wasAlreadyCompleted,
         score: prevResult?.score || 0,
         durationMs: prevResult?.durationMs || 0,
+        accuracy: prevResult?.accuracy ?? 100,
+        correctCount: prevResult?.correctCount ?? 5,
+        totalQuestions: prevResult?.totalQuestions ?? 5,
+        reviewItems: prevResult?.reviewItems || [],
         rank: userRank || 1,
         leaderboard
       });
+    }
+
+    // Strict official attempt limit enforcement:
+    // If the official attempt has already been completed, prevent starting a new official attempt
+    if (wasAlreadyCompleted) {
+      let leaderboard: any[] = [];
+      let userRank: number | null = null;
+      if (adminDb) {
+        const lbData = await buildLeaderboard(challengeId, uid);
+        leaderboard = lbData.leaderboard;
+        userRank = lbData.userRank;
+      }
+      return NextResponse.json({
+        error: 'You have already completed your official attempt for this challenge.',
+        completed: true,
+        wasAlreadyCompleted: true,
+        score: prevResult?.score || 0,
+        durationMs: prevResult?.durationMs || 0,
+        accuracy: prevResult?.accuracy ?? 100,
+        correctCount: prevResult?.correctCount ?? 5,
+        totalQuestions: prevResult?.totalQuestions ?? 5,
+        reviewItems: prevResult?.reviewItems || [],
+        rank: userRank || 1,
+        leaderboard
+      }, { status: 409 });
     }
 
     // High-entropy unique per-session seed ensures every new attempt gets fresh, non-repetitive puzzles
