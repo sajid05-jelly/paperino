@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { verifyServerAuth } from "@/lib/auth-verify";
 import { SUBJECTS as STATIC_SUBJECTS, COMPREHENSIVE_CATALOG, isMatchingDepartment } from "@/lib/subjects";
 import { getStoredSections } from "@/lib/sections-store";
+import { getMongoDb } from "@/lib/mongodb";
 import verifiedMaterialsData from "@/data/verified_materials.json";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,56 @@ export const dynamic = "force-dynamic";
 interface MaterialRecord {
   id: string;
   [key: string]: unknown;
+}
+
+async function getMongoMaterials(departmentId: string, semId: string, candidateSubjectIds: Set<string>): Promise<MaterialRecord[]> {
+  try {
+    const mongoDb = await getMongoDb("paperino");
+    if (!mongoDb) return [];
+    const col = mongoDb.collection("materials");
+    const cleanSem = String(semId).replace(/^semester-/, "");
+    const cands = Array.from(candidateSubjectIds).map(c => c.toLowerCase());
+
+    const docs = await col.find({
+      $or: [
+        { semesterId: cleanSem },
+        { semesterId: `semester-${cleanSem}` },
+        { semesterId: parseInt(cleanSem, 10) }
+      ],
+      status: "approved"
+    }).toArray();
+
+    return docs.filter((m: any) => {
+      const matchDept = !departmentId || departmentId === "all" || isMatchingDepartment(departmentId, m.departmentId);
+      if (!matchDept) return false;
+      const mSub = String(m.subjectId || "").toLowerCase();
+      const mSubClean = mSub.replace(/[^a-z0-9]/g, "");
+      return cands.some(cand => {
+        const candClean = cand.replace(/[^a-z0-9]/g, "");
+        return mSub === cand || 
+               mSubClean === candClean || 
+               (mSubClean.length >= 3 && candClean.includes(mSubClean)) || 
+               (candClean.length >= 3 && mSubClean.includes(candClean));
+      });
+    }).map((m: any) => ({
+      id: m.id || String(m._id),
+      title: m.title,
+      fileName: m.fileName,
+      fileId: m.fileId,
+      fileUrl: m.fileUrl,
+      category: m.category,
+      departmentId: m.departmentId,
+      semesterId: String(m.semesterId),
+      subjectId: m.subjectId,
+      status: "approved",
+      creatorName: m.creatorName || "Contributor",
+      createdAt: m.createdAt || Date.now(),
+      isMongoStore: true
+    }));
+  } catch (err) {
+    console.warn("[MongoDB Materials Query Warn]:", err);
+    return [];
+  }
 }
 
 function getVerifiedFallbackMaterials(departmentId: string, semId: string, candidateSubjectIds: Set<string>): MaterialRecord[] {
@@ -108,87 +159,85 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (!adminDb) {
-      return NextResponse.json({
-        success: true,
-        materials: [],
-        count: 0,
-        warning: "Database initializing"
-      });
+    const materials: MaterialRecord[] = [];
+
+    // PRIORITY 1: Check MongoDB Atlas (Zero Firestore reads, unlimited daily queries)
+    const mongoMaterials = await getMongoMaterials(departmentId, semId, candidateSubjectIds);
+    if (mongoMaterials.length > 0) {
+      materials.push(...mongoMaterials);
     }
 
-    // Query materials with flexible string & numeric semesterId matching
-    const materialsRef = adminDb.collection("materials");
-    const numericSemId = parseInt(semId, 10);
-    const queries: Promise<any>[] = [];
+    // PRIORITY 2: If MongoDB returned no materials, query Firestore
+    if (materials.length === 0 && adminDb) {
+      const materialsRef = adminDb.collection("materials");
+      const numericSemId = parseInt(semId, 10);
+      const queries: Promise<any>[] = [];
 
-    const idList = Array.from(candidateSubjectIds);
-    if (idList.length === 0) {
-      // Query by semester only
-      queries.push(materialsRef.where("semesterId", "==", semId).get());
-      if (!isNaN(numericSemId)) {
-        queries.push(materialsRef.where("semesterId", "==", numericSemId).get());
-      }
-    } else {
-      idList.forEach((sId) => {
-        queries.push(
-          materialsRef
-            .where("semesterId", "==", semId)
-            .where("subjectId", "==", sId)
-            .get()
-        );
+      const idList = Array.from(candidateSubjectIds);
+      if (idList.length === 0) {
+        // Query by semester only
+        queries.push(materialsRef.where("semesterId", "==", semId).get());
         if (!isNaN(numericSemId)) {
+          queries.push(materialsRef.where("semesterId", "==", numericSemId).get());
+        }
+      } else {
+        idList.forEach((sId) => {
           queries.push(
             materialsRef
-              .where("semesterId", "==", numericSemId)
+              .where("semesterId", "==", semId)
               .where("subjectId", "==", sId)
               .get()
           );
-        }
-      });
-    }
-
-    const snapshots = await Promise.all(queries);
-    const seenIds = new Set<string>();
-    const materials: MaterialRecord[] = [];
-
-    const normReqDept = departmentId.replace(/[^a-z0-9]/g, "");
-
-    snapshots.forEach((snap: any) => {
-      if (snap && snap.docs) {
-        snap.docs.forEach((doc: any) => {
-        if (!seenIds.has(doc.id)) {
-          seenIds.add(doc.id);
-          const data = doc.data();
-
-          // Only return approved materials for public route
-          const isApproved = data.status === "approved" || (!data.status && !data.rejectedAt);
-          if (!isApproved) return;
-
-          // Resilient department filter
-          if (departmentId && departmentId !== "all" && data.departmentId) {
-            if (!isMatchingDepartment(departmentId, data.departmentId)) {
-              return;
-            }
+          if (!isNaN(numericSemId)) {
+            queries.push(
+              materialsRef
+                .where("semesterId", "==", numericSemId)
+                .where("subjectId", "==", sId)
+                .get()
+            );
           }
+        });
+      }
 
-          const createdAtMillis = data.createdAt?.toMillis
-            ? data.createdAt.toMillis()
-            : typeof data.createdAt === "number"
-            ? data.createdAt
-            : data.createdAt
-            ? new Date(data.createdAt).getTime()
-            : 0;
+      const snapshots = await Promise.all(queries);
+      const seenIds = new Set<string>();
 
-          materials.push({
-            id: doc.id,
-            ...data,
-            createdAt: createdAtMillis,
+      snapshots.forEach((snap: any) => {
+        if (snap && snap.docs) {
+          snap.docs.forEach((doc: any) => {
+            if (!seenIds.has(doc.id)) {
+              seenIds.add(doc.id);
+              const data = doc.data();
+
+              // Only return approved materials for public route
+              const isApproved = data.status === "approved" || (!data.status && !data.rejectedAt);
+              if (!isApproved) return;
+
+              // Resilient department filter
+              if (departmentId && departmentId !== "all" && data.departmentId) {
+                if (!isMatchingDepartment(departmentId, data.departmentId)) {
+                  return;
+                }
+              }
+
+              const createdAtMillis = data.createdAt?.toMillis
+                ? data.createdAt.toMillis()
+                : typeof data.createdAt === "number"
+                ? data.createdAt
+                : data.createdAt
+                ? new Date(data.createdAt).getTime()
+                : 0;
+
+              materials.push({
+                id: doc.id,
+                ...data,
+                createdAt: createdAtMillis,
+              });
+            }
           });
         }
       });
-      }
-    });
+    }
 
     // Check configured sections store to supplement sections or provide fallback
     const storedSections = getStoredSections();
@@ -407,6 +456,20 @@ export async function POST(req: NextRequest) {
     };
 
     const docRef = await adminDb.collection("materials").add(newMaterial);
+
+    // Sync newly added material to MongoDB Atlas (Secondary Database)
+    try {
+      const mongoDb = await getMongoDb("paperino");
+      if (mongoDb) {
+        await mongoDb.collection("materials").updateOne(
+          { id: docRef.id },
+          { $set: { id: docRef.id, ...newMaterial, updatedAt: new Date() } },
+          { upsert: true }
+        );
+      }
+    } catch (mongoSyncErr) {
+      console.warn("[Materials API] MongoDB sync warning:", mongoSyncErr);
+    }
 
     // If this is a new subject request, automatically register/establish the subject in dynamic_subjects
     if (isNewSubjectRequest && newSubjectData) {

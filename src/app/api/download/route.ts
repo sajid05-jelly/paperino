@@ -17,6 +17,7 @@ import { incrementMonthlyUsage, checkMonthlyUsage } from "@/lib/monthly-usage";
 import { getEffectivePlan, isFeatureAllowed, PlanType } from "@/lib/subscription";
 import { resolveUserDownloaderName, formatProfileName } from "@/lib/watermark";
 import { verifySignedDownloadToken } from "@/lib/downloadToken";
+import { getMongoDb } from "@/lib/mongodb";
 import verifiedMaterialsData from "@/data/verified_materials.json";
 
 export const dynamic = "force-dynamic";
@@ -255,12 +256,31 @@ export async function GET(req: NextRequest) {
         rawFileTarget = matData.fileId || matData.fileUrl || rawFileTarget;
         matName = matData.fileName || matData.title || "material.pdf";
       } else {
-        const local = (verifiedMaterialsData as any[]).find(m => m.id === matId || m.fileId === matId || (fileIdParam && m.fileId === fileIdParam));
-        if (local) {
-          rawFileTarget = local.fileId || local.fileUrl || rawFileTarget;
-          matName = local.fileName || local.title || "material.pdf";
-        } else {
-          console.warn("[Download API Stage 2] Material lookup timed out or not found, continuing with fileId param if available");
+        // Fallback 1: Check MongoDB Atlas
+        try {
+          const mongoDb = await getMongoDb("paperino");
+          if (mongoDb) {
+            const mDoc = await mongoDb.collection("materials").findOne({
+              $or: [{ id: matId }, { fileId: matId }, ...(fileIdParam ? [{ fileId: fileIdParam }] : [])]
+            });
+            if (mDoc) {
+              rawFileTarget = mDoc.fileId || mDoc.fileUrl || rawFileTarget;
+              matName = mDoc.fileName || mDoc.title || "material.pdf";
+            }
+          }
+        } catch (mErr) {
+          console.warn("[Download Route] MongoDB lookup warn:", mErr);
+        }
+
+        // Fallback 2: Check verified materials store
+        if (!rawFileTarget || rawFileTarget === fileIdParam) {
+          const local = (verifiedMaterialsData as any[]).find(m => m.id === matId || m.fileId === matId || (fileIdParam && m.fileId === fileIdParam));
+          if (local) {
+            rawFileTarget = local.fileId || local.fileUrl || rawFileTarget;
+            matName = local.fileName || local.title || "material.pdf";
+          } else {
+            console.warn("[Download API Stage 2] Material lookup timed out or not found, continuing with fileId param if available");
+          }
         }
       }
     } catch (err: any) {
