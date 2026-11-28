@@ -15,12 +15,37 @@ interface PulseUpdate {
   category: string;
   link: string;
   priority: "normal" | "important" | "pinned";
-  createdAt: Timestamp;
+  createdAt: any;
   createdBy: string;
   isPinned: boolean;
   sourceName?: string;
   organizer?: string;
 }
+
+const formatPulseDate = (val: any): string => {
+  if (!val) return "Recently";
+  try {
+    if (typeof val?.toDate === "function") {
+      return val.toDate().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    }
+    if (val instanceof Date) {
+      return val.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    }
+    if (typeof val === "number" || typeof val === "string") {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      }
+    }
+    if (typeof val?.seconds === "number") {
+      return new Date(val.seconds * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    }
+    if (typeof val?._seconds === "number") {
+      return new Date(val._seconds * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    }
+  } catch {}
+  return "Recently";
+};
 
 interface KnowafestSyncInfo {
   lastSynced: string;
@@ -474,7 +499,7 @@ export default function AdminPulsePage() {
                   <p className="text-sm text-gray-400 line-clamp-2 mt-1">{update.description}</p>
                   
                   <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                    <span>{update.createdAt?.toDate().toLocaleDateString()}</span>
+                    <span>{formatPulseDate(update.createdAt)}</span>
                     {update.link && (
                       <a href={update.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300">
                         <LinkIcon size={12} /> External Link

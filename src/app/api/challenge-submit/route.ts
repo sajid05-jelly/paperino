@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       challengeId = session.challengeId || `${gameId}-${challengeDate}`;
       weekId = session.weekId;
       isOfficial = Boolean(session.isOfficial);
-      startedAt = session.startedAt ? session.startedAt.toDate() : new Date();
+      startedAt = session.startedAt ? (typeof session.startedAt.toDate === "function" ? session.startedAt.toDate() : new Date(session.startedAt)) : new Date();
     } else {
       // Gracefully reconstruct session context if direct session doc read had transient failure
       gameId = body.gameData?.gameId || (body.gameData?.rounds ? 'memory-matrix' : 'code-breaker');
