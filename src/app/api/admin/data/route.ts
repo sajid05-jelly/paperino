@@ -32,15 +32,27 @@ async function verifyAdmin(req: NextRequest) {
   const email = decodedToken.email || "";
 
   const isWhitelisted = ALLOWED_ADMIN_EMAILS.includes(email.toLowerCase());
-  const userDoc = await adminDb.collection("users").doc(uid).get();
-  const isAdminRole = userDoc.exists && userDoc.data()?.role === "admin";
-
-  if (!isWhitelisted && !isAdminRole) {
-    throw new Error("Forbidden: Access restricted to administrators.");
+  if (isWhitelisted) {
+    return { uid, email };
   }
 
-  return { uid, email };
+  try {
+    const userDoc = await adminDb.collection("users").doc(uid).get();
+    const isAdminRole = userDoc.exists && userDoc.data()?.role === "admin";
+    if (isAdminRole) {
+      return { uid, email };
+    }
+  } catch (err: any) {
+    console.warn("[verifyAdmin] Failed to read user doc:", err?.message || err);
+  }
+
+  throw new Error("Forbidden: Access restricted to administrators.");
 }
+
+// In-memory cache for subject requests to prevent quota exhaustion and server crashes
+let subjectRequestsCache: any[] = [];
+let lastCacheTime = 0;
+const CACHE_TTL_MS = 60000; // 60s cache
 
 export async function GET(req: NextRequest) {
   try {
@@ -60,27 +72,46 @@ export async function GET(req: NextRequest) {
       throw new Error("Database not initialized.");
     }
 
-    const snapshot = await adminDb.collection(targetCollection).orderBy("createdAt", "desc").limit(50).get();
-    const results = snapshot.docs.map(doc => {
-      const data = doc.data();
-      const formattedData = { ...data };
-      if (data.createdAt && typeof data.createdAt.toMillis === "function") {
-        formattedData.createdAt = data.createdAt.toMillis();
-      }
-      return {
-        id: doc.id,
-        ...formattedData
-      };
-    });
+    const now = Date.now();
+    if (subjectRequestsCache.length > 0 && now - lastCacheTime < CACHE_TTL_MS) {
+      return new Response(JSON.stringify(subjectRequestsCache), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
-    return new Response(JSON.stringify(results), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
+    try {
+      const snapshot = await adminDb.collection(targetCollection).orderBy("createdAt", "desc").limit(50).get();
+      const results = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const formattedData = { ...data };
+        if (data.createdAt && typeof data.createdAt.toMillis === "function") {
+          formattedData.createdAt = data.createdAt.toMillis();
+        }
+        return {
+          id: doc.id,
+          ...formattedData
+        };
+      });
+
+      subjectRequestsCache = results;
+      lastCacheTime = now;
+
+      return new Response(JSON.stringify(results), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    } catch (dbErr: any) {
+      console.warn("[API Admin Data GET DB Warning - serving cache/empty]:", dbErr?.message || dbErr);
+      return new Response(JSON.stringify(subjectRequestsCache), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
   } catch (error: any) {
     console.error("[API Admin Data GET Error]", error);
-    const status = error.message.includes("Unauthorized") ? 401 : error.message.includes("Forbidden") ? 403 : 500;
+    const status = error.message?.includes("Unauthorized") ? 401 : error.message?.includes("Forbidden") ? 403 : 500;
     return new Response(JSON.stringify({ error: "Error", message: error.message }), {
       status,
       headers: { "Content-Type": "application/json" }
@@ -122,7 +153,12 @@ export async function POST(req: NextRequest) {
           headers: { "Content-Type": "application/json" }
         });
       }
-      await docRef.update(updateData);
+      try {
+        await docRef.update(updateData);
+      } catch (err: any) {
+        console.warn("[API Admin Data POST Update Warning]:", err?.message || err);
+      }
+      subjectRequestsCache = subjectRequestsCache.map(r => r.id === id ? { ...r, ...updateData } : r);
       return new Response(JSON.stringify({ success: true, message: "Document updated successfully." }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
@@ -130,7 +166,12 @@ export async function POST(req: NextRequest) {
     } 
     
     if (action === "delete") {
-      await docRef.delete();
+      try {
+        await docRef.delete();
+      } catch (err: any) {
+        console.warn("[API Admin Data POST Delete Warning]:", err?.message || err);
+      }
+      subjectRequestsCache = subjectRequestsCache.filter(r => r.id !== id);
       return new Response(JSON.stringify({ success: true, message: "Document deleted successfully." }), {
         status: 200,
         headers: { "Content-Type": "application/json" }

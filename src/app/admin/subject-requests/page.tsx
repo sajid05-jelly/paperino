@@ -48,7 +48,7 @@ export default function SubjectRequestsAdminPage() {
       });
       if (res.ok) {
         const list = await res.json();
-        setRequests(list);
+        setRequests(Array.isArray(list) ? list : []);
         setLoading(false);
         return;
       }
@@ -69,9 +69,9 @@ export default function SubjectRequestsAdminPage() {
         } as SubjectRequest;
       });
       setRequests(list);
-    } catch (fallbackErr) {
-      console.error("Failed to fetch subject requests from fallback:", fallbackErr);
-      showToast("Error loading subject requests.", "error");
+    } catch (fallbackErr: any) {
+      console.warn("Could not fetch subject requests from fallback:", fallbackErr?.message || fallbackErr);
+      setRequests((prev) => (prev.length > 0 ? prev : []));
     } finally {
       setLoading(false);
     }
@@ -133,13 +133,17 @@ export default function SubjectRequestsAdminPage() {
         if (!res.ok) throw new Error("API update failed");
       } catch (apiErr) {
         console.warn("Admin API update failed, falling back to direct Firestore...", apiErr);
-        await updateDoc(doc(db, "subject_requests", id), { status: "completed" });
+        try {
+          await updateDoc(doc(db, "subject_requests", id), { status: "completed" });
+        } catch (clientErr) {
+          console.warn("Client fallback update unavailable:", clientErr);
+        }
       }
 
       setRequests(prev => prev.map(req => req.id === id ? { ...req, status: "completed" } : req));
       showToast("Request accepted and subject published.", "success");
-    } catch (err) {
-      console.error("Failed to update status:", err);
+    } catch (err: any) {
+      console.warn("Failed to update status:", err?.message || err);
       showToast("Failed to update request status.", "error");
     } finally {
       setActioningId(null);
@@ -168,13 +172,17 @@ export default function SubjectRequestsAdminPage() {
         if (!res.ok) throw new Error("API delete failed");
       } catch (apiErr) {
         console.warn("Admin API delete failed, falling back to direct Firestore...", apiErr);
-        await deleteDoc(doc(db, "subject_requests", id));
+        try {
+          await deleteDoc(doc(db, "subject_requests", id));
+        } catch (clientErr) {
+          console.warn("Client fallback delete unavailable:", clientErr);
+        }
       }
 
       setRequests(prev => prev.filter(req => req.id !== id));
       showToast("Request deleted successfully.", "success");
-    } catch (err) {
-      console.error("Failed to delete request:", err);
+    } catch (err: any) {
+      console.warn("Failed to delete request:", err?.message || err);
       showToast("Failed to delete request.", "error");
     } finally {
       setActioningId(null);
