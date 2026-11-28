@@ -576,6 +576,25 @@ export default function AdminAdsPage() {
         </div>
       )}
 
+      {/* ── System Off Notice ── */}
+      {!globalConfig?.enabled && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs font-medium">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="text-amber-400 shrink-0" />
+            <span>
+              <strong>Paperino Ads system is currently OFF globally.</strong> Published campaigns are paused and hidden on the website until you enable the system.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={toggleGlobalKillSwitch}
+            className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all shrink-0 cursor-pointer"
+          >
+            Enable Ads Now
+          </button>
+        </div>
+      )}
+
       {/* ── Placement Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {Object.values(AD_PLACEMENTS).map((slot) => {
@@ -599,22 +618,28 @@ export default function AdminAdsPage() {
                   </div>
                   <span
                     className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                      activeNow
+                      !activeNow
+                        ? "bg-white/5 text-gray-500 border-white/10"
+                        : globalConfig?.enabled
                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                        : "bg-white/5 text-gray-500 border-white/10"
+                        : "bg-amber-500/20 text-amber-300 border-amber-500/30"
                     }`}
                   >
-                    {activeNow ? "LIVE" : "EMPTY"}
+                    {!activeNow
+                      ? "EMPTY"
+                      : globalConfig?.enabled
+                      ? "LIVE"
+                      : "PAUSED (GLOBAL OFF)"}
                   </span>
                 </div>
 
                 <p className="text-[11px] text-gray-400 mb-3">{slot.locationDescription}</p>
 
                 {/* Creative Preview */}
-                <div className="w-full h-28 rounded-xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center mb-3">
+                <div className="w-full rounded-xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center mb-3 min-h-[72px]">
                   {activeNow ? (
                     activeNow.mediaType === "video" ? (
-                      <div className="relative w-full h-full flex items-center justify-center bg-black">
+                      <div className="relative w-full aspect-[16/7] sm:aspect-[21/9] flex items-center justify-center bg-black">
                         {activeNow.videoPosterUrl && (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img src={activeNow.videoPosterUrl} alt="Poster" className="w-full h-full object-cover opacity-60" />
@@ -628,11 +653,11 @@ export default function AdminAdsPage() {
                       <img
                         src={activeNow.desktopCreativeUrl}
                         alt={activeNow.accessibleDescription || "Ad"}
-                        className="w-full h-full object-contain p-2"
+                        className="w-full h-auto max-h-[140px] block object-cover"
                       />
                     )
                   ) : (
-                    <div className="text-center p-3">
+                    <div className="text-center p-4">
                       <ImageIcon size={20} className="mx-auto text-gray-600 mb-1" />
                       <span className="text-[10px] text-gray-500 block">No ad assigned</span>
                     </div>

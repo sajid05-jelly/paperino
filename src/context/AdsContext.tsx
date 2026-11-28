@@ -62,7 +62,7 @@ export function AdsProvider({ children }: { children: React.ReactNode }) {
     inFlightFetchPromise = (async () => {
       try {
         setLoading(true);
-        const res = await fetch("/api/campaigns/active", { cache: "default" });
+        const res = await fetch("/api/campaigns/active", { cache: "no-cache" });
         lastFetchTimestamp = Date.now();
         if (!res.ok) {
           setManifest(null);
