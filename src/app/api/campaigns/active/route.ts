@@ -11,15 +11,15 @@ let inMemoryManifestCache: PublicAdsManifest | null = {
   generatedAt: new Date().toISOString(),
   campaigns: [
     {
-      id: "2GyR1vlIxOltcl25I2sb",
+      id: "ad_02_home_featured",
       brandName: "PAPERINO",
-      placementId: "study_materials",
+      placementId: "home_featured",
       mediaType: "image",
-      desktopCreativeUrl: "https://res.cloudinary.com/ykdgsee2/image/upload/v1795878543/paperino_ads/ad_image_1795878543163_a76d61465b9d_paperino_ads_3_5_to_1_png.png",
+      desktopCreativeUrl: "https://res.cloudinary.com/ykdgsee2/image/upload/v1795872958/paperino_ads/ad_image_1795872958240_1577d9e96401_paperino_ads_website_banner_pn.png",
       destinationUrl: "https://www.instagram.com/paperino_hi?hvrq=MXNoZjViNWlvNnZtdA%3D%3D&utm_source=qr",
-      accessibleDescription: "Ad by PAPERINO",
-      startAt: "2026-11-28T09:38:00.000Z",
-      expiresAt: "2027-01-01T12:33:00.000Z",
+      accessibleDescription: "Promote with Paperino",
+      startAt: "2026-11-28T00:00:00.000Z",
+      expiresAt: "2027-01-01T12:00:00.000Z",
       priority: 50,
       targetAudience: {
         userTier: "all",

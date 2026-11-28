@@ -16,16 +16,18 @@
   {
     "id": "btech_sem1_calc_pyq",
     "subjectId": "calc",
-    "subjectName": "Calculus And Linear Algebra",
+    "subjectName": "calculus and linear algebra - 2026 Question Paper cla 1 and 2",
     "subjectCode": "",
     "departmentId": "btech",
     "departmentName": "BTECH",
     "semesterId": "1",
     "sectionType": "pyq",
-    "createdBy": "zJprlnx2MDZ7FOIAZzxCxlyXNsF3",
-    "creatorName": "Hariharan C",
-    "creatorEmail": "hariharan.physics@gmail.com",
-    "createdAt": "2026-10-12T02:14:45.941Z"
+    "createdBy": "POBPNLmyloTydOqMnWskmhUp1V93",
+    "creatorName": "subbha2008",
+    "creatorEmail": "subbha2008@gmail.com",
+    "createdAt": "2026-11-28T17:24:29.831Z",
+    "approvedByAdminId": "EzEITZCSUKfGUWUkwgRGYtpS85Y2",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com"
   },
   {
     "id": "btech_sem1_calc_questions",
@@ -100,30 +102,34 @@
   {
     "id": "btech_sem2_ce_pyq",
     "subjectId": "ce",
-    "subjectName": "Communicative English",
+    "subjectName": "communicative english - 2026 Question Paper cla 1 and 2",
     "subjectCode": "",
     "departmentId": "btech",
     "departmentName": "BTECH",
     "semesterId": "2",
     "sectionType": "pyq",
-    "createdBy": "NY4Ge3qzWoSud0W2hSrDnm2PttA2",
-    "creatorName": "Gokul nath reddy Somula",
-    "creatorEmail": "gokulnathreddysomula@gmail.com",
-    "createdAt": "2026-10-12T05:28:24.880Z"
+    "createdBy": "POBPNLmyloTydOqMnWskmhUp1V93",
+    "creatorName": "subbha2008",
+    "creatorEmail": "subbha2008@gmail.com",
+    "createdAt": "2026-11-28T17:24:35.491Z",
+    "approvedByAdminId": "EzEITZCSUKfGUWUkwgRGYtpS85Y2",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com"
   },
   {
     "id": "btech_sem2_eee_pyq",
     "subjectId": "eee",
-    "subjectName": "Electrical And Electronics Engineering",
+    "subjectName": "Electrical and electronics Engineering - 2026 Question Paper",
     "subjectCode": "",
     "departmentId": "btech",
     "departmentName": "BTECH",
     "semesterId": "2",
     "sectionType": "pyq",
-    "createdBy": "zJprlnx2MDZ7FOIAZzxCxlyXNsF3",
-    "creatorName": "Hariharan C",
-    "creatorEmail": "hariharan.physics@gmail.com",
-    "createdAt": "2026-10-12T02:08:44.361Z"
+    "createdBy": "POBPNLmyloTydOqMnWskmhUp1V93",
+    "creatorName": "subbha2008",
+    "creatorEmail": "subbha2008@gmail.com",
+    "createdAt": "2026-11-28T17:24:31.916Z",
+    "approvedByAdminId": "EzEITZCSUKfGUWUkwgRGYtpS85Y2",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com"
   },
   {
     "id": "mba_sem1_fake-1_pyq",
@@ -1444,5 +1450,37 @@
     "approvedByAdminId": "EzEITZCSUKfGUWUkwgRGYtpS85Y2",
     "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
     "createdAt": "2026-11-27T16:22:58.758Z"
+  },
+  {
+    "id": "btech_sem2_ep_pyq",
+    "subjectId": "ep",
+    "subjectName": "electromagnetic physics - 2026 Question Paper",
+    "subjectCode": "",
+    "departmentId": "btech",
+    "departmentName": "BTECH",
+    "semesterId": "2",
+    "sectionType": "pyq",
+    "createdBy": "POBPNLmyloTydOqMnWskmhUp1V93",
+    "creatorName": "subbha2008",
+    "creatorEmail": "subbha2008@gmail.com",
+    "approvedByAdminId": "EzEITZCSUKfGUWUkwgRGYtpS85Y2",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-28T17:24:27.641Z"
+  },
+  {
+    "id": "btech_sem3_dsa_pyq",
+    "subjectId": "dsa",
+    "subjectName": "Cla 1 and 2",
+    "subjectCode": "",
+    "departmentId": "btech",
+    "departmentName": "BTECH",
+    "semesterId": "3",
+    "sectionType": "pyq",
+    "createdBy": "POBPNLmyloTydOqMnWskmhUp1V93",
+    "creatorName": "subbha2008",
+    "creatorEmail": "subbha2008@gmail.com",
+    "approvedByAdminId": "EzEITZCSUKfGUWUkwgRGYtpS85Y2",
+    "approvedByAdminEmail": "mohamedsajid.sa@gmail.com",
+    "createdAt": "2026-11-28T17:24:23.494Z"
   }
 ]
