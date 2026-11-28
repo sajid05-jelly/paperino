@@ -120,6 +120,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid session: server database was unavailable at start' }, { status: 400 });
     }
 
+    // Verify challenge arena is active and not disabled/in maintenance
+    try {
+      const configSnap = await adminDb.collection("settings").doc("weeklyChallenges").get();
+      if (configSnap.exists) {
+        const cfg = configSnap.data() || {};
+        if (cfg.enabled === false) {
+          return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
+        }
+        if (cfg.maintenanceMode === true) {
+          return NextResponse.json({ error: 'Weekly challenges are currently under maintenance' }, { status: 403 });
+        }
+      }
+    } catch (cfgErr) {
+      console.warn("[challenge-submit] config check warning:", cfgErr);
+    }
+
     // 1. Fetch Session Doc from Firestore with graceful fallback
     const sessionDocRef = adminDb.collection('challenge_sessions').doc(sessionId);
     let sessionSnap: any = null;

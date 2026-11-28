@@ -12,6 +12,10 @@ function getIsoWeek() {
   return `${d.getFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
 }
 
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+};
+
 export async function GET() {
   try {
     if (!adminDb) {
@@ -37,7 +41,7 @@ export async function GET() {
           currentWeek: getIsoWeek(),
           adminTestMode: false,
         },
-      });
+      }, { headers: NO_CACHE_HEADERS });
     }
 
     const snap = await adminDb.collection("settings").doc("weeklyChallenges").get();
@@ -71,9 +75,7 @@ export async function GET() {
           },
         },
         {
-          headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate",
-          },
+          headers: NO_CACHE_HEADERS,
         }
       );
     }
@@ -100,7 +102,7 @@ export async function GET() {
         currentWeek: getIsoWeek(),
         adminTestMode: false,
       },
-    });
+    }, { headers: NO_CACHE_HEADERS });
   } catch (err: any) {
     console.warn("[API: challenges/config GET] Notice:", err?.message);
     return NextResponse.json({
@@ -125,6 +127,6 @@ export async function GET() {
         currentWeek: getIsoWeek(),
         adminTestMode: false,
       },
-    });
+    }, { headers: NO_CACHE_HEADERS });
   }
 }

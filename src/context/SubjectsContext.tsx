@@ -182,27 +182,35 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
       let deptList: Department[] = [];
 
       if (forceRefresh && typeof window !== "undefined") {
-        sessionStorage.removeItem("paperino_cached_depts_v2");
-        sessionStorage.removeItem("paperino_cached_depts_ts_v2");
-        sessionStorage.removeItem("paperino_cached_dynamic_subs_v3");
-        sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v1");
+        try {
+          localStorage.removeItem("paperino_cached_depts_v3");
+          localStorage.removeItem("paperino_cached_depts_ts_v3");
+          localStorage.removeItem("paperino_cached_dynamic_subs_v4");
+          localStorage.removeItem("paperino_cached_dynamic_subs_ts_v4");
+          sessionStorage.removeItem("paperino_cached_depts_v3");
+          sessionStorage.removeItem("paperino_cached_depts_ts_v3");
+          sessionStorage.removeItem("paperino_cached_dynamic_subs_v4");
+          sessionStorage.removeItem("paperino_cached_dynamic_subs_ts_v4");
+        } catch {}
         loadedSemestersRef.current = {};
       }
 
-      // Check local cache first (15m TTL)
-      const DEPT_CACHE_TTL_MS = 15 * 60 * 1000;
+      // Check local cache first (24h TTL to protect Firestore quota)
+      const DEPT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
       if (!forceRefresh && typeof window !== "undefined") {
-        const cachedDepts = sessionStorage.getItem("paperino_cached_depts_v2");
-        const cacheTimestamp = sessionStorage.getItem("paperino_cached_depts_ts_v2");
-        
-        if (cachedDepts && cacheTimestamp) {
-          const isFresh = (Date.now() - parseInt(cacheTimestamp)) < DEPT_CACHE_TTL_MS;
-          if (isFresh) {
-            try {
-              deptList = JSON.parse(cachedDepts);
-            } catch (e) {}
+        try {
+          const cachedDepts = localStorage.getItem("paperino_cached_depts_v3") || sessionStorage.getItem("paperino_cached_depts_v3");
+          const cacheTimestamp = localStorage.getItem("paperino_cached_depts_ts_v3") || sessionStorage.getItem("paperino_cached_depts_ts_v3");
+          
+          if (cachedDepts && cacheTimestamp) {
+            const isFresh = (Date.now() - parseInt(cacheTimestamp)) < DEPT_CACHE_TTL_MS;
+            if (isFresh) {
+              try {
+                deptList = JSON.parse(cachedDepts);
+              } catch (e) {}
+            }
           }
-        }
+        } catch {}
       }
 
       if (deptList.length === 0) {
@@ -216,8 +224,12 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           });
 
           if (deptList.length > 0 && typeof window !== "undefined") {
-            sessionStorage.setItem("paperino_cached_depts_v2", JSON.stringify(deptList));
-            sessionStorage.setItem("paperino_cached_depts_ts_v2", Date.now().toString());
+            try {
+              localStorage.setItem("paperino_cached_depts_v3", JSON.stringify(deptList));
+              localStorage.setItem("paperino_cached_depts_ts_v3", Date.now().toString());
+              sessionStorage.setItem("paperino_cached_depts_v3", JSON.stringify(deptList));
+              sessionStorage.setItem("paperino_cached_depts_ts_v3", Date.now().toString());
+            } catch {}
           }
         } catch (deptErr) {
           console.warn("[SubjectsContext] Firestore departments fetch fallback to defaults:", deptErr);
@@ -243,18 +255,20 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
 
       // 2. Load dynamic subjects from Firestore & merge with comprehensive catalog
       let dynamicSubs: Subject[] = [];
-      const SUB_CACHE_TTL_MS = 15 * 60 * 1000;
+      const SUB_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h TTL
       let cachedSubsFound = false;
 
       if (!forceRefresh && typeof window !== "undefined") {
-        const cachedSubs = sessionStorage.getItem("paperino_cached_dynamic_subs_v3");
-        const cacheTs = sessionStorage.getItem("paperino_cached_dynamic_subs_ts_v1");
-        if (cachedSubs && cacheTs && (Date.now() - parseInt(cacheTs)) < SUB_CACHE_TTL_MS) {
-          try {
-            dynamicSubs = JSON.parse(cachedSubs);
-            cachedSubsFound = true;
-          } catch (e) {}
-        }
+        try {
+          const cachedSubs = localStorage.getItem("paperino_cached_dynamic_subs_v4") || sessionStorage.getItem("paperino_cached_dynamic_subs_v4");
+          const cacheTs = localStorage.getItem("paperino_cached_dynamic_subs_ts_v4") || sessionStorage.getItem("paperino_cached_dynamic_subs_ts_v4");
+          if (cachedSubs && cacheTs && (Date.now() - parseInt(cacheTs)) < SUB_CACHE_TTL_MS) {
+            try {
+              dynamicSubs = JSON.parse(cachedSubs);
+              cachedSubsFound = true;
+            } catch (e) {}
+          }
+        } catch {}
       }
 
       if (!cachedSubsFound) {
@@ -285,8 +299,12 @@ export const SubjectsProvider = ({ children }: { children: React.ReactNode }) =>
           });
 
           if (typeof window !== "undefined") {
-            sessionStorage.setItem("paperino_cached_dynamic_subs_v3", JSON.stringify(dynamicSubs));
-            sessionStorage.setItem("paperino_cached_dynamic_subs_ts_v1", Date.now().toString());
+            try {
+              localStorage.setItem("paperino_cached_dynamic_subs_v4", JSON.stringify(dynamicSubs));
+              localStorage.setItem("paperino_cached_dynamic_subs_ts_v4", Date.now().toString());
+              sessionStorage.setItem("paperino_cached_dynamic_subs_v4", JSON.stringify(dynamicSubs));
+              sessionStorage.setItem("paperino_cached_dynamic_subs_ts_v4", Date.now().toString());
+            } catch {}
           }
         } catch (dynErr) {
           console.warn("[SubjectsContext] Error fetching dynamic_subjects, using catalog fallback:", dynErr);

@@ -367,21 +367,31 @@ export function sanitizePublicManifest(
       const expireMs = new Date(c.expiresAt).getTime();
       return expireMs > now && !isNaN(startMs) && !isNaN(expireMs);
     })
-    .map((c) => ({
-      id: c.id,
-      brandName: c.brandName,
-      placementId: c.placementId,
-      mediaType: c.mediaType,
-      desktopCreativeUrl: c.desktopCreativeUrl,
-      mobileCreativeUrl: c.mobileCreativeUrl,
-      videoPosterUrl: c.videoPosterUrl,
-      destinationUrl: c.destinationUrl,
-      accessibleDescription: c.accessibleDescription,
-      startAt: c.startAt,
-      expiresAt: c.expiresAt,
-      priority: c.priority || 50,
-      targetAudience: c.targetAudience,
-    }));
+    .map((c) => {
+      const ad: PublicActiveAd = {
+        id: c.id,
+        brandName: c.brandName,
+        placementId: c.placementId,
+        mediaType: c.mediaType,
+        desktopCreativeUrl: c.desktopCreativeUrl,
+        destinationUrl: c.destinationUrl,
+        accessibleDescription: c.accessibleDescription,
+        startAt: c.startAt,
+        expiresAt: c.expiresAt,
+        priority: c.priority || 50,
+        targetAudience: c.targetAudience,
+      };
+
+      if (c.mobileCreativeUrl && typeof c.mobileCreativeUrl === "string" && c.mobileCreativeUrl.trim()) {
+        ad.mobileCreativeUrl = c.mobileCreativeUrl.trim();
+      }
+
+      if (c.videoPosterUrl && typeof c.videoPosterUrl === "string" && c.videoPosterUrl.trim()) {
+        ad.videoPosterUrl = c.videoPosterUrl.trim();
+      }
+
+      return ad;
+    });
 
   return {
     enabled: globalEnabled,

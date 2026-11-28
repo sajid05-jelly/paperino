@@ -42,6 +42,7 @@ import {
   getChallengeDate, 
   isChallengeDay, 
   isChallengeHour,
+  isChallengeScheduleActive,
   getNextChallengeDay,
   DAY_NAMES
 } from "@/lib/challengeUtils";
@@ -420,13 +421,15 @@ export default function WeeklyChallengesPage() {
     loadUserSessions();
   }, [user, (config as any).currentWeek]);
 
-  // Schedule availability checks
-  const isDayAvailable = isChallengeDay(config.availableDays);
-  const isHourAvailable = isChallengeHour(config.openTime, config.closeTime);
-  const isTimeAvailable = isDayAvailable && isHourAvailable;
+  // Schedule availability checks using Asia/Kolkata IST
+  const isTimeAvailable = isChallengeScheduleActive(
+    config.availableDays, 
+    config.openTime, 
+    config.closeTime
+  );
 
   const nextDate = getNextChallengeDay(config.availableDays);
-  const nextDayName = nextDate ? DAY_NAMES[nextDate.getDay()] : 'next scheduled cycle';
+  const nextDayName = nextDate ? DAY_NAMES[nextDate.getDay()] : (config.availableDays?.length === 0 ? 'next cycle' : 'tomorrow');
 
   const availableDaysNames = useMemo(() => {
     const days = config.availableDays;
@@ -444,51 +447,9 @@ export default function WeeklyChallengesPage() {
     );
   }
 
-  // ─── STRICT ADMIN CONTROLS ───
+  // ─── STRICT ADMIN CONTROLS PRIORITY ───
 
-  // 1. Maintenance Mode
-  if (config.maintenanceMode === true) {
-    return (
-      <div className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
-        <div className="max-w-lg w-full mx-auto p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#0c0916]/95 text-center shadow-xl">
-          
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-6">
-            Under Maintenance
-          </div>
-
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
-            <Wrench className="h-8 w-8" />
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
-            Arena Under Maintenance
-          </h1>
-          <p className="text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-8 font-normal">
-            Paperino Challenge Arena is temporarily offline for scheduled system updates. Game sessions, challenges, and leaderboards will resume shortly.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/courses"
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-            >
-              <BookOpen size={16} />
-              <span>Explore Materials</span>
-            </Link>
-            <Link
-              href="/"
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-medium text-sm transition-colors border border-white/10 flex items-center justify-center gap-2"
-            >
-              <ArrowLeft size={15} />
-              <span>Back to Home</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Feature Enabled / Disabled Globally
+  // Priority 1: Feature Enabled / Disabled Globally
   if (config.enabled === false) {
     return (
       <div className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
@@ -531,25 +492,25 @@ export default function WeeklyChallengesPage() {
     );
   }
 
-  // 3. Schedule Closed (0 days selected in Admin)
-  if (Array.isArray(config.availableDays) && config.availableDays.length === 0) {
+  // Priority 2: Maintenance Mode
+  if (config.maintenanceMode === true) {
     return (
       <div className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 text-center select-none">
         <div className="max-w-lg w-full mx-auto p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#0c0916]/95 text-center shadow-xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-6">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Schedule Closed</span>
+          
+          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-6">
+            Under Maintenance
           </div>
 
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
-            <Clock className="h-8 w-8" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
+            <Wrench className="h-8 w-8" />
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">
-            Challenges Currently Closed
+            Arena Under Maintenance
           </h1>
           <p className="text-sm text-gray-400 leading-relaxed max-w-md mx-auto mb-8 font-normal">
-            Weekly challenges are not active right now. No challenge days are currently scheduled by the administrator.
+            Paperino Challenge Arena is temporarily offline for scheduled system updates. Game sessions, challenges, and leaderboards will resume shortly.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -619,16 +580,22 @@ export default function WeeklyChallengesPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-amber-200">
-                    Weekly Challenges Closed Today
+                    {config.availableDays?.length === 0 ? "Weekly Challenges Closed" : "Weekly Challenges Closed Today"}
                   </h3>
                   <p className="text-xs text-gray-300 mt-1 leading-relaxed">
-                    Challenges are active on <strong className="text-amber-300">{availableDaysNames}</strong> from <strong className="text-amber-300">{config.openTime || "00:00"} to {config.closeTime || "23:59"}</strong>. Next official challenge opens on <strong className="text-white">{nextDayName}</strong>.
+                    {config.availableDays?.length === 0 ? (
+                      "No challenge days are currently scheduled by the administrator. Please check back later."
+                    ) : (
+                      <>
+                        Challenges are active on <strong className="text-amber-300">{availableDaysNames}</strong> from <strong className="text-amber-300">{config.openTime || "00:00"} to {config.closeTime || "23:59"}</strong>. Next official challenge opens on <strong className="text-white">{nextDayName}</strong>.
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
               <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 flex-shrink-0">
                 <Clock size={13} />
-                <span>Opens {nextDayName}</span>
+                <span>{config.availableDays?.length === 0 ? "Schedule Closed" : `Opens ${nextDayName}`}</span>
               </div>
             </div>
           )}
@@ -678,7 +645,7 @@ export default function WeeklyChallengesPage() {
                             </span>
                           ) : isLocked ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium">
-                              <Lock size={12} /> {!user ? "Sign In" : `Opens ${nextDayName}`}
+                              <Lock size={12} /> {!user ? "Sign In" : config.availableDays?.length === 0 ? "Closed" : `Opens ${nextDayName}`}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
@@ -727,7 +694,7 @@ export default function WeeklyChallengesPage() {
                             className="w-full py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-gray-400 bg-white/5 border border-white/10 flex items-center justify-between opacity-50 cursor-not-allowed"
                           >
                             <span className="flex items-center gap-1.5">
-                              <Lock size={12} /> Locked until {nextDayName}
+                              <Lock size={12} /> {config.availableDays?.length === 0 ? "Locked: Schedule Closed" : `Locked until ${nextDayName}`}
                             </span>
                             <Lock size={12} />
                           </button>

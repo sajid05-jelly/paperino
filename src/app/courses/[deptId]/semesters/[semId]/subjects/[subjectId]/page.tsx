@@ -1,5 +1,6 @@
 import { Metadata } from "next";
-import { getAllUnifiedData, getSubjectDetails } from "@/lib/unifiedSubjectData";
+import { headers } from "next/headers";
+import { getStaticUnifiedData, getSubjectDetails, isCrawlerUserAgent } from "@/lib/unifiedSubjectData";
 import { getSubjectCanonicalUrl, generateSubjectJsonLd, getSubjectSeoPath } from "@/lib/seoUtils";
 import { SITE_CONFIG } from "@/lib/siteConfig";
 import SubjectClientComponent from "@/components/SubjectClientComponent";
@@ -7,9 +8,10 @@ import { adminDb } from "@/lib/firebase-admin";
 import { SUBJECTS as STATIC_SUBJECTS, isMatchingDepartment } from "@/lib/subjects";
 
 export const dynamicParams = true;
+export const revalidate = 86400; // 24-hour Edge CDN caching (ISR) with stale-while-revalidate
 
 export async function generateStaticParams() {
-  const { subjects } = await getAllUnifiedData();
+  const { subjects } = getStaticUnifiedData();
   return subjects.map((s) => ({
     deptId: s.departmentId,
     semId: s.semesterId,
@@ -19,7 +21,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }): Promise<Metadata> {
   const { deptId, semId, subjectId } = await params;
-  const { subjects, departments } = await getAllUnifiedData(false, deptId, semId);
+  const { subjects, departments } = getStaticUnifiedData(deptId, semId);
   
   const foundSubject = subjects.find(s => s.departmentId === deptId && String(s.semesterId) === String(semId) && s.id === subjectId);
   const { subjectName, subjectCode, deptName, deptCode } = await getSubjectDetails(deptId, semId, subjectId);
@@ -62,10 +64,10 @@ export async function generateMetadata({ params }: { params: Promise<{ deptId: s
 const serverMaterialsCache = new Map<string, { data: any[]; timestamp: number }>();
 const SERVER_MATS_CACHE_TTL = 15 * 60 * 1000;
 
-async function fetchServerMaterials(deptId: string, semId: string, subjectId: string) {
-  // During SSG static build generation, skip Firestore materials queries to avoid burning 500+ reads across static subject pages.
+async function fetchServerMaterials(deptId: string, semId: string, subjectId: string, isCrawler: boolean = false) {
+  // During SSG static build generation or for crawlers, skip Firestore materials queries to avoid burning reads.
   // The client component seamlessly fetches fresh materials at runtime via /api/materials or sessionStorage cache.
-  if (process.env.NEXT_PHASE === "phase-production-build" || process.env.IS_NEXT_BUILD === "true") {
+  if (isCrawler || process.env.NEXT_PHASE === "phase-production-build" || process.env.IS_NEXT_BUILD === "true") {
     return [];
   }
   if (!adminDb) return [];
@@ -157,14 +159,20 @@ function docData(d: any) {
 
 export default async function SubjectPage({ params }: { params: Promise<{ deptId: string, semId: string, subjectId: string }> }) {
   const { deptId, semId, subjectId } = await params;
-  const { subjects, departments } = await getAllUnifiedData(false, deptId, semId);
+  let isCrawler = false;
+  try {
+    const reqHeaders = await headers();
+    isCrawler = isCrawlerUserAgent(reqHeaders.get("user-agent"));
+  } catch {}
+
+  const { subjects, departments } = getStaticUnifiedData(deptId, semId);
   
   const foundSubject = subjects.find(s => s.departmentId === deptId && String(s.semesterId) === String(semId) && s.id === subjectId);
   const { subjectName, subjectCode, deptName, deptCode } = await getSubjectDetails(deptId, semId, subjectId);
 
   const canonicalUrl = foundSubject ? getSubjectCanonicalUrl(foundSubject) : getSubjectCanonicalUrl({ id: subjectId, name: subjectName, code: subjectCode, departmentId: deptId, semesterId: semId });
 
-  const serverMaterials = await fetchServerMaterials(deptId, semId, subjectId);
+  const serverMaterials = await fetchServerMaterials(deptId, semId, subjectId, isCrawler);
   const pyqs = serverMaterials.filter((m: any) => m.category === "pyq");
   const notes = serverMaterials.filter((m: any) => m.category === "notes");
   const questions = serverMaterials.filter((m: any) => m.category === "questions");

@@ -137,6 +137,47 @@ export const DAY_NAMES = [
   'Saturday',
 ];
 
+export function getKolkataDateParts(date: Date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const partMap: Record<string, string> = {};
+  for (const p of parts) {
+    partMap[p.type] = p.value;
+  }
+  const dayIndexMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  const day = dayIndexMap[partMap.weekday] ?? 0;
+  const hour = parseInt(partMap.hour, 10) || 0;
+  const minute = parseInt(partMap.minute, 10) || 0;
+  const year = partMap.year || '2026';
+  const month = partMap.month || '01';
+  const dayOfMonth = partMap.day || '01';
+  return {
+    day,
+    hour,
+    minute,
+    minutesSinceMidnight: hour * 60 + minute,
+    dateString: `${year}-${month}-${dayOfMonth}`,
+  };
+}
+
 export function getCurrentChallengeWeek(): string {
   const date = new Date();
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -147,49 +188,81 @@ export function getCurrentChallengeWeek(): string {
   return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
 }
 
-export function getChallengeDate(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export function getChallengeDate(date: Date = new Date()): string {
+  const { dateString } = getKolkataDateParts(date);
+  return dateString;
 }
 
-export function isChallengeDay(availableDays: number[]): boolean {
+export function isChallengeDay(availableDays: number[], date: Date = new Date()): boolean {
   if (!Array.isArray(availableDays)) return true;
   if (availableDays.length === 0) return false;
-  const today = new Date().getDay();
-  return availableDays.includes(today);
+  const { day } = getKolkataDateParts(date);
+  return availableDays.includes(day);
 }
 
-export function isChallengeHour(openTime?: string, closeTime?: string): boolean {
+export function isChallengeHour(openTime?: string, closeTime?: string, date: Date = new Date()): boolean {
   if (!openTime || !closeTime) return true;
-  const now = new Date();
-  const currentMins = now.getHours() * 60 + now.getMinutes();
+  const { minutesSinceMidnight } = getKolkataDateParts(date);
   const [oh, om] = openTime.split(':').map(Number);
   const [ch, cm] = closeTime.split(':').map(Number);
-  const openMins = (oh || 0) * 60 + (om || 0);
-  const closeMins = (ch || 0) * 60 + (cm || 0);
-  return currentMins >= openMins && currentMins <= closeMins;
+  const openMins = (isNaN(oh) ? 0 : oh) * 60 + (isNaN(om) ? 0 : om);
+  const closeMins = (isNaN(ch) ? 23 : ch) * 60 + (isNaN(cm) ? 59 : cm);
+
+  if (openMins <= closeMins) {
+    return minutesSinceMidnight >= openMins && minutesSinceMidnight <= closeMins;
+  }
+  // Overnight schedule (e.g. 20:00 to 02:00)
+  return minutesSinceMidnight >= openMins || minutesSinceMidnight <= closeMins;
 }
 
-export function getNextChallengeDay(availableDays: number[]): Date | null {
+export function isChallengeScheduleActive(
+  availableDays: number[],
+  openTime?: string,
+  closeTime?: string,
+  date: Date = new Date()
+): boolean {
+  if (!Array.isArray(availableDays) || availableDays.length === 0) return false;
+
+  const { day, minutesSinceMidnight } = getKolkataDateParts(date);
+
+  const [oh, om] = (openTime || '00:00').split(':').map(Number);
+  const [ch, cm] = (closeTime || '23:59').split(':').map(Number);
+  const openMins = (isNaN(oh) ? 0 : oh) * 60 + (isNaN(om) ? 0 : om);
+  const closeMins = (isNaN(ch) ? 23 : ch) * 60 + (isNaN(cm) ? 59 : cm);
+
+  if (openMins <= closeMins) {
+    // Normal same-day schedule
+    const dayMatches = availableDays.includes(day);
+    const hourMatches = minutesSinceMidnight >= openMins && minutesSinceMidnight <= closeMins;
+    return dayMatches && hourMatches;
+  } else {
+    // Overnight window (e.g. 20:00 to 04:00)
+    // Active if:
+    // 1) Today is in availableDays AND minutes >= openMins
+    // OR
+    // 2) Yesterday was in availableDays AND minutes <= closeMins
+    const yesterday = (day + 6) % 7;
+    const isStartedTonight = availableDays.includes(day) && minutesSinceMidnight >= openMins;
+    const isOvernightSpill = availableDays.includes(yesterday) && minutesSinceMidnight <= closeMins;
+    return isStartedTonight || isOvernightSpill;
+  }
+}
+
+export function getNextChallengeDay(availableDays: number[], date: Date = new Date()): Date | null {
   if (!Array.isArray(availableDays) || availableDays.length === 0) return null;
-  const now = new Date();
-  const today = now.getDay();
+  const { day } = getKolkataDateParts(date);
 
   let daysToAdd = 1;
   while (daysToAdd <= 7) {
-    const nextDay = (today + daysToAdd) % 7;
+    const nextDay = (day + daysToAdd) % 7;
     if (availableDays.includes(nextDay)) {
       break;
     }
     daysToAdd++;
   }
 
-  const nextDate = new Date(now);
-  nextDate.setDate(now.getDate() + daysToAdd);
-  nextDate.setHours(0, 0, 0, 0);
+  const nextDate = new Date(date);
+  nextDate.setDate(date.getDate() + daysToAdd);
   return nextDate;
 }
 

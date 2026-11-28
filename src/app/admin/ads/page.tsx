@@ -38,6 +38,7 @@ export default function AdminAdsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<AdCampaign | null>(null);
   const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // Simplified Form Fields — only essentials
   const [formTitle, setFormTitle] = useState("");
@@ -203,6 +204,7 @@ export default function AdminAdsPage() {
 
     setFormPriority(50);
     setUploadFeedback(null);
+    setModalError(null);
     setDesktopFileName(null);
     setMobileFileName(null);
     setIsModalOpen(true);
@@ -211,6 +213,7 @@ export default function AdminAdsPage() {
   // Open Edit Modal
   const openEditModal = (campaign: AdCampaign) => {
     setEditingCampaign(campaign);
+    setModalError(null);
     setFormTitle(campaign.title);
     setFormBrand(campaign.brandName);
     setFormPlacement(campaign.placementId);
@@ -234,23 +237,22 @@ export default function AdminAdsPage() {
     e.preventDefault();
     setSaving(true);
     setFeedback(null);
+    setModalError(null);
 
     try {
       const token = await getAuthToken();
       if (!token) throw new Error("Authentication missing");
 
-      const payload = {
-        title: formTitle,
-        brandName: formBrand,
+      const payload: Record<string, unknown> = {
+        title: formTitle.trim(),
+        brandName: formBrand.trim(),
         contactEmail: "",
         contactPhone: "",
         placementId: formPlacement,
         mediaType: formMediaType,
-        desktopCreativeUrl: formDesktopUrl,
-        mobileCreativeUrl: formMobileUrl || undefined,
-        videoPosterUrl: formPosterUrl || undefined,
-        destinationUrl: formDestUrl,
-        accessibleDescription: formAlt || `Ad by ${formBrand}`,
+        desktopCreativeUrl: formDesktopUrl.trim(),
+        destinationUrl: formDestUrl.trim(),
+        accessibleDescription: formAlt.trim() || `Ad by ${formBrand.trim()}`,
         startAt: new Date(formStart).toISOString(),
         expiresAt: new Date(formExpire).toISOString(),
         priority: Number(formPriority) || 50,
@@ -264,6 +266,18 @@ export default function AdminAdsPage() {
         },
         status: "published" as AdCampaignStatus,
       };
+
+      if (formMobileUrl && formMobileUrl.trim()) {
+        payload.mobileCreativeUrl = formMobileUrl.trim();
+      } else if (editingCampaign && editingCampaign.mobileCreativeUrl) {
+        payload.removeMobileCreative = true;
+      }
+
+      if (formPosterUrl && formPosterUrl.trim()) {
+        payload.videoPosterUrl = formPosterUrl.trim();
+      } else if (editingCampaign && editingCampaign.videoPosterUrl && formMediaType !== "video") {
+        payload.removeVideoPoster = true;
+      }
 
       let res;
       if (editingCampaign) {
@@ -290,10 +304,12 @@ export default function AdminAdsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to save campaign");
 
       setFeedback({ type: "success", message: editingCampaign ? "Campaign updated ✓" : "Campaign published ✓" });
+      setModalError(null);
       setIsModalOpen(false);
       loadAdsData();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Failed to save campaign";
+      setModalError(errorMsg);
       setFeedback({ type: "error", message: errorMsg });
     } finally {
       setSaving(false);
@@ -760,6 +776,19 @@ export default function AdminAdsPage() {
             </div>
 
             <form onSubmit={handleSaveCampaign} className="space-y-5 text-xs">
+              {/* Modal Inline Error Alert */}
+              {modalError && (
+                <div className="p-3.5 rounded-xl border border-red-500/30 bg-red-500/15 text-red-300 flex items-center justify-between text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={16} className="shrink-0 text-red-400" />
+                    <span>{modalError}</span>
+                  </div>
+                  <button type="button" onClick={() => setModalError(null)} className="p-1 text-red-400 hover:text-white">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               {/* Brand & Title */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -929,14 +958,27 @@ export default function AdminAdsPage() {
                       <span className="text-purple-300 text-[11px]">Uploading mobile variant...</span>
                     </div>
                   ) : formMobileUrl ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <CheckCircle2 size={14} className="text-emerald-400" />
-                      <span className="text-emerald-300 text-[11px]">{mobileFileName || "Mobile variant uploaded"}</span>
+                    <div className="flex items-center justify-between px-2">
+                      <div className="flex items-center gap-2 truncate">
+                        <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                        <span className="text-emerald-300 text-[11px] truncate">{mobileFileName || "Mobile variant uploaded"}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormMobileUrl("");
+                          setMobileFileName(null);
+                        }}
+                        className="text-[10px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded border border-red-500/30 hover:bg-red-500/10 cursor-pointer ml-2 shrink-0"
+                      >
+                        Remove
+                      </button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-2 text-gray-500">
                       <Upload size={14} />
-                      <span className="text-[11px]">Optional: Upload mobile variant</span>
+                      <span className="text-[11px]">Optional: Upload mobile variant (uses desktop if omitted)</span>
                     </div>
                   )}
                 </div>
@@ -966,9 +1008,21 @@ export default function AdminAdsPage() {
                         <span className="text-purple-300 text-[11px]">Uploading poster...</span>
                       </div>
                     ) : formPosterUrl ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckCircle2 size={14} className="text-emerald-400" />
-                        <span className="text-emerald-300 text-[11px]">Video poster uploaded</span>
+                      <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-2 truncate">
+                          <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                          <span className="text-emerald-300 text-[11px] truncate">Video poster uploaded</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFormPosterUrl("");
+                          }}
+                          className="text-[10px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded border border-red-500/30 hover:bg-red-500/10 cursor-pointer ml-2 shrink-0"
+                        >
+                          Remove
+                        </button>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-2 text-gray-500">

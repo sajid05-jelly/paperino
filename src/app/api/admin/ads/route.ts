@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import * as admin from "firebase-admin";
 import { verifyServerAuth } from "@/lib/auth-verify";
 import { AdCampaign, AdsGlobalConfig, AdPlacementId } from "@/lib/adTypes";
 import { validateDestinationUrl, validateMediaUrl, sanitizePublicManifest } from "@/lib/adSecurity";
@@ -244,31 +245,44 @@ export async function POST(req: NextRequest) {
     }
 
     const nowIso = new Date().toISOString();
-    const campaignData: Omit<AdCampaign, "id"> = {
+
+    const cleanRevenue: Record<string, unknown> = {
+      amountInr: Number(revenue?.amountInr) || 0,
+      amountReceivedInr: Number(revenue?.amountReceivedInr) || 0,
+      outstandingInr: Math.max(0, (Number(revenue?.amountInr) || 0) - (Number(revenue?.amountReceivedInr) || 0)),
+      paymentStatus: revenue?.paymentStatus || "pending",
+      paymentReference: revenue?.paymentReference || "",
+      internalNotes: revenue?.internalNotes || "",
+    };
+    if (revenue?.paymentDate && typeof revenue.paymentDate === "string" && revenue.paymentDate.trim()) {
+      cleanRevenue.paymentDate = new Date(revenue.paymentDate).toISOString();
+    }
+
+    const cleanTargetAudience: Record<string, unknown> = {
+      userTier: targetAudience?.userTier || "all",
+    };
+    if (Array.isArray(targetAudience?.allowedPlans) && targetAudience.allowedPlans.length > 0) {
+      cleanTargetAudience.allowedPlans = targetAudience.allowedPlans;
+    }
+    if (Array.isArray(targetAudience?.colleges) && targetAudience.colleges.length > 0) {
+      cleanTargetAudience.colleges = targetAudience.colleges;
+    }
+
+    const campaignData: Record<string, unknown> = {
       title: title.trim(),
       brandName: brandName.trim(),
       contactEmail: contactEmail?.trim() || "",
       contactPhone: contactPhone?.trim() || "",
       placementId,
       mediaType: mediaType === "video" ? "video" : "image",
-      desktopCreativeUrl,
-      mobileCreativeUrl: mobileCreativeUrl || undefined,
-      videoPosterUrl: videoPosterUrl || undefined,
+      desktopCreativeUrl: desktopCreativeUrl.trim(),
       destinationUrl: destinationUrl.trim(),
-      accessibleDescription: accessibleDescription?.trim() || `Advertisement from ${brandName}`,
+      accessibleDescription: accessibleDescription?.trim() || `Advertisement from ${brandName.trim()}`,
       startAt: new Date(startAt).toISOString(),
       expiresAt: new Date(expiresAt).toISOString(),
       priority: Number(priority) || 50,
-      targetAudience: targetAudience || { userTier: "all" },
-      revenue: {
-        amountInr: Number(revenue?.amountInr) || 0,
-        amountReceivedInr: Number(revenue?.amountReceivedInr) || 0,
-        outstandingInr: Math.max(0, (Number(revenue?.amountInr) || 0) - (Number(revenue?.amountReceivedInr) || 0)),
-        paymentStatus: revenue?.paymentStatus || "pending",
-        paymentReference: revenue?.paymentReference || "",
-        paymentDate: revenue?.paymentDate || undefined,
-        internalNotes: revenue?.internalNotes || "",
-      },
+      targetAudience: cleanTargetAudience,
+      revenue: cleanRevenue,
       status: status || "draft",
       impressions: 0,
       clicks: 0,
@@ -276,6 +290,13 @@ export async function POST(req: NextRequest) {
       updatedAt: nowIso,
       createdBy: user.email || user.uid,
     };
+
+    if (mobileCreativeUrl && typeof mobileCreativeUrl === "string" && mobileCreativeUrl.trim()) {
+      campaignData.mobileCreativeUrl = mobileCreativeUrl.trim();
+    }
+    if (videoPosterUrl && typeof videoPosterUrl === "string" && videoPosterUrl.trim()) {
+      campaignData.videoPosterUrl = videoPosterUrl.trim();
+    }
 
     const docRef = await adminDb.collection("campaigns").add(campaignData);
 
@@ -355,7 +376,12 @@ export async function PATCH(req: NextRequest) {
     }
 
     // 3. Otherwise update campaign
-    const { campaignId, ...updates } = body;
+    const {
+      campaignId,
+      removeMobileCreative,
+      removeVideoPoster,
+      ...updates
+    } = body;
     if (!campaignId) {
       return NextResponse.json({ error: "Campaign ID is required" }, { status: 400 });
     }
@@ -394,20 +420,87 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
-    const cleanUpdates = {
-      ...updates,
+    const cleanUpdates: Record<string, unknown> = {
       updatedAt: new Date().toISOString(),
     };
 
+    const allowedFields = [
+      "title",
+      "brandName",
+      "contactEmail",
+      "contactPhone",
+      "placementId",
+      "mediaType",
+      "desktopCreativeUrl",
+      "destinationUrl",
+      "accessibleDescription",
+      "status",
+    ];
+
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        if (typeof updates[field] === "string") {
+          cleanUpdates[field] = updates[field].trim();
+        } else {
+          cleanUpdates[field] = updates[field];
+        }
+      }
+    }
+
+    if (updates.startAt) {
+      cleanUpdates.startAt = new Date(updates.startAt).toISOString();
+    }
+    if (updates.expiresAt) {
+      cleanUpdates.expiresAt = new Date(updates.expiresAt).toISOString();
+    }
+    if (updates.priority !== undefined) {
+      cleanUpdates.priority = Number(updates.priority) || 50;
+    }
+
+    // Handle mobile creative: explicit remove or update
+    if (removeMobileCreative === true || updates.mobileCreativeUrl === null || updates.mobileCreativeUrl === "") {
+      cleanUpdates.mobileCreativeUrl = admin.firestore.FieldValue.delete();
+    } else if (typeof updates.mobileCreativeUrl === "string" && updates.mobileCreativeUrl.trim()) {
+      cleanUpdates.mobileCreativeUrl = updates.mobileCreativeUrl.trim();
+    }
+
+    // Handle video poster: explicit remove or update
+    if (removeVideoPoster === true || updates.videoPosterUrl === null || (updates.videoPosterUrl === "" && updates.mediaType !== "video")) {
+      cleanUpdates.videoPosterUrl = admin.firestore.FieldValue.delete();
+    } else if (typeof updates.videoPosterUrl === "string" && updates.videoPosterUrl.trim()) {
+      cleanUpdates.videoPosterUrl = updates.videoPosterUrl.trim();
+    }
+
+    // Target audience updates
+    if (updates.targetAudience) {
+      const cleanAudience: Record<string, unknown> = {
+        userTier: updates.targetAudience.userTier || "all",
+      };
+      if (Array.isArray(updates.targetAudience.allowedPlans)) {
+        cleanAudience.allowedPlans = updates.targetAudience.allowedPlans;
+      }
+      if (Array.isArray(updates.targetAudience.colleges)) {
+        cleanAudience.colleges = updates.targetAudience.colleges;
+      }
+      cleanUpdates.targetAudience = cleanAudience;
+    }
+
+    // Revenue updates
     if (updates.revenue) {
       const amt = Number(updates.revenue.amountInr) || 0;
       const rec = Number(updates.revenue.amountReceivedInr) || 0;
-      cleanUpdates.revenue = {
-        ...updates.revenue,
+      const cleanRev: Record<string, unknown> = {
         amountInr: amt,
         amountReceivedInr: rec,
         outstandingInr: Math.max(0, amt - rec),
+        paymentStatus: updates.revenue.paymentStatus || "pending",
+        paymentReference: updates.revenue.paymentReference || "",
+        internalNotes: updates.revenue.internalNotes || "",
       };
+      if (updates.revenue.paymentDate && typeof updates.revenue.paymentDate === "string" && updates.revenue.paymentDate.trim()) {
+        cleanRev.paymentDate = new Date(updates.revenue.paymentDate).toISOString();
+      }
+      cleanUpdates.revenue = cleanRev;
     }
 
     await docRef.update(cleanUpdates);

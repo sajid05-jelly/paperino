@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { getAllUnifiedData } from '@/lib/unifiedSubjectData';
+import { getStaticUnifiedData } from '@/lib/unifiedSubjectData';
 import { getSubjectSeoPath } from '@/lib/seoUtils';
 import { SITE_CONFIG, getAbsoluteUrl } from '@/lib/siteConfig';
 
@@ -121,8 +121,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Fetch all unified courses, semesters, and subjects (Static + Firestore)
-  const { departments, subjects } = await getAllUnifiedData();
+  // Fetch all unified courses, semesters, and subjects (100% Static Catalog Fallback: Zero Reads)
+  const { departments, subjects } = getStaticUnifiedData();
 
   // Helper to format lastModified safely from Firestore timestamp, number, or Date
   const parseLastModified = (rawTs: any): Date => {

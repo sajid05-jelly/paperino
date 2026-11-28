@@ -37,7 +37,92 @@ let inMemoryUnifiedData: {
   subjects: UnifiedSubject[];
 } | null = null;
 let lastUnifiedFetchTime = 0;
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30m TTL to protect read quota across crawlers & SSR
+const CACHE_TTL_MS = 60 * 60 * 1000; // 60m TTL to protect read quota across crawlers & SSR
+
+let memoizedStaticUnifiedData: {
+  departments: UnifiedDepartment[];
+  subjects: UnifiedSubject[];
+} | null = null;
+
+export function isCrawlerUserAgent(userAgent?: string | null): boolean {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  const botKeywords = [
+    "bot", "crawler", "spider", "googlebot", "bingbot", "yandex",
+    "baiduspider", "duckduckbot", "slurp", "ahrefs", "semrush",
+    "dotbot", "petalbot", "facebookexternalhit", "twitterbot", "linkedinbot",
+    "feedfetcher", "mediapartners", "headlesschrome", "bytespider"
+  ];
+  return botKeywords.some(kw => ua.includes(kw));
+}
+
+/**
+ * 100% Static Catalog Fallback (Zero Firestore Reads).
+ * Immediately resolves all 273 pre-configured subjects and all canonical departments
+ * from local memory / comprehensive_catalog.json without any network or database calls.
+ */
+export function getStaticUnifiedData(filterDeptId?: string, filterSemId?: string): {
+  departments: UnifiedDepartment[];
+  subjects: UnifiedSubject[];
+} {
+  if (!memoizedStaticUnifiedData) {
+    const departmentsMap = new Map<string, UnifiedDepartment>();
+    DEFAULT_DEPARTMENTS.forEach((dept) => {
+      departmentsMap.set(dept.id, {
+        id: dept.id,
+        name: dept.name,
+        code: dept.code,
+        totalSemesters: dept.totalSemesters,
+        status: dept.status,
+      });
+    });
+
+    const subjectsList: UnifiedSubject[] = [];
+    const subjectKeysSet = new Set<string>();
+
+    COMPREHENSIVE_CATALOG.forEach((s) => {
+      const deptId = (s.departmentId || "btech").toLowerCase().trim();
+      const semId = String(s.semesterId || "1").trim();
+      const subId = (s.id || "").toLowerCase().trim();
+      const uniqueKey = `${deptId}_${semId}_${subId}`;
+
+      if (!subjectKeysSet.has(uniqueKey)) {
+        subjectKeysSet.add(uniqueKey);
+        const deptObj = departmentsMap.get(deptId);
+        subjectsList.push({
+          id: subId,
+          name: s.name,
+          code: s.code || "",
+          departmentId: deptId,
+          departmentName: deptObj ? deptObj.name : deptId.toUpperCase(),
+          semesterId: semId,
+          sections: s.sections,
+          status: "approved",
+        });
+      }
+    });
+
+    memoizedStaticUnifiedData = {
+      departments: Array.from(departmentsMap.values()),
+      subjects: subjectsList,
+    };
+  }
+
+  if (filterDeptId || filterSemId) {
+    return {
+      departments: filterDeptId
+        ? memoizedStaticUnifiedData.departments.filter(d => d.id === filterDeptId)
+        : memoizedStaticUnifiedData.departments,
+      subjects: memoizedStaticUnifiedData.subjects.filter(s => {
+        if (filterDeptId && s.departmentId !== filterDeptId) return false;
+        if (filterSemId && s.semesterId !== filterSemId) return false;
+        return true;
+      }),
+    };
+  }
+
+  return memoizedStaticUnifiedData;
+}
 
 const DISK_CACHE_DIR = path.join(process.cwd(), "node_modules", ".cache");
 const DISK_CACHE_PATH = path.join(DISK_CACHE_DIR, "unified_subjects_cache.json");
@@ -92,6 +177,11 @@ export const getAllUnifiedData = cache(async (
   departments: UnifiedDepartment[];
   subjects: UnifiedSubject[];
 }> => {
+  // During static build generation, skip Firestore queries entirely
+  if (process.env.NEXT_PHASE === "phase-production-build" || process.env.IS_NEXT_BUILD === "true") {
+    return getStaticUnifiedData(filterDeptId, filterSemId);
+  }
+
   const now = Date.now();
   if (!forceRefetch && inMemoryUnifiedData && (now - lastUnifiedFetchTime) < CACHE_TTL_MS) {
     if (!filterDeptId && !filterSemId) {
@@ -299,6 +389,7 @@ export const getAllUnifiedData = cache(async (
 
 /**
  * Fetch metadata parameters for a specific subject dynamically from the unified data source.
+ * Prioritizes the zero-read static catalog (273 subjects) to guarantee 0 Firestore reads for crawlers.
  */
 export async function getSubjectDetails(deptId: string, semId: string, subjectIdOrSlug: string): Promise<{
   subjectName: string;
@@ -308,12 +399,39 @@ export async function getSubjectDetails(deptId: string, semId: string, subjectId
   updatedAt?: any;
   createdAt?: any;
 }> {
-  const { departments, subjects } = await getAllUnifiedData(false, deptId, semId);
-  
   const target = subjectIdOrSlug.toLowerCase().trim();
   const normalize = (str: string) => (str || "").toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
   const normalizedTarget = normalize(target);
 
+  // 1. Check 100% Zero-Read Static Catalog First (273 pre-configured subjects)
+  const staticData = getStaticUnifiedData(deptId, semId);
+  const foundInStatic = staticData.subjects.find(
+    s => s.id.toLowerCase() === target ||
+         normalize(s.id) === normalizedTarget ||
+         normalize(s.name) === normalizedTarget ||
+         (s.code && normalize(s.code).replace(/-/g, "") === target.replace(/[^a-z0-9]/g, "")) ||
+         normalizedTarget.includes(normalize(s.name)) ||
+         normalize(s.name).includes(normalizedTarget)
+  );
+
+  const foundDept = staticData.departments.find(d => d.id.toLowerCase() === deptId.toLowerCase());
+  const deptName = foundDept ? foundDept.name : (deptId === "btech" ? "Bachelor of Technology" : deptId.toUpperCase());
+  const deptCode = foundDept ? foundDept.code : (deptId === "btech" ? "B.Tech" : deptId.toUpperCase());
+
+  if (foundInStatic) {
+    return {
+      subjectName: foundInStatic.name,
+      subjectCode: foundInStatic.code || "",
+      deptName,
+      deptCode,
+      updatedAt: null,
+      createdAt: null,
+    };
+  }
+
+  // 2. Fallback to full unified data only for newly submitted dynamic subjects
+  const { departments, subjects } = await getAllUnifiedData(false, deptId, semId);
+  
   const deptSubjects = subjects.filter(
     s => s.departmentId.toLowerCase() === deptId.toLowerCase() && String(s.semesterId) === String(semId)
   );
@@ -327,19 +445,19 @@ export async function getSubjectDetails(deptId: string, semId: string, subjectId
          normalize(s.name).includes(normalizedTarget)
   );
 
-  const foundDept = departments.find(d => d.id.toLowerCase() === deptId.toLowerCase());
+  const finalDept = departments.find(d => d.id.toLowerCase() === deptId.toLowerCase()) || foundDept;
 
   let subjectName = foundSubject ? foundSubject.name : subjectIdOrSlug.replace(/([a-zA-Z]+)(\d+)/, '$1 $2').toUpperCase();
   let subjectCode = foundSubject?.code || "";
-  let deptName = foundDept ? foundDept.name : (deptId === "btech" ? "Bachelor of Technology" : deptId.toUpperCase());
-  let deptCode = foundDept ? foundDept.code : (deptId === "btech" ? "B.Tech" : deptId.toUpperCase());
+  let finalDeptName = finalDept ? finalDept.name : deptName;
+  let finalDeptCode = finalDept ? finalDept.code : deptCode;
 
   return {
     subjectName,
     subjectCode,
-    deptName,
-    deptCode,
-    updatedAt: foundSubject?.updatedAt || foundDept?.updatedAt || null,
-    createdAt: foundSubject?.createdAt || foundDept?.createdAt || null,
+    deptName: finalDeptName,
+    deptCode: finalDeptCode,
+    updatedAt: foundSubject?.updatedAt || finalDept?.updatedAt || null,
+    createdAt: foundSubject?.createdAt || finalDept?.createdAt || null,
   };
 }

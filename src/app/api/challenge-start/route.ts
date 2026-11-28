@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import crypto from 'crypto';
 import { getCanonicalChallengeId } from '@/lib/challengeResolver';
+import { isChallengeScheduleActive } from '@/lib/challengeUtils';
 import { 
   BUG_HUNTER_POOL, 
   NUMBER_DETECTIVE_POOL, 
@@ -125,9 +126,9 @@ export async function POST(request: Request) {
     // Resolve canonical challengeId using admin config (or fallback)
     const challengeId = await getCanonicalChallengeId(gameId, authUser);
 
-    if (configSnap && configSnap.exists) {
-      const cfg = configSnap.data() || {};
+    const cfg = (configSnap && configSnap.exists) ? (configSnap.data() || {}) : {};
 
+    if (configSnap && configSnap.exists) {
       if (cfg.enabled === false) {
         return NextResponse.json({ error: 'Weekly challenges are currently disabled' }, { status: 403 });
       }
@@ -137,51 +138,73 @@ export async function POST(request: Request) {
       if (cfg.activeGames && Array.isArray(cfg.activeGames) && !cfg.activeGames.includes(gameId)) {
         return NextResponse.json({ error: 'This game is currently disabled by admin' }, { status: 403 });
       }
-      if (cfg.availableDays && Array.isArray(cfg.availableDays) && (!cfg.availableDays.includes(now.getDay()) || cfg.availableDays.length === 0)) {
-        return NextResponse.json({ error: 'Weekly challenges are not available today' }, { status: 403 });
+      if (!isChallengeScheduleActive(cfg.availableDays, cfg.openTime, cfg.closeTime, now)) {
+        return NextResponse.json({ error: 'Weekly challenges are not available at this time' }, { status: 403 });
       }
     }
 
-    // === Check existing result for 1-attempt enforcement ===
+    const maxAttempts = Number(cfg.officialAttempts) || 1;
+
+    // === Check existing result for attempt limit enforcement ===
     let sessionId: string = crypto.randomUUID();
     const deterministicResultDocId = `${challengeId}-${uid}-res`;
 
     if (adminDb) {
       try {
-        // Enforce ONE ATTEMPT per challengeId + userId
-        // Step 1: Check deterministic doc directly (fastest, requires zero query index)
-        const directDoc = await adminDb.collection("challenge_results").doc(deterministicResultDocId).get();
-        let prevResult: any = directDoc.exists ? directDoc.data() : null;
+        let prevResult: any = null;
 
-        // Step 2: Fallback query if direct doc wasn't found (for legacy documents)
-        if (!prevResult) {
-          const existingResults = await adminDb.collection("challenge_results")
-            .where("userId", "==", uid)
-            .where("challengeId", "==", challengeId)
-            .where("isOfficial", "==", true)
-            .limit(1)
-            .get();
-
-          if (!existingResults.empty) {
-            prevResult = existingResults.docs[0].data();
-          }
-        }
-
-        // Step 3: Check completed session docs as secondary guard
-        if (!prevResult) {
-          const existingSession = await adminDb.collection("challenge_sessions")
+        if (maxAttempts > 1) {
+          const sessionsSnap = await adminDb.collection("challenge_sessions")
             .where("userId", "==", uid)
             .where("challengeId", "==", challengeId)
             .where("status", "==", "completed")
-            .limit(1)
             .get();
 
-          if (!existingSession.empty) {
-            const sData = existingSession.docs[0].data();
+          if (sessionsSnap.size >= maxAttempts) {
+            const lastSession = sessionsSnap.docs[sessionsSnap.docs.length - 1].data();
             prevResult = {
-              score: sData.score || 50,
-              durationMs: sData.durationMs || 0
+              score: lastSession.score || 50,
+              durationMs: lastSession.durationMs || 0
             };
+          }
+        } else {
+          // Enforce 1 ATTEMPT per challengeId + userId
+          // Step 1: Check deterministic doc directly (fastest, requires zero query index)
+          const directDoc = await adminDb.collection("challenge_results").doc(deterministicResultDocId).get();
+          if (directDoc.exists) {
+            prevResult = directDoc.data();
+          }
+
+          // Step 2: Fallback query if direct doc wasn't found (for legacy documents)
+          if (!prevResult) {
+            const existingResults = await adminDb.collection("challenge_results")
+              .where("userId", "==", uid)
+              .where("challengeId", "==", challengeId)
+              .where("isOfficial", "==", true)
+              .limit(1)
+              .get();
+
+            if (!existingResults.empty) {
+              prevResult = existingResults.docs[0].data();
+            }
+          }
+
+          // Step 3: Check completed session docs as secondary guard
+          if (!prevResult) {
+            const existingSession = await adminDb.collection("challenge_sessions")
+              .where("userId", "==", uid)
+              .where("challengeId", "==", challengeId)
+              .where("status", "==", "completed")
+              .limit(1)
+              .get();
+
+            if (!existingSession.empty) {
+              const sData = existingSession.docs[0].data();
+              prevResult = {
+                score: sData.score || 50,
+                durationMs: sData.durationMs || 0
+              };
+            }
           }
         }
 
@@ -193,7 +216,7 @@ export async function POST(request: Request) {
           const { leaderboard, userRank } = await buildLeaderboard(challengeId, uid);
 
           return NextResponse.json({ 
-            error: "You've already completed today's official challenge.", 
+            error: "You've already completed the allowed official attempts for this challenge.", 
             completed: true,
             wasAlreadyCompleted: true,
             score: userScore,

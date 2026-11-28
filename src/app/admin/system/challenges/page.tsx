@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { 
@@ -76,7 +74,7 @@ export default function ChallengesControlPage() {
   const fetchWcConfig = useCallback(async () => {
     try {
       // 1. Fetch via server API (Admin SDK avoids client permission restrictions)
-      const res = await fetch("/api/challenges/config");
+      const res = await fetch("/api/challenges/config", { cache: "no-store" });
       if (res.ok) {
         const json = await res.json();
         if (json?.data) {
@@ -88,16 +86,6 @@ export default function ChallengesControlPage() {
     } catch (err: any) {
       console.warn("API config fetch notice:", err?.message || err);
     }
-
-    try {
-      const snap = await getDoc(doc(db, "settings", "weeklyChallenges"));
-      if (snap.exists()) {
-        applyConfig(snap.data());
-        setError(null);
-        return;
-      }
-    } catch {}
-
     setError(null);
   }, [applyConfig]);
 

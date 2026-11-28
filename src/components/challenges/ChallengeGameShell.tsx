@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, HelpCircle, X, AlertTriangle, Rocket, Wrench, Sparkles, BookOpen } from "lucide-react";
+import { ArrowLeft, HelpCircle, X, AlertTriangle, Rocket, Wrench, Sparkles, BookOpen, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { isChallengeScheduleActive } from "@/lib/challengeUtils";
 // Client Firestore imports removed in favor of Server Admin API
 
 interface ChallengeGameShellProps {
@@ -19,6 +20,7 @@ interface ChallengeGameShellProps {
 }
 
 export default function ChallengeGameShell({
+  gameId,
   gameName,
   gameIcon,
   attemptText,
@@ -46,12 +48,18 @@ export default function ChallengeGameShell({
           const json = await res.json();
           if (json?.data && isMounted) {
             const data = json.data;
-            if (data.maintenanceMode === true) {
-              setIsLockedByAdmin(true);
-              setLockReason("The Paperino Challenge Arena is currently under maintenance. Please check back shortly.");
-            } else if (data.enabled === false) {
+            if (data.enabled === false) {
               setIsLockedByAdmin(true);
               setLockReason("Weekly challenges are currently paused by the administrator.");
+            } else if (data.maintenanceMode === true) {
+              setIsLockedByAdmin(true);
+              setLockReason("The Paperino Challenge Arena is currently under maintenance. Please check back shortly.");
+            } else if (data.activeGames && Array.isArray(data.activeGames) && !data.activeGames.includes(gameId)) {
+              setIsLockedByAdmin(true);
+              setLockReason("This challenge game is not currently active.");
+            } else if (!isChallengeScheduleActive(data.availableDays, data.openTime, data.closeTime)) {
+              setIsLockedByAdmin(true);
+              setLockReason("Weekly challenges are currently closed according to the schedule.");
             } else {
               setIsLockedByAdmin(false);
               setLockReason(null);

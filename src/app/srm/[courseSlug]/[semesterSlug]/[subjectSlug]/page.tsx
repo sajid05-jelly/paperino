@@ -1,6 +1,7 @@
 import { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getAllUnifiedData } from "@/lib/unifiedSubjectData";
+import { getStaticUnifiedData, isCrawlerUserAgent } from "@/lib/unifiedSubjectData";
 import { getSubjectSlug, matchSubjectBySlug, getSubjectCanonicalUrl, generateSubjectJsonLd } from "@/lib/seoUtils";
 import { SITE_CONFIG } from "@/lib/siteConfig";
 import SubjectClientComponent from "@/components/SubjectClientComponent";
@@ -14,7 +15,7 @@ export const revalidate = 86400; // Cache pages for 24 hours (ISR) to protect Fi
  * Generate static params for all subjects during SSG build
  */
 export async function generateStaticParams() {
-  const { subjects } = await getAllUnifiedData();
+  const { subjects } = getStaticUnifiedData();
   return subjects.map((s) => ({
     courseSlug: s.departmentId.toLowerCase(),
     semesterSlug: `semester-${s.semesterId}`,
@@ -34,7 +35,7 @@ export async function generateMetadata({
   const { courseSlug, semesterSlug, subjectSlug } = resolvedParams;
   const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
-  const { subjects, departments } = await getAllUnifiedData(false, courseSlug, semId);
+  const { subjects, departments } = getStaticUnifiedData(courseSlug, semId);
   const subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
   let validSubject = subject;
@@ -107,10 +108,10 @@ export async function generateMetadata({
 const serverMaterialsCache = new Map<string, { data: any[]; timestamp: number }>();
 const SERVER_MATS_CACHE_TTL = 15 * 60 * 1000;
 
-async function fetchServerMaterials(deptId: string, semId: string, subjectId: string, subjectSlug?: string) {
-  // During SSG static build generation, skip Firestore materials queries to avoid burning 500+ reads across static subject pages.
+async function fetchServerMaterials(deptId: string, semId: string, subjectId: string, subjectSlug?: string, isCrawler: boolean = false) {
+  // During SSG static build generation or for crawlers/bots, skip Firestore materials queries to avoid burning reads.
   // The client component seamlessly fetches fresh materials at runtime via /api/materials or sessionStorage cache.
-  if (process.env.NEXT_PHASE === "phase-production-build" || process.env.IS_NEXT_BUILD === "true") {
+  if (isCrawler || process.env.NEXT_PHASE === "phase-production-build" || process.env.IS_NEXT_BUILD === "true") {
     return [];
   }
   if (!adminDb) return [];
@@ -204,13 +205,18 @@ export default async function SubjectSeoPage({
 }) {
   const resolvedParams = await params;
   const { courseSlug, semesterSlug, subjectSlug } = resolvedParams;
+  let isCrawler = false;
+  try {
+    const reqHeaders = await headers();
+    isCrawler = isCrawlerUserAgent(reqHeaders.get("user-agent"));
+  } catch {}
+
   const rawSemId = semesterSlug || "";
   const semId = rawSemId.replace(/^semester-/, "");
-  const { subjects, departments } = await getAllUnifiedData(false, courseSlug, semId);
+  const { subjects, departments } = getStaticUnifiedData(courseSlug, semId);
   let subject = matchSubjectBySlug(courseSlug, semId, subjectSlug, subjects);
 
-  // Fallback: If the subject isn't in the 5-minute server cache, we do NOT throw 404 immediately.
-  // Instead, we construct a "shell" subject from the URL parameters. 
+  // Fallback: If the subject isn't in the static cache, we construct a "shell" subject from the URL parameters. 
   // The client-side SubjectClientComponent will hydrate the real data from its own Context.
   let validSubject = subject;
   if (!validSubject) {
@@ -236,8 +242,8 @@ export default async function SubjectSeoPage({
   const deptCode = deptObj ? deptObj.code : (finalSubject.departmentId === "btech" ? "B.Tech" : finalSubject.departmentId.toUpperCase());
   const canonicalUrl = getSubjectCanonicalUrl(finalSubject);
 
-  // Fetch materials server-side for initial HTML indexing
-  const serverMaterials = await fetchServerMaterials(finalSubject.departmentId, finalSubject.semesterId, finalSubject.id, subjectSlug);
+  // Fetch materials server-side (Zero reads for crawlers)
+  const serverMaterials = await fetchServerMaterials(finalSubject.departmentId, finalSubject.semesterId, finalSubject.id, subjectSlug, isCrawler);
   const pyqs = serverMaterials.filter((m: any) => m.category === "pyq");
   const notes = serverMaterials.filter((m: any) => m.category === "notes");
   const questions = serverMaterials.filter((m: any) => m.category === "questions");
