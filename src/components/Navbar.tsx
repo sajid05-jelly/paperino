@@ -373,7 +373,7 @@ export default function Navbar() {
 
             {/* Instagram */}
             <a
-              href="https://www.instagram.com/hi_paperino/"
+              href="https://www.instagram.com/paperino_hi?hvrq=MXNoZjViNWlvNnZtdA%3D%3D&utm_source=qr"
               target="_blank"
               rel="noopener noreferrer"
               title="Follow on Instagram"
@@ -415,7 +415,7 @@ export default function Navbar() {
 
               {/* Instagram */}
               <a
-                href="https://www.instagram.com/hi_paperino/"
+                href="https://www.instagram.com/paperino_hi?hvrq=MXNoZjViNWlvNnZtdA%3D%3D&utm_source=qr"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Follow on Instagram"
